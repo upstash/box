@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "../src/index.js";
+import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
@@ -12,19 +12,20 @@ const box = await Box.create({
 
 console.log(`Created box: ${box.id}`);
 
-// Run a prompt
-const run = await box.run({
-  prompt: "List all files in /work and describe what you see",
+// Single-shot run — await the result
+const run = await box.agent.run({
+  prompt: "List all files in the current directory and describe what you see",
 });
-
-for await (const chunk of run.stream()) {
-  process.stdout.write(chunk);
-}
+const output = await run.result();
+const cost = await run.cost();
+console.log(output);
+console.log(`Tokens: ${cost.tokens}`);
 
 // Shell command
 console.log("\n\n=== Shell ===");
-const result = await box.shell("ls -la /work");
-console.log(result.output);
+const shell = await box.exec("ls -la");
+const shellOutput = await shell.result();
+console.log(shellOutput);
 
 // Status
 const status = await box.getStatus();

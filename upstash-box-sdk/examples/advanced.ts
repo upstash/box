@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "../src/index.js";
+import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -12,21 +12,18 @@ const box = await Box.create({
   },
 });
 
-// Step 1: Ask the agent to create a trim script
-const run = await box.run({
-  prompt: `Create a Python script at /work/trim.py that:
+// Step 1: Ask the agent to create a trim script (streaming)
+await box.agent.run({
+  prompt: `Create a Python script at trim.py that:
 - Takes an input mp3 file path and output mp3 file path as arguments
 - Trims the mp3 to the first 60 seconds
 - Uses pydub (install ffmpeg and pydub if needed)
-- Example usage: python trim.py /work/input.mp3 /work/processed/output.mp3`,
+- Example usage: python trim.py input.mp3 processed/output.mp3`,
+  onStream: (chunk) => process.stdout.write(chunk),
 });
 
-for await (const chunk of run.stream()) {
-  process.stdout.write(chunk);
-}
-
 // Step 2: Create the output directory
-await box.shell("mkdir -p /work/processed");
+await box.exec("mkdir -p processed");
 
 // Step 3: Process each mp3 file one by one
 const localFolder = "./mp3s";
@@ -37,13 +34,13 @@ for (const file of mp3Files) {
   console.log(`Processing ${file}...`);
 
   // Upload one file at a time
-  await box.uploadFiles([
-    { path: join(localFolder, file), mountPath: `/work/${file}` },
+  await box.files.upload([
+    { path: join(localFolder, file), destination: file },
   ]);
 
   // Run the trim script
-  const trim = await box.shell(
-    `python /work/trim.py /work/${file} /work/processed/${file}`,
+  const trim = await box.exec(
+    `python trim.py ${file} processed/${file}`,
   );
 
   const cost = await trim.cost();
@@ -51,7 +48,7 @@ for (const file of mp3Files) {
 }
 
 // Step 4: Download all processed files
-await box.downloadFiles({ path: "/work/processed" });
+await box.files.download({ path: "processed" });
 
 console.log(`Processed ${mp3Files.length} files → ./processed/`);
 

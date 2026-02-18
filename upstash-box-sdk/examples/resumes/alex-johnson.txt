@@ -1,0 +1,26 @@
+ALEX JOHNSON
+Email: alex.j@email.com
+Location: Austin, TX
+
+SUMMARY
+Full-stack developer with 3 years of experience. Primarily focused on
+frontend development with React and Next.js. Some backend experience.
+
+EXPERIENCE
+
+Frontend Developer — Startup Inc (2022-Present)
+- Built customer dashboard using React, Next.js, and Tailwind CSS
+- Integrated Stripe payments and Clerk authentication
+- Set up CI/CD pipeline with GitHub Actions
+
+Junior Developer — Agency Co (2021-2022)
+- Developed WordPress sites for small business clients
+- Built landing pages using HTML, CSS, JavaScript
+- Managed hosting on AWS Lightsail
+
+SKILLS
+JavaScript, TypeScript, React, Next.js, HTML, CSS, Tailwind, some Python,
+basic PostgreSQL, Git, GitHub Actions
+
+EDUCATION
+B.A. Information Systems — UT Austin, 2021

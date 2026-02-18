@@ -1,0 +1,31 @@
+SARAH CHEN
+Email: sarah.chen@email.com
+Location: San Francisco, CA
+
+SUMMARY
+Backend engineer with 7 years of experience building distributed systems
+at scale. Passionate about database internals and event-driven architectures.
+
+EXPERIENCE
+
+Senior Backend Engineer — Stripe (2021-Present)
+- Designed and built a distributed payment reconciliation system processing
+  10M+ transactions/day using PostgreSQL, Kafka, and Go
+- Led migration from monolithic Node.js service to microservices architecture
+- Reduced p99 latency from 800ms to 120ms through query optimization
+
+Backend Engineer — Datadog (2018-2021)
+- Built real-time log aggregation pipeline handling 2TB/day
+- Implemented custom time-series storage engine in Go
+- Contributed to open-source distributed tracing library
+
+Software Engineer — Twilio (2017-2018)
+- Developed Node.js SDK for programmable messaging API
+- Built automated testing framework reducing QA cycle by 60%
+
+SKILLS
+Node.js, TypeScript, Go, Python, PostgreSQL, Redis, Kafka, Docker,
+Kubernetes, AWS, Terraform, gRPC, GraphQL, distributed systems
+
+EDUCATION
+B.S. Computer Science — UC Berkeley, 2017

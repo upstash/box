@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@buggyhunter/box": "1.0.2"
+    "@buggyhunter/box": "latest"
   }
 }
