@@ -30,51 +30,28 @@ export enum OpenAICodex {
   GPT_5_1_Codex_Max = "openai/gpt-5.1-codex-max",
 }
 
-/**
- * Configuration for creating a new box
- */
 export interface BoxConfig {
-  /** Upstash Box API key for platform authentication (abx_...). Falls back to UPSTASH_BOX_API_KEY env var. */
   apiKey?: string;
-  /** Runtime environment */
   runtime?: Runtime | string;
-  /** Agent configuration */
-  agent: {
-    /** Model to use */
+  agent?: {
     model: ClaudeCode | OpenAICodex | string;
-    /** API key for the AI agent (Anthropic key for Claude, OpenAI key for Codex) */
     apiKey: string;
   };
-  /** Git configuration (optional) */
   git?: {
-    /** GitHub personal access token */
     token: string;
   };
-  /** Environment variables injected into the box container */
   env?: Record<string, string>;
-  /** Context7 skill identifiers (e.g. ["anthropics/skills/frontend-design"]) */
   skills?: string[];
-  /** MCP server configurations */
   mcpServers?: McpServerConfig[];
-  /** Base URL of the Box API (defaults to https://box.api.upstashdev.com) */
   baseUrl?: string;
-  /** Request timeout in milliseconds (defaults to 600000) */
   timeout?: number;
-  /** Enable debug logging */
   debug?: boolean;
 }
 
-/**
- * MCP server configuration
- */
 export interface McpServerConfig {
-  /** Server name */
   name: string;
-  /** Source type: "npm" or "url" */
   source: string;
-  /** NPM package name or SSE URL */
   packageOrUrl: string;
-  /** Auth headers (for SSE) or env vars (for npm/stdio) */
   headers?: Record<string, string>;
 }
 
