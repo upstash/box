@@ -12,12 +12,18 @@
     "dev": "tsc --watch",
     "test": "vitest run"
   },
-  "keywords": ["upstash", "box", "cli", "ai-agent"],
+  "keywords": [
+    "upstash",
+    "box",
+    "cli",
+    "ai-agent"
+  ],
   "author": "Upstash",
   "license": "MIT",
   "dependencies": {
     "@buggyhunter/box": "workspace:*",
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "dotenv": "^17.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

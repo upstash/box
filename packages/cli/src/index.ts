@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "dotenv/config";
 import { Command } from "commander";
 import { createCommand } from "./commands/create.js";
 import { connectCommand } from "./commands/connect.js";
