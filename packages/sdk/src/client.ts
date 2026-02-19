@@ -5,9 +5,11 @@ import { basename, join } from "node:path"
 import type {
   BoxConfig,
   BoxData,
+  BoxGetOptions,
   BoxRunData,
   ListOptions,
   RunOptions,
+  StreamOptions,
   RunResult,
   RunStatus,
   RunCost,
@@ -60,8 +62,6 @@ export class Run<T = string> {
   /** @internal */
   _computeMs = 0
   /** @internal */
-  _streamChunks: string[] = []
-  /** @internal */
   _box: Box
   /** @internal */
   _abortController?: AbortController
@@ -98,15 +98,6 @@ export class Run<T = string> {
       // Fallback to local status if backend call fails
     }
     return this._status
-  }
-
-  /**
-   * Async iterator that yields buffered text chunks.
-   */
-  async *stream(): AsyncGenerator<string> {
-    for (const chunk of this._streamChunks) {
-      yield chunk
-    }
   }
 
   /**
@@ -184,11 +175,14 @@ export class Run<T = string> {
  *   agent: { model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
  * });
  *
- * const run = await box.agent.run({
- *   prompt: "Fix the bug in auth.ts",
- *   onStream: (chunk) => process.stdout.write(chunk),
- * });
+ * // Non-streaming
+ * const run = await box.agent.run({ prompt: "Fix the bug in auth.ts" });
  * console.log(await run.result());
+ *
+ * // Streaming
+ * for await (const chunk of box.agent.stream({ prompt: "Add tests" })) {
+ *   process.stdout.write(chunk);
+ * }
  *
  * await box.delete();
  * ```
@@ -200,6 +194,7 @@ export class Box {
   readonly agent: {
     run<T>(options: RunOptions<T> & { responseSchema: SchemaLike<T> }): Promise<Run<T>>
     run(options: RunOptions): Promise<Run<string>>
+    stream(options: StreamOptions): AsyncGenerator<string>
   }
 
   /** File operations namespace */
@@ -256,6 +251,14 @@ export class Box {
           )
         }
         return self._run(options)
+      },
+      stream(options: StreamOptions): AsyncGenerator<string> {
+        if (!self._isAgentConfigured) {
+          throw new BoxError(
+            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
+          )
+        }
+        return self._stream(options)
       },
     } as this["agent"]
 
@@ -390,6 +393,30 @@ export class Box {
     return (await response.json()) as BoxData[]
   }
 
+  /**
+   * Get an existing box by ID.
+   */
+  static async get(boxId: string, options?: BoxGetOptions): Promise<Box> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError("apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.");
+    }
+
+    const baseUrl = (options?.baseUrl ?? process.env.UPSTASH_BOX_BASE_URL ?? "https://box.api.upstashdev.com").replace(/\/$/, "");
+    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
+    const timeout = options?.timeout ?? 600000;
+    const debug = options?.debug ?? false;
+
+    const response = await fetch(`${baseUrl}/v2/box/${boxId}`, { headers });
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    const data = (await response.json()) as BoxData;
+    return new Box(data, { baseUrl, headers, timeout, debug, gitToken: options?.gitToken, isAgentConfigured: Boolean(data.model) });
+  }
+
   // ==================== Run ====================
 
   /** @internal */
@@ -510,7 +537,6 @@ export class Box {
           case "text": {
             const text = parsed.text ?? ""
             if (text) {
-              run._streamChunks.push(text)
               rawOutput += text
               options.onStream?.(text)
             }
@@ -604,6 +630,110 @@ export class Box {
     return run
   }
 
+  /** @internal */
+  async *_stream(options: StreamOptions): AsyncGenerator<string> {
+    if (!options.prompt) throw new BoxError("prompt is required")
+
+    const abortController = new AbortController()
+    if (options.timeout) {
+      setTimeout(() => abortController.abort(), options.timeout)
+    }
+
+    const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...this._headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: options.prompt }),
+      signal: abortController.signal,
+    })
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response)
+      throw new BoxError(msg, response.status)
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) throw new BoxError("Streaming not supported")
+
+    const decoder = new TextDecoder()
+    let buffer = ""
+    let eventType = ""
+    let eventData = ""
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        let chunk = decoder.decode(value, { stream: true })
+        chunk = chunk.replace(/\x1B\[[0-9;]*[A-Za-z]/g, "")
+        buffer += chunk
+
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (let line of lines) {
+          line = line.replace(/\r$/, "").replace(/^[\\\|\/\-\s]*/, "")
+
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7).trim()
+          } else if (line.startsWith("data: ")) {
+            eventData = line.slice(6)
+          } else if ((line === "" || line.trim() === "") && eventType && eventData) {
+            const text = this._processStreamEvent(eventType, eventData, options)
+            if (text !== null) yield text
+            eventType = ""
+            eventData = ""
+          }
+        }
+
+        if (eventType && eventData && (buffer === "" || buffer.trim() === "")) {
+          const text = this._processStreamEvent(eventType, eventData, options)
+          if (text !== null) yield text
+          eventType = ""
+          eventData = ""
+        }
+      }
+
+      if (eventType && eventData) {
+        const text = this._processStreamEvent(eventType, eventData, options)
+        if (text !== null) yield text
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        throw new BoxError("Stream timed out")
+      }
+      throw e
+    }
+  }
+
+  private _processStreamEvent(
+    type: string,
+    data: string,
+    options: StreamOptions,
+  ): string | null {
+    try {
+      const parsed = JSON.parse(data)
+      switch (type) {
+        case "text": {
+          const text = parsed.text ?? ""
+          return text || null
+        }
+        case "tool": {
+          options.onToolUse?.({ name: parsed.name, input: parsed.input })
+          return null
+        }
+        case "error":
+          throw new BoxError(parsed.error ?? "Stream error")
+        default:
+          return null
+      }
+    } catch (e) {
+      if (e instanceof BoxError) throw e
+      return null
+    }
+  }
+
   // ==================== Shell ====================
 
   /**
@@ -626,7 +756,6 @@ export class Box {
     run._result = result.output
     run._status = result.exit_code === 0 ? "completed" : "failed"
     run._computeMs = Date.now() - start
-    run._streamChunks.push(result.output)
     return run
   }
 
@@ -980,7 +1109,8 @@ export class Box {
 
 // ==================== Helpers ====================
 
-function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
+/** @internal */
+export function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
   try {
     const s = schema as unknown as Record<string, unknown>
     if (s.shape && typeof s.shape === "object") {
@@ -999,8 +1129,9 @@ function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
   }
   return null
 }
-
-function zodTypeToExample(field: unknown): string {
+  
+  /** @internal */
+export function zodTypeToExample(field: unknown): string {
   const f = field as { _def?: { typeName?: string; type?: unknown } }
   const typeName = f?._def?.typeName
   switch (typeName) {
@@ -1017,7 +1148,8 @@ function zodTypeToExample(field: unknown): string {
   }
 }
 
-async function parseErrorResponse(response: Response): Promise<string> {
+/** @internal */
+export async function parseErrorResponse(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as ErrorResponse
     return data.error ?? `Request failed with status ${response.status}`

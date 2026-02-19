@@ -77,6 +77,18 @@ export interface WebhookConfig {
 }
 
 /**
+ * Options for streaming agent output
+ */
+export interface StreamOptions {
+  /** The prompt/task for the AI agent */
+  prompt: string;
+  /** Timeout in milliseconds — aborts if exceeded */
+  timeout?: number;
+  /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
+  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+}
+
+/**
  * Options for running a prompt
  */
 export interface RunOptions<T = undefined> {
@@ -172,11 +184,27 @@ export interface ListOptions {
   baseUrl?: string;
 }
 
+/**
+ * Options for getting/reconnecting to an existing box
+ */
+export interface BoxGetOptions {
+  /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
+  apiKey?: string;
+  /** Base URL of the Box API (defaults to https://box.api.upstashdev.com) */
+  baseUrl?: string;
+  /** GitHub personal access token */
+  gitToken?: string;
+  /** Request timeout in milliseconds (defaults to 600000) */
+  timeout?: number;
+  /** Enable debug logging */
+  debug?: boolean;
+}
+
 // ==================== Internal API Types ====================
 
 export interface BoxData {
   id: string;
-  model: string;
+  model?: string;
   runtime?: string;
   status: string;
   created_at: string;
