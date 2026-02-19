@@ -1,0 +1,71 @@
+name: npm Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Parse release tag
+        id: parse
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+
+          # Extract package name (everything before the last @version)
+          PACKAGE="${TAG%@*}"
+          VERSION="${TAG##*@}"
+
+          if [ "$PACKAGE" = "@buggyhunter/box" ]; then
+            PKG_DIR="packages/sdk"
+          elif [ "$PACKAGE" = "@upstash/box-cli" ]; then
+            PKG_DIR="packages/cli"
+          else
+            echo "Unknown package: $PACKAGE"
+            exit 1
+          fi
+
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pkg_dir=$PKG_DIR" >> "$GITHUB_OUTPUT"
+          echo "Package: $PACKAGE @ $VERSION (dir: $PKG_DIR)"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Set version
+        run: npm version "${{ steps.parse.outputs.version }}" --no-git-tag-version
+        working-directory: ${{ steps.parse.outputs.pkg_dir }}
+
+      - run: pnpm build
+
+      - name: Publish (canary)
+        if: ${{ github.event.release.prerelease }}
+        run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --tag canary --no-git-checks --access public
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Publish (stable)
+        if: ${{ !github.event.release.prerelease }}
+        run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --no-git-checks --access public
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
