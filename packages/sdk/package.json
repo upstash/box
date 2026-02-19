@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "tsx src/__tests__/client.test.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "example": "tsx examples/basic.ts",
     "lint": "eslint src/**/*.ts",
     "prepublishOnly": "npm run build"

@@ -37,6 +37,38 @@ pnpm dev
 └── package.json
 ```
 
+## Testing
+
+Tests use [Vitest](https://vitest.dev). There are two test suites:
+
+- **Unit tests** — mock all API calls, fast, no credentials needed
+- **Integration tests** — hit the real Box API, require env vars
+
+### Environment variables
+
+Create a `.env` file at the repository root:
+
+```
+UPSTASH_BOX_API_KEY=abx_...
+AGENT_API_KEY=sk-ant-...
+```
+
+Integration tests are automatically skipped when these variables are not set.
+
+### Commands
+
+```bash
+# Run all tests (unit + integration if .env is present)
+pnpm test
+
+# Run only integration tests
+pnpm test:integration
+
+# Run tests for a single package
+cd packages/sdk && pnpm test
+cd packages/cli && pnpm test
+```
+
 ## Requirements
 
 - Node.js >= 18

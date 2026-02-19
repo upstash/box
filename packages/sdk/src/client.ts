@@ -944,7 +944,8 @@ export class Box {
 
 // ==================== Helpers ====================
 
-function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
+/** @internal */
+export function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
   try {
     const s = schema as unknown as Record<string, unknown>;
     if (s.shape && typeof s.shape === "object") {
@@ -961,7 +962,8 @@ function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
   return null;
 }
 
-function zodTypeToExample(field: unknown): string {
+/** @internal */
+export function zodTypeToExample(field: unknown): string {
   const f = field as { _def?: { typeName?: string; type?: unknown } };
   const typeName = f?._def?.typeName;
   switch (typeName) {
@@ -973,7 +975,8 @@ function zodTypeToExample(field: unknown): string {
   }
 }
 
-async function parseErrorResponse(response: Response): Promise<string> {
+/** @internal */
+export async function parseErrorResponse(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as ErrorResponse;
     return data.error ?? `Request failed with status ${response.status}`;
