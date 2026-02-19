@@ -12,29 +12,25 @@ describe("handleRun", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("runs agent and prints cost", async () => {
-    const mockRun = {
-      id: "run-1",
-      cost: vi.fn().mockResolvedValue({ tokens: 500, computeMs: 3000, totalUsd: 0.01 }),
-    };
+  it("streams agent output to stdout", async () => {
+    async function* fakeStream() {
+      yield "chunk1";
+      yield "chunk2";
+    }
+
     const mockBox = {
       agent: {
-        run: vi.fn().mockResolvedValue(mockRun),
+        stream: vi.fn().mockReturnValue(fakeStream()),
       },
     };
 
     await handleRun(mockBox as any, "fix the bug");
 
-    expect(mockBox.agent.run).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: "fix the bug" }),
-    );
-    // onStream callback should write chunks
-    const onStream = mockBox.agent.run.mock.calls[0]![0].onStream;
-    onStream("chunk1");
+    expect(mockBox.agent.stream).toHaveBeenCalledWith({ prompt: "fix the bug" });
     expect(writeSpy).toHaveBeenCalledWith("chunk1");
-
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("500 tokens"));
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("3.0s"));
+    expect(writeSpy).toHaveBeenCalledWith("chunk2");
+    // Trailing newline
+    expect(logSpy).toHaveBeenCalled();
   });
 
   it("prints usage when no prompt", async () => {

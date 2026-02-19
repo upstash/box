@@ -77,6 +77,18 @@ export interface WebhookConfig {
 }
 
 /**
+ * Options for streaming agent output
+ */
+export interface StreamOptions {
+  /** The prompt/task for the AI agent */
+  prompt: string;
+  /** Timeout in milliseconds — aborts if exceeded */
+  timeout?: number;
+  /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
+  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+}
+
+/**
  * Options for running a prompt
  */
 export interface RunOptions<T = undefined> {
@@ -192,7 +204,7 @@ export interface BoxGetOptions {
 
 export interface BoxData {
   id: string;
-  model: string;
+  model?: string;
   runtime?: string;
   status: string;
   created_at: string;

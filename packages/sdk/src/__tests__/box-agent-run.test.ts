@@ -174,3 +174,80 @@ describe("box.agent.run", () => {
     await expect(box.agent.run({ prompt: "test" })).rejects.toThrow("server error");
   });
 });
+
+describe("box.agent.stream", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("yields text chunks", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "Hello " } },
+        { event: "text", data: { text: "world" } },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const chunks: string[] = [];
+    for await (const chunk of box.agent.stream({ prompt: "say hello" })) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(["Hello ", "world"]);
+  });
+
+  it("calls onToolUse callback", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const tools: Array<{ name: string; input: Record<string, unknown> }> = [];
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool", data: { name: "Write", input: { path: "/x" } } },
+        { event: "text", data: { text: "done" } },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const chunks: string[] = [];
+    for await (const chunk of box.agent.stream({
+      prompt: "test",
+      onToolUse: (tool) => tools.push(tool),
+    })) {
+      chunks.push(chunk);
+    }
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0]!.name).toBe("Write");
+    expect(chunks).toEqual(["done"]);
+  });
+
+  it("throws on missing prompt", async () => {
+    const { box } = await createTestBox();
+    const gen = box.agent.stream({ prompt: "" });
+    await expect(gen.next()).rejects.toThrow("prompt is required");
+  });
+
+  it("throws on stream error event", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "error", data: { error: "something broke" } },
+      ]),
+    );
+
+    const gen = box.agent.stream({ prompt: "test" });
+    await expect(gen.next()).rejects.toThrow("something broke");
+  });
+
+  it("throws on non-OK response", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ error: "server error" }, 500));
+
+    const gen = box.agent.stream({ prompt: "test" });
+    await expect(gen.next()).rejects.toThrow("server error");
+  });
+});

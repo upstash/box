@@ -69,15 +69,23 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     expect(["idle"]).toContain(status);
   }, 60000);
 
-  it("agent.run: streams and returns result", async () => {
-    const chunks: string[] = [];
+  it("agent.run: returns result", async () => {
     const run = await box.agent.run({
       prompt: "Reply with exactly: INTEGRATION_OK",
-      onStream: (chunk) => chunks.push(chunk),
     });
     const result = await run.result();
     expect(result).toBeTruthy();
+  }, 120000);
+
+  it("agent.stream: yields text chunks", async () => {
+    const chunks: string[] = [];
+    for await (const chunk of box.agent.stream({
+      prompt: "Reply with exactly: STREAM_OK",
+    })) {
+      chunks.push(chunk);
+    }
     expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.join("")).toBeTruthy();
   }, 120000);
 
   it("snapshot: create, list, delete", async () => {

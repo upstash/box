@@ -47,18 +47,6 @@ describe("Run", () => {
     expect(result).toBe("");
   });
 
-  it("yields stream chunks", async () => {
-    const { box } = await createTestBox();
-    const run = new Run(box, "agent", "run-1");
-    run._streamChunks = ["hello", " ", "world"];
-
-    const chunks: string[] = [];
-    for await (const chunk of run.stream()) {
-      chunks.push(chunk);
-    }
-    expect(chunks).toEqual(["hello", " ", "world"]);
-  });
-
   it("fetches cost from backend", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(

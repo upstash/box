@@ -6,6 +6,7 @@ export type {
   BoxGetOptions,
   ListOptions,
   RunOptions,
+  StreamOptions,
   RunStatus,
   RunCost,
   RunLog,

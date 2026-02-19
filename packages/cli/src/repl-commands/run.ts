@@ -8,12 +8,8 @@ export async function handleRun(box: Box, prompt: string): Promise<void> {
     console.log("Usage: run <prompt>");
     return;
   }
-  const run = await box.agent.run({
-    prompt,
-    onStream: (chunk) => process.stdout.write(chunk),
-  });
-  // Ensure newline after streaming output
+  for await (const chunk of box.agent.stream({ prompt })) {
+    process.stdout.write(chunk);
+  }
   console.log();
-  const cost = await run.cost();
-  console.log(`[${run.id}] ${cost.tokens} tokens, ${(cost.computeMs / 1000).toFixed(1)}s`);
 }
