@@ -69,6 +69,35 @@ cd packages/sdk && pnpm test
 cd packages/cli && pnpm test
 ```
 
+## Releasing
+
+This repo uses [Changesets](https://github.com/changesets/changesets) for versioning and automated npm publishing via OIDC.
+
+### Stable release
+
+1. Create a changeset while working on your feature:
+   ```bash
+   pnpm changeset
+   ```
+2. Merge your PR to `main`. The **Changeset** workflow creates a "Version Packages" PR that bumps versions and updates changelogs.
+3. Merge the version PR. The workflow tags the release, creates a GitHub Release, and triggers **npm Publish** which publishes to npm.
+
+### Canary release
+
+1. Go to **Actions → Canary Release → Run workflow**, pick a package and branch.
+2. The workflow creates a snapshot version (e.g. `0.2.0-canary-20260219131415-abc1234`), publishes to npm under the `canary` tag, and creates a GitHub prerelease.
+
+### Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | PR + push to main | Build and test (Node 18/20/22) |
+| `changeset.yml` | Push to main | Version PR or tag + GitHub Release |
+| `canary.yml` | Manual dispatch | Snapshot version + GitHub prerelease |
+| `npm-publish.yml` | `workflow_run` (after changeset/canary) | Publish to npm with OIDC provenance |
+
+`npm-publish.yml` is the sole npm trusted publisher — configure it on npmjs.com for both packages. No npm tokens or PATs required.
+
 ## Requirements
 
 - Node.js >= 18
