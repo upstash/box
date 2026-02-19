@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fromSnapshotCommand } from "../../commands/from-snapshot.js";
 
-vi.mock("@buggyhunter/box", () => ({
+vi.mock("@upstash/box", () => ({
   Box: {
     fromSnapshot: vi.fn(),
   },
@@ -15,7 +15,7 @@ vi.mock("../../auth.js", () => ({
   resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
 }));
 
-import { Box } from "@buggyhunter/box";
+import { Box } from "@upstash/box";
 import { startRepl } from "../../repl.js";
 
 describe("fromSnapshotCommand", () => {

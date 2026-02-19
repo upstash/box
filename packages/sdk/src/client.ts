@@ -168,7 +168,7 @@ export class Run<T = string> {
  *
  * @example
  * ```ts
- * import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+ * import { Box, Runtime, ClaudeCode } from "@upstash/box";
  *
  * const box = await Box.create({
  *   runtime: Runtime.Node,

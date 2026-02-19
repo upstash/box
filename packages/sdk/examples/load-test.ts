@@ -4,7 +4,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/load-test.ts
  */
-import { Box, ClaudeCode, Runtime } from "@buggyhunter/box";
+import { Box, ClaudeCode, Runtime } from "@upstash/box";
 
 const BOX_COUNT = 100;
 const CONCURRENCY = 10; // create in batches to avoid overwhelming the API

@@ -1,4 +1,4 @@
-import type { Box } from "@buggyhunter/box";
+import type { Box } from "@upstash/box";
 
 /**
  * Run the agent with a prompt, streaming output to stdout.

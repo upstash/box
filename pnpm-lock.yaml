@@ -20,7 +20,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@buggyhunter/box':
+      '@upstash/box':
         specifier: workspace:*
         version: link:../sdk
       commander:
@@ -43,9 +43,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@buggyhunter/box':
-        specifier: latest
-        version: 0.1.3
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.33
@@ -64,10 +61,6 @@ packages:
   '@babel/runtime@7.28.6':
     resolution: {integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==}
     engines: {node: '>=6.9.0'}
-
-  '@buggyhunter/box@0.1.3':
-    resolution: {integrity: sha512-lN7y4/X/33a02ekjGIwubmoKJ79ZFhBL7YijRo9J3ADdEYTGJFg1ZzfGyHESUyGLgvByWnwE+fwfWKyaSD/GEQ==}
-    engines: {node: '>=18.0.0'}
 
   '@changesets/apply-release-plan@7.0.14':
     resolution: {integrity: sha512-ddBvf9PHdy2YY0OUiEl3TV78mH9sckndJR14QAt87KLEbIov81XO0q0QAmvooBxXlqRRP8I9B7XOzZwQG7JkWA==}
@@ -990,10 +983,6 @@ packages:
 snapshots:
 
   '@babel/runtime@7.28.6': {}
-
-  '@buggyhunter/box@0.1.3':
-    dependencies:
-      zod: 4.3.6
 
   '@changesets/apply-release-plan@7.0.14':
     dependencies:

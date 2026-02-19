@@ -22,7 +22,7 @@ jobs:
           PACKAGE="${TAG%@*}"
           VERSION="${TAG##*@}"
 
-          if [ "$PACKAGE" = "@buggyhunter/box" ]; then
+          if [ "$PACKAGE" = "@upstash/box" ]; then
             PKG_DIR="packages/sdk"
           elif [ "$PACKAGE" = "@upstash/box-cli" ]; then
             PKG_DIR="packages/cli"

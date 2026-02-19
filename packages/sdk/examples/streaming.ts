@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 import { readdir } from "node:fs/promises";
 import { z } from "zod";
 

@@ -1,4 +1,4 @@
-import { Box, Runtime, OpenAICodex } from "@buggyhunter/box";
+import { Box, Runtime, OpenAICodex } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,

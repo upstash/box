@@ -1,4 +1,4 @@
-import { Box, Runtime, OpenAICodex } from "@buggyhunter/box";
+import { Box, Runtime, OpenAICodex } from "@upstash/box";
 
 // Use OpenAI Codex instead of Claude Code.
 // The only difference is the model enum and the API key — everything else is identical.

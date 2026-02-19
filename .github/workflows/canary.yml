@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         options:
-          - "@buggyhunter/box"
+          - "@upstash/box"
           - "@upstash/box-cli"
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
       - name: Read snapshot version
         id: version
         run: |
-          if [ "${{ inputs.package }}" = "@buggyhunter/box" ]; then
+          if [ "${{ inputs.package }}" = "@upstash/box" ]; then
             PKG_DIR="packages/sdk"
           else
             PKG_DIR="packages/cli"

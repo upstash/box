@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import type { Box } from "@buggyhunter/box";
+import type { Box } from "@upstash/box";
 import { handleRun } from "./repl-commands/run.js";
 import { handleExec } from "./repl-commands/exec.js";
 import { handleFiles } from "./repl-commands/files.js";

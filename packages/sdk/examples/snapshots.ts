@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 const config = {
   apiKey: process.env.UPSTASH_BOX_API_KEY!,

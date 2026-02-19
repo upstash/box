@@ -21,7 +21,7 @@
   "author": "Upstash",
   "license": "MIT",
   "dependencies": {
-    "@buggyhunter/box": "workspace:*",
+    "@upstash/box": "workspace:*",
     "commander": "^13.0.0",
     "dotenv": "^17.3.1"
   },

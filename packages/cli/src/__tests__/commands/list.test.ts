@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { listCommand } from "../../commands/list.js";
 
-vi.mock("@buggyhunter/box", () => ({
+vi.mock("@upstash/box", () => ({
   Box: {
     list: vi.fn(),
   },
@@ -11,7 +11,7 @@ vi.mock("../../auth.js", () => ({
   resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
 }));
 
-import { Box } from "@buggyhunter/box";
+import { Box } from "@upstash/box";
 
 describe("listCommand", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;

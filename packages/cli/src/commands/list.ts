@@ -1,4 +1,4 @@
-import { Box } from "@buggyhunter/box";
+import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { formatJSON } from "../output.js";
 

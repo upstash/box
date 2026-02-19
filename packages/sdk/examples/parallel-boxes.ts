@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 // Spin up multiple boxes in parallel to process different tasks concurrently.
 

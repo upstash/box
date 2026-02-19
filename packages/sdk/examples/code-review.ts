@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 // Clone a repo, run a code review, and get a structured report.
 

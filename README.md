@@ -6,7 +6,7 @@ TypeScript SDK and CLI for [Upstash Box](https://upstash.com/docs/box) — sandb
 
 | Package | Description |
 |---------|-------------|
-| [`@buggyhunter/box`](./packages/sdk) | TypeScript SDK — programmatic access to the Box API |
+| [`@upstash/box`](./packages/sdk) | TypeScript SDK — programmatic access to the Box API |
 | [`@upstash/box-cli`](./packages/cli) | CLI — REPL-first terminal interface wrapping the SDK |
 
 ## Quick start
@@ -27,7 +27,7 @@ pnpm dev
 ```
 .
 ├── packages/
-│   ├── sdk/          # @buggyhunter/box — TypeScript SDK
+│   ├── sdk/          # @upstash/box — TypeScript SDK
 │   │   ├── src/
 │   │   └── examples/
 │   └── cli/          # @upstash/box-cli — CLI + interactive REPL

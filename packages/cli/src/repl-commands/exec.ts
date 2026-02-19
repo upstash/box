@@ -1,4 +1,4 @@
-import type { Box } from "@buggyhunter/box";
+import type { Box } from "@upstash/box";
 
 /**
  * Execute a shell command in the box.

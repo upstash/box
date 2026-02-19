@@ -1,17 +1,17 @@
-# @buggyhunter/box
+# @upstash/box
 
 TypeScript SDK for [Upstash Box](https://upstash.com/docs/box) — create sandboxed AI coding agents with streaming, structured output, file I/O, git operations, and snapshots.
 
 ## Installation
 
 ```bash
-npm install @buggyhunter/box
+npm install @upstash/box
 ```
 
 ## Quick start
 
 ```ts
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
   runtime: Runtime.Node,

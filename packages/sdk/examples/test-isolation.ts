@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@buggyhunter/box";
+import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 // Test workspace isolation: /workspace is root-only, /workspace/home is user workspace.
 // This example verifies that users can't read/write outside /workspace/home.

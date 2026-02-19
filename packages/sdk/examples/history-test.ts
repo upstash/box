@@ -5,7 +5,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/history-test.ts
  */
-import { Box, ClaudeCode, Runtime } from "@buggyhunter/box";
+import { Box, ClaudeCode, Runtime } from "@upstash/box";
 
 const PROMPTS = [
   "Create a file called /workspace/home/hello.ts with a function that returns 'Hello, World!'",
