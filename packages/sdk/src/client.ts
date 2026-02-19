@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import type {
   BoxConfig,
   BoxData,
+  BoxGetOptions,
   BoxRunData,
   ListOptions,
   RunOptions,
@@ -360,6 +361,30 @@ export class Box {
     }
 
     return (await response.json()) as BoxData[];
+  }
+
+  /**
+   * Get an existing box by ID.
+   */
+  static async get(boxId: string, options?: BoxGetOptions): Promise<Box> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError("apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.");
+    }
+
+    const baseUrl = (options?.baseUrl ?? process.env.UPSTASH_BOX_BASE_URL ?? "https://box.api.upstashdev.com").replace(/\/$/, "");
+    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
+    const timeout = options?.timeout ?? 600000;
+    const debug = options?.debug ?? false;
+
+    const response = await fetch(`${baseUrl}/v2/box/${boxId}`, { headers });
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    const data = (await response.json()) as BoxData;
+    return new Box(data, { baseUrl, headers, timeout, debug, gitToken: options?.gitToken });
   }
 
   // ==================== Run ====================

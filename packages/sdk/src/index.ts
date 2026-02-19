@@ -3,6 +3,7 @@ export { Runtime, ClaudeCode, OpenAICodex } from "./types.js";
 
 export type {
   BoxConfig,
+  BoxGetOptions,
   ListOptions,
   RunOptions,
   RunStatus,
