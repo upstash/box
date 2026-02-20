@@ -15,7 +15,18 @@ export async function listCommand(flags: ListFlags): Promise<void> {
     return;
   }
 
-  for (const b of boxes) {
-    console.log(`${b.id}\t${b.status}\t${b.model}\t${b.created_at}`);
+  const headers = ["ID", "STATUS", "MODEL", "CREATED"];
+  const rows = boxes.map((b) => [b.id, b.status, b.model ?? "", String(b.created_at)]);
+
+  const colWidths = headers.map((h, i) =>
+    Math.max(h.length, ...rows.map((r) => r[i]!.length))
+  );
+
+  const formatRow = (row: string[]) =>
+    row.map((val, i) => val.padEnd(colWidths[i]!)).join("  ");
+
+  console.log(formatRow(headers));
+  for (const row of rows) {
+    console.log(formatRow(row));
   }
 }

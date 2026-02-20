@@ -31,8 +31,10 @@ describe("listCommand", () => {
 
     await listCommand({ token: "key" });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("box-1"));
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("box-2"));
+    const calls = logSpy.mock.calls.map((c: unknown[]) => c[0]);
+    expect(calls[0]).toMatch(/^ID\s+STATUS\s+MODEL\s+CREATED/);
+    expect(calls[1]).toMatch(/^box-1\s+running\s+claude\s+2025-01-01/);
+    expect(calls[2]).toMatch(/^box-2\s+stopped\s+gpt\s+2025-01-02/);
   });
 
   it("prints message when empty", async () => {
