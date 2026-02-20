@@ -1,5 +1,11 @@
 # @upstash/box-cli
 
+## 0.1.2
+
+### Patch Changes
+
+- 713690c: use env variable UPSTASH_BOX_API_KEY instead of UPSTASH_BOX_TOKEN
+
 ## 0.1.1
 
 ### Patch Changes
