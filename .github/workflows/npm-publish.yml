@@ -1,0 +1,106 @@
+name: npm Publish
+
+on:
+  workflow_run:
+    workflows: ["Changeset", "Canary Release"]
+    types: [completed]
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  load:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.meta.outputs.packages }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      has_packages: ${{ steps.meta.outputs.has_packages }}
+
+    steps:
+      - name: Download release metadata
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: release-meta
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Read metadata
+        id: meta
+        run: |
+          if [ -f release-meta.json ]; then
+            echo "has_packages=true" >> "$GITHUB_OUTPUT"
+            echo "packages=$(jq -c '.packages' release-meta.json)" >> "$GITHUB_OUTPUT"
+            echo "prerelease=$(jq -r '.prerelease' release-meta.json)" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_packages=false" >> "$GITHUB_OUTPUT"
+            echo "packages=[]" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: load
+    if: needs.load.outputs.has_packages == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.load.outputs.packages) }}
+
+    steps:
+      - name: Parse package info
+        id: parse
+        run: |
+          PACKAGE="${{ matrix.package.name }}"
+          VERSION="${{ matrix.package.version }}"
+
+          if [ "$PACKAGE" = "@upstash/box" ]; then
+            PKG_DIR="packages/sdk"
+          elif [ "$PACKAGE" = "@upstash/box-cli" ]; then
+            PKG_DIR="packages/cli"
+          else
+            echo "Unknown package: $PACKAGE"
+            exit 1
+          fi
+
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "pkg_dir=$PKG_DIR" >> "$GITHUB_OUTPUT"
+          echo "Package: $PACKAGE @ $VERSION (dir: $PKG_DIR)"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Set version
+        run: npm version "${{ steps.parse.outputs.version }}" --no-git-tag-version
+        working-directory: ${{ steps.parse.outputs.pkg_dir }}
+
+      - run: pnpm build
+
+      - name: Publish (canary)
+        if: needs.load.outputs.prerelease == 'true'
+        run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --tag canary --no-git-checks --access public
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+
+      - name: Publish (stable)
+        if: needs.load.outputs.prerelease != 'true'
+        run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --no-git-checks --access public
+        env:
+          NPM_CONFIG_PROVENANCE: "true"

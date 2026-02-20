@@ -5,7 +5,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/tool-use.ts
  */
-import { Box, ClaudeCode } from "@buggyhunter/box";
+import { Box, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY,

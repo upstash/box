@@ -5,7 +5,7 @@
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/file-upload.ts
  */
 import { writeFileSync, mkdirSync } from "node:fs";
-import { Box, ClaudeCode } from "@buggyhunter/box";
+import { Box, ClaudeCode } from "@upstash/box";
 
 // Create a temp file to upload
 mkdirSync("/tmp/box-demo", { recursive: true });

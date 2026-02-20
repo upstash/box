@@ -1,4 +1,4 @@
-import type { Box } from "@buggyhunter/box";
+import type { Box } from "@upstash/box";
 
 /**
  * Create a snapshot of the current box state.

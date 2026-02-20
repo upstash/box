@@ -1,4 +1,4 @@
-import { Box } from "@buggyhunter/box";
+import { Box } from "@upstash/box";
 
 const boxes = await Box.list({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,

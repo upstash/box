@@ -1,0 +1,75 @@
+name: Canary Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to release
+        required: true
+        type: choice
+        options:
+          - "@upstash/box"
+          - "@upstash/box-cli"
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Version snapshot
+        run: pnpm changeset version --snapshot canary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read snapshot version
+        id: version
+        run: |
+          if [ "${{ inputs.package }}" = "@upstash/box" ]; then
+            PKG_DIR="packages/sdk"
+          else
+            PKG_DIR="packages/cli"
+          fi
+          VERSION=$(node -p "require('./${PKG_DIR}/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Snapshot version: $VERSION"
+
+      - run: pnpm build
+
+      - name: Create GitHub prerelease
+        run: |
+          TAG="${{ inputs.package }}@${{ steps.version.outputs.version }}"
+          gh release create "$TAG" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "$TAG" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release metadata
+        run: |
+          jq -n \
+            --arg name "${{ inputs.package }}" \
+            --arg version "${{ steps.version.outputs.version }}" \
+            '{packages: [{name: $name, version: $version}], prerelease: true}' > release-meta.json
+
+      - name: Upload release metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-meta
+          path: release-meta.json

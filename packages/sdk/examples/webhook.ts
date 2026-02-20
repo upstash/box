@@ -9,8 +9,8 @@
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/webhook.ts
  */
 import { createServer } from "node:http";
-import { Box, ClaudeCode, Runtime } from "@buggyhunter/box";
-import type { WebhookPayload } from "@buggyhunter/box";
+import { Box, ClaudeCode, Runtime } from "@upstash/box";
+import type { WebhookPayload } from "@upstash/box";
 
 const WEBHOOK_PORT = 4567;
 const WEBHOOK_SECRET = "whsec_test_secret_123";

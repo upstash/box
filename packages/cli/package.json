@@ -1,6 +1,6 @@
 {
   "name": "@upstash/box-cli",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "CLI for Upstash Box — REPL-first interface for AI coding agents",
   "type": "module",
   "bin": {
@@ -21,7 +21,7 @@
   "author": "Upstash",
   "license": "MIT",
   "dependencies": {
-    "@buggyhunter/box": "workspace:*",
+    "@upstash/box": "workspace:*",
     "commander": "^13.0.0",
     "dotenv": "^17.3.1"
   },
@@ -29,6 +29,12 @@
     "@types/node": "^20.10.0",
     "typescript": "^5.3.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=18.0.0"
   }

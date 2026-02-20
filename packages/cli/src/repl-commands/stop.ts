@@ -1,4 +1,4 @@
-import type { Box } from "@buggyhunter/box";
+import type { Box } from "@upstash/box";
 
 /**
  * Stop the box. Returns true to signal the REPL to exit.
