@@ -84,8 +84,9 @@ This repo uses [Changesets](https://github.com/changesets/changesets) for versio
 
 ### Canary release
 
-1. Go to **Actions → Canary Release → Run workflow**, pick a package and branch.
-2. The workflow creates a snapshot version (e.g. `0.2.0-canary-20260219131415-abc1234`), publishes to npm under the `canary` tag, and creates a GitHub prerelease.
+1. Create a branch, make your changes, run `pnpm changeset` to create a changeset, and push the branch to GitHub.
+2. Go to **Actions → Canary Release → Run workflow**, pick a package and the branch.
+3. The workflow creates a [snapshot version](https://github.com/changesets/changesets/blob/main/docs/snapshot-releases.md) (e.g. `0.2.0-canary-20260219131415-abc1234`), publishes to npm under the `canary` tag, and creates a GitHub prerelease.
 
 ### Workflows
 
