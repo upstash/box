@@ -87,10 +87,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Set version
-        run: npm version "${{ steps.parse.outputs.version }}" --no-git-tag-version
-        working-directory: ${{ steps.parse.outputs.pkg_dir }}
-
       - run: pnpm build
 
       - name: Publish (canary)
