@@ -17,10 +17,10 @@ node packages/cli/dist/index.js --help
 
 ## Authentication
 
-Provide your Upstash Box API token via the `--token` flag or the `UPSTASH_BOX_TOKEN` environment variable:
+Provide your Upstash Box API token via the `--token` flag or the `UPSTASH_BOX_API_KEY` environment variable:
 
 ```bash
-export UPSTASH_BOX_TOKEN=abx_...
+export UPSTASH_BOX_API_KEY=abx_...
 ```
 
 ## Commands

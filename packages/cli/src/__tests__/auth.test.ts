@@ -6,7 +6,7 @@ describe("resolveToken", () => {
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    delete process.env.UPSTASH_BOX_TOKEN;
+    delete process.env.UPSTASH_BOX_API_KEY;
     exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -18,7 +18,7 @@ describe("resolveToken", () => {
   });
 
   it("returns env var when no flag", () => {
-    process.env.UPSTASH_BOX_TOKEN = "env-token";
+    process.env.UPSTASH_BOX_API_KEY = "env-token";
     expect(resolveToken()).toBe("env-token");
   });
 
@@ -29,7 +29,7 @@ describe("resolveToken", () => {
   });
 
   it("prefers flag over env var", () => {
-    process.env.UPSTASH_BOX_TOKEN = "env-token";
+    process.env.UPSTASH_BOX_API_KEY = "env-token";
     expect(resolveToken("flag-token")).toBe("flag-token");
   });
 });
