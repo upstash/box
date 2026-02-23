@@ -297,7 +297,7 @@ export class Box {
     const baseUrl = (
       config.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://box.api.upstashdev.com"
+      "https://boxdev.api.upstashdev.com"
     ).replace(/\/$/, "")
     const headers: Record<string, string> = {
       "X-Box-Api-Key": apiKey,
@@ -380,7 +380,7 @@ export class Box {
     const baseUrl = (
       options?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://box.api.upstashdev.com"
+      "https://boxdev.api.upstashdev.com"
     ).replace(/\/$/, "")
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey }
 
@@ -402,10 +402,10 @@ export class Box {
       throw new BoxError("apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.");
     }
 
-    const baseUrl = (options?.baseUrl ?? process.env.UPSTASH_BOX_BASE_URL ?? "https://box.api.upstashdev.com").replace(/\/$/, "");
+    const baseUrl = (options?.baseUrl ?? process.env.UPSTASH_BOX_BASE_URL ?? "https://boxdev.api.upstashdev.com").replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
     const timeout = options?.timeout ?? 600000;
-    const debug = options?.debug ?? false;
+    const debug = options?.debug ?? false;    
 
     const response = await fetch(`${baseUrl}/v2/box/${boxId}`, { headers });
     if (!response.ok) {
@@ -918,7 +918,7 @@ export class Box {
     const baseUrl = (
       config.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://box.api.upstashdev.com"
+      "https://boxdev.api.upstashdev.com"
     ).replace(/\/$/, "")
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey }
     const timeout = config.timeout ?? 600000

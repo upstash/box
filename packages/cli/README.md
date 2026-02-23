@@ -43,8 +43,8 @@ box create \
 |------|-------------|
 | `--token` | Upstash Box API token |
 | `--runtime` | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`) |
-| `--agent-model` | Agent model identifier (required) |
-| `--agent-api-key` | Agent API key — Anthropic or OpenAI (required) |
+| `--agent-model` | Agent model identifier |
+| `--agent-api-key` | Agent API key — Anthropic or OpenAI (required if `--agent-model` is set) |
 | `--git-token` | GitHub personal access token |
 | `--env KEY=VAL` | Environment variable (repeatable) |
 
