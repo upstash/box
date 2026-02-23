@@ -51,9 +51,7 @@ describe("Box git operations", () => {
   describe("git.commit", () => {
     it("commits and returns result", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ sha: "abc123", message: "fix bug" }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ sha: "abc123", message: "fix bug" }));
 
       const result = await box.git.commit({ message: "fix bug" });
       expect(result.sha).toBe("abc123");
@@ -85,7 +83,12 @@ describe("Box git operations", () => {
     it("creates a pull request", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(
-        mockResponse({ url: "https://github.com/owner/repo/pull/42", number: 42, title: "Fix", base: "main" }),
+        mockResponse({
+          url: "https://github.com/owner/repo/pull/42",
+          number: 42,
+          title: "Fix",
+          base: "main",
+        }),
       );
 
       const pr = await box.git.createPR({ title: "Fix", body: "desc", base: "main" });

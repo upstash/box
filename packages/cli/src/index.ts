@@ -22,7 +22,12 @@ program
   .option("--agent-model <model>", "Agent model identifier")
   .option("--agent-api-key <key>", "Agent API key (Anthropic or OpenAI)")
   .option("--git-token <token>", "GitHub personal access token")
-  .option("--env <KEY=VAL>", "Environment variable (repeatable)", (val: string, prev: string[]) => [...prev, val], [] as string[])
+  .option(
+    "--env <KEY=VAL>",
+    "Environment variable (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
   .action((opts) => createCommand(opts));
 
 program
@@ -39,7 +44,12 @@ program
   .option("--agent-model <model>", "Agent model identifier")
   .option("--agent-api-key <key>", "Agent API key")
   .option("--git-token <token>", "GitHub personal access token")
-  .option("--env <KEY=VAL>", "Environment variable (repeatable)", (val: string, prev: string[]) => [...prev, val], [] as string[])
+  .option(
+    "--env <KEY=VAL>",
+    "Environment variable (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
   .action((snapshotId, opts) => fromSnapshotCommand(snapshotId, opts));
 
 program

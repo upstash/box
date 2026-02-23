@@ -30,9 +30,9 @@ describe("Box.create", () => {
     const running = { ...TEST_BOX_DATA, status: "running" };
 
     vi.mocked(fetch)
-      .mockResolvedValueOnce(mockResponse(creating))     // POST /v2/box
-      .mockResolvedValueOnce(mockResponse(creating))     // poll 1
-      .mockResolvedValueOnce(mockResponse(running));     // poll 2
+      .mockResolvedValueOnce(mockResponse(creating)) // POST /v2/box
+      .mockResolvedValueOnce(mockResponse(creating)) // poll 1
+      .mockResolvedValueOnce(mockResponse(running)); // poll 2
 
     const box = await Box.create(TEST_CONFIG);
     expect(box.id).toBe("box-123");
@@ -97,28 +97,30 @@ describe("Box.create", () => {
     await Box.create({
       ...TEST_CONFIG,
       skills: ["frontend-design"],
-      mcpServers: [{
-        name: "test-mcp",
-        source: "npm",
-        packageOrUrl: "@test/mcp",
-        headers: { "x-key": "val" },
-      }],
+      mcpServers: [
+        {
+          name: "test-mcp",
+          source: "npm",
+          packageOrUrl: "@test/mcp",
+          headers: { "x-key": "val" },
+        },
+      ],
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.skills).toEqual(["frontend-design"]);
-    expect(body.mcp_servers).toEqual([{
-      name: "test-mcp",
-      source: "npm",
-      package_or_url: "@test/mcp",
-      headers: { "x-key": "val" },
-    }]);
+    expect(body.mcp_servers).toEqual([
+      {
+        name: "test-mcp",
+        source: "npm",
+        package_or_url: "@test/mcp",
+        headers: { "x-key": "val" },
+      },
+    ]);
   });
 
   it("throws on API error response", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ error: "rate limited" }, 429),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "rate limited" }, 429));
 
     await expect(Box.create(TEST_CONFIG)).rejects.toThrow("rate limited");
   });

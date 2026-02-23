@@ -11,7 +11,10 @@ interface FromSnapshotFlags {
   env?: string[];
 }
 
-export async function fromSnapshotCommand(snapshotId: string, flags: FromSnapshotFlags): Promise<void> {
+export async function fromSnapshotCommand(
+  snapshotId: string,
+  flags: FromSnapshotFlags,
+): Promise<void> {
   const apiKey = resolveToken(flags.token);
 
   if (flags.agentModel && !flags.agentApiKey) {
@@ -35,7 +38,10 @@ export async function fromSnapshotCommand(snapshotId: string, flags: FromSnapsho
   const box = await Box.fromSnapshot(snapshotId, {
     apiKey,
     runtime: flags.runtime,
-    agent: (flags.agentModel && flags.agentApiKey) ? { model: flags.agentModel, apiKey: flags.agentApiKey } : undefined,
+    agent:
+      flags.agentModel && flags.agentApiKey
+        ? { model: flags.agentModel, apiKey: flags.agentApiKey }
+        : undefined,
     git: flags.gitToken ? { token: flags.gitToken } : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,
   });

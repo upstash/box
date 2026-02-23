@@ -66,7 +66,9 @@ describe("handleFiles", () => {
     it("uploads a file", async () => {
       const box = createMockBox();
       await handleFiles(box as any, "upload ./local.txt remote.txt");
-      expect(box.files.upload).toHaveBeenCalledWith([{ path: "./local.txt", destination: "remote.txt" }]);
+      expect(box.files.upload).toHaveBeenCalledWith([
+        { path: "./local.txt", destination: "remote.txt" },
+      ]);
       expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Uploaded"));
     });
 

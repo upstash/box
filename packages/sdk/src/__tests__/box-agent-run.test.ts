@@ -127,11 +127,15 @@ describe("box.agent.run", () => {
       ]),
     );
 
-    const schema = { parse: () => { throw new Error("invalid"); } };
+    const schema = {
+      parse: () => {
+        throw new Error("invalid");
+      },
+    };
 
-    await expect(
-      box.agent.run({ prompt: "test", responseSchema: schema }),
-    ).rejects.toThrow("Failed to parse structured output");
+    await expect(box.agent.run({ prompt: "test", responseSchema: schema })).rejects.toThrow(
+      "Failed to parse structured output",
+    );
   });
 
   it("uses done event output when available", async () => {

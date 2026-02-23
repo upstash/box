@@ -25,9 +25,7 @@ describe("Box.get", () => {
   });
 
   it("throws on 404", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ error: "box not found" }, 404),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "box not found" }, 404));
 
     await expect(
       Box.get("nonexistent", { apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl }),
