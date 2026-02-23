@@ -6,6 +6,7 @@ import { connectCommand } from "./commands/connect.js";
 import { fromSnapshotCommand } from "./commands/from-snapshot.js";
 import { listCommand } from "./commands/list.js";
 import { getCommand } from "./commands/get.js";
+import { initDemoCommand } from "./commands/init-demo.js";
 
 const program = new Command();
 
@@ -63,5 +64,16 @@ program
   .description("Get details about a box")
   .option("--token <token>", "Upstash Box API token")
   .action((boxId, opts) => getCommand(boxId, opts));
+
+program
+  .command("init-demo")
+  .description("Scaffold a standalone demo project for @upstash/box")
+  .option("--token <token>", "Upstash Box API token")
+  .option("--agent-model <model>", "Agent model identifier")
+  .option("--agent-api-key <key>", "Agent API key (required if --agent-model is set)")
+  .option("--runtime <runtime>", "Runtime environment", "node")
+  .option("--git-token <token>", "GitHub personal access token")
+  .option("--directory <dir>", "Output directory", "box-demo")
+  .action((opts) => initDemoCommand(opts));
 
 program.parse();
