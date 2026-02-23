@@ -11,7 +11,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "lint": "prettier --check . --write"
+    "lint": "prettier --check . --write",
+    "ci:lint": "prettier --check ."
   },
   "keywords": [
     "upstash",
