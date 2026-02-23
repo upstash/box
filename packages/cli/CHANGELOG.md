@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.4
+
+### Patch Changes
+
+- 42eab67: Add init-demo script
+- Updated dependencies [5fce98f]
+  - @upstash/box@0.1.3
+
 ## 0.1.3
 
 ### Patch Changes

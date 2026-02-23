@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.3
+
+### Patch Changes
+
+- 5fce98f: Make box status type safe
+
 ## 0.1.2
 
 ### Patch Changes
