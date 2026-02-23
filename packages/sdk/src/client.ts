@@ -753,7 +753,7 @@ export class Box {
     })
 
     const run = new Run<string>(this, "shell")
-    run._result = result.output
+    run._result = result.error ? result.error : result.output
     run._status = result.exit_code === 0 ? "completed" : "failed"
     run._computeMs = Date.now() - start
     return run
