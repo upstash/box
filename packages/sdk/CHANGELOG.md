@@ -1,5 +1,13 @@
 # @upstash/box
 
+## 0.1.2
+
+### Patch Changes
+
+- 51b0b98: Rename stop/start to pause/resume
+- e7dcd4d: allow initializing boxes without models and update backend url
+- 9041916: use error as run result if it's set to fix the issue with nothing being returned when the command fails
+
 ## 0.1.1
 
 ### Patch Changes

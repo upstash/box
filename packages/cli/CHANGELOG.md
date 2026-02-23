@@ -1,5 +1,16 @@
 # @upstash/box-cli
 
+## 0.1.3
+
+### Patch Changes
+
+- 51b0b98: Rename stop/start to pause/resume
+- e7dcd4d: allow initializing boxes without models and update backend url
+- Updated dependencies [51b0b98]
+- Updated dependencies [e7dcd4d]
+- Updated dependencies [9041916]
+  - @upstash/box@0.1.2
+
 ## 0.1.2
 
 ### Patch Changes
