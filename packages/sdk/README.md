@@ -144,8 +144,8 @@ const pr = await box.git.createPR({ title: "New feature", body: "Description" })
 ### Lifecycle
 
 ```ts
-await box.stop(); // Pause (preserves state)
-await box.start(); // Resume
+await box.pause(); // Pause (preserves state)
+await box.resume(); // Resume
 await box.delete(); // Permanent delete
 const { status } = await box.getStatus();
 ```

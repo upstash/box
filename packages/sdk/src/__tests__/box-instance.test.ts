@@ -40,26 +40,26 @@ describe("Box instance methods", () => {
     });
   });
 
-  describe("stop", () => {
-    it("sends stop request", async () => {
+  describe("pause", () => {
+    it("sends pause request", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-      await box.stop();
+      await box.pause();
       const [url, init] = fetchMock.mock.calls[1]!;
-      expect(url).toContain("/v2/box/box-123/stop");
+      expect(url).toContain("/v2/box/box-123/pause");
       expect(init?.method).toBe("POST");
     });
   });
 
-  describe("start", () => {
-    it("sends start request", async () => {
+  describe("resume", () => {
+    it("sends resume request", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-      await box.start();
+      await box.resume();
       const [url, init] = fetchMock.mock.calls[1]!;
-      expect(url).toContain("/v2/box/box-123/start");
+      expect(url).toContain("/v2/box/box-123/resume");
       expect(init?.method).toBe("POST");
     });
   });
