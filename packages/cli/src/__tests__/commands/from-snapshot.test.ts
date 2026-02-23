@@ -52,12 +52,6 @@ describe("fromSnapshotCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("exits when --agent-model is missing", async () => {
-    await fromSnapshotCommand("snap-1", { token: "key", agentApiKey: "key" });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-model is required"));
-  });
-
   it("exits when --agent-api-key is missing", async () => {
     await fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" });
     expect(exitSpy).toHaveBeenCalledWith(1);

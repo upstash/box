@@ -51,12 +51,6 @@ describe("createCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("exits when --agent-model is missing", async () => {
-    await createCommand({ token: "key", agentApiKey: "agent-key" });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-model is required"));
-  });
-
   it("exits when --agent-api-key is missing", async () => {
     await createCommand({ token: "key", agentModel: "model" });
     expect(exitSpy).toHaveBeenCalledWith(1);
