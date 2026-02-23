@@ -166,9 +166,7 @@ export async function initDemoCommand(flags: InitDemoFlags): Promise<void> {
   const token = resolveToken(flags.token);
 
   if (flags.agentModel && !flags.agentApiKey) {
-    console.error(
-      red("Error: --agent-api-key is required if --agent-model is set"),
-    );
+    console.error(red("Error: --agent-api-key is required if --agent-model is set"));
     process.exit(1);
   }
 
@@ -214,21 +212,15 @@ export async function initDemoCommand(flags: InitDemoFlags): Promise<void> {
   console.log(`  ${cyan(".env")}       ${dim("—")} environment variables`);
   console.log(`  ${cyan("main.ts")}    ${dim("—")} demo script`);
   console.log(`  ${cyan("README.md")}  ${dim("—")} documentation\n`);
-  console.log(
-    `See ${cyan("README.md")} for details on configuration and usage.\n`,
-  );
+  console.log(`See ${cyan("README.md")} for details on configuration and usage.\n`);
 
-  const answer = await askQuestion(
-    `Run the demo now? ${dim("(Y/n)")} `,
-  );
+  const answer = await askQuestion(`Run the demo now? ${dim("(Y/n)")} `);
 
   if (answer === "" || answer === "y" || answer === "yes") {
     console.log(yellow("\nRunning demo...\n"));
     execSync("npx tsx main.ts", { cwd: absDir, stdio: "inherit" });
   } else {
-    console.log(
-      `\nTo run later:\n  ${cyan(`cd ${dir} && npx tsx main.ts`)}`,
-    );
+    console.log(`\nTo run later:\n  ${cyan(`cd ${dir} && npx tsx main.ts`)}`);
   }
 }
 

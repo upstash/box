@@ -42,15 +42,11 @@ describe("initDemoCommand", () => {
     vi.clearAllMocks();
     // Default: confirm "y", then "n" for run prompt
     readlineAnswers = ["y", "n"];
-    exitSpy = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mkdirSpy = vi.spyOn(fs, "mkdirSync").mockImplementation(() => undefined);
-    writeSpy = vi
-      .spyOn(fs, "writeFileSync")
-      .mockImplementation(() => undefined);
+    writeSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
     existsSpy = vi.spyOn(fs, "existsSync").mockReturnValue(false);
   });
 
@@ -80,9 +76,7 @@ describe("initDemoCommand", () => {
     await initDemoCommand({ token: "key", agentModel: "model" });
 
     expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("--agent-api-key is required"),
-    );
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-api-key is required"));
   });
 
   it("creates directory and writes all files", async () => {
@@ -94,9 +88,7 @@ describe("initDemoCommand", () => {
     // Should write .env, main.ts, README.md
     expect(writeSpy).toHaveBeenCalledTimes(3);
 
-    const writtenPaths = writeSpy.mock.calls.map(
-      (call: unknown[]) => call[0] as string,
-    );
+    const writtenPaths = writeSpy.mock.calls.map((call: unknown[]) => call[0] as string);
     expect(writtenPaths).toContain(path.join(absDir, ".env"));
     expect(writtenPaths).toContain(path.join(absDir, "main.ts"));
     expect(writtenPaths).toContain(path.join(absDir, "README.md"));
@@ -106,10 +98,10 @@ describe("initDemoCommand", () => {
     await initDemoCommand({ token: "key", directory: "test-demo" });
 
     const absDir = path.resolve("test-demo");
-    expect(execSync).toHaveBeenCalledWith(
-      'npm init -y && npm pkg set type="module"',
-      { cwd: absDir, stdio: "ignore" },
-    );
+    expect(execSync).toHaveBeenCalledWith('npm init -y && npm pkg set type="module"', {
+      cwd: absDir,
+      stdio: "ignore",
+    });
     expect(execSync).toHaveBeenCalledWith("npm install @upstash/box dotenv", {
       cwd: absDir,
       stdio: "ignore",

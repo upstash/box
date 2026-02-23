@@ -97,14 +97,14 @@ box init-demo \
   --directory my-demo
 ```
 
-| Flag              | Description                                                              | Default    |
-| ----------------- | ------------------------------------------------------------------------ | ---------- |
-| `--token`         | Upstash Box API token                                                    |            |
-| `--agent-model`   | Agent model identifier                                                   |            |
-| `--agent-api-key` | Agent API key (required if `--agent-model` is set)                       |            |
-| `--runtime`       | Runtime environment                                                      | `node`     |
-| `--git-token`     | GitHub personal access token                                             |            |
-| `--directory`     | Output directory                                                         | `box-demo` |
+| Flag              | Description                                        | Default    |
+| ----------------- | -------------------------------------------------- | ---------- |
+| `--token`         | Upstash Box API token                              |            |
+| `--agent-model`   | Agent model identifier                             |            |
+| `--agent-api-key` | Agent API key (required if `--agent-model` is set) |            |
+| `--runtime`       | Runtime environment                                | `node`     |
+| `--git-token`     | GitHub personal access token                       |            |
+| `--directory`     | Output directory                                   | `box-demo` |
 
 After scaffolding, the command offers to run the demo immediately. The generated project includes:
 
