@@ -108,6 +108,8 @@ export interface RunOptions<T = undefined> {
   webhook?: WebhookConfig;
 }
 
+export type BoxStatus = "creating" | "idle" | "running" | "paused" | "error" | "deleted";
+
 export type RunStatus = "running" | "completed" | "failed" | "cancelled";
 
 export interface RunCost {
@@ -206,7 +208,7 @@ export interface BoxData {
   id: string;
   model?: string;
   runtime?: string;
-  status: string;
+  status: BoxStatus;
   created_at: string;
   updated_at: string;
 }

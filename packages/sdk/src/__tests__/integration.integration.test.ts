@@ -58,15 +58,22 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     expect(runs.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("lifecycle: pause then resume", async () => {
+  it("lifecycle: pause then resume with status checks", async () => {
+    // Verify box is idle/running before pausing
+    const before = await box.getStatus();
+    expect(before.status).toBe("idle");
+
+    // Pause and verify status transitions to paused
     await box.pause();
-    // Give it a moment to pause
     await new Promise((r) => setTimeout(r, 3000));
+    const afterPause = await box.getStatus();
+    expect(afterPause.status).toBe("paused");
+
+    // Resume and verify status transitions back
     await box.resume();
-    // Give it a moment to resume
     await new Promise((r) => setTimeout(r, 5000));
-    const { status } = await box.getStatus();
-    expect(["idle"]).toContain(status);
+    const afterResume = await box.getStatus();
+    expect(afterResume.status).toBe("idle");
   }, 60000);
 
   it("agent.run: returns result", async () => {

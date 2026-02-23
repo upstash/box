@@ -38,6 +38,17 @@ describe("Box instance methods", () => {
       const status = await box.getStatus();
       expect(status).toEqual({ status: "running" });
     });
+
+    it.each(["creating", "idle", "running", "paused", "error", "deleted"] as const)(
+      "returns %s status",
+      async (expected) => {
+        const { box, fetchMock } = await createTestBox();
+        fetchMock.mockResolvedValueOnce(mockResponse({ status: expected }));
+
+        const { status } = await box.getStatus();
+        expect(status).toBe(expected);
+      },
+    );
   });
 
   describe("pause", () => {
@@ -50,6 +61,17 @@ describe("Box instance methods", () => {
       expect(url).toContain("/v2/box/box-123/pause");
       expect(init?.method).toBe("POST");
     });
+
+    it("status is paused after pause", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({})) // pause
+        .mockResolvedValueOnce(mockResponse({ status: "paused" })); // getStatus
+
+      await box.pause();
+      const { status } = await box.getStatus();
+      expect(status).toBe("paused");
+    });
   });
 
   describe("resume", () => {
@@ -61,6 +83,63 @@ describe("Box instance methods", () => {
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/v2/box/box-123/resume");
       expect(init?.method).toBe("POST");
+    });
+
+    it("status is running after resume", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({})) // resume
+        .mockResolvedValueOnce(mockResponse({ status: "running" })); // getStatus
+
+      await box.resume();
+      const { status } = await box.getStatus();
+      expect(status).toBe("running");
+    });
+  });
+
+  describe("pause/resume lifecycle", () => {
+    it("transitions through running → paused → running", async () => {
+      const { box, fetchMock } = await createTestBox(); // initial status: running
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({ status: "running" })) // getStatus (initial)
+        .mockResolvedValueOnce(mockResponse({})) // pause
+        .mockResolvedValueOnce(mockResponse({ status: "paused" })) // getStatus (after pause)
+        .mockResolvedValueOnce(mockResponse({})) // resume
+        .mockResolvedValueOnce(mockResponse({ status: "running" })); // getStatus (after resume)
+
+      // Verify initial status is running
+      const initial = await box.getStatus();
+      expect(initial.status).toBe("running");
+
+      // Pause and verify
+      await box.pause();
+      const afterPause = await box.getStatus();
+      expect(afterPause.status).toBe("paused");
+
+      // Resume and verify
+      await box.resume();
+      const afterResume = await box.getStatus();
+      expect(afterResume.status).toBe("running");
+    });
+
+    it("verifies correct endpoints are called in order", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({})) // pause
+        .mockResolvedValueOnce(mockResponse({ status: "paused" })) // getStatus
+        .mockResolvedValueOnce(mockResponse({})) // resume
+        .mockResolvedValueOnce(mockResponse({ status: "running" })); // getStatus
+
+      await box.pause();
+      await box.getStatus();
+      await box.resume();
+      await box.getStatus();
+
+      // calls[0] is Box.get, calls[1..4] are our lifecycle calls
+      expect(fetchMock.mock.calls[1]![0]).toContain("/pause");
+      expect(fetchMock.mock.calls[2]![0]).toContain("/status");
+      expect(fetchMock.mock.calls[3]![0]).toContain("/resume");
+      expect(fetchMock.mock.calls[4]![0]).toContain("/status");
     });
   });
 
