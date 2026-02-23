@@ -108,7 +108,7 @@ export interface RunOptions<T = undefined> {
   webhook?: WebhookConfig;
 }
 
-export type BoxStatus = "creating" | "idle" | "running" | "paused" | "error" | "deleted"
+export type BoxStatus = "creating" | "idle" | "running" | "paused" | "error" | "deleted";
 
 export type RunStatus = "running" | "completed" | "failed" | "cancelled";
 
