@@ -83,6 +83,35 @@ Print box details as JSON.
 box get box_abc123
 ```
 
+### `box init-demo`
+
+Scaffold a standalone demo project that uses the `@upstash/box` SDK. Creates a directory with a ready-to-run TypeScript script, `.env` file, and README.
+
+```bash
+box init-demo \
+  --token $UPSTASH_BOX_API_KEY \
+  --agent-model claude/sonnet_4_5 \
+  --agent-api-key $CLAUDE_KEY \
+  --runtime node \
+  --git-token $GITHUB_TOKEN \
+  --directory my-demo
+```
+
+| Flag              | Description                                        | Default    |
+| ----------------- | -------------------------------------------------- | ---------- |
+| `--token`         | Upstash Box API token                              |            |
+| `--agent-model`   | Agent model identifier                             |            |
+| `--agent-api-key` | Agent API key (required if `--agent-model` is set) |            |
+| `--runtime`       | Runtime environment                                | `node`     |
+| `--git-token`     | GitHub personal access token                       |            |
+| `--directory`     | Output directory                                   | `box-demo` |
+
+After scaffolding, the command offers to run the demo immediately. The generated project includes:
+
+- `main.ts` — demo script that creates a box, writes/reads files, executes commands, and cleans up
+- `.env` — pre-filled environment variables
+- `README.md` — usage documentation
+
 ## Interactive REPL
 
 After `create`, `connect`, or `from-snapshot`, you enter an interactive REPL session:

@@ -20,6 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "prettier --check . --write",
+    "ci:lint": "prettier --check .",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

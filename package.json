@@ -8,7 +8,8 @@
     "changeset": "changeset",
     "ci:version": "changeset version",
     "ci:tag": "changeset tag",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "ci:lint": "pnpm -r ci:lint"
   },
   "engines": {
     "node": ">=18.0.0"
