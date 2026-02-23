@@ -89,7 +89,7 @@ After `create`, `connect`, or `from-snapshot`, you enter an interactive REPL ses
 
 ```
 Connected to box box_abc123
-Type a prompt to run the agent, or use commands: run, exec, files, git, snapshot, stop, delete, exit
+Type a prompt to run the agent, or use commands: run, exec, files, git, snapshot, pause, delete, exit
 
 box_abc123> Fix the bug in auth.ts
 ```
@@ -111,7 +111,7 @@ Any text entered is sent to the agent by default. You can also use explicit comm
 | `git diff`                     | Show git diff                                  |
 | `git create-pr <title>`        | Create a pull request                          |
 | `snapshot [name]`              | Save a snapshot of the current state           |
-| `stop`                         | Stop the box and exit                          |
+| `pause`                        | Pause the box and exit                         |
 | `delete`                       | Delete the box and exit                        |
 | `exit`                         | Exit the REPL (box keeps running)              |
 

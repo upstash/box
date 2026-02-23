@@ -58,12 +58,12 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     expect(runs.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("lifecycle: stop then start", async () => {
-    await box.stop();
-    // Give it a moment to stop
+  it("lifecycle: pause then resume", async () => {
+    await box.pause();
+    // Give it a moment to pause
     await new Promise((r) => setTimeout(r, 3000));
-    await box.start();
-    // Give it a moment to start
+    await box.resume();
+    // Give it a moment to resume
     await new Promise((r) => setTimeout(r, 5000));
     const { status } = await box.getStatus();
     expect(["idle"]).toContain(status);

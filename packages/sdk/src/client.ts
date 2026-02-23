@@ -840,17 +840,17 @@ export class Box {
   }
 
   /**
-   * Stop the box (release compute, preserve state).
+   * Pause the box (release compute, preserve state).
    */
-  async stop(): Promise<void> {
-    await this._request("POST", `/v2/box/${this.id}/stop`);
+  async pause(): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/pause`);
   }
 
   /**
-   * Start a stopped box.
+   * Resume a paused box.
    */
-  async start(): Promise<void> {
-    await this._request("POST", `/v2/box/${this.id}/start`);
+  async resume(): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/resume`);
   }
 
   /**

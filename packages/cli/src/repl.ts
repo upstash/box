@@ -6,7 +6,7 @@ import { handleExec } from "./repl-commands/exec.js";
 import { handleFiles } from "./repl-commands/files.js";
 import { handleGit } from "./repl-commands/git.js";
 import { handleSnapshot } from "./repl-commands/snapshot.js";
-import { handleStop } from "./repl-commands/stop.js";
+import { handlePause } from "./repl-commands/pause.js";
 import { handleDelete } from "./repl-commands/delete.js";
 
 const COMMANDS: Record<string, (box: Box, args: string) => Promise<boolean | void>> = {
@@ -15,7 +15,7 @@ const COMMANDS: Record<string, (box: Box, args: string) => Promise<boolean | voi
   files: handleFiles,
   git: handleGit,
   snapshot: handleSnapshot,
-  stop: handleStop,
+  pause: handlePause,
   delete: handleDelete,
 };
 
