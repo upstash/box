@@ -19,7 +19,7 @@
     "example": "tsx examples/basic.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint src/**/*.ts",
+    "lint": "prettier --check . --write",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

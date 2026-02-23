@@ -6,7 +6,10 @@ interface ConnectFlags {
   token?: string;
 }
 
-export async function connectCommand(boxId: string | undefined, flags: ConnectFlags): Promise<void> {
+export async function connectCommand(
+  boxId: string | undefined,
+  flags: ConnectFlags,
+): Promise<void> {
   const apiKey = resolveToken(flags.token);
 
   let targetId = boxId;

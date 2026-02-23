@@ -43,9 +43,7 @@ describe("Box.list", () => {
   });
 
   it("throws on API error", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ error: "unauthorized" }, 401),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "unauthorized" }, 401));
 
     await expect(
       Box.list({ apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl }),

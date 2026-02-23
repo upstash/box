@@ -58,7 +58,13 @@ describe("Box file operations", () => {
       const { box, fetchMock } = await createTestBox();
       const files = [
         { name: "src", path: "/workspace/home/src", size: 0, is_dir: true, mod_time: "" },
-        { name: "index.ts", path: "/workspace/home/index.ts", size: 100, is_dir: false, mod_time: "" },
+        {
+          name: "index.ts",
+          path: "/workspace/home/index.ts",
+          size: 100,
+          is_dir: false,
+          mod_time: "",
+        },
       ];
       fetchMock.mockResolvedValueOnce(mockResponse({ files }));
 

@@ -25,7 +25,9 @@ const COMMANDS: Record<string, (box: Box, args: string) => Promise<boolean | voi
 export async function startRepl(box: Box): Promise<void> {
   const rl = createInterface({ input: stdin, output: stdout });
   console.log(`\nConnected to box ${box.id}`);
-  console.log(`Type a prompt to run the agent, or use commands: ${Object.keys(COMMANDS).join(", ")}, exit\n`);
+  console.log(
+    `Type a prompt to run the agent, or use commands: ${Object.keys(COMMANDS).join(", ")}, exit\n`,
+  );
 
   try {
     while (true) {

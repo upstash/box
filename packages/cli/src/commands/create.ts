@@ -35,7 +35,10 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
   const box = await Box.create({
     apiKey,
     runtime: flags.runtime,
-    agent: (flags.agentModel && flags.agentApiKey) ? { model: flags.agentModel, apiKey: flags.agentApiKey } : undefined,
+    agent:
+      flags.agentModel && flags.agentApiKey
+        ? { model: flags.agentModel, apiKey: flags.agentApiKey }
+        : undefined,
     git: flags.gitToken ? { token: flags.gitToken } : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,
   });

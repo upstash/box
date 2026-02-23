@@ -7,9 +7,7 @@ describe("Box instance methods", () => {
   describe("exec", () => {
     it("executes a command and returns completed run", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ exit_code: 0, output: "hello world" }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "hello world" }));
 
       const run = await box.exec("echo hello world");
       expect(await run.result()).toBe("hello world");
@@ -24,9 +22,7 @@ describe("Box instance methods", () => {
 
     it("marks run as failed on non-zero exit code", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ exit_code: 1, output: "error message" }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 1, output: "error message" }));
 
       const run = await box.exec("false");
       expect(run._status).toBe("failed");
@@ -85,9 +81,7 @@ describe("Box instance methods", () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(
         mockResponse({
-          logs: [
-            { timestamp: 1000, level: "info", source: "system", message: "booted" },
-          ],
+          logs: [{ timestamp: 1000, level: "info", source: "system", message: "booted" }],
         }),
       );
 

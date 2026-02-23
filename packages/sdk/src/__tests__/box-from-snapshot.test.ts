@@ -71,9 +71,7 @@ describe("Box.fromSnapshot", () => {
   });
 
   it("throws on API error", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ error: "snapshot not found" }, 404),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "snapshot not found" }, 404));
 
     await expect(Box.fromSnapshot("bad-snap", TEST_CONFIG)).rejects.toThrow("snapshot not found");
   });

@@ -44,8 +44,8 @@ Create a new sandboxed box.
 
 ```ts
 const box = await Box.create({
-  apiKey: "abx_...",         // or set UPSTASH_BOX_API_KEY
-  runtime: Runtime.Node,     // node, python, golang, ruby, rust
+  apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
+  runtime: Runtime.Node, // node, python, golang, ruby, rust
   agent: {
     model: ClaudeCode.Sonnet_4_5,
     apiKey: process.env.CLAUDE_KEY!,
@@ -144,9 +144,9 @@ const pr = await box.git.createPR({ title: "New feature", body: "Description" })
 ### Lifecycle
 
 ```ts
-await box.stop();            // Pause (preserves state)
-await box.start();           // Resume
-await box.delete();          // Permanent delete
+await box.stop(); // Pause (preserves state)
+await box.start(); // Resume
+await box.delete(); // Permanent delete
 const { status } = await box.getStatus();
 ```
 
@@ -165,12 +165,12 @@ Every `agent.run()` and `exec()` call returns a `Run` object:
 ```ts
 const run = await box.agent.run({ prompt: "..." });
 
-run.id;                      // Run ID
-await run.result();          // Final output (typed if schema provided)
-await run.status();          // "running" | "completed" | "failed" | "cancelled"
-await run.cost();            // { tokens, computeMs, totalUsd }
-await run.cancel();          // Abort
-await run.logs();            // Filtered log entries
+run.id; // Run ID
+await run.result(); // Final output (typed if schema provided)
+await run.status(); // "running" | "completed" | "failed" | "cancelled"
+await run.cost(); // { tokens, computeMs, totalUsd }
+await run.cancel(); // Abort
+await run.logs(); // Filtered log entries
 
 for await (const chunk of run.stream()) {
   process.stdout.write(chunk);
@@ -181,32 +181,32 @@ for await (const chunk of run.stream()) {
 
 ### Claude Code
 
-| Enum | Value |
-|------|-------|
-| `ClaudeCode.Opus_4_5` | `claude/opus_4_5` |
-| `ClaudeCode.Opus_4_6` | `claude/opus_4_6` |
-| `ClaudeCode.Sonnet_4` | `claude/sonnet_4` |
+| Enum                    | Value               |
+| ----------------------- | ------------------- |
+| `ClaudeCode.Opus_4_5`   | `claude/opus_4_5`   |
+| `ClaudeCode.Opus_4_6`   | `claude/opus_4_6`   |
+| `ClaudeCode.Sonnet_4`   | `claude/sonnet_4`   |
 | `ClaudeCode.Sonnet_4_5` | `claude/sonnet_4_5` |
-| `ClaudeCode.Haiku_4_5` | `claude/haiku_4_5` |
+| `ClaudeCode.Haiku_4_5`  | `claude/haiku_4_5`  |
 
 ### OpenAI Codex
 
-| Enum | Value |
-|------|-------|
-| `OpenAICodex.GPT_5_3_Codex` | `openai/gpt-5.3-codex` |
+| Enum                              | Value                        |
+| --------------------------------- | ---------------------------- |
+| `OpenAICodex.GPT_5_3_Codex`       | `openai/gpt-5.3-codex`       |
 | `OpenAICodex.GPT_5_3_Codex_Spark` | `openai/gpt-5.3-codex-spark` |
-| `OpenAICodex.GPT_5_2_Codex` | `openai/gpt-5.2-codex` |
-| `OpenAICodex.GPT_5_1_Codex_Max` | `openai/gpt-5.1-codex-max` |
+| `OpenAICodex.GPT_5_2_Codex`       | `openai/gpt-5.2-codex`       |
+| `OpenAICodex.GPT_5_1_Codex_Max`   | `openai/gpt-5.1-codex-max`   |
 
 ## Runtimes
 
-| Enum | Value |
-|------|-------|
-| `Runtime.Node` | `node` |
+| Enum             | Value    |
+| ---------------- | -------- |
+| `Runtime.Node`   | `node`   |
 | `Runtime.Python` | `python` |
 | `Runtime.Golang` | `golang` |
-| `Runtime.Ruby` | `ruby` |
-| `Runtime.Rust` | `rust` |
+| `Runtime.Ruby`   | `ruby`   |
+| `Runtime.Rust`   | `rust`   |
 
 ## Examples
 

@@ -47,18 +47,14 @@ describe("Box snapshot operations", () => {
         .mockResolvedValueOnce(mockResponse(creating))
         .mockResolvedValueOnce(mockResponse({ snapshots: [errorSnap] }));
 
-      await expect(box.snapshot({ name: "test" })).rejects.toThrow(
-        "Snapshot creation failed",
-      );
+      await expect(box.snapshot({ name: "test" })).rejects.toThrow("Snapshot creation failed");
     });
   });
 
   describe("listSnapshots", () => {
     it("returns snapshots", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ snapshots: [TEST_SNAPSHOT] }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ snapshots: [TEST_SNAPSHOT] }));
 
       const snaps = await box.listSnapshots();
       expect(snaps).toHaveLength(1);

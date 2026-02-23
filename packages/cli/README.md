@@ -39,14 +39,14 @@ box create \
   --env DEBUG=true
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--token` | Upstash Box API token |
-| `--runtime` | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`) |
-| `--agent-model` | Agent model identifier |
+| Flag              | Description                                                              |
+| ----------------- | ------------------------------------------------------------------------ |
+| `--token`         | Upstash Box API token                                                    |
+| `--runtime`       | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)         |
+| `--agent-model`   | Agent model identifier                                                   |
 | `--agent-api-key` | Agent API key — Anthropic or OpenAI (required if `--agent-model` is set) |
-| `--git-token` | GitHub personal access token |
-| `--env KEY=VAL` | Environment variable (repeatable) |
+| `--git-token`     | GitHub personal access token                                             |
+| `--env KEY=VAL`   | Environment variable (repeatable)                                        |
 
 ### `box connect [box-id]`
 
@@ -98,22 +98,22 @@ box_abc123> Fix the bug in auth.ts
 
 Any text entered is sent to the agent by default. You can also use explicit commands (with or without a `/` prefix):
 
-| Command | Description |
-|---------|-------------|
-| `run <prompt>` | Run the agent with a prompt (streaming output) |
-| `exec <command>` | Execute a shell command in the box |
-| `files read <path>` | Read a file |
-| `files write <path> <content>` | Write a file |
-| `files list [path]` | List files in a directory |
-| `files upload <local> <dest>` | Upload a local file |
-| `files download [path]` | Download files from the box |
-| `git clone <repo> [branch]` | Clone a repository |
-| `git diff` | Show git diff |
-| `git create-pr <title>` | Create a pull request |
-| `snapshot [name]` | Save a snapshot of the current state |
-| `stop` | Stop the box and exit |
-| `delete` | Delete the box and exit |
-| `exit` | Exit the REPL (box keeps running) |
+| Command                        | Description                                    |
+| ------------------------------ | ---------------------------------------------- |
+| `run <prompt>`                 | Run the agent with a prompt (streaming output) |
+| `exec <command>`               | Execute a shell command in the box             |
+| `files read <path>`            | Read a file                                    |
+| `files write <path> <content>` | Write a file                                   |
+| `files list [path]`            | List files in a directory                      |
+| `files upload <local> <dest>`  | Upload a local file                            |
+| `files download [path]`        | Download files from the box                    |
+| `git clone <repo> [branch]`    | Clone a repository                             |
+| `git diff`                     | Show git diff                                  |
+| `git create-pr <title>`        | Create a pull request                          |
+| `snapshot [name]`              | Save a snapshot of the current state           |
+| `stop`                         | Stop the box and exit                          |
+| `delete`                       | Delete the box and exit                        |
+| `exit`                         | Exit the REPL (box keeps running)              |
 
 ### Examples
 
