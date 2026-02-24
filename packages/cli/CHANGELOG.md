@@ -1,5 +1,11 @@
 # @upstash/box-cli
 
+## 0.1.6
+
+### Patch Changes
+
+- f268af0: Remove command suggestions in REPL after user submission
+
 ## 0.1.5
 
 ### Patch Changes
