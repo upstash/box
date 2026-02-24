@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { handleDelete } from "../../repl-commands/delete.js";
-import type { REPLHooks } from "../../repl-client.js";
+import { handleDelete } from "../../../repl/commands/delete.js";
+import type { REPLHooks } from "../../../repl/client.js";
 
 function createHooks() {
   return {

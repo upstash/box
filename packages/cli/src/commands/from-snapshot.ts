@@ -1,6 +1,6 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
-import { startRepl } from "../repl.js";
+import { startRepl } from "../repl/terminal.js";
 
 interface FromSnapshotFlags {
   token?: string;

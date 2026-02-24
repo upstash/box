@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { handleGit } from "../../repl-commands/git.js";
-import type { REPLHooks } from "../../repl-client.js";
+import { handleGit } from "../../../repl/commands/git.js";
+import type { REPLHooks } from "../../../repl/client.js";
 
 function createHooks() {
   return {

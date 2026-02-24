@@ -7,6 +7,7 @@ import { fromSnapshotCommand } from "./commands/from-snapshot.js";
 import { listCommand } from "./commands/list.js";
 import { getCommand } from "./commands/get.js";
 import { initDemoCommand } from "./commands/init-demo.js";
+import { completionCommand } from "./commands/completion.js";
 
 const program = new Command();
 
@@ -75,5 +76,10 @@ program
   .option("--git-token <token>", "GitHub personal access token")
   .option("--directory <dir>", "Output directory", "box-demo")
   .action((opts) => initDemoCommand(opts));
+
+program
+  .command("completion")
+  .description('Output shell completion script (eval "$(box completion)")')
+  .action(() => completionCommand());
 
 program.parse();
