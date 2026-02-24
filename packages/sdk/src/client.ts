@@ -294,9 +294,7 @@ export class Box {
       throw new BoxError("agent.model is required when agent is configured");
     }
     if (config.agent && !config.agent.apiKey) {
-      throw new BoxError(
-        "Agent API key is undefined. Please provide a valid provider API key.",
-      );
+      throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
     }
 
     const baseUrl = (
@@ -940,9 +938,7 @@ export class Box {
     };
     if (config.agent) {
       if (!config.agent.apiKey) {
-        throw new BoxError(
-          "Agent API key is undefined. Please provide a valid provider API key.",
-        );
+        throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
       }
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
