@@ -28,9 +28,8 @@ import type {
   UploadFileEntry,
   Snapshot,
 } from "./types.js";
-import { appendFileSync } from "node:fs";
 
-const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com"
+const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
 /**
  * Error thrown by the Box SDK
@@ -690,9 +689,6 @@ export class Box {
 
         for (let line of lines) {
           line = line.replace(/\r$/, "").replace(/^[\\\|\/\-\s]*/, "");
-
-          // print lines to a file for debugging
-          appendFileSync("./debug-stream.txt", line + "\n");
 
           if (line.startsWith("event: ")) {
             eventType = line.slice(7).trim();
