@@ -109,6 +109,14 @@ const run = await box.agent.run({
   responseSchema: schema,
 });
 const result = await run.result(); // typed as { name: string, score: number }
+
+for await (const part of box.agent.stream({
+  prompt: "Refactor the auth flow",
+})) {
+  if (part.type === "text-delta") process.stdout.write(part.text);
+  if (part.type === "tool-call") console.log(part.toolName, part.input);
+  if (part.type === "finish") console.log(part.usage.inputTokens + part.usage.outputTokens);
+}
 ```
 
 #### `box.exec(command: string): Promise<Run>`

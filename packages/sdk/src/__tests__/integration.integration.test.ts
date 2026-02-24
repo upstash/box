@@ -84,15 +84,19 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     expect(result).toBeTruthy();
   }, 120000);
 
-  it("agent.stream: yields text chunks", async () => {
-    const chunks: string[] = [];
-    for await (const chunk of box.agent.stream({
+  it("agent.stream: yields stream parts", async () => {
+    let text = "";
+    let partCount = 0;
+    for await (const part of box.agent.stream({
       prompt: "Reply with exactly: STREAM_OK",
     })) {
-      chunks.push(chunk);
+      partCount++;
+      if (part.type === "text-delta") {
+        text += part.text;
+      }
     }
-    expect(chunks.length).toBeGreaterThan(0);
-    expect(chunks.join("")).toBeTruthy();
+    expect(partCount).toBeGreaterThan(0);
+    expect(text).toBeTruthy();
   }, 120000);
 
   it("snapshot: create, list, delete", async () => {
