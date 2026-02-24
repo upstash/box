@@ -60,15 +60,15 @@ export const COMMAND_DESCRIPTIONS: Record<string, string> = {
 function getSuggestion(cmdName: string): string | undefined {
   switch (cmdName) {
     case "exec":
-      return "try: /files list .";
+      return "/files list .";
     case "run":
-      return "try: /snapshot";
+      return "/snapshot";
     case "files":
-      return "try: /exec cat <file>";
+      return "/exec ls";
     case "git":
-      return "try: /snapshot";
+      return "/snapshot";
     case "snapshot":
-      return "try: /pause";
+      return "/pause";
     default:
       return undefined;
   }
@@ -156,7 +156,7 @@ export class BoxREPLClient {
           stopLoading?.();
           const durationMs = Date.now() - start;
           hooks.onCommandComplete?.("run", durationMs);
-          hooks.onSuggestion?.("try: /snapshot");
+          hooks.onSuggestion?.("/snapshot");
         } catch (err) {
           stopLoading?.();
           hooks.onError(`Error: ${err instanceof Error ? err.message : err}`);

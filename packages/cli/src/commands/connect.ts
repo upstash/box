@@ -19,18 +19,23 @@ export async function connectCommand(
   // If no box ID provided, pick interactively or fall back to most recent
   if (!targetId) {
     const boxes = await Box.list({ apiKey });
-    if (boxes.length === 0) {
+    const active = boxes.filter((b) => b.status !== "deleted");
+    if (active.length === 0) {
       console.error("No boxes found.");
       process.exit(1);
     }
 
-    if (process.stdin.isTTY && boxes.length > 1) {
+    if (process.stdin.isTTY && active.length > 1) {
+      const items = active.slice(0, 10);
+      const idWidth = Math.max(...items.map((b) => b.id.length));
+      const statusWidth = Math.max(...items.map((b) => b.status.length));
+
       const selected = await interactiveSelect({
         prompt: "Select a box to connect to:",
-        items: boxes.slice(0, 10).map((b) => ({
-          label: b.id,
+        items: items.map((b) => ({
+          label: b.id.padEnd(idWidth),
           value: b.id,
-          description: `${b.status}${b.model ? ` · ${b.model}` : ""}`,
+          description: `${b.status.padEnd(statusWidth)}  ${b.model ?? ""}`,
         })),
       });
 
@@ -41,11 +46,11 @@ export async function connectCommand(
       targetId = selected;
     } else {
       console.log("No box ID specified, connecting to most recent...");
-      targetId = boxes[0]!.id;
+      targetId = active[0]!.id;
     }
   }
 
-  console.log(`Connecting to box ${targetId}...`);
+  console.log(`\nConnecting to box ${targetId}...`);
   const box = await Box.get(targetId, { apiKey });
   await startRepl(box);
 }

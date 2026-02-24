@@ -49,7 +49,7 @@ describe("connectCommand", () => {
 
   it("connects to most recent box when no ID", async () => {
     const mockBox = { id: "box-recent" };
-    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-recent" } as any]);
+    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-recent", status: "idle" } as any]);
     vi.mocked(Box.get).mockResolvedValueOnce(mockBox as any);
 
     await connectCommand(undefined, { token: "key" });
@@ -63,6 +63,15 @@ describe("connectCommand", () => {
     vi.mocked(Box.list).mockResolvedValueOnce([]);
 
     // process.exit is mocked so code continues; catch the resulting error
+    await connectCommand(undefined, { token: "key" }).catch(() => {});
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+  });
+
+  it("filters out deleted boxes", async () => {
+    vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-deleted", status: "deleted" } as any]);
+
     await connectCommand(undefined, { token: "key" }).catch(() => {});
 
     expect(exitSpy).toHaveBeenCalledWith(1);

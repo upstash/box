@@ -42,7 +42,7 @@ export function interactiveSelect<T>(opts: SelectOptions<T>): Promise<T | undefi
     }
 
     stdout.write(cursorHide);
-    stdout.write(`${prompt}\n`);
+    stdout.write(`\n${prompt}\n\n`);
     render(true);
 
     if (!stdin.isTTY) {

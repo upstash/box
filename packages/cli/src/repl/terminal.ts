@@ -1,4 +1,4 @@
-import { createInterface, type Interface as ReadlineInterface } from "node:readline/promises";
+import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import type { Box } from "@upstash/box";
 import { BoxREPLClient, COMMAND_NAMES, COMMAND_DESCRIPTIONS } from "./client.js";
@@ -16,96 +16,134 @@ import {
 } from "../utils/ansi.js";
 
 /**
- * Tab completer for readline: matches /commands.
- */
-function completer(line: string): [string[], string] {
-  if (line.startsWith("/")) {
-    const partial = line.slice(1);
-    const matches = COMMAND_NAMES.filter((c) => c.startsWith(partial)).map((c) => `/${c}`);
-    // Also include /exit
-    if ("exit".startsWith(partial)) matches.push("/exit");
-    return [matches, line];
-  }
-  return [[], line];
-}
-
-/**
  * Start an interactive REPL session for the given box (CLI entry point).
  */
 export async function startRepl(box: Box): Promise<void> {
   const rl = createInterface({
     input: stdin,
     output: stdout,
-    completer: completer as unknown as (line: string) => [string[], string],
+    completer: (): [string[], string] => [[], ""],
   });
 
   const prompt = `${bold(cyan(box.id))}${dim(">")} `;
 
-  // --- Command preview while typing ---
-  let previewVisible = false;
+  // --- Spinner tracking ---
+  let activeSpinnerStop: (() => void) | null = null;
 
-  function clearPreview() {
-    if (previewVisible) {
-      stdout.write(cursorSave + "\n" + eraseLine + eraseDown + cursorRestore);
-      previewVisible = false;
+  function ensureSpinnerStopped() {
+    if (activeSpinnerStop) {
+      activeSpinnerStop();
+      activeSpinnerStop = null;
     }
   }
 
+  // --- Command preview while typing ---
+  let previewLines = 0;
+
+  function clearPreview() {
+    if (previewLines > 0) {
+      stdout.write(cursorSave);
+      for (let i = 0; i < previewLines; i++) {
+        stdout.write("\n" + eraseLine);
+      }
+      stdout.write(eraseDown + cursorRestore);
+      previewLines = 0;
+    }
+  }
+
+  // --- Ghost suggestion in input ---
+  let nextSuggestion: string | null = "/exec ls";
+  let ghostText: string | null = null;
+
+  function showGhost(text: string) {
+    ghostText = text;
+    stdout.write(dim(text));
+    // Move cursor back to just after the prompt
+    stdout.write(`\x1b[${text.length}D`);
+  }
+
   if (stdin.isTTY) {
-    stdin.on("keypress", () => {
-      // Small delay so rl.line is updated
+    stdin.on("keypress", (_str: string, key: { name?: string }) => {
+      // Handle ghost text: Tab accepts, any other key dismisses
+      if (ghostText) {
+        if (key?.name === "tab") {
+          const text = ghostText;
+          ghostText = null;
+          rl.write(text);
+          return;
+        }
+        ghostText = null;
+        // Erase leftover ghost text after cursor
+        setImmediate(() => {
+          stdout.write(cursorSave + "\x1b[K" + cursorRestore);
+        });
+      }
+
+      // Command preview logic (deferred so rl.line is up to date)
       setImmediate(() => {
         const line = (rl as unknown as { line: string }).line ?? "";
         clearPreview();
 
-        if (line.startsWith("/") && line.length > 1) {
-          const partial = line.slice(1).split(" ")[0] ?? "";
-          const matches = COMMAND_NAMES.filter((c) => c.startsWith(partial));
-          if (matches.length > 0 && matches.length <= 5) {
+        if (line.startsWith("/") && !line.includes(" ")) {
+          const partial = line.slice(1);
+          const matches = COMMAND_NAMES.filter((c) => c.startsWith(partial)).slice(0, 5);
+          if (matches.length > 0) {
             const preview = matches
               .map((c) => `  ${dim(`/${c}`)} ${dim("—")} ${dim(COMMAND_DESCRIPTIONS[c] ?? "")}`)
               .join("\n");
             stdout.write(cursorSave + "\n" + preview + cursorRestore);
-            previewVisible = true;
+            previewLines = matches.length;
           }
         }
       });
     });
   }
 
-  // --- Suggestion state ---
-  let pendingSuggestion: string | null = null;
-
-  function showSuggestion(text: string) {
-    pendingSuggestion = text;
-    stdout.write(`\n${dim(text)}\n`);
-  }
-
   const client = new BoxREPLClient({
     box,
-    promptUser: (defaultPrompt) => {
+    promptUser: () => {
       clearPreview();
-      pendingSuggestion = null;
-      return rl.question(prompt);
+      const suggestion = nextSuggestion;
+      nextSuggestion = null;
+
+      const promise = rl.question(prompt);
+
+      if (suggestion && stdin.isTTY) {
+        setImmediate(() => showGhost(suggestion));
+      }
+
+      return promise;
     },
     hooks: {
       onLog: (message) => {
+        ensureSpinnerStopped();
         clearPreview();
         console.log(message);
       },
       onError: (message) => {
+        ensureSpinnerStopped();
         clearPreview();
         console.error(red(message));
       },
-      onStream: (chunk) => process.stdout.write(chunk),
+      onStream: (chunk) => {
+        ensureSpinnerStopped();
+        process.stdout.write(chunk);
+      },
 
-      onLoadingStart: () => startSpinner(),
+      onLoadingStart: () => {
+        stdout.write("\n");
+        const stop = startSpinner();
+        activeSpinnerStop = stop;
+        return stop;
+      },
 
-      onSuggestion: (text) => showSuggestion(text),
+      onSuggestion: (text) => {
+        nextSuggestion = text;
+      },
 
       onCommandComplete: (command, durationMs) => {
         const seconds = (durationMs / 1000).toFixed(1);
-        console.log(dim(`  /${command} completed in ${seconds}s`));
+        console.log(dim(`\n  /${command} completed in ${seconds}s\n`));
       },
 
       onCommandNotFound: (typed, suggestions) => {
