@@ -1,17 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { handleRun } from "../../repl-commands/run.js";
+import type { REPLHooks } from "../../repl-client.js";
+
+function createHooks() {
+  return {
+    onLog: vi.fn() as unknown as REPLHooks["onLog"],
+    onError: vi.fn() as unknown as REPLHooks["onError"],
+    onStream: vi.fn() as unknown as REPLHooks["onStream"],
+  };
+}
 
 describe("handleRun", () => {
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let writeSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
   it("streams agent output to stdout", async () => {
     async function* fakeStream() {
       yield "chunk1";
@@ -23,18 +22,20 @@ describe("handleRun", () => {
         stream: vi.fn().mockReturnValue(fakeStream()),
       },
     };
+    const hooks = createHooks();
 
-    await handleRun(mockBox as any, "fix the bug");
+    await handleRun(mockBox as any, "fix the bug", hooks);
 
     expect(mockBox.agent.stream).toHaveBeenCalledWith({ prompt: "fix the bug" });
-    expect(writeSpy).toHaveBeenCalledWith("chunk1");
-    expect(writeSpy).toHaveBeenCalledWith("chunk2");
+    expect(hooks.onStream).toHaveBeenCalledWith("chunk1");
+    expect(hooks.onStream).toHaveBeenCalledWith("chunk2");
     // Trailing newline
-    expect(logSpy).toHaveBeenCalled();
+    expect(hooks.onStream).toHaveBeenCalledWith("\n");
   });
 
   it("prints usage when no prompt", async () => {
-    await handleRun({} as any, "");
-    expect(logSpy).toHaveBeenCalledWith("Usage: run <prompt>");
+    const hooks = createHooks();
+    await handleRun({} as any, "", hooks);
+    expect(hooks.onLog).toHaveBeenCalledWith("Usage: run <prompt>");
   });
 });

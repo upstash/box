@@ -1,14 +1,15 @@
 import type { Box } from "@upstash/box";
+import type { REPLHooks } from "../repl-client.js";
 
 /**
  * Execute a shell command in the box.
  */
-export async function handleExec(box: Box, command: string): Promise<void> {
+export async function handleExec(box: Box, command: string, hooks: REPLHooks): Promise<void> {
   if (!command) {
-    console.log("Usage: exec <command>");
+    hooks.onLog("Usage: exec <command>");
     return;
   }
   const run = await box.exec(command);
   const result = await run.result();
-  if (result) console.log(result);
+  if (result) hooks.onLog(result);
 }

@@ -6,7 +6,14 @@
   "bin": {
     "box": "./dist/index.js"
   },
-  "main": "dist/index.js",
+  "main": "dist/repl-client.js",
+  "types": "dist/repl-client.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/repl-client.js",
+      "types": "./dist/repl-client.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

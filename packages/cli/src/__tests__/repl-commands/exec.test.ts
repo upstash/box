@@ -1,15 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { handleExec } from "../../repl-commands/exec.js";
+import type { REPLHooks } from "../../repl-client.js";
+
+function createHooks() {
+  return {
+    onLog: vi.fn() as unknown as REPLHooks["onLog"],
+    onError: vi.fn() as unknown as REPLHooks["onError"],
+    onStream: vi.fn() as unknown as REPLHooks["onStream"],
+  };
+}
 
 describe("handleExec", () => {
-  let logSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
   it("executes command and prints output", async () => {
     const mockRun = {
       result: vi.fn().mockResolvedValue("hello world"),
@@ -17,11 +18,12 @@ describe("handleExec", () => {
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };
+    const hooks = createHooks();
 
-    await handleExec(mockBox as any, "echo hello world");
+    await handleExec(mockBox as any, "echo hello world", hooks);
 
     expect(mockBox.exec).toHaveBeenCalledWith("echo hello world");
-    expect(logSpy).toHaveBeenCalledWith("hello world");
+    expect(hooks.onLog).toHaveBeenCalledWith("hello world");
   });
 
   it("does not print when output is empty", async () => {
@@ -31,14 +33,16 @@ describe("handleExec", () => {
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };
+    const hooks = createHooks();
 
-    await handleExec(mockBox as any, "true");
+    await handleExec(mockBox as any, "true", hooks);
 
-    expect(logSpy).not.toHaveBeenCalled();
+    expect(hooks.onLog).not.toHaveBeenCalled();
   });
 
   it("prints usage when no command", async () => {
-    await handleExec({} as any, "");
-    expect(logSpy).toHaveBeenCalledWith("Usage: exec <command>");
+    const hooks = createHooks();
+    await handleExec({} as any, "", hooks);
+    expect(hooks.onLog).toHaveBeenCalledWith("Usage: exec <command>");
   });
 });

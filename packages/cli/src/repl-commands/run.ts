@@ -1,15 +1,16 @@
 import type { Box } from "@upstash/box";
+import type { REPLHooks } from "../repl-client.js";
 
 /**
- * Run the agent with a prompt, streaming output to stdout.
+ * Run the agent with a prompt, streaming output via hooks.
  */
-export async function handleRun(box: Box, prompt: string): Promise<void> {
+export async function handleRun(box: Box, prompt: string, hooks: REPLHooks): Promise<void> {
   if (!prompt) {
-    console.log("Usage: run <prompt>");
+    hooks.onLog("Usage: run <prompt>");
     return;
   }
   for await (const chunk of box.agent.stream({ prompt })) {
-    process.stdout.write(chunk);
+    hooks.onStream(chunk);
   }
-  console.log();
+  hooks.onStream("\n");
 }
