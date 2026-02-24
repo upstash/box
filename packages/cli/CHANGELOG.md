@@ -1,5 +1,15 @@
 # @upstash/box-cli
 
+## 0.1.5
+
+### Patch Changes
+
+- 693c260: Improve UX with autocomplete, suggestions, text coloring, spinner when waiting. Restructured the project directory
+- c50a151: Add BoxREPLClient to exports
+- 554f000: color user input after submission
+- Updated dependencies [24bdce1]
+  - @upstash/box@0.1.4
+
 ## 0.1.4
 
 ### Patch Changes

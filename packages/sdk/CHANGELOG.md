@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.4
+
+### Patch Changes
+
+- 24bdce1: allow BoxConfig.agent.apiKey to be undefined and verify in runtime
+
 ## 0.1.3
 
 ### Patch Changes
