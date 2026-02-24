@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.5
+
+### Patch Changes
+
+- d13c34d: use prod backend
+
 ## 0.1.4
 
 ### Patch Changes
