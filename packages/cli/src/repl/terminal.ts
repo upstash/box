@@ -7,6 +7,7 @@ import {
   bold,
   cyan,
   dim,
+  green,
   red,
   yellow,
   cursorSave,
@@ -106,7 +107,13 @@ export async function startRepl(box: Box): Promise<void> {
       const suggestion = nextSuggestion;
       nextSuggestion = null;
 
-      const promise = rl.question(prompt);
+      const promise = rl.question(prompt).then((input) => {
+        // Rewrite the prompt line with the input in green
+        if (input.trim()) {
+          stdout.write(`\x1b[A\r${eraseLine}${prompt}${green(input)}\n`);
+        }
+        return input;
+      });
 
       if (suggestion && stdin.isTTY) {
         setImmediate(() => showGhost(suggestion));
