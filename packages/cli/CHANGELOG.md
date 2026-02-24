@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.7
+
+### Patch Changes
+
+- d13c34d: Change command suggestion colors
+- Updated dependencies [d13c34d]
+  - @upstash/box@0.1.5
+
 ## 0.1.6
 
 ### Patch Changes
