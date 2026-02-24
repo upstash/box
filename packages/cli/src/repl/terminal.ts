@@ -161,9 +161,9 @@ export async function startRepl(box: Box): Promise<void> {
       },
 
       onCommandNotFound: (typed, suggestions) => {
-        console.error(red(`Unknown command: /${typed}`));
+        console.error(yellow(`\nUnknown command: /${typed}`));
         if (suggestions.length > 0) {
-          console.log(yellow(`Did you mean: ${suggestions.map((s) => `/${s}`).join(", ")}?`));
+          console.log(yellow(`Did you mean: ${suggestions.map((s) => `/${s}`).join(", ")}?\n`));
         }
       },
     },

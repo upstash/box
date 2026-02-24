@@ -29,6 +29,8 @@ import type {
   Snapshot,
 } from "./types.js";
 
+const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
+
 /**
  * Error thrown by the Box SDK
  */
@@ -300,7 +302,7 @@ export class Box {
     const baseUrl = (
       config.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://boxdev.api.upstashdev.com"
+      DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = {
       "X-Box-Api-Key": apiKey,
@@ -383,7 +385,7 @@ export class Box {
     const baseUrl = (
       options?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://boxdev.api.upstashdev.com"
+      DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
 
@@ -410,7 +412,7 @@ export class Box {
     const baseUrl = (
       options?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://boxdev.api.upstashdev.com"
+      DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
     const timeout = options?.timeout ?? 600000;
@@ -927,7 +929,7 @@ export class Box {
     const baseUrl = (
       config.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
-      "https://boxdev.api.upstashdev.com"
+      DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
     const timeout = config.timeout ?? 600000;
