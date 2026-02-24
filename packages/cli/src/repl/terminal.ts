@@ -64,6 +64,13 @@ export async function startRepl(box: Box): Promise<void> {
   }
 
   if (stdin.isTTY) {
+    // Must run before readline's handler so the cursor is still on the input line
+    stdin.prependListener("keypress", (_str: string, key: { name?: string }) => {
+      if (key?.name === "return") {
+        clearPreview();
+      }
+    });
+
     stdin.on("keypress", (_str: string, key: { name?: string }) => {
       // Handle ghost text: Tab accepts, any other key dismisses
       if (ghostText) {
