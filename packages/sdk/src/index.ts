@@ -7,6 +7,7 @@ export type {
   ListOptions,
   RunOptions,
   StreamOptions,
+  Chunk,
   RunStatus,
   RunCost,
   RunLog,

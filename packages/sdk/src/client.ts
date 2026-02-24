@@ -10,6 +10,7 @@ import type {
   ListOptions,
   RunOptions,
   StreamOptions,
+  Chunk,
   RunResult,
   RunStatus,
   RunCost,
@@ -180,8 +181,8 @@ export class Run<T = string> {
  * console.log(await run.result());
  *
  * // Streaming
- * for await (const chunk of box.agent.stream({ prompt: "Add tests" })) {
- *   process.stdout.write(chunk);
+ * for await (const part of box.agent.stream({ prompt: "Add tests" })) {
+ *   if (part.type === "text-delta") process.stdout.write(part.text);
  * }
  *
  * await box.delete();
@@ -194,7 +195,7 @@ export class Box {
   readonly agent: {
     run<T>(options: RunOptions<T> & { responseSchema: SchemaLike<T> }): Promise<Run<T>>;
     run(options: RunOptions): Promise<Run<string>>;
-    stream(options: StreamOptions): AsyncGenerator<string>;
+    stream(options: StreamOptions): AsyncGenerator<Chunk>;
   };
 
   /** File operations namespace */
@@ -252,7 +253,7 @@ export class Box {
         }
         return self._run(options);
       },
-      stream(options: StreamOptions): AsyncGenerator<string> {
+      stream(options: StreamOptions): AsyncGenerator<Chunk> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
             'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
@@ -644,7 +645,7 @@ export class Box {
   }
 
   /** @internal */
-  async *_stream(options: StreamOptions): AsyncGenerator<string> {
+  async *_stream(options: StreamOptions): AsyncGenerator<Chunk> {
     if (!options.prompt) throw new BoxError("prompt is required");
 
     const abortController = new AbortController();
@@ -693,24 +694,42 @@ export class Box {
           } else if (line.startsWith("data: ")) {
             eventData = line.slice(6);
           } else if ((line === "" || line.trim() === "") && eventType && eventData) {
-            const text = this._processStreamEvent(eventType, eventData, options);
-            if (text !== null) yield text;
+            const part = this._processStreamPart(eventType, eventData);
+            if (part !== null) {
+              options.onChunk?.(part);
+              if (part.type === "tool-call") {
+                options.onToolUse?.({ name: part.toolName, input: part.input });
+              }
+              yield part;
+            }
             eventType = "";
             eventData = "";
           }
         }
 
         if (eventType && eventData && (buffer === "" || buffer.trim() === "")) {
-          const text = this._processStreamEvent(eventType, eventData, options);
-          if (text !== null) yield text;
+          const part = this._processStreamPart(eventType, eventData);
+          if (part !== null) {
+            options.onChunk?.(part);
+            if (part.type === "tool-call") {
+              options.onToolUse?.({ name: part.toolName, input: part.input });
+            }
+            yield part;
+          }
           eventType = "";
           eventData = "";
         }
       }
 
       if (eventType && eventData) {
-        const text = this._processStreamEvent(eventType, eventData, options);
-        if (text !== null) yield text;
+        const part = this._processStreamPart(eventType, eventData);
+        if (part !== null) {
+          options.onChunk?.(part);
+          if (part.type === "tool-call") {
+            options.onToolUse?.({ name: part.toolName, input: part.input });
+          }
+          yield part;
+        }
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
@@ -720,22 +739,51 @@ export class Box {
     }
   }
 
-  private _processStreamEvent(type: string, data: string, options: StreamOptions): string | null {
+  private _processStreamPart(type: string, data: string): Chunk | null {
     try {
       const parsed = JSON.parse(data);
       switch (type) {
+        case "run_start": {
+          const runId = parsed.run_id ?? "";
+          return { type: "start", runId };
+        }
         case "text": {
           const text = parsed.text ?? "";
-          return text || null;
+          return text ? { type: "text-delta", text } : null;
+        }
+        case "thinking": {
+          const text = parsed.text ?? "";
+          return text ? { type: "reasoning", text } : null;
         }
         case "tool": {
-          options.onToolUse?.({ name: parsed.name, input: parsed.input });
-          return null;
+          return {
+            type: "tool-call",
+            toolName: parsed.name ?? "",
+            input: parsed.input ?? {},
+          };
+        }
+        case "done": {
+          return {
+            type: "finish",
+            output: parsed.output ?? "",
+            usage: {
+              inputTokens: parsed.input_tokens ?? 0,
+              outputTokens: parsed.output_tokens ?? 0,
+            },
+            sessionId: parsed.session_id ?? "",
+          };
+        }
+        case "stats": {
+          return {
+            type: "stats",
+            cpuNs: parsed.cpu_ns ?? 0,
+            memoryPeakBytes: parsed.memory_peak_bytes ?? 0,
+          };
         }
         case "error":
           throw new BoxError(parsed.error ?? "Stream error");
         default:
-          return null;
+          return { type: "unknown", event: type, data: parsed };
       }
     } catch (e) {
       if (e instanceof BoxError) throw e;
