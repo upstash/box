@@ -6,12 +6,12 @@
   "bin": {
     "box": "./dist/index.js"
   },
-  "main": "dist/repl-client.js",
-  "types": "dist/repl-client.d.ts",
+  "main": "dist/repl/client.js",
+  "types": "dist/repl/client.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/repl-client.js",
-      "types": "./dist/repl-client.d.ts"
+      "import": "./dist/repl/client.js",
+      "types": "./dist/repl/client.d.ts"
     }
   },
   "scripts": {

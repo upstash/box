@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { handlePause } from "../../repl-commands/pause.js";
-import type { REPLHooks } from "../../repl-client.js";
+import { handlePause } from "../../../repl/commands/pause.js";
+import type { REPLHooks } from "../../../repl/client.js";
 
 function createHooks() {
   return {

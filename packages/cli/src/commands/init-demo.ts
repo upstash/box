@@ -3,13 +3,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import readline from "node:readline";
 import { resolveToken } from "../auth.js";
-
-const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
-const cyan = (s: string) => `\x1b[36m${s}\x1b[39m`;
-const green = (s: string) => `\x1b[32m${s}\x1b[39m`;
-const dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
-const red = (s: string) => `\x1b[31m${s}\x1b[39m`;
-const yellow = (s: string) => `\x1b[33m${s}\x1b[39m`;
+import { bold, cyan, green, dim, red, yellow } from "../utils/ansi.js";
 
 interface InitDemoFlags {
   token?: string;

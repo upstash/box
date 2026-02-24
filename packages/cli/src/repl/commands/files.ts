@@ -1,5 +1,5 @@
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../repl-client.js";
+import type { REPLHooks } from "../client.js";
 
 /**
  * Handle file subcommands: read, write, list, upload, download.

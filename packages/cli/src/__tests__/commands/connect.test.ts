@@ -8,8 +8,12 @@ vi.mock("@upstash/box", () => ({
   },
 }));
 
-vi.mock("../../repl.js", () => ({
+vi.mock("../../repl/terminal.js", () => ({
   startRepl: vi.fn(),
+}));
+
+vi.mock("../../utils/interactive-select.js", () => ({
+  interactiveSelect: vi.fn(),
 }));
 
 vi.mock("../../auth.js", () => ({
@@ -17,7 +21,7 @@ vi.mock("../../auth.js", () => ({
 }));
 
 import { Box } from "@upstash/box";
-import { startRepl } from "../../repl.js";
+import { startRepl } from "../../repl/terminal.js";
 
 describe("connectCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;

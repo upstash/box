@@ -7,7 +7,7 @@ vi.mock("@upstash/box", () => ({
   },
 }));
 
-vi.mock("../../repl.js", () => ({
+vi.mock("../../repl/terminal.js", () => ({
   startRepl: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock("../../auth.js", () => ({
 }));
 
 import { Box } from "@upstash/box";
-import { startRepl } from "../../repl.js";
+import { startRepl } from "../../repl/terminal.js";
 
 describe("createCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
