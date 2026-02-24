@@ -1,15 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { handleFiles } from "../../repl-commands/files.js";
+import type { REPLHooks } from "../../repl-client.js";
+
+function createHooks() {
+  return {
+    onLog: vi.fn() as unknown as REPLHooks["onLog"],
+    onError: vi.fn() as unknown as REPLHooks["onError"],
+    onStream: vi.fn() as unknown as REPLHooks["onStream"],
+  };
+}
 
 describe("handleFiles", () => {
-  let logSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-  });
-
-  afterEach(() => vi.restoreAllMocks());
-
   function createMockBox() {
     return {
       files: {
@@ -28,75 +29,85 @@ describe("handleFiles", () => {
   describe("read", () => {
     it("reads and prints file content", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "read app.ts");
+      const hooks = createHooks();
+      await handleFiles(box as any, "read app.ts", hooks);
       expect(box.files.read).toHaveBeenCalledWith("app.ts");
-      expect(logSpy).toHaveBeenCalledWith("file content");
+      expect(hooks.onLog).toHaveBeenCalledWith("file content");
     });
 
     it("prints usage without path", async () => {
-      await handleFiles(createMockBox() as any, "read");
-      expect(logSpy).toHaveBeenCalledWith("Usage: files read <path>");
+      const hooks = createHooks();
+      await handleFiles(createMockBox() as any, "read", hooks);
+      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files read <path>");
     });
   });
 
   describe("write", () => {
     it("writes file content", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "write hello.txt hello world");
+      const hooks = createHooks();
+      await handleFiles(box as any, "write hello.txt hello world", hooks);
       expect(box.files.write).toHaveBeenCalledWith({ path: "hello.txt", content: "hello world" });
-      expect(logSpy).toHaveBeenCalledWith("Written to hello.txt");
+      expect(hooks.onLog).toHaveBeenCalledWith("Written to hello.txt");
     });
 
     it("prints usage without args", async () => {
-      await handleFiles(createMockBox() as any, "write");
-      expect(logSpy).toHaveBeenCalledWith("Usage: files write <path> <content>");
+      const hooks = createHooks();
+      await handleFiles(createMockBox() as any, "write", hooks);
+      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files write <path> <content>");
     });
   });
 
   describe("list", () => {
     it("lists files with directory indicator", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "list");
-      expect(logSpy).toHaveBeenCalledWith("src/\t0");
-      expect(logSpy).toHaveBeenCalledWith("index.ts\t100");
+      const hooks = createHooks();
+      await handleFiles(box as any, "list", hooks);
+      expect(hooks.onLog).toHaveBeenCalledWith("src/\t0");
+      expect(hooks.onLog).toHaveBeenCalledWith("index.ts\t100");
     });
   });
 
   describe("upload", () => {
     it("uploads a file", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "upload ./local.txt remote.txt");
+      const hooks = createHooks();
+      await handleFiles(box as any, "upload ./local.txt remote.txt", hooks);
       expect(box.files.upload).toHaveBeenCalledWith([
         { path: "./local.txt", destination: "remote.txt" },
       ]);
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Uploaded"));
+      expect(hooks.onLog).toHaveBeenCalledWith(expect.stringContaining("Uploaded"));
     });
 
     it("prints usage without args", async () => {
-      await handleFiles(createMockBox() as any, "upload");
-      expect(logSpy).toHaveBeenCalledWith("Usage: files upload <local-path> <destination>");
+      const hooks = createHooks();
+      await handleFiles(createMockBox() as any, "upload", hooks);
+      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files upload <local-path> <destination>");
     });
   });
 
   describe("download", () => {
     it("downloads files", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "download /work");
+      const hooks = createHooks();
+      await handleFiles(box as any, "download /work", hooks);
       expect(box.files.download).toHaveBeenCalledWith({ path: "/work" });
-      expect(logSpy).toHaveBeenCalledWith("Downloaded.");
+      expect(hooks.onLog).toHaveBeenCalledWith("Downloaded.");
     });
 
     it("downloads without path", async () => {
       const box = createMockBox();
-      await handleFiles(box as any, "download");
+      const hooks = createHooks();
+      await handleFiles(box as any, "download", hooks);
       expect(box.files.download).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe("unknown subcommand", () => {
     it("prints usage", async () => {
-      await handleFiles(createMockBox() as any, "");
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: files"));
+      const hooks = createHooks();
+      await handleFiles(createMockBox() as any, "", hooks);
+      expect(hooks.onLog).toHaveBeenCalledWith(expect.stringContaining("Usage: files"));
     });
   });
 });
