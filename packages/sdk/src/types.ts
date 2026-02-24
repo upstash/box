@@ -35,7 +35,7 @@ export interface BoxConfig {
   runtime?: Runtime | string;
   agent?: {
     model: ClaudeCode | OpenAICodex | string;
-    apiKey: string;
+    apiKey?: string;
   };
   git?: {
     token: string;
