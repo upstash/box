@@ -293,6 +293,9 @@ export class Box {
     if (config.agent && !config.agent.model) {
       throw new BoxError("agent.model is required when agent is configured");
     }
+    if (config.agent && !config.agent.apiKey) {
+      throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
+    }
 
     const baseUrl = (
       config.baseUrl ??
@@ -308,7 +311,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config.agent) {
       body.model = config.agent.model;
-      body.agent_api_key = config.agent.apiKey;
+      body.agent_api_key = config.agent.apiKey!;
     }
     if (config.runtime) body.runtime = config.runtime;
     if (config.git?.token) body.github_token = config.git.token;
@@ -934,6 +937,9 @@ export class Box {
       snapshot_id: snapshotId,
     };
     if (config.agent) {
+      if (!config.agent.apiKey) {
+        throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
+      }
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
     }
