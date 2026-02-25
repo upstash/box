@@ -10,7 +10,9 @@ export async function handleRun(box: Box, prompt: string, hooks: REPLHooks): Pro
     return;
   }
   for await (const chunk of box.agent.stream({ prompt })) {
-    hooks.onStream(chunk);
+    if (chunk.type === "text-delta") {
+      hooks.onStream(chunk.text);
+    }
   }
   hooks.onStream("\n");
 }

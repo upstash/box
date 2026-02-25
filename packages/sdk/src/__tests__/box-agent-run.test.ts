@@ -230,7 +230,12 @@ describe("box.agent.stream", () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0]!.name).toBe("Write");
-    expect(chunks.map((chunk) => chunk.type)).toEqual(["start", "tool-call", "text-delta", "finish"]);
+    expect(chunks.map((chunk) => chunk.type)).toEqual([
+      "start",
+      "tool-call",
+      "text-delta",
+      "finish",
+    ]);
   });
 
   it("yields typed parts", async () => {
@@ -292,7 +297,12 @@ describe("box.agent.stream", () => {
     }
 
     expect(chunkTypes).toEqual(["start", "tool-call", "text-delta", "finish"]);
-    expect(chunks.map((chunk) => chunk.type)).toEqual(["start", "tool-call", "text-delta", "finish"]);
+    expect(chunks.map((chunk) => chunk.type)).toEqual([
+      "start",
+      "tool-call",
+      "text-delta",
+      "finish",
+    ]);
   });
 
   it("throws on missing prompt", async () => {
