@@ -21,9 +21,9 @@ const run = await box.agent.run({
   prompt: `What is 2+2? Reply in one word.`,
 });
 
-console.log("OUTPUT:", JSON.stringify(await run.result()));
-const cost = await run.cost();
-console.log(`Tokens: ${cost.tokens} (${run._inputTokens} in / ${run._outputTokens} out)`);
+console.log("OUTPUT:", JSON.stringify(run.result));
+const cost = run.cost;
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens} (${run._inputTokens} in / ${run._outputTokens} out)`);
 
 // Streaming with async iterator
 console.log("\n--- Streaming ---");

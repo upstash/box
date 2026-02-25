@@ -47,7 +47,7 @@ const run = await box.agent.run({
   responseSchema: AnalysisSchema,
 });
 
-const analysis = await run.result();
+const analysis = run.result;
 console.log("\n\nParsed result:");
 console.log(`  Language: ${analysis.language}`);
 console.log(`  Frameworks: ${analysis.frameworks.join(", ")}`);

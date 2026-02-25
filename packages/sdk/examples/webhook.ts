@@ -35,7 +35,7 @@ const server = createServer((req, res) => {
       console.log(`  Run ID:    ${payload.runId}`);
       console.log(`  Box ID:    ${payload.boxId}`);
       console.log(`  Status:    ${payload.status}`);
-      console.log(`  Tokens:    ${payload.cost.tokens}`);
+      console.log(`  Tokens:    ${payload.cost.inputTokens + payload.cost.outputTokens}`);
       console.log(`  Cost:      $${payload.cost.totalUsd.toFixed(4)}`);
       console.log(`  Completed: ${payload.completedAt}`);
       console.log(`  Result:    ${String(payload.result).slice(0, 200)}...`);

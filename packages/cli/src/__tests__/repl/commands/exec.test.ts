@@ -12,9 +12,7 @@ function createHooks() {
 
 describe("handleExec", () => {
   it("executes command and prints output", async () => {
-    const mockRun = {
-      result: vi.fn().mockResolvedValue("hello world"),
-    };
+    const mockRun = { result: "hello world" };
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };
@@ -27,9 +25,7 @@ describe("handleExec", () => {
   });
 
   it("does not print when output is empty", async () => {
-    const mockRun = {
-      result: vi.fn().mockResolvedValue(""),
-    };
+    const mockRun = { result: "" };
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };

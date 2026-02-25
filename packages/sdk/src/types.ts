@@ -130,8 +130,10 @@ export type BoxStatus = "creating" | "idle" | "running" | "paused" | "error" | "
 export type RunStatus = "running" | "completed" | "failed" | "cancelled";
 
 export interface RunCost {
-  /** Total tokens consumed (input + output) */
-  tokens: number;
+  /** Input tokens consumed */
+  inputTokens: number;
+  /** Output tokens consumed */
+  outputTokens: number;
   /** Wall-clock execution time in milliseconds */
   computeMs: number;
   /** Total cost in USD */

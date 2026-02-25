@@ -67,7 +67,7 @@ async function main() {
     // Execute a command
     console.log("\\nRunning: ls -la");
     const run = await box.exec("ls -la");
-    const output = await run.result();
+    const output = run.result;
     console.log(output);
 
     // List files
@@ -91,7 +91,7 @@ async function main() {
     if (process.env.GIT_TOKEN) {
       console.log("\\nGit status:");
       const gitRun = await box.exec("git status");
-      const gitOutput = await gitRun.result();
+      const gitOutput = gitRun.result;
       console.log(gitOutput);
     }
   } finally {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import dotenv from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Box, OpenAICodex } from "../index.js";
+import { Box, OpenAICodex, ClaudeCode } from "../index.js";
 
 // Load .env from monorepo root before evaluating skip condition
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -10,6 +10,7 @@ dotenv.config({ path: resolve(__dirname, "../../../../.env") });
 
 const UPSTASH_BOX_API_KEY = process.env.UPSTASH_BOX_API_KEY;
 const AGENT_API_KEY = process.env.AGENT_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () => {
   let box: Box;
@@ -32,7 +33,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
 
   it("exec: runs a shell command", async () => {
     const run = await box.exec("echo hello");
-    expect(await run.result()).toContain("hello");
+    expect(run.result).toContain("hello");
     expect(run._status).toBe("completed");
   });
 
@@ -80,7 +81,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     const run = await box.agent.run({
       prompt: "Reply with exactly: INTEGRATION_OK",
     });
-    const result = await run.result();
+    const result = run.result;
     expect(result).toBeTruthy();
   }, 120000);
 
@@ -120,4 +121,45 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     const reconnected = await Box.get(box.id, { apiKey: UPSTASH_BOX_API_KEY! });
     expect(reconnected.id).toBe(box.id);
   });
+});
+
+describe.skipIf(!UPSTASH_BOX_API_KEY || !OPENAI_API_KEY)("Integration tests (OpenAI)", () => {
+  let box: Box;
+
+  beforeAll(async () => {
+    box = await Box.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      agent: { model: OpenAICodex.GPT_5_2_Codex, apiKey: OPENAI_API_KEY! },
+    });
+  }, 120000);
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+
+  it("agent.run: returns result with OpenAI model", async () => {
+    const run = await box.agent.run({
+      prompt: "Reply with exactly: OPENAI_OK",
+    });
+    expect(run.result).toBeTruthy();
+  }, 120000);
+
+  it("agent.stream: yields stream parts with OpenAI model", async () => {
+    let text = "";
+    let partCount = 0;
+    for await (const part of box.agent.stream({
+      prompt: "Reply with exactly: OPENAI_STREAM_OK",
+    })) {
+      partCount++;
+      if (part.type === "text-delta") {
+        text += part.text;
+      }
+    }
+    expect(partCount).toBeGreaterThan(0);
+    expect(text).toBeTruthy();
+  }, 120000);
 });

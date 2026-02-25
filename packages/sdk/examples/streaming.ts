@@ -46,15 +46,15 @@ const results = await Promise.all(
       responseSchema: candidateSchema,
     });
 
-    // run.result() is typed as { name, email, yearsOfExperience, skills, score, summary }
-    const output = await run.result();
-    const cost = await run.cost();
+    // run.result is typed as { name, email, yearsOfExperience, skills, score, summary }
+    const output = run.result;
+    const cost = run.cost;
     await box.delete();
 
     return {
       file,
       ...output,
-      tokens: cost.tokens,
+      tokens: cost.inputTokens + cost.outputTokens,
     };
   }),
 );

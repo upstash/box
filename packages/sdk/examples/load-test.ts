@@ -24,7 +24,7 @@ async function createAndRun(index: number): Promise<{ id: string; status: string
     // const run = await box.agent.run({
     //   prompt: `Create a file /workspace/home/box-${index}.ts that exports a function called box${index}() which returns "I am box #${index}"`,
     // });
-    // await run.result();
+    // run.result;
 
     const ms = Date.now() - start;
     console.log(`  [${index + 1}/${BOX_COUNT}] ${box.id} — done (${(ms / 1000).toFixed(1)}s)`);

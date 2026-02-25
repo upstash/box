@@ -10,6 +10,6 @@ export async function handleExec(box: Box, command: string, hooks: REPLHooks): P
     return;
   }
   const run = await box.exec(command);
-  const result = await run.result();
+  const result = run.result;
   if (result) hooks.onLog(result);
 }

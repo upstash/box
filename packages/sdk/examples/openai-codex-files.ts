@@ -34,10 +34,10 @@ const run = await box.agent.run({
 2. Change greet() to use template literals instead of string concatenation
 3. Call both functions at the bottom`,
 });
-console.log(await run.result());
+console.log(run.result);
 
-const cost = await run.cost();
-console.log(`\n\nTokens: ${cost.tokens} | Status: ${await run.status()}`);
+const cost = run.cost;
+console.log(`\n\nTokens: ${cost.inputTokens + cost.outputTokens} | Status: ${await run.status()}`);
 
 // 3. Read the modified file
 console.log("\n--- Modified file ---");
@@ -47,6 +47,6 @@ console.log(modified);
 // 4. Run it
 console.log("--- Running ---");
 const shellRun = await box.exec("npx tsx /workspace/home/hello.ts");
-console.log("Output:", await shellRun.result());
+console.log("Output:", shellRun.result);
 
 // await box.delete();

@@ -10,7 +10,7 @@ describe("Box instance methods", () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "hello world" }));
 
       const run = await box.exec("echo hello world");
-      expect(await run.result()).toBe("hello world");
+      expect(run.result).toBe("hello world");
       expect(run._status).toBe("completed");
       expect(run.type).toBe("shell");
 
@@ -26,7 +26,7 @@ describe("Box instance methods", () => {
 
       const run = await box.exec("false");
       expect(run._status).toBe("failed");
-      expect(await run.result()).toBe("error message");
+      expect(run.result).toBe("error message");
     });
   });
 

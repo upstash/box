@@ -25,7 +25,7 @@ const run = await box.agent.run({
   prompt: "Create a hello world Express server",
 });
 
-console.log(await run.result());
+console.log(run.result);
 await box.delete();
 ```
 
@@ -101,7 +101,7 @@ const run = await box.agent.run({
   prompt: "Analyze this candidate",
   responseSchema: schema,
 });
-const result = await run.result(); // typed as { name: string, score: number }
+const result = run.result; // typed as { name: string, score: number }
 
 for await (const part of box.agent.stream({
   prompt: "Refactor the auth flow",
@@ -118,7 +118,7 @@ Execute a shell command in the box.
 
 ```ts
 const run = await box.exec("node index.js");
-console.log(await run.result());
+console.log(run.result);
 ```
 
 ### Files
@@ -167,9 +167,9 @@ Every `agent.run()` and `exec()` call returns a `Run` object:
 const run = await box.agent.run({ prompt: "..." });
 
 run.id; // Run ID
-await run.result(); // Final output (typed if schema provided)
+run.result; // Final output (typed if schema provided)
 await run.status(); // "running" | "completed" | "failed" | "cancelled"
-await run.cost(); // { tokens, computeMs, totalUsd }
+run.cost; // { inputTokens, outputTokens, computeMs, totalUsd }
 await run.cancel(); // Abort
 await run.logs(); // Filtered log entries
 
