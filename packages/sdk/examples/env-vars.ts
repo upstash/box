@@ -30,7 +30,6 @@ console.log(await result.result());
 // Agent can use them too
 const run = await box.agent.run({
   prompt: "Read the DATABASE_URL env var and create a db.ts config file that exports a connection pool",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 console.log("\n\nGenerated file:");

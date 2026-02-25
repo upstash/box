@@ -23,7 +23,6 @@ async function createAndRun(index: number): Promise<{ id: string; status: string
 
     // const run = await box.agent.run({
     //   prompt: `Create a file /workspace/home/box-${index}.ts that exports a function called box${index}() which returns "I am box #${index}"`,
-    //   onStream: () => {},
     // });
     // await run.result();
 

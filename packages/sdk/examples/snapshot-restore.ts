@@ -21,10 +21,10 @@ const box = await Box.create({
 });
 console.log(`Box created: ${box.id}`);
 
-await box.agent.run({
+const run = await box.agent.run({
   prompt: "Create a simple Express REST API with GET /users and POST /users endpoints. Use TypeScript.",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run.result());
 
 // List what was created
 const files = await box.files.list();
@@ -52,10 +52,10 @@ const restoredFiles = await restored.files.list();
 console.log(`Restored files: ${restoredFiles.map((f) => f.name).join(", ")}`);
 
 // Continue building on the restored state
-await restored.agent.run({
+const run2 = await restored.agent.run({
   prompt: "Add input validation with zod to the POST /users endpoint",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run2.result());
 
 // Cleanup
 console.log("\n\n=== Cleanup ===");

@@ -38,7 +38,6 @@ async function main() {
     try {
       const run = await box.agent.run({
         prompt,
-        onStream: (chunk) => process.stdout.write(chunk),
       });
 
       const result = await run.result();
@@ -107,7 +106,6 @@ async function main() {
     try {
       const run = await box2.agent.run({
         prompt,
-        onStream: (chunk) => process.stdout.write(chunk),
       });
 
       await run.result();

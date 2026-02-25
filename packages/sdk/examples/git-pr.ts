@@ -48,13 +48,11 @@ console.log("Files in src/:", await lsRun.result());
 // Step 5: Ask the agent to make changes
 await box.agent.run({
   prompt: `Add a CONTRIBUTING.md file with guidelines for contributing to this project. Also add a LICENSE file with MIT license.`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 // Step 6: Ask the agent to refactor something
 await box.agent.run({
   prompt: `Look at src/utils/helpers.ts and add JSDoc comments to each function, and add a new function called "truncate" that truncates a string to a given length with "..." suffix.`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 // Check what changed

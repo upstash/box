@@ -101,6 +101,7 @@ export interface StreamOptions {
   prompt: string;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
+  /** Inline streaming callback — called with each text chunk */
   onChunk?: (part: Chunk) => void;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
   onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
@@ -118,8 +119,6 @@ export interface RunOptions<T = undefined> {
   timeout?: number;
   /** Retries with exponential backoff on transient failures */
   maxRetries?: number;
-  /** Inline streaming callback — called with each text chunk */
-  onStream?: (chunk: string) => void;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
   onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
   /** Webhook — fire-and-forget, POST to URL on completion */

@@ -26,27 +26,6 @@ describe("box.agent.run", () => {
     expect(run._outputTokens).toBe(20);
   });
 
-  it("calls onStream callback", async () => {
-    const { box, fetchMock } = await createTestBox();
-    const chunks: string[] = [];
-
-    fetchMock.mockResolvedValueOnce(
-      mockSSEResponse([
-        { event: "run_start", data: { run_id: "r1" } },
-        { event: "text", data: { text: "chunk1" } },
-        { event: "text", data: { text: "chunk2" } },
-        { event: "done", data: {} },
-      ]),
-    );
-
-    await box.agent.run({
-      prompt: "test",
-      onStream: (chunk) => chunks.push(chunk),
-    });
-
-    expect(chunks).toEqual(["chunk1", "chunk2"]);
-  });
-
   it("calls onToolUse callback", async () => {
     const { box, fetchMock } = await createTestBox();
     const tools: Array<{ name: string; input: Record<string, unknown> }> = [];

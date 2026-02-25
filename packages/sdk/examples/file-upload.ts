@@ -39,7 +39,6 @@ console.log("File uploaded to sandbox.\n");
 // Have the agent process it
 const run = await box.agent.run({
   prompt: "Read data.csv in the workspace, analyze it, and create a summary report as report.md with statistics about the data.",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 // Read the generated report

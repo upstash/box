@@ -16,7 +16,7 @@ const box = await Box.create({
 await box.git.clone({ repo: "https://github.com/upstash/context7" });
 
 // Generate context7.md — AI-friendly documentation for the repo
-const run = await box.agent.run({
+for await (const chunk of box.agent.stream({
   prompt: `Analyze this project and create a file called context7.md with:
 - A 2-paragraph introduction (purpose + core functionality)
 - All APIs and functions documented with practical code examples
@@ -25,8 +25,9 @@ const run = await box.agent.run({
 
 Focus on what a developer needs to USE this library, not how it works internally.
 Write context7.md to the current directory.`,
-  onStream: (chunk) => process.stdout.write(chunk),
-});
+})) {
+  if (chunk.type === "text-delta") process.stdout.write(chunk.text);
+}
 
 // Read the generated file
 const context = await box.files.read("context7.md");

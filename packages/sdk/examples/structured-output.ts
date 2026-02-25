@@ -45,7 +45,6 @@ await box.files.write({
 const run = await box.agent.run({
   prompt: "Analyze the project in /workspace/home and return a JSON summary",
   responseSchema: AnalysisSchema,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 const analysis = await run.result();

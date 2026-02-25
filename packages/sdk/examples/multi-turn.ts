@@ -16,23 +16,23 @@ console.log(`Box: ${box.id}\n`);
 
 // Turn 1: Create a project
 console.log("=== Turn 1: Create project ===");
-await box.agent.run({
+const run1 = await box.agent.run({
   prompt: `Create a simple Express.js REST API at api/ with:
 - GET /todos — list all todos
 - POST /todos — create a todo
 - DELETE /todos/:id — delete a todo
 Use an in-memory array. Include package.json.`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run1.result());
 
 // Turn 2: Add tests
 console.log("\n\n=== Turn 2: Add tests ===");
-await box.agent.run({
+const run2 = await box.agent.run({
   prompt: `Add tests for the API you just created.
 Use vitest. Test all three endpoints.
 Make sure the tests actually pass — run them.`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run2.result());
 
 // Turn 3: Add validation
 console.log("\n\n=== Turn 3: Add input validation ===");

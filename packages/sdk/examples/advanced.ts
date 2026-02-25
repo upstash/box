@@ -12,15 +12,15 @@ const box = await Box.create({
   },
 });
 
-// Step 1: Ask the agent to create a trim script (streaming)
-await box.agent.run({
+// Step 1: Ask the agent to create a trim script
+const run = await box.agent.run({
   prompt: `Create a Python script at trim.py that:
 - Takes an input mp3 file path and output mp3 file path as arguments
 - Trims the mp3 to the first 60 seconds
 - Uses pydub (install ffmpeg and pydub if needed)
 - Example usage: python trim.py input.mp3 processed/output.mp3`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run.result());
 
 // Step 2: Create the output directory
 await box.exec("mkdir -p processed");
