@@ -1,5 +1,18 @@
 # @upstash/box-cli
 
+## 0.1.8
+
+### Patch Changes
+
+- 117f493: Add /console command
+- 13bbf2f: make result and cost of run sync
+- 26accf7: Fix the issue with cursor moving to the end of the command previews in some terminals
+- 9a4ad3e: Improve box.agent.stream response with Chunk type
+- Updated dependencies [7f6be04]
+- Updated dependencies [13bbf2f]
+- Updated dependencies [9a4ad3e]
+  - @upstash/box@0.1.6
+
 ## 0.1.7
 
 ### Patch Changes
