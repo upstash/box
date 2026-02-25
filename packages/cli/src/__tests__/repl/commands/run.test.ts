@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleRun } from "../../../repl/commands/run.js";
 import type { REPLHooks } from "../../../repl/client.js";
+import { Chunk } from "@upstash/box";
 
 function createHooks() {
   return {
@@ -12,9 +13,9 @@ function createHooks() {
 
 describe("handleRun", () => {
   it("streams agent output to stdout", async () => {
-    async function* fakeStream() {
-      yield "chunk1";
-      yield "chunk2";
+    async function* fakeStream(): AsyncGenerator<Chunk> {
+      yield { type: "text-delta", text: "chunk1" };
+      yield { type: "text-delta", text: "chunk2" };
     }
 
     const mockBox = {

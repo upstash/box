@@ -76,6 +76,23 @@ export interface WebhookConfig {
   headers?: Record<string, string>;
 }
 
+export type Chunk =
+  | { type: "start"; runId: string }
+  | { type: "text-delta"; text: string }
+  | { type: "reasoning"; text: string }
+  | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
+  | {
+      type: "finish";
+      output: string;
+      usage: {
+        inputTokens: number;
+        outputTokens: number;
+      };
+      sessionId: string;
+    }
+  | { type: "stats"; cpuNs: number; memoryPeakBytes: number }
+  | { type: "unknown"; event: string; data: unknown };
+
 /**
  * Options for streaming agent output
  */
@@ -84,6 +101,7 @@ export interface StreamOptions {
   prompt: string;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
+  onChunk?: (part: Chunk) => void;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
   onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
 }
