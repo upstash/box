@@ -25,12 +25,12 @@ console.log("OUTPUT:", JSON.stringify(await run.result()));
 const cost = await run.cost();
 console.log(`Tokens: ${cost.tokens} (${run._inputTokens} in / ${run._outputTokens} out)`);
 
-// Streaming with onStream callback
+// Streaming with async iterator
 console.log("\n--- Streaming ---");
-const streamRun = await box.agent.run({
+for await (const chunk of box.agent.stream({
   prompt: `List 3 programming languages. One per line.`,
-  onStream: (chunk) => process.stdout.write(chunk),
-});
-console.log(`\nTokens: ${streamRun._inputTokens} in / ${streamRun._outputTokens} out`);
+})) {
+  if (chunk.type === "text-delta") process.stdout.write(chunk.text);
+}
 
 // await box.delete();

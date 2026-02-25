@@ -34,8 +34,8 @@ for (let i = 0; i < boxes.length; i++) {
 
   const run = await box.agent.run({
     prompt,
-    onStream: (chunk) => process.stdout.write(chunk),
   });
+  console.log(await run.result());
 
   const cost = await run.cost();
   console.log(`\nTokens: ${cost.tokens}, Cost: $${cost.totalUsd.toFixed(4)}`);

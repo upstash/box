@@ -13,7 +13,6 @@ const box = await Box.create({
 // Run a prompt — the run is tracked on the backend
 const run = await box.agent.run({
   prompt: "Create a hello.ts file that prints 'Hello, World!'",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 // Run ID is assigned by the backend via the run_start SSE event

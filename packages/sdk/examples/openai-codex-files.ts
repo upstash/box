@@ -33,8 +33,8 @@ const run = await box.agent.run({
 1. Add a farewell() function that says "Goodbye, <name>!"
 2. Change greet() to use template literals instead of string concatenation
 3. Call both functions at the bottom`,
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run.result());
 
 const cost = await run.cost();
 console.log(`\n\nTokens: ${cost.tokens} | Status: ${await run.status()}`);

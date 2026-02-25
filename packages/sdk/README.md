@@ -23,7 +23,6 @@ const box = await Box.create({
 
 const run = await box.agent.run({
   prompt: "Create a hello world Express server",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
 
 console.log(await run.result());
@@ -90,12 +89,6 @@ const box = await Box.fromSnapshot("snap_abc123", {
 Run the AI agent with a prompt. Supports streaming, structured output with Zod schemas, timeouts, retries, tool use callbacks, and webhooks.
 
 ```ts
-// Streaming
-const run = await box.agent.run({
-  prompt: "Fix the bug in auth.ts",
-  onStream: (chunk) => process.stdout.write(chunk),
-});
-
 // Structured output
 import { z } from "zod";
 

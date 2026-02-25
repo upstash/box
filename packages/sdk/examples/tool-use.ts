@@ -18,16 +18,17 @@ const box = await Box.create({
 
 console.log(`Box created: ${box.id}\n`);
 
-const run = await box.agent.run({
+for await (const chunk of box.agent.stream({
   prompt: "Create a CLI tool that converts CSV to JSON",
-  onStream: (chunk) => process.stdout.write(chunk),
-  onToolUse: (tool) => {
-    const input = JSON.stringify(tool.input).slice(0, 120);
-    console.log(`\n→ ${tool.name}: ${input}`);
-  },
-});
-
-const cost = await run.cost();
-console.log(`\nTokens: ${cost.tokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
+})) {
+  if (chunk.type === "text-delta") process.stdout.write(chunk.text);
+  if (chunk.type === "tool-call") {
+    const input = JSON.stringify(chunk.input).slice(0, 120);
+    console.log(`\n→ ${chunk.toolName}: ${input}`);
+  }
+  if (chunk.type === "finish") {
+    console.log(`\nTokens: ${chunk.usage.inputTokens + chunk.usage.outputTokens}`);
+  }
+}
 
 await box.delete();

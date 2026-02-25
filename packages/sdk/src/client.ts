@@ -554,7 +554,6 @@ export class Box {
             const text = parsed.text ?? "";
             if (text) {
               rawOutput += text;
-              options.onStream?.(text);
             }
             break;
           }

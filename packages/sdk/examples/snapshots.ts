@@ -13,10 +13,10 @@ const config = {
 // Create a box and do some work
 const box = await Box.create(config);
 
-await box.agent.run({
+const run = await box.agent.run({
   prompt: "Create a hello.ts file that prints 'Hello, World!'",
-  onStream: (chunk) => process.stdout.write(chunk),
 });
+console.log(await run.result());
 
 // Save the workspace as a snapshot
 console.log("\nCreating snapshot...");
