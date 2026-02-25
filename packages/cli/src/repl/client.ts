@@ -6,6 +6,7 @@ import { handleGit } from "./commands/git.js";
 import { handleSnapshot } from "./commands/snapshot.js";
 import { handlePause } from "./commands/pause.js";
 import { handleDelete } from "./commands/delete.js";
+import { handleConsole } from "./commands/console.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
 
 export type REPLHooks = {
@@ -40,6 +41,7 @@ const COMMANDS: Record<
   snapshot: handleSnapshot,
   pause: handlePause,
   delete: handleDelete,
+  console: handleConsole,
 };
 
 /** All available command names (without / prefix). */
@@ -54,6 +56,7 @@ export const COMMAND_DESCRIPTIONS: Record<string, string> = {
   snapshot: "Create a snapshot of the current box",
   pause: "Pause the box and exit",
   delete: "Delete the box and exit",
+  console: "Open the box in Upstash console",
 };
 
 /** Context-aware suggestion after a command completes. */
