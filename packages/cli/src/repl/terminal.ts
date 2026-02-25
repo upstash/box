@@ -10,10 +10,10 @@ import {
   green,
   red,
   yellow,
-  cursorSave,
-  cursorRestore,
+  cursorUp,
   eraseLine,
   eraseDown,
+  stripAnsi,
 } from "../utils/ansi.js";
 
 /**
@@ -40,14 +40,21 @@ export async function startRepl(box: Box): Promise<void> {
 
   // --- Command preview while typing ---
   let previewLines = 0;
+  const promptVisualLen = stripAnsi(prompt).length;
+
+  function restoreCursorColumn() {
+    const cursor = (rl as unknown as { cursor: number }).cursor ?? 0;
+    const col = promptVisualLen + cursor;
+    // \x1b[<n>G = cursor horizontal absolute (1-indexed)
+    stdout.write(`\x1b[${col + 1}G`);
+  }
 
   function clearPreview() {
     if (previewLines > 0) {
-      stdout.write(cursorSave);
-      for (let i = 0; i < previewLines; i++) {
-        stdout.write("\n" + eraseLine);
-      }
-      stdout.write(eraseDown + cursorRestore);
+      // Move one line below input, erase everything from there down,
+      // then move back up. Uses relative movement so it's scroll-safe.
+      stdout.write("\n" + eraseDown + cursorUp(1));
+      restoreCursorColumn();
       previewLines = 0;
     }
   }
@@ -83,7 +90,8 @@ export async function startRepl(box: Box): Promise<void> {
         ghostText = null;
         // Erase leftover ghost text after cursor
         setImmediate(() => {
-          stdout.write(cursorSave + "\x1b[K" + cursorRestore);
+          stdout.write("\x1b[K");
+          restoreCursorColumn();
         });
       }
 
@@ -99,7 +107,8 @@ export async function startRepl(box: Box): Promise<void> {
             const preview = matches
               .map((c) => `  ${dim(`/${c}`)} ${dim("—")} ${dim(COMMAND_DESCRIPTIONS[c] ?? "")}`)
               .join("\n");
-            stdout.write(cursorSave + "\n" + preview + cursorRestore);
+            stdout.write("\n" + preview + cursorUp(matches.length));
+            restoreCursorColumn();
             previewLines = matches.length;
           }
         }
