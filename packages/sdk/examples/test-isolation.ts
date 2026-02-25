@@ -62,7 +62,7 @@ await test("Upload file with relative destination", async () => {
 
 await test("Shell: ls (runs in /workspace/home)", async () => {
   const run = await box.exec("ls");
-  const output = await run.result();
+  const output = run.result;
   return (await run.status()) === 0 && output.includes("test.txt");
 });
 
@@ -124,7 +124,7 @@ console.log("\n=== System paths (should remain accessible for tooling) ===\n");
 
 await test("Shell: git --version", async () => {
   const run = await box.exec("git --version");
-  const output = await run.result();
+  const output = run.result;
   return (await run.status()) === 0 && output.includes("git version");
 });
 
@@ -135,13 +135,13 @@ await test("Shell: node --version", async () => {
 
 await test("Shell: read /etc/ssl/certs (TLS works)", async () => {
   const run = await box.exec("ls /etc/ssl/certs | head -3");
-  const output = await run.result();
+  const output = run.result;
   return (await run.status()) === 0 && output.length > 0;
 });
 
 await test("Shell: DNS resolution works", async () => {
   const run = await box.exec("cat /etc/resolv.conf");
-  const output = await run.result();
+  const output = run.result;
   return (await run.status()) === 0 && output.includes("nameserver");
 });
 

@@ -20,7 +20,7 @@ describe("box.agent.run", () => {
 
     const run = await box.agent.run({ prompt: "say hello" });
     expect(run.id).toBe("real-run-1");
-    expect(await run.result()).toBe("Hello world");
+    expect(run.result).toBe("Hello world");
     expect(run._status).toBe("completed");
     expect(run._inputTokens).toBe(10);
     expect(run._outputTokens).toBe(20);
@@ -71,7 +71,7 @@ describe("box.agent.run", () => {
       responseSchema: schema,
     });
 
-    const result = await run.result();
+    const result = run.result;
     expect(result).toEqual({ name: "test", count: 42 });
   });
 
@@ -93,7 +93,7 @@ describe("box.agent.run", () => {
       responseSchema: schema,
     });
 
-    expect(await run.result()).toEqual({ value: 1 });
+    expect(run.result).toEqual({ value: 1 });
   });
 
   it("throws on invalid structured output", async () => {
@@ -130,7 +130,7 @@ describe("box.agent.run", () => {
     );
 
     const run = await box.agent.run({ prompt: "test" });
-    expect(await run.result()).toBe("final output");
+    expect(run.result).toBe("final output");
   });
 
   it("throws on missing prompt", async () => {

@@ -33,12 +33,12 @@ For each issue found, provide:
 Format the output as a markdown report.`,
 });
 
-const output = await run.result();
-const cost = await run.cost();
+const output = run.result;
+const cost = run.cost;
 
 console.log(output);
 console.log(`\n---`);
-console.log(`Tokens: ${cost.tokens}`);
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 
 // Save the report to the box and download it
 await box.files.write({ path: "review.md", content: output });

@@ -24,7 +24,7 @@ console.log(`Box created: ${box.id}`);
 const run = await box.agent.run({
   prompt: "Create a simple Express REST API with GET /users and POST /users endpoints. Use TypeScript.",
 });
-console.log(await run.result());
+console.log(run.result);
 
 // List what was created
 const files = await box.files.list();
@@ -55,7 +55,7 @@ console.log(`Restored files: ${restoredFiles.map((f) => f.name).join(", ")}`);
 const run2 = await restored.agent.run({
   prompt: "Add input validation with zod to the POST /users endpoint",
 });
-console.log(await run2.result());
+console.log(run2.result);
 
 // Cleanup
 console.log("\n\n=== Cleanup ===");

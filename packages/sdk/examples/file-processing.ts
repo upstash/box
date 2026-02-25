@@ -28,7 +28,7 @@ const run = await box.agent.run({
 
 Example: python process.py input.csv output/clean.csv`,
 });
-const output = await run.result();
+const output = run.result;
 console.log("Script created.");
 console.log(output.slice(0, 300));
 
@@ -53,7 +53,7 @@ for (const file of csvFiles) {
     `python process.py ${file} output/${file}`,
   );
 
-  const procOutput = await proc.result();
+  const procOutput = proc.result;
   const procStatus = await proc.status();
 
   if (procStatus === "completed") {

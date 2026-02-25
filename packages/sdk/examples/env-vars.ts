@@ -25,7 +25,7 @@ console.log(`Box created: ${box.id}\n`);
 // Verify env vars are available inside the sandbox
 const result = await box.exec("echo $DATABASE_URL && echo $NODE_ENV");
 console.log("Env vars inside sandbox:");
-console.log(await result.result());
+console.log(result.result);
 
 // Agent can use them too
 const run = await box.agent.run({

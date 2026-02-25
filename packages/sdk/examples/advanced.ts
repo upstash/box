@@ -20,7 +20,7 @@ const run = await box.agent.run({
 - Uses pydub (install ffmpeg and pydub if needed)
 - Example usage: python trim.py input.mp3 processed/output.mp3`,
 });
-console.log(await run.result());
+console.log(run.result);
 
 // Step 2: Create the output directory
 await box.exec("mkdir -p processed");
@@ -43,7 +43,7 @@ for (const file of mp3Files) {
     `python trim.py ${file} processed/${file}`,
   );
 
-  const cost = await trim.cost();
+  const cost = trim.cost;
   console.log(`  Done — ${cost.computeMs}ms`);
 }
 

@@ -35,48 +35,28 @@ describe("Run", () => {
     const run = new Run<string>(box, "agent", "run-1");
     run._result = "hello world";
 
-    const result = await run.result();
-    expect(result).toBe("hello world");
+    expect(run.result).toBe("hello world");
   });
 
   it("returns empty string when result is null", async () => {
     const { box } = await createTestBox();
     const run = new Run<string>(box, "agent", "run-1");
 
-    const result = await run.result();
-    expect(result).toBe("");
+    expect(run.result).toBe("");
   });
 
-  it("fetches cost from backend", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock.mockResolvedValueOnce(
-      mockResponse({
-        input_tokens: 100,
-        output_tokens: 50,
-        duration_ms: 5000,
-        cost_usd: 0.01,
-      }),
-    );
+  it("returns local cost", async () => {
+    const { box } = await createTestBox();
 
     const run = new Run(box, "agent", "run-1");
-    const cost = await run.cost();
-    expect(cost.tokens).toBe(150);
+    run._inputTokens = 100;
+    run._outputTokens = 50;
+    run._computeMs = 5000;
+
+    const cost = run.cost;
+    expect(cost.inputTokens).toBe(100);
+    expect(cost.outputTokens).toBe(50);
     expect(cost.computeMs).toBe(5000);
-    expect(cost.totalUsd).toBe(0.01);
-  });
-
-  it("falls back to local cost on fetch failure", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock.mockRejectedValueOnce(new Error("network"));
-
-    const run = new Run(box, "agent", "run-1");
-    run._inputTokens = 80;
-    run._outputTokens = 40;
-    run._computeMs = 3000;
-
-    const cost = await run.cost();
-    expect(cost.tokens).toBe(120);
-    expect(cost.computeMs).toBe(3000);
     expect(cost.totalUsd).toBe(0);
   });
 

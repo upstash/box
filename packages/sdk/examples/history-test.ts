@@ -40,9 +40,9 @@ async function main() {
         prompt,
       });
 
-      const result = await run.result();
-      const cost = await run.cost();
-      console.log(`\nCompleted. Tokens: ${cost.tokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
+      const result = run.result;
+      const cost = run.cost;
+      console.log(`\nCompleted. Tokens: ${cost.inputTokens + cost.outputTokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
     } catch (err) {
       console.error(`\nRun ${i + 1} failed:`, err);
     }
@@ -108,9 +108,9 @@ async function main() {
         prompt,
       });
 
-      await run.result();
-      const cost = await run.cost();
-      console.log(`\nCompleted. Tokens: ${cost.tokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
+      run.result;
+      const cost = run.cost;
+      console.log(`\nCompleted. Tokens: ${cost.inputTokens + cost.outputTokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
     } catch (err) {
       console.error(`\nBox 2 Run ${i + 1} failed:`, err);
     }

@@ -16,7 +16,7 @@ const box = await Box.create(config);
 const run = await box.agent.run({
   prompt: "Create a hello.ts file that prints 'Hello, World!'",
 });
-console.log(await run.result());
+console.log(run.result);
 
 // Save the workspace as a snapshot
 console.log("\nCreating snapshot...");

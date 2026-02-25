@@ -23,7 +23,7 @@ const run1 = await box.agent.run({
 - DELETE /todos/:id — delete a todo
 Use an in-memory array. Include package.json.`,
 });
-console.log(await run1.result());
+console.log(run1.result);
 
 // Turn 2: Add tests
 console.log("\n\n=== Turn 2: Add tests ===");
@@ -32,7 +32,7 @@ const run2 = await box.agent.run({
 Use vitest. Test all three endpoints.
 Make sure the tests actually pass — run them.`,
 });
-console.log(await run2.result());
+console.log(run2.result);
 
 // Turn 3: Add validation
 console.log("\n\n=== Turn 3: Add input validation ===");
@@ -42,9 +42,9 @@ const run = await box.agent.run({
 - Return 400 with an error message if invalid
 Update the tests to cover validation cases. Run the tests.`,
 });
-console.log(await run.result());
-const cost = await run.cost();
-console.log(`Tokens: ${cost.tokens}`);
+console.log(run.result);
+const cost = run.cost;
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 
 // Check final project structure
 const files = await box.files.list("api");

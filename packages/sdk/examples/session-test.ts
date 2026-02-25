@@ -19,21 +19,21 @@ console.log("=== Prompt 1: Telling it a secret ===");
 const run1 = await box.agent.run({
   prompt: "Remember this: the secret code is PINEAPPLE-42. Don't write it to any file, just remember it.",
 });
-console.log(await run1.result());
+console.log(run1.result);
 
 // Prompt 2: Ask it to recall
 console.log("\n=== Prompt 2: Asking to recall ===");
 const run2 = await box.agent.run({
   prompt: "What is the secret code I told you earlier?",
 });
-console.log(await run2.result());
+console.log(run2.result);
 
 // Prompt 3: Ask what we talked about
 console.log("\n=== Prompt 3: Asking about conversation history ===");
 const run3 = await box.agent.run({
   prompt: "Summarize everything we've discussed so far in this conversation. List each prompt I gave you and what you responded.",
 });
-console.log(await run3.result());
+console.log(run3.result);
 
 await box.delete();
 console.log("\nDone. Box deleted.");

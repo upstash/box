@@ -23,8 +23,8 @@ const status = await run.status();
 console.log(`Status: ${status}`);
 
 // Cost includes real USD pricing from the backend
-const cost = await run.cost();
-console.log(`Tokens: ${cost.tokens}`);
+const cost = run.cost;
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 console.log(`Duration: ${cost.computeMs}ms`);
 console.log(`Cost: $${cost.totalUsd.toFixed(4)}`);
 

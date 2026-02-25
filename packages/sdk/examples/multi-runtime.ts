@@ -35,10 +35,10 @@ for (let i = 0; i < boxes.length; i++) {
   const run = await box.agent.run({
     prompt,
   });
-  console.log(await run.result());
+  console.log(run.result);
 
-  const cost = await run.cost();
-  console.log(`\nTokens: ${cost.tokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
+  const cost = run.cost;
+  console.log(`\nTokens: ${cost.inputTokens + cost.outputTokens}, Cost: $${cost.totalUsd.toFixed(4)}`);
 
   // Show the created files
   const files = await box.files.list();

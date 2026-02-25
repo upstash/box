@@ -48,8 +48,8 @@ const results = await Promise.all(
 
     // List generated files
     const files = await box.files.list("output");
-    const output = await run.result();
-    const cost = await run.cost();
+    const output = run.result;
+    const cost = run.cost;
 
     await box.delete();
 
@@ -57,7 +57,7 @@ const results = await Promise.all(
       name: task.name,
       output: output.slice(0, 200),
       files: files.map((f) => f.name),
-      tokens: cost.tokens,
+      tokens: cost.inputTokens + cost.outputTokens,
       durationMs: Date.now() - start,
     };
   }),

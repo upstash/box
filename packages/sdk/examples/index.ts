@@ -16,15 +16,15 @@ console.log(`Created box: ${box.id}`);
 const run = await box.agent.run({
   prompt: "List all files in the current directory and describe what you see",
 });
-const output = await run.result();
-const cost = await run.cost();
+const output = run.result;
+const cost = run.cost;
 console.log(output);
-console.log(`Tokens: ${cost.tokens}`);
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 
 // Shell command
 console.log("\n\n=== Shell ===");
 const shell = await box.exec("ls -la");
-const shellOutput = await shell.result();
+const shellOutput = shell.result;
 console.log(shellOutput);
 
 // Status

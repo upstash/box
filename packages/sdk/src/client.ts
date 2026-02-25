@@ -104,9 +104,9 @@ export class Run<T = string> {
   }
 
   /**
-   * Get the run result. Returns the typed output when responseSchema was provided.
+   * The run result. Returns the typed output when responseSchema was provided.
    */
-  async result(): Promise<T> {
+  get result(): T {
     if (this._result === null) {
       return "" as T;
     }
@@ -114,28 +114,15 @@ export class Run<T = string> {
   }
 
   /**
-   * Get token usage and cost information. Fetches from backend when available.
+   * Token usage and cost information.
    */
-  async cost(): Promise<RunCost> {
-    try {
-      const data = await this._box._request<{
-        input_tokens?: number;
-        output_tokens?: number;
-        duration_ms?: number;
-        cost_usd?: number;
-      }>("GET", `/v2/box/${this._box.id}/runs/${this._id}`);
-      return {
-        tokens: (data.input_tokens ?? 0) + (data.output_tokens ?? 0),
-        computeMs: data.duration_ms ?? 0,
-        totalUsd: data.cost_usd ?? 0,
-      };
-    } catch {
-      return {
-        tokens: this._inputTokens + this._outputTokens,
-        computeMs: this._computeMs || Date.now() - this._startTime,
-        totalUsd: 0,
-      };
-    }
+  get cost(): RunCost {
+    return {
+      inputTokens: this._inputTokens,
+      outputTokens: this._outputTokens,
+      computeMs: this._computeMs || Date.now() - this._startTime,
+      totalUsd: 0,
+    };
   }
 
   /**
@@ -180,7 +167,7 @@ export class Run<T = string> {
  *
  * // Non-streaming
  * const run = await box.agent.run({ prompt: "Fix the bug in auth.ts" });
- * console.log(await run.result());
+ * console.log(run.result);
  *
  * // Streaming
  * for await (const part of box.agent.stream({ prompt: "Add tests" })) {
@@ -451,7 +438,7 @@ export class Box {
       // Run in background, don't await
       this._runWithRetries(options).then(
         async (completedRun) => {
-          const cost = await completedRun.cost();
+          const cost = completedRun.cost;
           const payload: WebhookPayload = {
             runId: completedRun.id,
             boxId,
@@ -468,7 +455,7 @@ export class Box {
             boxId,
             status: "failed",
             result: null,
-            cost: { tokens: 0, computeMs: 0, totalUsd: 0 },
+            cost: { inputTokens: 0, outputTokens: 0, computeMs: 0, totalUsd: 0 },
             completedAt: new Date().toISOString(),
             error: err instanceof Error ? err.message : String(err),
           };
@@ -800,7 +787,7 @@ export class Box {
    * @example
    * ```ts
    * const run = await box.exec("node /work/index.js");
-   * console.log(await run.result());
+   * console.log(run.result);
    * console.log(await run.status()); // "completed"
    * ```
    */
