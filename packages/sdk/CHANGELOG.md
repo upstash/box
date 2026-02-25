@@ -1,5 +1,13 @@
 # @upstash/box
 
+## 0.1.6
+
+### Patch Changes
+
+- 7f6be04: rm onStream from box.agent.run
+- 13bbf2f: make result and cost of run sync
+- 9a4ad3e: Improve box.agent.stream response with Chunk type
+
 ## 0.1.5
 
 ### Patch Changes
