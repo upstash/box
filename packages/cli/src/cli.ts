@@ -7,6 +7,7 @@ import { fromSnapshotCommand } from "./commands/from-snapshot.js";
 import { listCommand } from "./commands/list.js";
 import { getCommand } from "./commands/get.js";
 import { initDemoCommand } from "./commands/init-demo.js";
+import { snapshotCommand } from "./commands/snapshot.js";
 import { completionCommand } from "./commands/completion.js";
 
 const program = new Command();
@@ -65,6 +66,13 @@ program
   .description("Get details about a box")
   .option("--token <token>", "Upstash Box API token")
   .action((boxId, opts) => getCommand(boxId, opts));
+
+program
+  .command("snapshot [box-id]")
+  .description("Create a snapshot of a box")
+  .option("--token <token>", "Upstash Box API token")
+  .option("--name <name>", "Snapshot name")
+  .action((boxId, opts) => snapshotCommand(boxId, opts));
 
 program
   .command("init-demo")
