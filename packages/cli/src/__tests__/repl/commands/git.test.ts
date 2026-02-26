@@ -1,14 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleGit } from "../../../repl/commands/git.js";
-import type { REPLHooks } from "../../../repl/client.js";
-
-function createHooks() {
-  return {
-    onLog: vi.fn() as unknown as REPLHooks["onLog"],
-    onError: vi.fn() as unknown as REPLHooks["onError"],
-    onStream: vi.fn() as unknown as REPLHooks["onStream"],
-  };
-}
+import { collectEvents } from "../helpers.js";
 
 describe("handleGit", () => {
   function createMockBox() {
@@ -24,64 +16,58 @@ describe("handleGit", () => {
   describe("clone", () => {
     it("clones a repo", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleGit(box as any, "clone owner/repo", hooks);
+      const events = await collectEvents(handleGit(box as any, "clone owner/repo"));
       expect(box.git.clone).toHaveBeenCalledWith({ repo: "owner/repo", branch: undefined });
-      expect(hooks.onLog).toHaveBeenCalledWith("Cloned owner/repo");
+      expect(events).toContainEqual({ type: "log", message: "Cloned owner/repo" });
     });
 
     it("clones with branch", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleGit(box as any, "clone owner/repo dev", hooks);
+      const events = await collectEvents(handleGit(box as any, "clone owner/repo dev"));
       expect(box.git.clone).toHaveBeenCalledWith({ repo: "owner/repo", branch: "dev" });
     });
 
     it("prints usage without repo", async () => {
-      const hooks = createHooks();
-      await handleGit(createMockBox() as any, "clone", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("Usage: git clone <repo> [branch]");
+      const events = await collectEvents(handleGit(createMockBox() as any, "clone"));
+      expect(events).toContainEqual({ type: "log", message: "Usage: git clone <repo> [branch]" });
     });
   });
 
   describe("diff", () => {
     it("prints diff", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleGit(box as any, "diff", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("+added line");
+      const events = await collectEvents(handleGit(box as any, "diff"));
+      expect(events).toContainEqual({ type: "log", message: "+added line" });
     });
 
     it("prints no changes when diff is empty", async () => {
       const box = createMockBox();
       box.git.diff.mockResolvedValue("");
-      const hooks = createHooks();
-      await handleGit(box as any, "diff", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("(no changes)");
+      const events = await collectEvents(handleGit(box as any, "diff"));
+      expect(events).toContainEqual({ type: "log", message: "(no changes)" });
     });
   });
 
   describe("create-pr", () => {
     it("creates a PR and prints details", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleGit(box as any, "create-pr Fix the bug", hooks);
+      const events = await collectEvents(handleGit(box as any, "create-pr Fix the bug"));
       expect(box.git.createPR).toHaveBeenCalledWith({ title: "Fix the bug" });
-      expect(hooks.onLog).toHaveBeenCalledWith("PR #42: https://github.com/pr/42");
+      expect(events).toContainEqual({ type: "log", message: "PR #42: https://github.com/pr/42" });
     });
 
     it("prints usage without title", async () => {
-      const hooks = createHooks();
-      await handleGit(createMockBox() as any, "create-pr", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("Usage: git create-pr <title>");
+      const events = await collectEvents(handleGit(createMockBox() as any, "create-pr"));
+      expect(events).toContainEqual({ type: "log", message: "Usage: git create-pr <title>" });
     });
   });
 
   describe("unknown subcommand", () => {
     it("prints usage", async () => {
-      const hooks = createHooks();
-      await handleGit(createMockBox() as any, "", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith(expect.stringContaining("Usage: git"));
+      const events = await collectEvents(handleGit(createMockBox() as any, ""));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: git") }),
+      );
     });
   });
 });

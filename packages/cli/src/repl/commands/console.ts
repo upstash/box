@@ -1,24 +1,14 @@
-import { exec } from "node:child_process";
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../client.js";
+import type { BoxREPLEvent } from "../types.js";
 
 const UPSTASH_CONSOLE_URL = "https://console.upstash.com/box/resolve";
 
 /**
  * Open the Upstash console for the current box in the default browser.
+ * Yields an open-url event; the consumer handles actually opening the browser.
  */
-export async function handleConsole(box: Box, _args: string, hooks: REPLHooks): Promise<void> {
+export async function* handleConsole(box: Box, _args: string): AsyncGenerator<BoxREPLEvent> {
   const url = `${UPSTASH_CONSOLE_URL}/${box.id}`;
-
-  const openCmd =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-
-  exec(`${openCmd} ${url}`, (err) => {
-    if (err) {
-      hooks.onError(`Failed to open browser: ${err.message}`);
-      return;
-    }
-  });
-
-  hooks.onLog(`Opening ${url}`);
+  yield { type: "open-url", url };
+  yield { type: "log", message: `Opening ${url}` };
 }

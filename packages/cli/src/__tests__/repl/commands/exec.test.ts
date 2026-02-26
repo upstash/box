@@ -1,14 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleExec } from "../../../repl/commands/exec.js";
-import type { REPLHooks } from "../../../repl/client.js";
-
-function createHooks() {
-  return {
-    onLog: vi.fn() as unknown as REPLHooks["onLog"],
-    onError: vi.fn() as unknown as REPLHooks["onError"],
-    onStream: vi.fn() as unknown as REPLHooks["onStream"],
-  };
-}
+import { collectEvents } from "../helpers.js";
 
 describe("handleExec", () => {
   it("executes command and prints output", async () => {
@@ -16,12 +8,11 @@ describe("handleExec", () => {
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };
-    const hooks = createHooks();
 
-    await handleExec(mockBox as any, "echo hello world", hooks);
+    const events = await collectEvents(handleExec(mockBox as any, "echo hello world"));
 
     expect(mockBox.exec).toHaveBeenCalledWith("echo hello world");
-    expect(hooks.onLog).toHaveBeenCalledWith("hello world");
+    expect(events).toContainEqual({ type: "log", message: "hello world" });
   });
 
   it("does not print when output is empty", async () => {
@@ -29,16 +20,14 @@ describe("handleExec", () => {
     const mockBox = {
       exec: vi.fn().mockResolvedValue(mockRun),
     };
-    const hooks = createHooks();
 
-    await handleExec(mockBox as any, "true", hooks);
+    const events = await collectEvents(handleExec(mockBox as any, "true"));
 
-    expect(hooks.onLog).not.toHaveBeenCalled();
+    expect(events).not.toContainEqual(expect.objectContaining({ type: "log" }));
   });
 
   it("prints usage when no command", async () => {
-    const hooks = createHooks();
-    await handleExec({} as any, "", hooks);
-    expect(hooks.onLog).toHaveBeenCalledWith("Usage: exec <command>");
+    const events = await collectEvents(handleExec({} as any, ""));
+    expect(events).toContainEqual({ type: "log", message: "Usage: exec <command>" });
   });
 });

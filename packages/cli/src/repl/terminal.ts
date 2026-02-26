@@ -1,7 +1,9 @@
+import { exec } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import type { Box } from "@upstash/box";
-import { BoxREPLClient, COMMAND_NAMES, COMMAND_DESCRIPTIONS } from "./client.js";
+import type { BoxREPLEvent } from "./types.js";
+import { BoxREPLClient } from "./client.js";
 import { startSpinner } from "./spinner.js";
 import {
   bold,
@@ -27,6 +29,7 @@ export async function startRepl(box: Box): Promise<void> {
   });
 
   const prompt = `${bold(cyan(box.id))}${dim(">")} `;
+  const client = new BoxREPLClient(box);
 
   // --- Spinner tracking ---
   let activeSpinnerStop: (() => void) | null = null;
@@ -102,10 +105,10 @@ export async function startRepl(box: Box): Promise<void> {
 
         if (line.startsWith("/") && !line.includes(" ")) {
           const partial = line.slice(1);
-          const matches = COMMAND_NAMES.filter((c) => c.startsWith(partial)).slice(0, 5);
+          const matches = BoxREPLClient.suggestCommands(partial).slice(0, 5);
           if (matches.length > 0) {
             const preview = matches
-              .map((c) => `  ${dim(`/${c}`)} ${dim("—")} ${dim(COMMAND_DESCRIPTIONS[c] ?? "")}`)
+              .map((c) => `  ${dim(`/${c.name}`)} ${dim("—")} ${dim(c.description)}`)
               .join("\n");
             stdout.write("\n" + preview + cursorUp(matches.length));
             restoreCursorColumn();
@@ -116,14 +119,74 @@ export async function startRepl(box: Box): Promise<void> {
     });
   }
 
-  const client = new BoxREPLClient({
-    box,
-    promptUser: () => {
+  /** Map a single event to terminal actions. Returns true if the loop should exit. */
+  function processEvent(event: BoxREPLEvent): boolean {
+    switch (event.type) {
+      case "command:start":
+        stdout.write("\n");
+        activeSpinnerStop = startSpinner();
+        break;
+      case "log":
+        ensureSpinnerStopped();
+        clearPreview();
+        console.log(event.message);
+        break;
+      case "error":
+        ensureSpinnerStopped();
+        clearPreview();
+        console.error(red(event.message));
+        break;
+      case "stream":
+        ensureSpinnerStopped();
+        process.stdout.write(event.text);
+        break;
+      case "command:complete": {
+        const seconds = (event.durationMs / 1000).toFixed(1);
+        console.log(dim(`\n  /${event.command} completed in ${seconds}s\n`));
+        break;
+      }
+      case "suggestion":
+        nextSuggestion = event.text;
+        break;
+      case "command:not-found":
+        console.error(yellow(`\nUnknown command: /${event.typed}`));
+        if (event.suggestions.length > 0) {
+          console.log(
+            yellow(`Did you mean: ${event.suggestions.map((s) => `/${s}`).join(", ")}?\n`),
+          );
+        }
+        break;
+      case "open-url": {
+        const openCmd =
+          process.platform === "darwin"
+            ? "open"
+            : process.platform === "win32"
+              ? "start"
+              : "xdg-open";
+        exec(`${openCmd} ${event.url}`);
+        break;
+      }
+      case "exit":
+        return true;
+    }
+    return false;
+  }
+
+  // --- Welcome message ---
+  const allCommands = BoxREPLClient.suggestCommands("");
+  console.log(`\nConnected to box ${box.id}`);
+  console.log(
+    `Type a prompt to run the agent, or use commands: ${allCommands.map((c) => `/${c.name}`).join(", ")}, /exit\n`,
+  );
+
+  // --- Main REPL loop ---
+  try {
+    while (true) {
       clearPreview();
       const suggestion = nextSuggestion;
       nextSuggestion = null;
 
-      const promise = rl.question(prompt).then((input) => {
+      const answer = await rl.question(prompt).then((input) => {
         // Rewrite the prompt line with the input in green
         if (input.trim()) {
           stdout.write(`\x1b[A\r${eraseLine}${prompt}${green(input)}\n`);
@@ -135,51 +198,21 @@ export async function startRepl(box: Box): Promise<void> {
         setImmediate(() => showGhost(suggestion));
       }
 
-      return promise;
-    },
-    hooks: {
-      onLog: (message) => {
-        ensureSpinnerStopped();
-        clearPreview();
-        console.log(message);
-      },
-      onError: (message) => {
-        ensureSpinnerStopped();
-        clearPreview();
-        console.error(red(message));
-      },
-      onStream: (chunk) => {
-        ensureSpinnerStopped();
-        process.stdout.write(chunk);
-      },
-
-      onLoadingStart: () => {
-        stdout.write("\n");
-        const stop = startSpinner();
-        activeSpinnerStop = stop;
-        return stop;
-      },
-
-      onSuggestion: (text) => {
-        nextSuggestion = text;
-      },
-
-      onCommandComplete: (command, durationMs) => {
-        const seconds = (durationMs / 1000).toFixed(1);
-        console.log(dim(`\n  /${command} completed in ${seconds}s\n`));
-      },
-
-      onCommandNotFound: (typed, suggestions) => {
-        console.error(yellow(`\nUnknown command: /${typed}`));
-        if (suggestions.length > 0) {
-          console.log(yellow(`Did you mean: ${suggestions.map((s) => `/${s}`).join(", ")}?\n`));
+      let shouldExit = false;
+      try {
+        for await (const event of client.handleInput(answer)) {
+          if (processEvent(event)) {
+            shouldExit = true;
+            break;
+          }
         }
-      },
-    },
-  });
+      } catch (err) {
+        ensureSpinnerStopped();
+        console.error(red(`Error: ${err instanceof Error ? err.message : err}`));
+      }
 
-  try {
-    await client.startLoop();
+      if (shouldExit) break;
+    }
   } finally {
     clearPreview();
     rl.close();

@@ -1,5 +1,4 @@
 import { readFile as fsReadFile, writeFile as fsWriteFile, mkdir } from "node:fs/promises";
-import { randomUUID, createHmac } from "node:crypto";
 import { basename, join } from "node:path";
 
 import type {
@@ -78,7 +77,7 @@ export class Run<T = string> {
 
   /** @internal */
   constructor(box: Box, type: "agent" | "shell", id?: string) {
-    this._id = id ?? randomUUID();
+    this._id = id ?? crypto.randomUUID();
     this.type = type;
     this._box = box;
     this._startTime = Date.now();
@@ -213,7 +212,7 @@ export class Box {
   private _gitToken?: string;
   private _isAgentConfigured: boolean;
 
-  private constructor(
+  constructor(
     data: BoxData,
     config: {
       baseUrl: string;
@@ -1200,7 +1199,18 @@ async function sendWebhook(config: WebhookConfig, payload: WebhookPayload): Prom
     };
 
     if (config.secret) {
-      const signature = createHmac("sha256", config.secret).update(body).digest("hex");
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(config.secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
+      const signature = Array.from(new Uint8Array(sig))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
       headers["X-Box-Signature"] = signature;
     }
 

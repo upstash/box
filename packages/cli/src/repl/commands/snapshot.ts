@@ -1,11 +1,11 @@
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../client.js";
+import type { BoxREPLEvent } from "../types.js";
 
 /**
  * Create a snapshot of the current box state.
  */
-export async function handleSnapshot(box: Box, args: string, hooks: REPLHooks): Promise<void> {
+export async function* handleSnapshot(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
   const name = args.trim() || `snapshot-${Date.now()}`;
   const snapshot = await box.snapshot({ name });
-  hooks.onLog(`Snapshot created: ${snapshot.id} (${snapshot.name})`);
+  yield { type: "log", message: `Snapshot created: ${snapshot.id} (${snapshot.name})` };
 }

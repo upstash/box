@@ -1,14 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleFiles } from "../../../repl/commands/files.js";
-import type { REPLHooks } from "../../../repl/client.js";
-
-function createHooks() {
-  return {
-    onLog: vi.fn() as unknown as REPLHooks["onLog"],
-    onError: vi.fn() as unknown as REPLHooks["onError"],
-    onStream: vi.fn() as unknown as REPLHooks["onStream"],
-  };
-}
+import { collectEvents } from "../helpers.js";
 
 describe("handleFiles", () => {
   function createMockBox() {
@@ -29,85 +21,85 @@ describe("handleFiles", () => {
   describe("read", () => {
     it("reads and prints file content", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "read app.ts", hooks);
+      const events = await collectEvents(handleFiles(box as any, "read app.ts"));
       expect(box.files.read).toHaveBeenCalledWith("app.ts");
-      expect(hooks.onLog).toHaveBeenCalledWith("file content");
+      expect(events).toContainEqual({ type: "log", message: "file content" });
     });
 
     it("prints usage without path", async () => {
-      const hooks = createHooks();
-      await handleFiles(createMockBox() as any, "read", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files read <path>");
+      const events = await collectEvents(handleFiles(createMockBox() as any, "read"));
+      expect(events).toContainEqual({ type: "log", message: "Usage: files read <path>" });
     });
   });
 
   describe("write", () => {
     it("writes file content", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "write hello.txt hello world", hooks);
+      const events = await collectEvents(handleFiles(box as any, "write hello.txt hello world"));
       expect(box.files.write).toHaveBeenCalledWith({ path: "hello.txt", content: "hello world" });
-      expect(hooks.onLog).toHaveBeenCalledWith("Written to hello.txt");
+      expect(events).toContainEqual({ type: "log", message: "Written to hello.txt" });
     });
 
     it("prints usage without args", async () => {
-      const hooks = createHooks();
-      await handleFiles(createMockBox() as any, "write", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files write <path> <content>");
+      const events = await collectEvents(handleFiles(createMockBox() as any, "write"));
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Usage: files write <path> <content>",
+      });
     });
   });
 
   describe("list", () => {
     it("lists files with directory indicator", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "list", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("src/\t0");
-      expect(hooks.onLog).toHaveBeenCalledWith("index.ts\t100");
+      const events = await collectEvents(handleFiles(box as any, "list"));
+      expect(events).toContainEqual({ type: "log", message: "src/\t0" });
+      expect(events).toContainEqual({ type: "log", message: "index.ts\t100" });
     });
   });
 
   describe("upload", () => {
     it("uploads a file", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "upload ./local.txt remote.txt", hooks);
+      const events = await collectEvents(handleFiles(box as any, "upload ./local.txt remote.txt"));
       expect(box.files.upload).toHaveBeenCalledWith([
         { path: "./local.txt", destination: "remote.txt" },
       ]);
-      expect(hooks.onLog).toHaveBeenCalledWith(expect.stringContaining("Uploaded"));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Uploaded") }),
+      );
     });
 
     it("prints usage without args", async () => {
-      const hooks = createHooks();
-      await handleFiles(createMockBox() as any, "upload", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith("Usage: files upload <local-path> <destination>");
+      const events = await collectEvents(handleFiles(createMockBox() as any, "upload"));
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Usage: files upload <local-path> <destination>",
+      });
     });
   });
 
   describe("download", () => {
     it("downloads files", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "download /work", hooks);
+      const events = await collectEvents(handleFiles(box as any, "download /work"));
       expect(box.files.download).toHaveBeenCalledWith({ path: "/work" });
-      expect(hooks.onLog).toHaveBeenCalledWith("Downloaded.");
+      expect(events).toContainEqual({ type: "log", message: "Downloaded." });
     });
 
     it("downloads without path", async () => {
       const box = createMockBox();
-      const hooks = createHooks();
-      await handleFiles(box as any, "download", hooks);
+      const events = await collectEvents(handleFiles(box as any, "download"));
       expect(box.files.download).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe("unknown subcommand", () => {
     it("prints usage", async () => {
-      const hooks = createHooks();
-      await handleFiles(createMockBox() as any, "", hooks);
-      expect(hooks.onLog).toHaveBeenCalledWith(expect.stringContaining("Usage: files"));
+      const events = await collectEvents(handleFiles(createMockBox() as any, ""));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: files") }),
+      );
     });
   });
 });
