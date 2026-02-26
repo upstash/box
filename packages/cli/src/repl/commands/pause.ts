@@ -1,11 +1,11 @@
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../client.js";
+import type { BoxREPLEvent } from "../types.js";
 
 /**
- * Pause the box. Returns true to signal the REPL to exit.
+ * Pause the box. Yields an exit event to signal the REPL to stop.
  */
-export async function handlePause(box: Box, _args: string, hooks: REPLHooks): Promise<boolean> {
+export async function* handlePause(box: Box, _args: string): AsyncGenerator<BoxREPLEvent> {
   await box.pause();
-  hooks.onLog(`Box ${box.id} paused.`);
-  return true;
+  yield { type: "log", message: `Box ${box.id} paused.` };
+  yield { type: "exit", message: `Box ${box.id} paused.` };
 }

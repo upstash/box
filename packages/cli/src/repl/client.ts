@@ -1,4 +1,5 @@
 import type { Box } from "@upstash/box";
+import type { BoxREPLEvent, BoxREPLCommand, BoxREPLCommandName } from "./types.js";
 import { handleRun } from "./commands/run.js";
 import { handleExec } from "./commands/exec.js";
 import { handleFiles } from "./commands/files.js";
@@ -9,58 +10,27 @@ import { handleDelete } from "./commands/delete.js";
 import { handleConsole } from "./commands/console.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
 
-export type REPLHooks = {
-  // Required — core functionality
-  onLog: (message: string) => void;
-  onError: (message: string) => void;
-  onStream: (message: string) => void;
-
-  // Optional — each hook's presence enables its feature
-
-  /** Loading indicator. Return a stop() function. */
-  onLoadingStart?: () => () => void;
-
-  /** Post-command suggestion (e.g. "try: /snapshot"). */
-  onSuggestion?: (text: string) => void;
-
-  /** Timing info after each command. */
-  onCommandComplete?: (command: string, durationMs: number) => void;
-
-  /** Unknown /command with fuzzy suggestions. Falls back to onError if absent. */
-  onCommandNotFound?: (typed: string, suggestions: string[]) => void;
-};
-
-const COMMANDS: Record<
-  string,
-  (box: Box, args: string, hooks: REPLHooks) => Promise<boolean | void>
-> = {
-  run: handleRun,
-  exec: handleExec,
-  files: handleFiles,
-  git: handleGit,
-  snapshot: handleSnapshot,
-  pause: handlePause,
-  delete: handleDelete,
-  console: handleConsole,
+const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
+  run: { description: "Run the agent with a prompt", handler: handleRun },
+  exec: { description: "Execute a shell command", handler: handleExec },
+  files: { description: "File operations (read, write, list, upload, download)", handler: handleFiles },
+  git: { description: "Git operations (clone, diff, create-pr)", handler: handleGit },
+  snapshot: { description: "Create a snapshot of the current box", handler: handleSnapshot },
+  pause: { description: "Pause the box and exit", handler: handlePause },
+  delete: { description: "Delete the box and exit", handler: handleDelete },
+  console: { description: "Open the box in Upstash console", handler: handleConsole },
 };
 
 /** All available command names (without / prefix). */
-export const COMMAND_NAMES = Object.keys(COMMANDS);
+export const COMMAND_NAMES = Object.keys(COMMANDS) as BoxREPLCommandName[];
 
 /** Command descriptions for completer/preview. */
-export const COMMAND_DESCRIPTIONS: Record<string, string> = {
-  run: "Run the agent with a prompt",
-  exec: "Execute a shell command",
-  files: "File operations (read, write, list, upload, download)",
-  git: "Git operations (clone, diff, create-pr)",
-  snapshot: "Create a snapshot of the current box",
-  pause: "Pause the box and exit",
-  delete: "Delete the box and exit",
-  console: "Open the box in Upstash console",
-};
+export const COMMAND_DESCRIPTIONS: Record<BoxREPLCommandName, string> = Object.fromEntries(
+  COMMAND_NAMES.map((name) => [name, COMMANDS[name].description]),
+) as Record<BoxREPLCommandName, string>;
 
 /** Context-aware suggestion after a command completes. */
-function getSuggestion(cmdName: string): string | undefined {
+function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefined {
   switch (cmdName) {
     case "exec":
       return "/files list .";
@@ -77,99 +47,81 @@ function getSuggestion(cmdName: string): string | undefined {
   }
 }
 
-export interface IBoxREPLClient {
+export class BoxREPLClient {
   readonly box: Box;
-  readonly promptUser: (prompt: string) => Promise<string>;
-  startLoop(): Promise<void>;
-}
 
-export class BoxREPLClient implements IBoxREPLClient {
-  readonly box: Box;
-  readonly promptUser: (prompt: string) => Promise<string>;
-  private readonly hooks: REPLHooks;
-
-  constructor({
-    box,
-    promptUser,
-    hooks,
-  }: {
-    box: Box;
-    promptUser: (prompt: string) => Promise<string>;
-    hooks: REPLHooks;
-  }) {
+  constructor(box: Box) {
     this.box = box;
-    this.promptUser = promptUser;
-    this.hooks = hooks;
   }
 
-  async startLoop(): Promise<void> {
-    const { hooks } = this;
+  /** Parse input and return the matching command + args, or null. */
+  private getCommand(input: string): { command: BoxREPLCommand; args: string } | null {
+    const trimmed = input.trim();
+    if (!trimmed.startsWith("/")) return null;
 
-    hooks.onLog(`\nConnected to box ${this.box.id}`);
-    hooks.onLog(
-      `Type a prompt to run the agent, or use commands: ${COMMAND_NAMES.map((c) => `/${c}`).join(", ")}, /exit\n`,
-    );
+    const withoutSlash = trimmed.slice(1);
+    const spaceIdx = withoutSlash.indexOf(" ");
+    const cmdName = spaceIdx === -1 ? withoutSlash : withoutSlash.slice(0, spaceIdx);
+    const args = spaceIdx === -1 ? "" : withoutSlash.slice(spaceIdx + 1).trim();
 
-    while (true) {
-      const input = await this.promptUser(`${this.box.id}> `);
-      const trimmed = input.trim();
-      if (!trimmed) continue;
+    const entry = COMMANDS[cmdName as BoxREPLCommandName];
+    if (!entry) return null;
 
-      if (trimmed === "exit" || trimmed === "/exit") {
-        hooks.onLog("Goodbye.");
-        break;
-      }
+    return { command: { name: cmdName as BoxREPLCommandName, ...entry }, args };
+  }
 
-      // Commands require / prefix
-      if (trimmed.startsWith("/")) {
+  /** Return commands whose name starts with the given prefix. */
+  static suggestCommands(prefix: string): BoxREPLCommand[] {
+    return COMMAND_NAMES.filter((name) => name.startsWith(prefix)).map((name) => ({
+      name,
+      ...COMMANDS[name],
+    }));
+  }
+
+  /** Process a single line of input and yield events. */
+  async *handleInput(input: string): AsyncGenerator<BoxREPLEvent> {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    if (trimmed === "exit" || trimmed === "/exit") {
+      yield { type: "exit", message: "Goodbye." };
+      return;
+    }
+
+    if (trimmed.startsWith("/")) {
+      const parsed = this.getCommand(trimmed);
+
+      if (parsed) {
+        const { command, args } = parsed;
+        yield { type: "command:start", command: command.name, args };
+        const start = Date.now();
+        try {
+          yield* command.handler(this.box, args);
+          const durationMs = Date.now() - start;
+          yield { type: "command:complete", command: command.name, durationMs };
+          const suggestion = getNextCommandSuggestion(command.name);
+          if (suggestion) yield { type: "suggestion", text: suggestion };
+        } catch (err) {
+          yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+        }
+      } else {
         const withoutSlash = trimmed.slice(1);
         const spaceIdx = withoutSlash.indexOf(" ");
         const cmdName = spaceIdx === -1 ? withoutSlash : withoutSlash.slice(0, spaceIdx);
-        const args = spaceIdx === -1 ? "" : withoutSlash.slice(spaceIdx + 1).trim();
-
-        const handler = COMMANDS[cmdName];
-        if (handler) {
-          const start = Date.now();
-          const stopLoading = hooks.onLoadingStart?.();
-          try {
-            const shouldExit = await handler(this.box, args, hooks);
-            stopLoading?.();
-            const durationMs = Date.now() - start;
-            hooks.onCommandComplete?.(cmdName, durationMs);
-            const suggestion = getSuggestion(cmdName);
-            if (suggestion) hooks.onSuggestion?.(suggestion);
-            if (shouldExit === true) break;
-          } catch (err) {
-            stopLoading?.();
-            hooks.onError(`Error: ${err instanceof Error ? err.message : err}`);
-          }
-        } else {
-          // Unknown command — fuzzy match
-          const suggestions = fuzzyMatch(cmdName, COMMAND_NAMES);
-          if (hooks.onCommandNotFound) {
-            hooks.onCommandNotFound(cmdName, suggestions);
-          } else {
-            const msg =
-              suggestions.length > 0
-                ? `Unknown command: /${cmdName}. Did you mean: ${suggestions.map((s) => `/${s}`).join(", ")}?`
-                : `Unknown command: /${cmdName}. Available: ${COMMAND_NAMES.map((c) => `/${c}`).join(", ")}`;
-            hooks.onError(msg);
-          }
-        }
-      } else {
-        // No / prefix — treat as agent prompt
-        const start = Date.now();
-        const stopLoading = hooks.onLoadingStart?.();
-        try {
-          await handleRun(this.box, trimmed, hooks);
-          stopLoading?.();
-          const durationMs = Date.now() - start;
-          hooks.onCommandComplete?.("run", durationMs);
-          hooks.onSuggestion?.("/snapshot");
-        } catch (err) {
-          stopLoading?.();
-          hooks.onError(`Error: ${err instanceof Error ? err.message : err}`);
-        }
+        const suggestions = fuzzyMatch(cmdName, COMMAND_NAMES) as BoxREPLCommandName[];
+        yield { type: "command:not-found", typed: cmdName, suggestions };
+      }
+    } else {
+      // No / prefix — treat as agent prompt
+      yield { type: "command:start", command: "run", args: trimmed };
+      const start = Date.now();
+      try {
+        yield* handleRun(this.box, trimmed);
+        const durationMs = Date.now() - start;
+        yield { type: "command:complete", command: "run", durationMs };
+        yield { type: "suggestion", text: "/snapshot" };
+      } catch (err) {
+        yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
       }
     }
   }

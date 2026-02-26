@@ -1,11 +1,11 @@
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../client.js";
+import type { BoxREPLEvent } from "../types.js";
 
 /**
- * Delete the box. Returns true to signal the REPL to exit.
+ * Delete the box. Yields an exit event to signal the REPL to stop.
  */
-export async function handleDelete(box: Box, _args: string, hooks: REPLHooks): Promise<boolean> {
+export async function* handleDelete(box: Box, _args: string): AsyncGenerator<BoxREPLEvent> {
   await box.delete();
-  hooks.onLog(`Box ${box.id} deleted.`);
-  return true;
+  yield { type: "log", message: `Box ${box.id} deleted.` };
+  yield { type: "exit", message: `Box ${box.id} deleted.` };
 }

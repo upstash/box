@@ -1,10 +1,10 @@
 import type { Box } from "@upstash/box";
-import type { REPLHooks } from "../client.js";
+import type { BoxREPLEvent } from "../types.js";
 
 /**
  * Handle git subcommands: clone, diff, create-pr.
  */
-export async function handleGit(box: Box, args: string, hooks: REPLHooks): Promise<void> {
+export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
   const parts = args.split(/\s+/);
   const sub = parts[0];
 
@@ -13,29 +13,29 @@ export async function handleGit(box: Box, args: string, hooks: REPLHooks): Promi
       const repo = parts[1];
       const branch = parts[2];
       if (!repo) {
-        hooks.onLog("Usage: git clone <repo> [branch]");
+        yield { type: "log", message: "Usage: git clone <repo> [branch]" };
         return;
       }
       await box.git.clone({ repo, branch });
-      hooks.onLog(`Cloned ${repo}`);
+      yield { type: "log", message: `Cloned ${repo}` };
       break;
     }
     case "diff": {
       const diff = await box.git.diff();
-      hooks.onLog(diff || "(no changes)");
+      yield { type: "log", message: diff || "(no changes)" };
       break;
     }
     case "create-pr": {
       const title = parts.slice(1).join(" ");
       if (!title) {
-        hooks.onLog("Usage: git create-pr <title>");
+        yield { type: "log", message: "Usage: git create-pr <title>" };
         return;
       }
       const pr = await box.git.createPR({ title });
-      hooks.onLog(`PR #${pr.number}: ${pr.url}`);
+      yield { type: "log", message: `PR #${pr.number}: ${pr.url}` };
       break;
     }
     default:
-      hooks.onLog("Usage: git <clone|diff|create-pr> [args...]");
+      yield { type: "log", message: "Usage: git <clone|diff|create-pr> [args...]" };
   }
 }
