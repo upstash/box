@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.8
+
+### Patch Changes
+
+- 5654ca2: Dynamically import node:fs/promises and node:path so that the SDK can be used in a browser
+
 ## 0.1.7
 
 ### Patch Changes
