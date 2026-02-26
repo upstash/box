@@ -1,6 +1,3 @@
-import { readFile as fsReadFile, writeFile as fsWriteFile, mkdir } from "node:fs/promises";
-import { basename, join } from "node:path";
-
 import type {
   BoxConfig,
   BoxData,
@@ -211,6 +208,23 @@ export class Box {
   private _debug: boolean;
   private _gitToken?: string;
   private _isAgentConfigured: boolean;
+
+  private _fs?: typeof import("node:fs/promises");
+  private _path?: typeof import("node:path");
+
+  private async _getFs() {
+    if (!this._fs) {
+      this._fs = await import("node:fs/promises");
+    }
+    return this._fs;
+  }
+
+  private async _getPath() {
+    if (!this._path) {
+      this._path = await import("node:path");
+    }
+    return this._path;
+  }
 
   constructor(
     data: BoxData,
@@ -839,8 +853,9 @@ export class Box {
   }
 
   private async _uploadFiles(files: UploadFileEntry[]): Promise<void> {
+    const fs = await this._getFs();
     for (const file of files) {
-      const content = await fsReadFile(file.path);
+      const content = await fs.readFile(file.path);
       const base64 = content.toString("base64");
       const resolved = this._resolvePath(file.destination);
       await this._request("POST", `/v2/box/${this.id}/files/write`, {
@@ -850,11 +865,14 @@ export class Box {
   }
 
   private async _downloadFiles(remotePath?: string): Promise<void> {
+    const fs = await this._getFs();
+    const path = await this._getPath();
+
     const resolved = remotePath ? this._resolvePath(remotePath) : Box.WORKSPACE;
-    const dest = remotePath ? `./${basename(resolved)}` : "./workspace";
+    const dest = remotePath ? `./${path.basename(resolved)}` : "./workspace";
 
     const files = await this._listFiles(resolved);
-    await mkdir(dest, { recursive: true });
+    await fs.mkdir(dest, { recursive: true });
 
     for (const file of files) {
       if (file.is_dir) continue;
@@ -864,7 +882,7 @@ export class Box {
         throw new BoxError(`Failed to download ${file.path}`, response.status);
       }
       const buf = Buffer.from(await response.arrayBuffer());
-      await fsWriteFile(join(dest, file.name), buf);
+      await fs.writeFile(path.join(dest, file.name), buf);
     }
   }
 
