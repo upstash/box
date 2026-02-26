@@ -65,7 +65,9 @@ describe("handleGit", () => {
   describe("unknown subcommand", () => {
     it("prints usage", async () => {
       const events = await collectEvents(handleGit(createMockBox() as any, ""));
-      expect(events).toContainEqual(expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: git") }));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: git") }),
+      );
     });
   });
 });

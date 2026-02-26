@@ -151,12 +151,18 @@ export async function startRepl(box: Box): Promise<void> {
       case "command:not-found":
         console.error(yellow(`\nUnknown command: /${event.typed}`));
         if (event.suggestions.length > 0) {
-          console.log(yellow(`Did you mean: ${event.suggestions.map((s) => `/${s}`).join(", ")}?\n`));
+          console.log(
+            yellow(`Did you mean: ${event.suggestions.map((s) => `/${s}`).join(", ")}?\n`),
+          );
         }
         break;
       case "open-url": {
         const openCmd =
-          process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+          process.platform === "darwin"
+            ? "open"
+            : process.platform === "win32"
+              ? "start"
+              : "xdg-open";
         exec(`${openCmd} ${event.url}`);
         break;
       }

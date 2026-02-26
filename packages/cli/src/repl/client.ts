@@ -13,7 +13,10 @@ import { fuzzyMatch } from "../utils/fuzzy.js";
 const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   run: { description: "Run the agent with a prompt", handler: handleRun },
   exec: { description: "Execute a shell command", handler: handleExec },
-  files: { description: "File operations (read, write, list, upload, download)", handler: handleFiles },
+  files: {
+    description: "File operations (read, write, list, upload, download)",
+    handler: handleFiles,
+  },
   git: { description: "Git operations (clone, diff, create-pr)", handler: handleGit },
   snapshot: { description: "Create a snapshot of the current box", handler: handleSnapshot },
   pause: { description: "Pause the box and exit", handler: handlePause },

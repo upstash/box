@@ -11,8 +11,12 @@ describe("handleSnapshot", () => {
     const events = await collectEvents(handleSnapshot(mockBox as any, "my-snap"));
 
     expect(mockBox.snapshot).toHaveBeenCalledWith({ name: "my-snap" });
-    expect(events).toContainEqual(expect.objectContaining({ type: "log", message: expect.stringContaining("snap-1") }));
-    expect(events).toContainEqual(expect.objectContaining({ type: "log", message: expect.stringContaining("my-snap") }));
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "log", message: expect.stringContaining("snap-1") }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "log", message: expect.stringContaining("my-snap") }),
+    );
   });
 
   it("creates snapshot with default name when empty", async () => {

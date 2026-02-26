@@ -42,7 +42,10 @@ describe("handleFiles", () => {
 
     it("prints usage without args", async () => {
       const events = await collectEvents(handleFiles(createMockBox() as any, "write"));
-      expect(events).toContainEqual({ type: "log", message: "Usage: files write <path> <content>" });
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Usage: files write <path> <content>",
+      });
     });
   });
 
@@ -62,12 +65,17 @@ describe("handleFiles", () => {
       expect(box.files.upload).toHaveBeenCalledWith([
         { path: "./local.txt", destination: "remote.txt" },
       ]);
-      expect(events).toContainEqual(expect.objectContaining({ type: "log", message: expect.stringContaining("Uploaded") }));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Uploaded") }),
+      );
     });
 
     it("prints usage without args", async () => {
       const events = await collectEvents(handleFiles(createMockBox() as any, "upload"));
-      expect(events).toContainEqual({ type: "log", message: "Usage: files upload <local-path> <destination>" });
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Usage: files upload <local-path> <destination>",
+      });
     });
   });
 
@@ -89,7 +97,9 @@ describe("handleFiles", () => {
   describe("unknown subcommand", () => {
     it("prints usage", async () => {
       const events = await collectEvents(handleFiles(createMockBox() as any, ""));
-      expect(events).toContainEqual(expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: files") }));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: files") }),
+      );
     });
   });
 });

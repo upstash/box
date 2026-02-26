@@ -1205,7 +1205,7 @@ async function sendWebhook(config: WebhookConfig, payload: WebhookPayload): Prom
         encoder.encode(config.secret),
         { name: "HMAC", hash: "SHA-256" },
         false,
-        ["sign"]
+        ["sign"],
       );
       const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
       const signature = Array.from(new Uint8Array(sig))
