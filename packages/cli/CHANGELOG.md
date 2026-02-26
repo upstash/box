@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.10
+
+### Patch Changes
+
+- 680d410: Add snapshot command to cli
+- Updated dependencies [5654ca2]
+  - @upstash/box@0.1.8
+
 ## 0.1.9
 
 ### Patch Changes
