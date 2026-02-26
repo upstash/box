@@ -2,7 +2,7 @@ import { exec } from "node:child_process";
 import type { Box } from "@upstash/box";
 import type { REPLHooks } from "../client.js";
 
-const UPSTASH_CONSOLE_URL = "http://localhost:3000/box/resolve";
+const UPSTASH_CONSOLE_URL = "https://console.upstash.com/box/resolve";
 
 /**
  * Open the Upstash console for the current box in the default browser.
