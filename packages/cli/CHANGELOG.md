@@ -1,5 +1,14 @@
 # @upstash/box-cli
 
+## 0.1.9
+
+### Patch Changes
+
+- 2485b2d: set console url correctly in /console
+- 9f002cd: Update types and define BoxREPLClient in cli
+- Updated dependencies [9f002cd]
+  - @upstash/box@0.1.7
+
 ## 0.1.8
 
 ### Patch Changes

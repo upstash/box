@@ -1,6 +1,6 @@
 {
   "name": "@upstash/box-cli",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "CLI for Upstash Box — REPL-first interface for AI coding agents",
   "type": "module",
   "bin": {

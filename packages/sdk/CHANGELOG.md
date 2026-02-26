@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.7
+
+### Patch Changes
+
+- 9f002cd: Update types and define BoxREPLClient in cli
+
 ## 0.1.6
 
 ### Patch Changes
