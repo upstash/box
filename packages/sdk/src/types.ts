@@ -223,13 +223,20 @@ export interface BoxGetOptions {
 
 // ==================== Internal API Types ====================
 
-export interface BoxData {
-  id: string;
-  model?: string;
-  runtime?: string;
-  status: BoxStatus;
-  created_at: string;
-  updated_at: string;
+export type BoxData = {
+  id: string
+  name?: string
+  model?: string
+  runtime?: string
+  repo?: string
+  status: BoxStatus
+  total_input_tokens?: number
+  total_output_tokens?: number
+  total_prompts?: number
+  total_compute_cost_usd?: number
+  total_cpu_ns?: number
+  created_at: number
+  updated_at: number
 }
 
 export interface RunResult {
