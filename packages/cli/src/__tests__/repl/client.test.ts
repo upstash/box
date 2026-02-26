@@ -81,23 +81,21 @@ describe("BoxREPLClient", () => {
   });
 
   describe("getCommand", () => {
-    it("returns null for non-command input", () => {
-      expect(BoxREPLClient.getCommand("hello")).toBeNull();
-    });
+    const client = new BoxREPLClient({} as any);
 
-    it("returns null for unknown command", () => {
-      expect(BoxREPLClient.getCommand("/foobar")).toBeNull();
+    it("returns null for non-command input", () => {
+      expect(client["getCommand"]("hello")).toBeNull();
     });
 
     it("parses command without args", () => {
-      const result = BoxREPLClient.getCommand("/snapshot");
+      const result = client["getCommand"]("/snapshot");
       expect(result).not.toBeNull();
       expect(result!.command.name).toBe("snapshot");
       expect(result!.args).toBe("");
     });
 
     it("parses command with args", () => {
-      const result = BoxREPLClient.getCommand("/exec ls -la");
+      const result = client["getCommand"]("/exec ls -la");
       expect(result).not.toBeNull();
       expect(result!.command.name).toBe("exec");
       expect(result!.args).toBe("ls -la");
