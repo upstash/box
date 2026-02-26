@@ -59,6 +59,7 @@ import type {
   RunStreamCallbacks,
   ExecCommandRequest,
   RunPromptResponse,
+  LogStreamCallbacks,
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
@@ -225,6 +226,8 @@ export class Box {
     list: (path?: string) => Promise<FileEntry[]>;
     upload: (files: UploadFileEntry[]) => Promise<void>;
     download: (options?: DownloadFileOptions) => Promise<void>;
+    /** Download a single file as a Blob — browser-compatible. */
+    downloadBlob: (path: string) => Promise<Blob>;
   };
 
   /** Git operations namespace */
@@ -289,6 +292,7 @@ export class Box {
       list: (path) => this._listFiles(path),
       upload: (files) => this._uploadFiles(files),
       download: (opts?: DownloadFileOptions) => this._downloadFiles(opts?.path),
+      downloadBlob: (path: string) => this._downloadFileAsBlob(path),
     };
 
     this.git = {
@@ -1121,6 +1125,16 @@ export class Box {
     }
   }
 
+  private async _downloadFileAsBlob(path: string): Promise<Blob> {
+    const resolved = this._resolvePath(path);
+    const url = `${this._baseUrl}/v2/box/${this.id}/files/download?path=${encodeURIComponent(resolved)}`;
+    const response = await fetch(url, { headers: this._headers });
+    if (!response.ok) {
+      throw new BoxError(`Failed to download ${path}`, response.status);
+    }
+    return response.blob();
+  }
+
   private async _downloadFiles(remotePath?: string): Promise<void> {
     const { writeFile: fsWriteFile, mkdir } = await import("node:fs/promises");
     const resolved = remotePath ? this._resolvePath(remotePath) : Box.WORKSPACE;
@@ -1441,6 +1455,98 @@ export class Box {
         if (error instanceof DOMException && error.name === "AbortError") return;
         if (error instanceof Error && error.name === "AbortError") return;
         callbacks.onError?.(error instanceof Error ? error.message : String(error));
+      }
+    })();
+
+    return controller;
+  }
+
+  /**
+   * Connect to the live SSE log stream for this box (`GET /v2/box/:id/logs?stream=true`).
+   *
+   * Events fired:
+   * - `onLog`        – each structured log entry emitted by the box
+   * - `onStreamText` – inline streaming text chunks (agent output streamed to logs)
+   * - `onError`      – on connection failure or stream error
+   *
+   * Returns an `AbortController` you can call `.abort()` on to disconnect.
+   *
+   * @example
+   * ```ts
+   * const ctl = box.streamLogs({
+   *   onLog: (entry) => console.log(entry.message),
+   *   onStreamText: (text) => process.stdout.write(text),
+   * });
+   * // later: ctl.abort()
+   * ```
+   */
+  streamLogs(callbacks: LogStreamCallbacks): AbortController {
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const response = await fetch(
+          `${this._baseUrl}/v2/box/${this.id}/logs?stream=true`,
+          {
+            headers: this._headers,
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok || !response.body) {
+          const msg = await parseErrorResponse(response);
+          callbacks.onError?.(new BoxError(msg));
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break outer;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are separated by double newlines
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const part of parts) {
+            if (!part.trim()) continue;
+
+            const lines = part.split("\n");
+            let eventType = "message";
+            let data = "";
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7).trim();
+              } else if (line.startsWith("data: ")) {
+                data = line.slice(6);
+              }
+            }
+
+            if (!data) continue;
+
+            try {
+              if (eventType === "stream") {
+                const parsed = JSON.parse(data) as { text: string };
+                callbacks.onStreamText?.(parsed.text);
+              } else {
+                const entry = JSON.parse(data) as LogEntry;
+                callbacks.onLog(entry);
+              }
+            } catch {
+              // Skip unparseable events
+            }
+          }
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof Error && error.name === "AbortError") return;
+        callbacks.onError?.(error instanceof Error ? error : new BoxError(String(error)));
       }
     })();
 

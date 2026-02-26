@@ -82,6 +82,7 @@ export type {
 
   // ── Streaming ────────────────────────────────────────────────────────────
   RunStreamCallbacks,
+  LogStreamCallbacks,
 
   // ── Exec / Run Prompt ────────────────────────────────────────────────────
   ExecCommandRequest,

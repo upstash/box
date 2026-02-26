@@ -536,3 +536,19 @@ export interface RunStreamCallbacks {
   /** Called when the stream ends with an error */
   onError?: (error: string) => void;
 }
+
+// ── Log Stream ────────────────────────────────────────────────────────────────
+
+/**
+ * Callbacks for `box.streamLogs()`.
+ * Connects to the SSE log stream (`GET /v2/box/:id/logs?stream=true`) and
+ * fires events for structured log entries and inline streaming text chunks.
+ */
+export interface LogStreamCallbacks {
+  /** Called for each structured log entry emitted by the box */
+  onLog: (entry: LogEntry) => void;
+  /** Called for inline streaming text chunks (agent output streamed to logs) */
+  onStreamText?: (text: string) => void;
+  /** Called when the connection fails or the stream encounters an error */
+  onError?: (error: Error) => void;
+}
