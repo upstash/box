@@ -1,16 +1,16 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
-import { startRepl } from "../repl/terminal.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
 
-interface ConnectFlags {
+interface SnapshotFlags {
   token?: string;
+  name?: string;
 }
 
-export async function connectCommand(
+export async function snapshotCommand(
   boxId: string | undefined,
-  flags: ConnectFlags,
+  flags: SnapshotFlags,
 ): Promise<void> {
   const apiKey = resolveToken(flags.token);
 
@@ -31,7 +31,7 @@ export async function connectCommand(
       const statusWidth = Math.max(...items.map((b) => b.status.length));
 
       const selected = await interactiveSelect({
-        prompt: "Select a box to connect to:",
+        prompt: "Select a box to snapshot:",
         items: items.map((b) => ({
           label: b.id.padEnd(idWidth),
           value: b.id,
@@ -45,16 +45,14 @@ export async function connectCommand(
       }
       targetId = selected;
     } else {
-      if (active.length === 1) {
-        console.log("Only one box found, using it...");
-      } else {
-        console.log("No box ID specified, connecting to most recent...");
-      }
+      console.log("Only one box found, using it...");
       targetId = active[0]!.id;
     }
   }
 
-  console.log(`\nConnecting to box ${targetId}...`);
+  const snapshotName = flags.name ?? `snapshot-${Date.now()}`;
+  console.log(`\nCreating snapshot of box ${targetId}...`);
   const box = await Box.get(targetId, { apiKey });
-  await startRepl(box);
+  const snapshot = await box.snapshot({ name: snapshotName });
+  console.log(`Snapshot created: ${snapshot.id} (${snapshot.name})`);
 }
