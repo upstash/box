@@ -46,6 +46,11 @@ export interface BoxConfig {
   baseUrl?: string;
   timeout?: number;
   debug?: boolean;
+  /**
+   * Additional HTTP headers merged into every request.
+   * Useful for passing custom auth headers (e.g. `Authorization: Bearer <jwt>`).
+   */
+  headers?: Record<string, string>;
 }
 
 export interface McpServerConfig {
@@ -193,6 +198,8 @@ export interface Snapshot {
   s3_key?: string;
   status: "creating" | "ready" | "error" | "deleted";
   created_at: number;
+  volume_name?: string;
+  user_email?: string;
 }
 
 /**
@@ -203,6 +210,13 @@ export interface ListOptions {
   apiKey?: string;
   /** Base URL of the Box API (defaults to https://box.api.upstashdev.com) */
   baseUrl?: string;
+  /**
+   * Additional HTTP headers merged into every request.
+   * Useful for passing custom auth headers (e.g. `Authorization: Bearer <jwt>`).
+   * These headers are merged after the default `X-Box-Api-Key` header, so they
+   * can override it if needed.
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -219,27 +233,46 @@ export interface BoxGetOptions {
   timeout?: number;
   /** Enable debug logging */
   debug?: boolean;
+  /**
+   * Additional HTTP headers merged into every request.
+   * Useful for passing custom auth headers (e.g. `Authorization: Bearer <jwt>`).
+   * These headers are merged after the default `X-Box-Api-Key` header, so they
+   * can override it if needed.
+   */
+  headers?: Record<string, string>;
 }
 
 // ==================== Internal API Types ====================
 
 export interface BoxData {
   id: string;
+  name?: string;
   model?: string;
   runtime?: string;
+  /** GitHub repo URL associated with this box */
+  repo?: string;
   status: BoxStatus;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RunResult {
-  output: string;
-  metadata?: RunMetadata;
+  /** Unix timestamp (seconds) or ISO 8601 string */
+  created_at: string | number;
+  /** Unix timestamp (seconds) or ISO 8601 string */
+  updated_at: string | number;
+  // Telemetry — populated by the API for analytics
+  total_input_tokens?: number;
+  total_output_tokens?: number;
+  total_prompts?: number;
+  total_compute_cost_usd?: number;
+  total_cpu_ns?: number;
 }
 
 export interface RunMetadata {
   input_tokens?: number;
   output_tokens?: number;
+}
+
+export interface ExecCommandRequest {
+  command: string[];
+  work_dir?: string;
+  async?: boolean;
 }
 
 export interface ExecResult {
@@ -259,6 +292,8 @@ export interface FileEntry {
 export interface GitCloneOptions {
   repo: string;
   branch?: string;
+  /** GitHub personal access token for private repos */
+  github_token?: string;
 }
 
 export interface GitPROptions {
@@ -300,4 +335,218 @@ export interface BoxRunData {
   error_message?: string;
   created_at: number;
   completed_at?: number;
+}
+
+/** Wire-format representation of an MCP server config (snake_case for the REST API) */
+export interface McpServerWireConfig {
+  name: string;
+  source: string;
+  package_or_url: string;
+  headers?: Record<string, string>;
+}
+
+/**
+ * POST body for POST /v2/box (create a new box).
+ * Most fields match BoxConfig but are serialised for the wire format.
+ */
+export interface CreateBoxRequest {
+  /** Display name for the box */
+  name?: string;
+  model?: string;
+  runtime?: string;
+  /** Provider API key forwarded to the agent (e.g. ANTHROPIC_API_KEY) */
+  agent_api_key?: string;
+  /** GitHub personal access token for cloning private repos on boot */
+  github_token?: string;
+  /** Git repository URL to clone on boot */
+  clone_repo?: string;
+  /** Git clone authentication token */
+  clone_token?: string;
+  /** Environment variables injected into the container */
+  env_vars?: Record<string, string>;
+  /** Create from an existing snapshot */
+  snapshot_id?: string;
+  /** Pre-installed skill packages */
+  skills?: string[];
+  /** MCP servers to mount into the box */
+  mcp_servers?: McpServerWireConfig[];
+}
+
+export interface RunPromptResponse {
+  output: string;
+  metadata?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
+}
+
+export interface WriteFileRequest {
+  path: string;
+  content: string;
+  encoding?: "base64";
+}
+
+export interface ReadFileResponse {
+  path: string;
+  content: string;
+}
+
+/** Options for downloading files from a box */
+export interface DownloadFileOptions {
+  /** Remote path inside the box to download. Downloads the entire workspace if omitted. */
+  path?: string;
+}
+
+export interface ListFilesResponse {
+  files: FileEntry[];
+}
+
+export interface GitCommitRequest {
+  message: string;
+}
+
+export interface GitPushRequest {
+  branch?: string;
+}
+
+export interface GitDiffResponse {
+  diff: string;
+}
+
+export interface GitStatusResponse {
+  status: string;
+}
+export interface GetLogsResponse {
+  logs: LogEntry[];
+}
+
+export type BoxLogEntryWithBox = LogEntry & { box_id: string };
+
+export interface GetAllLogsResponse {
+  logs: BoxLogEntryWithBox[];
+}
+
+export interface ListBoxRunsResponse {
+  runs: BoxRunData[];
+}
+
+export interface CreateSnapshotRequest {
+  name: string;
+}
+
+export interface ListSnapshotsResponse {
+  snapshots: Snapshot[];
+}
+
+export interface Step {
+  sha: string;
+  prompt: string;
+  created_at: string;
+}
+
+export interface ListStepsResponse {
+  steps: Step[];
+}
+
+export interface StepDiffResponse {
+  sha: string;
+  diff: string;
+}
+
+// ── Run Status ───────────────────────────────────────────────────────────────
+
+/** GET response for /v2/box/:id/runs/:runId — used to poll run state */
+export interface RunStatusResponse {
+  status: RunStatus;
+}
+
+// ── API Keys ─────────────────────────────────────────────────────────────────
+
+export interface ApiKey {
+  id: string;
+  api_key_prefix: string;
+  created_at: number;
+  last_used_at?: number;
+}
+
+export interface CreateApiKeyResponse {
+  api_key: string;
+  created_at: number;
+}
+
+export interface ListApiKeysResponse {
+  keys: ApiKey[];
+}
+
+// ── Agent Credentials ─────────────────────────────────────────────────────────
+
+export interface AgentCredential {
+  provider: "anthropic" | "openai";
+  key_prefix: string;
+  created_at: number;
+}
+
+export interface ListAgentCredentialsResponse {
+  credentials: AgentCredential[];
+}
+
+export interface SetAgentCredentialRequest {
+  provider: "anthropic" | "openai";
+  api_key: string;
+}
+
+// ── GitHub Integration ────────────────────────────────────────────────────────
+
+export interface GitHubStatusResponse {
+  connected: boolean;
+  installation_id?: number;
+}
+
+export interface GitHubInstallURLResponse {
+  url: string;
+}
+
+export interface GitHubRepo {
+  full_name: string;
+  name: string;
+  owner: string;
+  private: boolean;
+  default_branch: string;
+}
+
+export interface GitHubBranch {
+  name: string;
+}
+
+// ── Run Stream ────────────────────────────────────────────────────────────────
+
+/**
+ * Callbacks for `box.streamRun()`.
+ * The stream uses SSE and fires events until `onDone` or `onError` is called.
+ */
+export interface RunStreamCallbacks {
+  /** Called for each text chunk emitted by the agent */
+  onText: (text: string) => void;
+  /** Called when the agent invokes a tool */
+  onTool?: (name: string) => void;
+  /** Called when the stream finishes successfully */
+  onDone?: (output: string) => void;
+  /** Called when the stream ends with an error */
+  onError?: (error: string) => void;
+}
+
+// ── Log Stream ────────────────────────────────────────────────────────────────
+
+/**
+ * Callbacks for `box.streamLogs()`.
+ * Connects to the SSE log stream (`GET /v2/box/:id/logs?stream=true`) and
+ * fires events for structured log entries and inline streaming text chunks.
+ */
+export interface LogStreamCallbacks {
+  /** Called for each structured log entry emitted by the box */
+  onLog: (entry: LogEntry) => void;
+  /** Called for inline streaming text chunks (agent output streamed to logs) */
+  onStreamText?: (text: string) => void;
+  /** Called when the connection fails or the stream encounters an error */
+  onError?: (error: Error) => void;
 }

@@ -1,4 +1,3 @@
-import { readFile as fsReadFile, writeFile as fsWriteFile, mkdir } from "node:fs/promises";
 import { randomUUID, createHmac } from "node:crypto";
 import { basename, join } from "node:path";
 
@@ -7,27 +6,60 @@ import type {
   BoxData,
   BoxGetOptions,
   BoxRunData,
+  CreateBoxRequest,
   ListOptions,
+  McpServerWireConfig,
   RunOptions,
-  StreamOptions,
-  Chunk,
-  RunResult,
   RunStatus,
+  RunStatusResponse,
   RunCost,
   RunLog,
   SchemaLike,
+  StreamOptions,
+  Chunk,
   WebhookConfig,
   WebhookPayload,
+  DownloadFileOptions,
   ExecResult,
   ErrorResponse,
   FileEntry,
   GitCloneOptions,
-  GitPROptions,
+  GitCommitRequest,
   GitCommitResult,
+  GitDiffResponse,
+  GitPROptions,
+  GitPushRequest,
+  GitStatusResponse,
+  GetLogsResponse,
+  ListBoxRunsResponse,
+  ListFilesResponse,
+  ListSnapshotsResponse,
   PullRequest,
+  ReadFileResponse,
+  WriteFileRequest,
   LogEntry,
+  BoxLogEntryWithBox,
+  GetAllLogsResponse,
   UploadFileEntry,
   Snapshot,
+  BoxStatus,
+  Step,
+  ListStepsResponse,
+  StepDiffResponse,
+  ApiKey,
+  CreateApiKeyResponse,
+  ListApiKeysResponse,
+  AgentCredential,
+  ListAgentCredentialsResponse,
+  SetAgentCredentialRequest,
+  GitHubStatusResponse,
+  GitHubInstallURLResponse,
+  GitHubRepo,
+  GitHubBranch,
+  RunStreamCallbacks,
+  ExecCommandRequest,
+  RunPromptResponse,
+  LogStreamCallbacks,
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
@@ -92,7 +124,7 @@ export class Run<T = string> {
       return this._status;
     }
     try {
-      const data = await this._box._request<{ status: RunStatus }>(
+      const data = await this._box._request<RunStatusResponse>(
         "GET",
         `/v2/box/${this._box.id}/runs/${this._id}`,
       );
@@ -190,10 +222,12 @@ export class Box {
   /** File operations namespace */
   readonly files: {
     read: (path: string) => Promise<string>;
-    write: (options: { path: string; content: string }) => Promise<void>;
+    write: (options: WriteFileRequest) => Promise<void>;
     list: (path?: string) => Promise<FileEntry[]>;
     upload: (files: UploadFileEntry[]) => Promise<void>;
-    download: (options?: { path?: string }) => Promise<void>;
+    download: (options?: DownloadFileOptions) => Promise<void>;
+    /** Download a single file as a Blob — browser-compatible. */
+    downloadBlob: (path: string) => Promise<Blob>;
   };
 
   /** Git operations namespace */
@@ -201,8 +235,8 @@ export class Box {
     clone: (options: GitCloneOptions) => Promise<void>;
     diff: () => Promise<string>;
     status: () => Promise<string>;
-    commit: (options: { message: string }) => Promise<GitCommitResult>;
-    push: (options?: { branch?: string }) => Promise<void>;
+    commit: (options: GitCommitRequest) => Promise<GitCommitResult>;
+    push: (options?: GitPushRequest) => Promise<void>;
     createPR: (options: GitPROptions) => Promise<PullRequest>;
   };
 
@@ -254,10 +288,11 @@ export class Box {
 
     this.files = {
       read: (path) => this._readFile(path),
-      write: (opts) => this._writeFile(opts.path, opts.content),
+      write: (opts: WriteFileRequest) => this._writeFile(opts.path, opts.content),
       list: (path) => this._listFiles(path),
       upload: (files) => this._uploadFiles(files),
-      download: (opts) => this._downloadFiles(opts?.path),
+      download: (opts?: DownloadFileOptions) => this._downloadFiles(opts?.path),
+      downloadBlob: (path: string) => this._downloadFileAsBlob(path),
     };
 
     this.git = {
@@ -270,12 +305,18 @@ export class Box {
     };
   }
 
+  private static _hasAuthHeader(headers?: Record<string, string>): boolean {
+    if (!headers) return false;
+    return "X-Box-Api-Key" in headers || "Authorization" in headers;
+  }
+
   /**
    * Create a new sandboxed box.
+   * Polls until the box is ready before returning.
    */
   static async create(config: BoxConfig): Promise<Box> {
     const apiKey = config.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !Box._hasAuthHeader(config.headers)) {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
@@ -293,12 +334,13 @@ export class Box {
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = {
-      "X-Box-Api-Key": apiKey,
+      ...(apiKey ? { "X-Box-Api-Key": apiKey } : {}),
+      ...config.headers,
     };
     const timeout = config.timeout ?? 600000;
     const debug = config.debug ?? false;
 
-    const body: Record<string, unknown> = {};
+    const body: CreateBoxRequest = {};
     if (config.agent) {
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey!;
@@ -308,12 +350,14 @@ export class Box {
     if (config.env) body.env_vars = config.env;
     if (config.skills?.length) body.skills = config.skills;
     if (config.mcpServers?.length) {
-      body.mcp_servers = config.mcpServers.map((s) => ({
-        name: s.name,
-        source: s.source,
-        package_or_url: s.packageOrUrl,
-        headers: s.headers,
-      }));
+      body.mcp_servers = config.mcpServers.map(
+        (s): McpServerWireConfig => ({
+          name: s.name,
+          source: s.source,
+          package_or_url: s.packageOrUrl,
+          headers: s.headers,
+        }),
+      );
     }
 
     const response = await fetch(`${baseUrl}/v2/box`, {
@@ -360,11 +404,18 @@ export class Box {
   }
 
   /**
-   * List all boxes for the authenticated user.
+   * Shared fetch helper used by all static methods.
+   * Resolves auth/baseUrl from options, then delegates to `_rawFetch`.
+   * @internal
    */
-  static async list(options?: ListOptions): Promise<BoxData[]> {
+  private static async _staticRequest<T>(
+    method: string,
+    path: string,
+    options?: ListOptions,
+    body?: unknown,
+  ): Promise<T> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !Box._hasAuthHeader(options?.headers)) {
       throw new BoxError(
         "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
       );
@@ -375,15 +426,208 @@ export class Box {
       process.env.UPSTASH_BOX_BASE_URL ??
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
-    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
 
-    const response = await fetch(`${baseUrl}/v2/box`, { headers });
-    if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
+    const headers: Record<string, string> = {
+      ...(apiKey ? { "X-Box-Api-Key": apiKey } : {}),
+      ...options?.headers,
+    };
+
+    return Box._rawFetch<T>(method, `${baseUrl}${path}`, headers, body);
+  }
+
+  /**
+   * Core fetch logic shared by both the instance `_request` and static `_staticRequest`.
+   * Handles JSON serialisation, response parsing, and error normalisation.
+   * @internal
+   */
+  private static async _rawFetch<T>(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    const reqHeaders = { ...headers };
+    let reqBody: string | undefined;
+
+    if (body !== undefined) {
+      reqHeaders["Content-Type"] = "application/json";
+      reqBody = JSON.stringify(body);
     }
 
-    return (await response.json()) as BoxData[];
+    try {
+      const response = await fetch(url, { method, headers: reqHeaders, body: reqBody, signal });
+
+      if (!response.ok) {
+        const msg = await parseErrorResponse(response);
+        throw new BoxError(msg, response.status);
+      }
+
+      const text = await response.text();
+      if (!text) return {} as T;
+      return JSON.parse(text) as T;
+    } catch (error) {
+      if (error instanceof BoxError) throw error;
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new BoxError("Request timeout");
+      }
+      throw new BoxError(error instanceof Error ? error.message : "Unknown error");
+    }
+  }
+
+  /**
+   * List all boxes for the authenticated user.
+   */
+  static async list(options?: ListOptions): Promise<BoxData[]> {
+    return Box._staticRequest<BoxData[]>("GET", "/v2/box", options);
+  }
+
+  /**
+   * Fetch raw data for a single box without creating a full Box instance.
+   * Useful when you need only the box metadata (e.g. to poll status changes).
+   */
+  static async fetchById(boxId: string, options?: ListOptions): Promise<BoxData> {
+    return Box._staticRequest<BoxData>("GET", `/v2/box/${boxId}`, options);
+  }
+
+  /**
+   * Create a new box and return its initial data immediately, without polling for readiness.
+   * The box will be in `"creating"` status; poll `Box.fetchById()` to track progress.
+   */
+  static async createRaw(data: CreateBoxRequest, options?: ListOptions): Promise<BoxData> {
+    return Box._staticRequest<BoxData>("POST", "/v2/box", options, data);
+  }
+
+  /**
+   * Fetch structured logs across **all** boxes for the authenticated user.
+   */
+  static async allLogs(options?: ListOptions & { limit?: number }): Promise<BoxLogEntryWithBox[]> {
+    const limit = options?.limit ?? 200;
+    const data = await Box._staticRequest<GetAllLogsResponse>(
+      "GET",
+      `/v2/box/logs?limit=${limit}`,
+      options,
+    );
+    return data.logs;
+  }
+
+  /**
+   * List **all** snapshots across every box for the authenticated user.
+   */
+  static async allSnapshots(options?: ListOptions): Promise<Snapshot[]> {
+    const data = await Box._staticRequest<ListSnapshotsResponse>(
+      "GET",
+      "/v2/box/snapshots",
+      options,
+    );
+    return data.snapshots ?? [];
+  }
+
+  /**
+   * Create a new API key for the authenticated user.
+   * Returns the plaintext key — store it securely, it is not shown again.
+   */
+  static async createApiKey(options?: ListOptions): Promise<CreateApiKeyResponse> {
+    return Box._staticRequest<CreateApiKeyResponse>("POST", "/v2/box/apikey", options, {});
+  }
+
+  /**
+   * List all API keys for the authenticated user.
+   */
+  static async listApiKeys(options?: ListOptions): Promise<ApiKey[]> {
+    const data = await Box._staticRequest<ListApiKeysResponse>("GET", "/v2/box/apikeys", options);
+    return data.keys ?? [];
+  }
+
+  /**
+   * Revoke an API key by its ID.
+   */
+  static async revokeApiKey(keyId: string, options?: ListOptions): Promise<void> {
+    await Box._staticRequest<void>("DELETE", `/v2/box/apikey/${keyId}`, options);
+  }
+
+  // ==================== Agent Credentials ====================
+
+  /**
+   * List all stored agent provider credentials (Anthropic, OpenAI, etc.)
+   * for the authenticated user.
+   */
+  static async listAgentCredentials(options?: ListOptions): Promise<AgentCredential[]> {
+    const data = await Box._staticRequest<ListAgentCredentialsResponse>(
+      "GET",
+      "/v2/box/agent-credentials",
+      options,
+    );
+    return data.credentials ?? [];
+  }
+
+  /**
+   * Store or update an agent provider credential.
+   */
+  static async setAgentCredential(
+    data: SetAgentCredentialRequest,
+    options?: ListOptions,
+  ): Promise<void> {
+    await Box._staticRequest<void>("POST", "/v2/box/agent-credentials", options, data);
+  }
+
+  /**
+   * Delete an agent provider credential by provider name.
+   */
+  static async deleteAgentCredential(
+    provider: "anthropic" | "openai",
+    options?: ListOptions,
+  ): Promise<void> {
+    await Box._staticRequest<void>("DELETE", `/v2/box/agent-credentials/${provider}`, options);
+  }
+
+  // ==================== GitHub Integration ====================
+
+  /**
+   * Get GitHub App installation status for the authenticated user.
+   */
+  static async gitHubStatus(options?: ListOptions): Promise<GitHubStatusResponse> {
+    return Box._staticRequest<GitHubStatusResponse>("GET", "/v2/box/github/status", options);
+  }
+
+  /**
+   * Get the GitHub App installation URL so the user can connect their account.
+   */
+  static async gitHubInstallURL(options?: ListOptions): Promise<GitHubInstallURLResponse> {
+    return Box._staticRequest<GitHubInstallURLResponse>(
+      "GET",
+      "/v2/box/github/install-url",
+      options,
+    );
+  }
+
+  /**
+   * List GitHub repositories accessible via the connected GitHub App.
+   */
+  static async gitHubRepos(options?: ListOptions): Promise<GitHubRepo[]> {
+    return Box._staticRequest<GitHubRepo[]>("GET", "/v2/box/github/repos", options);
+  }
+
+  /**
+   * List branches for a given GitHub repository.
+   */
+  static async gitHubBranches(
+    owner: string,
+    repo: string,
+    options?: ListOptions,
+  ): Promise<GitHubBranch[]> {
+    return Box._staticRequest<GitHubBranch[]>(
+      "GET",
+      `/v2/box/github/repos/${owner}/${repo}/branches`,
+      options,
+    );
+  }
+
+  /**
+   * Disconnect the GitHub App installation.
+   */
+  static async disconnectGitHub(options?: ListOptions): Promise<void> {
+    await Box._staticRequest<void>("DELETE", "/v2/box/github/installation", options);
   }
 
   /**
@@ -391,7 +635,7 @@ export class Box {
    */
   static async get(boxId: string, options?: BoxGetOptions): Promise<Box> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !Box._hasAuthHeader(options?.headers)) {
       throw new BoxError(
         "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
       );
@@ -402,7 +646,10 @@ export class Box {
       process.env.UPSTASH_BOX_BASE_URL ??
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
-    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
+    const headers: Record<string, string> = {
+      ...(apiKey ? { "X-Box-Api-Key": apiKey } : {}),
+      ...options?.headers,
+    };
     const timeout = options?.timeout ?? 600000;
     const debug = options?.debug ?? false;
 
@@ -791,17 +1038,37 @@ export class Box {
    * console.log(await run.status()); // "completed"
    * ```
    */
-  async exec(command: string): Promise<Run<string>> {
+  async exec(command: string, options?: { workDir?: string }): Promise<Run<string>> {
     const start = Date.now();
-    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
-      body: { command: ["sh", "-c", command] },
-    });
+    const body: ExecCommandRequest = {
+      command: ["sh", "-c", command],
+      ...(options?.workDir ? { work_dir: options.workDir } : {}),
+    };
+    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, { body });
 
     const run = new Run<string>(this, "shell");
     run._result = result.error ? result.error : result.output;
     run._status = result.exit_code === 0 ? "completed" : "failed";
     run._computeMs = Date.now() - start;
     return run;
+  }
+
+  /**
+   * Execute a command with a raw request body.
+   * Unlike `exec()`, this sends the command array as-is without wrapping in `sh -c`.
+   */
+  async execRaw(request: ExecCommandRequest): Promise<ExecResult> {
+    return this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, { body: request });
+  }
+
+  /**
+   * Run a prompt synchronously and return the output.
+   * This is a non-streaming, single-response call to `POST /v2/box/:id/run`.
+   */
+  async runPrompt(prompt: string): Promise<RunPromptResponse> {
+    return this._request<RunPromptResponse>("POST", `/v2/box/${this.id}/run`, {
+      body: { prompt },
+    });
   }
 
   // ==================== File Operations ====================
@@ -815,7 +1082,7 @@ export class Box {
 
   private async _readFile(path: string): Promise<string> {
     const resolved = this._resolvePath(path);
-    const data = await this._request<{ content: string }>(
+    const data = await this._request<ReadFileResponse>(
       "GET",
       `/v2/box/${this.id}/files/read?path=${encodeURIComponent(resolved)}`,
     );
@@ -824,33 +1091,40 @@ export class Box {
 
   private async _writeFile(path: string, content: string): Promise<void> {
     const resolved = this._resolvePath(path);
-    await this._request("POST", `/v2/box/${this.id}/files/write`, {
-      body: { path: resolved, content },
-    });
+    const body: WriteFileRequest = { path: resolved, content };
+    await this._request("POST", `/v2/box/${this.id}/files/write`, { body });
   }
 
   private async _listFiles(path?: string): Promise<FileEntry[]> {
     const resolved = path ? this._resolvePath(path) : "";
     const p = resolved ? `?path=${encodeURIComponent(resolved)}` : "";
-    const data = await this._request<{ files: FileEntry[] }>(
-      "GET",
-      `/v2/box/${this.id}/files/list${p}`,
-    );
+    const data = await this._request<ListFilesResponse>("GET", `/v2/box/${this.id}/files/list${p}`);
     return data.files;
   }
 
   private async _uploadFiles(files: UploadFileEntry[]): Promise<void> {
+    const { readFile: fsReadFile } = await import("node:fs/promises");
     for (const file of files) {
       const content = await fsReadFile(file.path);
       const base64 = content.toString("base64");
       const resolved = this._resolvePath(file.destination);
-      await this._request("POST", `/v2/box/${this.id}/files/write`, {
-        body: { path: resolved, content: base64, encoding: "base64" },
-      });
+      const body: WriteFileRequest = { path: resolved, content: base64, encoding: "base64" };
+      await this._request("POST", `/v2/box/${this.id}/files/write`, { body });
     }
   }
 
+  private async _downloadFileAsBlob(path: string): Promise<Blob> {
+    const resolved = this._resolvePath(path);
+    const url = `${this._baseUrl}/v2/box/${this.id}/files/download?path=${encodeURIComponent(resolved)}`;
+    const response = await fetch(url, { headers: this._headers });
+    if (!response.ok) {
+      throw new BoxError(`Failed to download ${path}`, response.status);
+    }
+    return response.blob();
+  }
+
   private async _downloadFiles(remotePath?: string): Promise<void> {
+    const { writeFile: fsWriteFile, mkdir } = await import("node:fs/promises");
     const resolved = remotePath ? this._resolvePath(remotePath) : Box.WORKSPACE;
     const dest = remotePath ? `./${basename(resolved)}` : "./workspace";
 
@@ -874,8 +1148,8 @@ export class Box {
   /**
    * Get the current box status.
    */
-  async getStatus(): Promise<{ status: string }> {
-    return this._request<{ status: string }>("GET", `/v2/box/${this.id}/status`);
+  async getStatus(): Promise<{ status: BoxStatus }> {
+    return this._request<{ status: BoxStatus }>("GET", `/v2/box/${this.id}/status`);
   }
 
   /**
@@ -935,10 +1209,7 @@ export class Box {
    * List all snapshots for this box.
    */
   async listSnapshots(): Promise<Snapshot[]> {
-    const data = await this._request<{ snapshots: Snapshot[] }>(
-      "GET",
-      `/v2/box/${this.id}/snapshots`,
-    );
+    const data = await this._request<ListSnapshotsResponse>("GET", `/v2/box/${this.id}/snapshots`);
     return data.snapshots ?? [];
   }
 
@@ -969,7 +1240,7 @@ export class Box {
     const timeout = config.timeout ?? 600000;
     const debug = config.debug ?? false;
 
-    const body: Record<string, unknown> = {
+    const body: CreateBoxRequest = {
       snapshot_id: snapshotId,
     };
     if (config.agent) {
@@ -1033,7 +1304,7 @@ export class Box {
     if (options?.offset) params.set("offset", String(options.offset));
     if (options?.limit) params.set("limit", String(options.limit));
     const qs = params.toString() ? `?${params.toString()}` : "";
-    const data = await this._request<{ logs: LogEntry[] }>("GET", `/v2/box/${this.id}/logs${qs}`);
+    const data = await this._request<GetLogsResponse>("GET", `/v2/box/${this.id}/logs${qs}`);
     return data.logs;
   }
 
@@ -1041,8 +1312,223 @@ export class Box {
    * List all runs for this box, newest first.
    */
   async listRuns(): Promise<BoxRunData[]> {
-    const data = await this._request<{ runs: BoxRunData[] }>("GET", `/v2/box/${this.id}/runs`);
+    const data = await this._request<ListBoxRunsResponse>("GET", `/v2/box/${this.id}/runs`);
     return data.runs;
+  }
+
+  // ==================== Steps ====================
+
+  /**
+   * List all steps (agent commit snapshots) for this box, newest first.
+   */
+  async listSteps(): Promise<Step[]> {
+    const data = await this._request<ListStepsResponse>("GET", `/v2/box/${this.id}/steps`);
+    return data.steps;
+  }
+
+  /**
+   * Get the diff introduced by a specific step.
+   */
+  async stepDiff(sha: string): Promise<StepDiffResponse> {
+    return this._request<StepDiffResponse>("GET", `/v2/box/${this.id}/steps/${sha}/diff`);
+  }
+
+  // ==================== Run management ====================
+
+  /**
+   * Cancel an in-progress agent or shell run.
+   */
+  async cancelRun(runId: string): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/runs/${runId}/cancel`);
+  }
+
+  // ==================== Streaming Run ====================
+
+  /**
+   * Stream a prompt to the box via SSE (`POST /v2/box/:id/run/stream`).
+   *
+   * Events fired:
+   * - `onText`  – each text chunk from the agent
+   * - `onTool`  – when the agent invokes a tool
+   * - `onDone`  – when the stream completes (receives the full output)
+   * - `onError` – on stream or network error
+   *
+   * Returns an `AbortController` you can call `.abort()` on to cancel.
+   *
+   * @example
+   * ```ts
+   * const ctl = box.streamRun("refactor the auth module", {
+   *   onText: (t) => process.stdout.write(t),
+   *   onDone: (out) => console.log("done", out),
+   * });
+   * // later: ctl.abort()
+   * ```
+   */
+  streamRun(prompt: string, callbacks: RunStreamCallbacks): AbortController {
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const response = await fetch(`${this._baseUrl}/v2/box/${this.id}/run/stream`, {
+          method: "POST",
+          headers: { ...this._headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          const msg = await parseErrorResponse(response);
+          callbacks.onError?.(msg);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let currentEvent = "";
+        let fullOutput = "";
+
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break outer;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              try {
+                switch (currentEvent) {
+                  case "text": {
+                    const parsed = JSON.parse(data) as { text: string };
+                    fullOutput += parsed.text;
+                    callbacks.onText(parsed.text);
+                    break;
+                  }
+                  case "tool": {
+                    const parsed = JSON.parse(data) as { name: string };
+                    callbacks.onTool?.(parsed.name);
+                    break;
+                  }
+                  case "done": {
+                    const parsed = JSON.parse(data) as { output?: string };
+                    callbacks.onDone?.(parsed.output ?? fullOutput);
+                    break;
+                  }
+                  case "error": {
+                    const parsed = JSON.parse(data) as { error: string };
+                    callbacks.onError?.(parsed.error);
+                    break;
+                  }
+                }
+              } catch {
+                // Skip unparseable events
+              }
+              currentEvent = "";
+            }
+          }
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof Error && error.name === "AbortError") return;
+        callbacks.onError?.(error instanceof Error ? error.message : String(error));
+      }
+    })();
+
+    return controller;
+  }
+
+  /**
+   * Connect to the live SSE log stream for this box (`GET /v2/box/:id/logs?stream=true`).
+   *
+   * Events fired:
+   * - `onLog`        – each structured log entry emitted by the box
+   * - `onStreamText` – inline streaming text chunks (agent output streamed to logs)
+   * - `onError`      – on connection failure or stream error
+   *
+   * Returns an `AbortController` you can call `.abort()` on to disconnect.
+   *
+   * @example
+   * ```ts
+   * const ctl = box.streamLogs({
+   *   onLog: (entry) => console.log(entry.message),
+   *   onStreamText: (text) => process.stdout.write(text),
+   * });
+   * // later: ctl.abort()
+   * ```
+   */
+  streamLogs(callbacks: LogStreamCallbacks): AbortController {
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const response = await fetch(`${this._baseUrl}/v2/box/${this.id}/logs?stream=true`, {
+          headers: this._headers,
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          const msg = await parseErrorResponse(response);
+          callbacks.onError?.(new BoxError(msg));
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break outer;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are separated by double newlines
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const part of parts) {
+            if (!part.trim()) continue;
+
+            const lines = part.split("\n");
+            let eventType = "message";
+            let data = "";
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7).trim();
+              } else if (line.startsWith("data: ")) {
+                data = line.slice(6);
+              }
+            }
+
+            if (!data) continue;
+
+            try {
+              if (eventType === "stream") {
+                const parsed = JSON.parse(data) as { text: string };
+                callbacks.onStreamText?.(parsed.text);
+              } else {
+                const entry = JSON.parse(data) as LogEntry;
+                callbacks.onLog(entry);
+              }
+            } catch {
+              // Skip unparseable events
+            }
+          }
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof Error && error.name === "AbortError") return;
+        callbacks.onError?.(error instanceof Error ? error : new BoxError(String(error)));
+      }
+    })();
+
+    return controller;
   }
 
   // ==================== Internal ====================
@@ -1061,39 +1547,9 @@ export class Box {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? this._timeout);
 
+    this.log(`${method} ${url}`);
     try {
-      const headers: Record<string, string> = { ...this._headers };
-      let body: string | undefined;
-
-      if (options.body) {
-        headers["Content-Type"] = "application/json";
-        body = JSON.stringify(options.body);
-      }
-
-      this.log(`${method} ${url}`);
-      const response = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
-      });
-
-      this.log(`Response status: ${response.status}`);
-
-      if (!response.ok) {
-        const msg = await parseErrorResponse(response);
-        throw new BoxError(msg, response.status);
-      }
-
-      const text = await response.text();
-      if (!text) return {} as T;
-      return JSON.parse(text) as T;
-    } catch (error) {
-      if (error instanceof BoxError) throw error;
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new BoxError("Request timeout");
-      }
-      throw new BoxError(error instanceof Error ? error.message : "Unknown error");
+      return await Box._rawFetch<T>(method, url, this._headers, options.body, controller.signal);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -1102,40 +1558,35 @@ export class Box {
   // ==================== Git (private, exposed via this.git) ====================
 
   private async _gitClone(options: GitCloneOptions): Promise<void> {
-    await this._request("POST", `/v2/box/${this.id}/git/clone`, {
-      body: {
-        repo: options.repo,
-        branch: options.branch,
-        github_token: this._gitToken,
-      },
-    });
+    const body: GitCloneOptions = { ...options, github_token: this._gitToken };
+    await this._request("POST", `/v2/box/${this.id}/git/clone`, { body });
   }
 
   private async _gitDiff(): Promise<string> {
-    const data = await this._request<{ diff: string }>("GET", `/v2/box/${this.id}/git/diff`);
+    const data = await this._request<GitDiffResponse>("GET", `/v2/box/${this.id}/git/diff`);
     return data.diff;
   }
 
   private async _gitStatus(): Promise<string> {
-    const data = await this._request<{ status: string }>("GET", `/v2/box/${this.id}/git/status`);
+    const data = await this._request<GitStatusResponse>("GET", `/v2/box/${this.id}/git/status`);
     return data.status;
   }
 
-  private async _gitCommit(options: { message: string }): Promise<GitCommitResult> {
+  private async _gitCommit(options: GitCommitRequest): Promise<GitCommitResult> {
     return this._request<GitCommitResult>("POST", `/v2/box/${this.id}/git/commit`, {
-      body: { message: options.message },
+      body: options ?? {},
     });
   }
 
-  private async _gitPush(options?: { branch?: string }): Promise<void> {
+  private async _gitPush(options?: GitPushRequest): Promise<void> {
     await this._request("POST", `/v2/box/${this.id}/git/push`, {
-      body: { branch: options?.branch },
+      body: options ?? {},
     });
   }
 
   private async _gitCreatePR(options: GitPROptions): Promise<PullRequest> {
     return this._request<PullRequest>("POST", `/v2/box/${this.id}/git/create-pr`, {
-      body: { title: options.title, body: options.body, base: options.base },
+      body: options ?? {},
     });
   }
 }
