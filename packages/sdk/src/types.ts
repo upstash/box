@@ -87,14 +87,14 @@ export type Chunk =
   | { type: "reasoning"; text: string }
   | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
   | {
-    type: "finish";
-    output: string;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-    };
-    sessionId: string;
-  }
+      type: "finish";
+      output: string;
+      usage: {
+        inputTokens: number;
+        outputTokens: number;
+      };
+      sessionId: string;
+    }
   | { type: "stats"; cpuNs: number; memoryPeakBytes: number }
   | { type: "unknown"; event: string; data: unknown };
 
@@ -264,7 +264,6 @@ export interface BoxData {
   total_cpu_ns?: number;
 }
 
-
 export interface RunMetadata {
   input_tokens?: number;
   output_tokens?: number;
@@ -337,7 +336,6 @@ export interface BoxRunData {
   created_at: number;
   completed_at?: number;
 }
-
 
 /** Wire-format representation of an MCP server config (snake_case for the REST API) */
 export interface McpServerWireConfig {

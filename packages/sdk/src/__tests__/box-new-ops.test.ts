@@ -11,9 +11,9 @@ import { mockResponse, createAttachedBox } from "./helpers.js";
 import type { Step, StepDiffResponse } from "../types.js";
 
 const TEST_STEP: Step = {
-    sha: "abc1234",
-    prompt: "refactor the auth module",
-    created_at: "2025-06-01T12:00:00Z",
+  sha: "abc1234",
+  prompt: "refactor the auth module",
+  created_at: "2025-06-01T12:00:00Z",
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -21,43 +21,43 @@ const TEST_STEP: Step = {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe("box.listSteps", () => {
-    afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
-    it("GETs /v2/box/:id/steps and returns Step[]", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ steps: [TEST_STEP] }));
+  it("GETs /v2/box/:id/steps and returns Step[]", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ steps: [TEST_STEP] }));
 
-        const steps = await box.listSteps();
+    const steps = await box.listSteps();
 
-        expect(steps).toHaveLength(1);
-        expect(steps[0]!.sha).toBe("abc1234");
-        expect(steps[0]!.prompt).toBe("refactor the auth module");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]!.sha).toBe("abc1234");
+    expect(steps[0]!.prompt).toBe("refactor the auth module");
 
-        const [url] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/v2/box/box-123/steps");
-    });
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/v2/box/box-123/steps");
+  });
 
-    it("returns an empty array when there are no steps", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ steps: [] }));
+  it("returns an empty array when there are no steps", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ steps: [] }));
 
-        const steps = await box.listSteps();
-        expect(steps).toEqual([]);
-    });
+    const steps = await box.listSteps();
+    expect(steps).toEqual([]);
+  });
 
-    it("returns multiple steps in order", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        const steps: Step[] = [
-            { sha: "sha1", prompt: "first task", created_at: "2025-01-01T00:00:00Z" },
-            { sha: "sha2", prompt: "second task", created_at: "2025-01-02T00:00:00Z" },
-        ];
-        fetchMock.mockResolvedValueOnce(mockResponse({ steps }));
+  it("returns multiple steps in order", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    const steps: Step[] = [
+      { sha: "sha1", prompt: "first task", created_at: "2025-01-01T00:00:00Z" },
+      { sha: "sha2", prompt: "second task", created_at: "2025-01-02T00:00:00Z" },
+    ];
+    fetchMock.mockResolvedValueOnce(mockResponse({ steps }));
 
-        const result = await box.listSteps();
-        expect(result).toHaveLength(2);
-        expect(result[0]!.sha).toBe("sha1");
-        expect(result[1]!.sha).toBe("sha2");
-    });
+    const result = await box.listSteps();
+    expect(result).toHaveLength(2);
+    expect(result[0]!.sha).toBe("sha1");
+    expect(result[1]!.sha).toBe("sha2");
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -65,43 +65,43 @@ describe("box.listSteps", () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe("box.stepDiff", () => {
-    afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
-    it("GETs /v2/box/:id/steps/:sha/diff and returns StepDiffResponse", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        const diffResp: StepDiffResponse = {
-            sha: "abc1234",
-            diff: "--- a/auth.ts\n+++ b/auth.ts\n@@ -1 +1 @@\n-old\n+new",
-        };
-        fetchMock.mockResolvedValueOnce(mockResponse(diffResp));
+  it("GETs /v2/box/:id/steps/:sha/diff and returns StepDiffResponse", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    const diffResp: StepDiffResponse = {
+      sha: "abc1234",
+      diff: "--- a/auth.ts\n+++ b/auth.ts\n@@ -1 +1 @@\n-old\n+new",
+    };
+    fetchMock.mockResolvedValueOnce(mockResponse(diffResp));
 
-        const result = await box.stepDiff("abc1234");
+    const result = await box.stepDiff("abc1234");
 
-        expect(result.sha).toBe("abc1234");
-        expect(result.diff).toContain("--- a/auth.ts");
+    expect(result.sha).toBe("abc1234");
+    expect(result.diff).toContain("--- a/auth.ts");
 
-        const [url, init] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/v2/box/box-123/steps/abc1234/diff");
-        expect(init?.method).toBe("GET");
-    });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/v2/box/box-123/steps/abc1234/diff");
+    expect(init?.method).toBe("GET");
+  });
 
-    it("includes the SHA in the URL path", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ sha: "deadbeef", diff: "" }));
+  it("includes the SHA in the URL path", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ sha: "deadbeef", diff: "" }));
 
-        await box.stepDiff("deadbeef");
+    await box.stepDiff("deadbeef");
 
-        const [url] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/steps/deadbeef/diff");
-    });
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/steps/deadbeef/diff");
+  });
 
-    it("returns an empty diff string when there are no changes", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ sha: "abc1234", diff: "" }));
+  it("returns an empty diff string when there are no changes", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ sha: "abc1234", diff: "" }));
 
-        const result = await box.stepDiff("abc1234");
-        expect(result.diff).toBe("");
-    });
+    const result = await box.stepDiff("abc1234");
+    expect(result.diff).toBe("");
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -109,36 +109,36 @@ describe("box.stepDiff", () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe("box.cancelRun", () => {
-    afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
-    it("POSTs to /v2/box/:id/runs/:runId/cancel", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({}));
+  it("POSTs to /v2/box/:id/runs/:runId/cancel", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-        await box.cancelRun("run-abc");
+    await box.cancelRun("run-abc");
 
-        const [url, init] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/v2/box/box-123/runs/run-abc/cancel");
-        expect(init?.method).toBe("POST");
-    });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/v2/box/box-123/runs/run-abc/cancel");
+    expect(init?.method).toBe("POST");
+  });
 
-    it("includes the runId in the URL", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({}));
+  it("includes the runId in the URL", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-        await box.cancelRun("run-xyz-999");
+    await box.cancelRun("run-xyz-999");
 
-        const [url] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/runs/run-xyz-999/cancel");
-    });
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/runs/run-xyz-999/cancel");
+  });
 
-    it("resolves to void on success", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({}));
+  it("resolves to void on success", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-        const result = await box.cancelRun("run-abc");
-        expect(result).toBeUndefined();
-    });
+    const result = await box.cancelRun("run-abc");
+    expect(result).toBeUndefined();
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -146,31 +146,31 @@ describe("box.cancelRun", () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe("box.exec with workDir", () => {
-    afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
-    it("sends work_dir in the request body when provided", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "ok" }));
+  it("sends work_dir in the request body when provided", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "ok" }));
 
-        await box.exec("ls -la", { workDir: "/workspace/src" });
+    await box.exec("ls -la", { workDir: "/workspace/src" });
 
-        const [url, init] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/v2/box/box-123/exec");
-        const body = JSON.parse(init?.body as string);
-        expect(body.command).toEqual(["sh", "-c", "ls -la"]);
-        expect(body.work_dir).toBe("/workspace/src");
-    });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/v2/box/box-123/exec");
+    const body = JSON.parse(init?.body as string);
+    expect(body.command).toEqual(["sh", "-c", "ls -la"]);
+    expect(body.work_dir).toBe("/workspace/src");
+  });
 
-    it("omits work_dir when not provided", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-        fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "ok" }));
+  it("omits work_dir when not provided", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "ok" }));
 
-        await box.exec("pwd");
+    await box.exec("pwd");
 
-        const [, init] = fetchMock.mock.calls[0]!;
-        const body = JSON.parse(init?.body as string);
-        expect(body.work_dir).toBeUndefined();
-    });
+    const [, init] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse(init?.body as string);
+    expect(body.work_dir).toBeUndefined();
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -179,164 +179,153 @@ describe("box.exec with workDir", () => {
 
 /** Build a minimal ReadableStream from an array of SSE-formatted text chunks. */
 function buildSseStream(chunks: string[]): ReadableStream<Uint8Array> {
-    const encoder = new TextEncoder();
-    return new ReadableStream({
-        start(controller) {
-            for (const chunk of chunks) {
-                controller.enqueue(encoder.encode(chunk));
-            }
-            controller.close();
-        },
-    });
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.close();
+    },
+  });
 }
 
 describe("box.streamRun", () => {
-    afterEach(() => vi.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
-    it("POSTs to /v2/box/:id/run/stream with the prompt in the body", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+  it("POSTs to /v2/box/:id/run/stream with the prompt in the body", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        fetchMock.mockResolvedValueOnce(
-            new Response(buildSseStream([]), { status: 200 }),
-        );
+    fetchMock.mockResolvedValueOnce(new Response(buildSseStream([]), { status: 200 }));
 
-        const ctl = box.streamRun("refactor auth", { onText: () => { } });
-        expect(ctl).toBeInstanceOf(AbortController);
+    const ctl = box.streamRun("refactor auth", { onText: () => {} });
+    expect(ctl).toBeInstanceOf(AbortController);
 
-        // give the async IIFE time to run
-        await new Promise((r) => setTimeout(r, 20));
+    // give the async IIFE time to run
+    await new Promise((r) => setTimeout(r, 20));
 
-        const [url, init] = fetchMock.mock.calls[0]!;
-        expect(url).toContain("/v2/box/box-123/run/stream");
-        expect(init?.method).toBe("POST");
-        const body = JSON.parse(init?.body as string);
-        expect(body.prompt).toBe("refactor auth");
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/v2/box/box-123/run/stream");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(init?.body as string);
+    expect(body.prompt).toBe("refactor auth");
+  });
+
+  it("fires onText for each 'text' SSE event", async () => {
+    const { box, fetchMock } = await createAttachedBox();
+
+    const sseData = [
+      'event: text\ndata: {"text":"Hello "}\n\n',
+      'event: text\ndata: {"text":"world"}\n\n',
+    ];
+    fetchMock.mockResolvedValueOnce(new Response(buildSseStream(sseData), { status: 200 }));
+
+    const received: string[] = [];
+    await new Promise<void>((resolve) => {
+      box.streamRun("say hello", {
+        onText: (t) => {
+          received.push(t);
+          if (received.length === 2) resolve();
+        },
+      });
     });
 
-    it("fires onText for each 'text' SSE event", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+    expect(received).toEqual(["Hello ", "world"]);
+  });
 
-        const sseData = [
-            "event: text\ndata: {\"text\":\"Hello \"}\n\n",
-            "event: text\ndata: {\"text\":\"world\"}\n\n",
-        ];
-        fetchMock.mockResolvedValueOnce(
-            new Response(buildSseStream(sseData), { status: 200 }),
-        );
+  it("fires onTool when a 'tool' SSE event is received", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        const received: string[] = [];
-        await new Promise<void>((resolve) => {
-            box.streamRun("say hello", {
-                onText: (t) => {
-                    received.push(t);
-                    if (received.length === 2) resolve();
-                },
-            });
-        });
+    const sseData = ['event: tool\ndata: {"name":"WriteFile"}\n\n'];
+    fetchMock.mockResolvedValueOnce(new Response(buildSseStream(sseData), { status: 200 }));
 
-        expect(received).toEqual(["Hello ", "world"]);
+    const toolNames: string[] = [];
+    await new Promise<void>((resolve) => {
+      box.streamRun("write a file", {
+        onText: () => {},
+        onTool: (name) => {
+          toolNames.push(name);
+          resolve();
+        },
+      });
     });
 
-    it("fires onTool when a 'tool' SSE event is received", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+    expect(toolNames).toEqual(["WriteFile"]);
+  });
 
-        const sseData = ["event: tool\ndata: {\"name\":\"WriteFile\"}\n\n"];
-        fetchMock.mockResolvedValueOnce(
-            new Response(buildSseStream(sseData), { status: 200 }),
-        );
+  it("fires onDone when the 'done' SSE event is received", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        const toolNames: string[] = [];
-        await new Promise<void>((resolve) => {
-            box.streamRun("write a file", {
-                onText: () => { },
-                onTool: (name) => {
-                    toolNames.push(name);
-                    resolve();
-                },
-            });
-        });
+    const sseData = [
+      'event: text\ndata: {"text":"Done output"}\n\n',
+      'event: done\ndata: {"output":"Done output"}\n\n',
+    ];
+    fetchMock.mockResolvedValueOnce(new Response(buildSseStream(sseData), { status: 200 }));
 
-        expect(toolNames).toEqual(["WriteFile"]);
+    let doneOutput = "";
+    await new Promise<void>((resolve) => {
+      box.streamRun("finish", {
+        onText: () => {},
+        onDone: (out) => {
+          doneOutput = out;
+          resolve();
+        },
+      });
     });
 
-    it("fires onDone when the 'done' SSE event is received", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+    expect(doneOutput).toBe("Done output");
+  });
 
-        const sseData = [
-            "event: text\ndata: {\"text\":\"Done output\"}\n\n",
-            "event: done\ndata: {\"output\":\"Done output\"}\n\n",
-        ];
-        fetchMock.mockResolvedValueOnce(
-            new Response(buildSseStream(sseData), { status: 200 }),
-        );
+  it("fires onError when the 'error' SSE event is received", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        let doneOutput = "";
-        await new Promise<void>((resolve) => {
-            box.streamRun("finish", {
-                onText: () => { },
-                onDone: (out) => {
-                    doneOutput = out;
-                    resolve();
-                },
-            });
-        });
+    const sseData = ['event: error\ndata: {"error":"agent crashed"}\n\n'];
+    fetchMock.mockResolvedValueOnce(new Response(buildSseStream(sseData), { status: 200 }));
 
-        expect(doneOutput).toBe("Done output");
+    let errMsg = "";
+    await new Promise<void>((resolve) => {
+      box.streamRun("crash", {
+        onText: () => {},
+        onError: (e) => {
+          errMsg = e;
+          resolve();
+        },
+      });
     });
 
-    it("fires onError when the 'error' SSE event is received", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+    expect(errMsg).toBe("agent crashed");
+  });
 
-        const sseData = ["event: error\ndata: {\"error\":\"agent crashed\"}\n\n"];
-        fetchMock.mockResolvedValueOnce(
-            new Response(buildSseStream(sseData), { status: 200 }),
-        );
+  it("fires onError when the HTTP response is not ok", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        let errMsg = "";
-        await new Promise<void>((resolve) => {
-            box.streamRun("crash", {
-                onText: () => { },
-                onError: (e) => {
-                    errMsg = e;
-                    resolve();
-                },
-            });
-        });
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
 
-        expect(errMsg).toBe("agent crashed");
+    let errMsg = "";
+    await new Promise<void>((resolve) => {
+      box.streamRun("prompt", {
+        onText: () => {},
+        onError: (e) => {
+          errMsg = e;
+          resolve();
+        },
+      });
     });
 
-    it("fires onError when the HTTP response is not ok", async () => {
-        const { box, fetchMock } = await createAttachedBox();
+    expect(errMsg).toContain("unauthorized");
+  });
 
-        fetchMock.mockResolvedValueOnce(
-            new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
-        );
+  it("returns an AbortController that can cancel the stream", async () => {
+    const { box, fetchMock } = await createAttachedBox();
 
-        let errMsg = "";
-        await new Promise<void>((resolve) => {
-            box.streamRun("prompt", {
-                onText: () => { },
-                onError: (e) => {
-                    errMsg = e;
-                    resolve();
-                },
-            });
-        });
+    // Never-ending stream
+    const neverStream = new ReadableStream({ start() {} });
+    fetchMock.mockResolvedValueOnce(new Response(neverStream, { status: 200 }));
 
-        expect(errMsg).toContain("unauthorized");
-    });
-
-    it("returns an AbortController that can cancel the stream", async () => {
-        const { box, fetchMock } = await createAttachedBox();
-
-        // Never-ending stream
-        const neverStream = new ReadableStream({ start() { } });
-        fetchMock.mockResolvedValueOnce(new Response(neverStream, { status: 200 }));
-
-        const ctl = box.streamRun("long task", { onText: () => { } });
-        expect(ctl).toBeInstanceOf(AbortController);
-        ctl.abort(); // should not throw
-    });
+    const ctl = box.streamRun("long task", { onText: () => {} });
+    expect(ctl).toBeInstanceOf(AbortController);
+    ctl.abort(); // should not throw
+  });
 });
-

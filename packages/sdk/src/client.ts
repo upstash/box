@@ -164,7 +164,7 @@ export class Run<T = string> {
     this._abortController?.abort();
     await this._box
       ._request("POST", `/v2/box/${this._box.id}/runs/${this._id}/cancel`)
-      .catch(() => { });
+      .catch(() => {});
     this._status = "cancelled";
   }
 
@@ -350,12 +350,14 @@ export class Box {
     if (config.env) body.env_vars = config.env;
     if (config.skills?.length) body.skills = config.skills;
     if (config.mcpServers?.length) {
-      body.mcp_servers = config.mcpServers.map((s): McpServerWireConfig => ({
-        name: s.name,
-        source: s.source,
-        package_or_url: s.packageOrUrl,
-        headers: s.headers,
-      }));
+      body.mcp_servers = config.mcpServers.map(
+        (s): McpServerWireConfig => ({
+          name: s.name,
+          source: s.source,
+          package_or_url: s.packageOrUrl,
+          headers: s.headers,
+        }),
+      );
     }
 
     const response = await fetch(`${baseUrl}/v2/box`, {
@@ -420,7 +422,9 @@ export class Box {
     }
 
     const baseUrl = (
-      options?.baseUrl ?? process.env.UPSTASH_BOX_BASE_URL ?? DEFAULT_BASE_URL
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
     ).replace(/\/$/, "");
 
     const headers: Record<string, string> = {
@@ -490,19 +494,14 @@ export class Box {
    * Create a new box and return its initial data immediately, without polling for readiness.
    * The box will be in `"creating"` status; poll `Box.fetchById()` to track progress.
    */
-  static async createRaw(
-    data: CreateBoxRequest,
-    options?: ListOptions,
-  ): Promise<BoxData> {
+  static async createRaw(data: CreateBoxRequest, options?: ListOptions): Promise<BoxData> {
     return Box._staticRequest<BoxData>("POST", "/v2/box", options, data);
   }
 
   /**
    * Fetch structured logs across **all** boxes for the authenticated user.
    */
-  static async allLogs(
-    options?: ListOptions & { limit?: number },
-  ): Promise<BoxLogEntryWithBox[]> {
+  static async allLogs(options?: ListOptions & { limit?: number }): Promise<BoxLogEntryWithBox[]> {
     const limit = options?.limit ?? 200;
     const data = await Box._staticRequest<GetAllLogsResponse>(
       "GET",
@@ -536,11 +535,7 @@ export class Box {
    * List all API keys for the authenticated user.
    */
   static async listApiKeys(options?: ListOptions): Promise<ApiKey[]> {
-    const data = await Box._staticRequest<ListApiKeysResponse>(
-      "GET",
-      "/v2/box/apikeys",
-      options,
-    );
+    const data = await Box._staticRequest<ListApiKeysResponse>("GET", "/v2/box/apikeys", options);
     return data.keys ?? [];
   }
 
@@ -583,11 +578,7 @@ export class Box {
     provider: "anthropic" | "openai",
     options?: ListOptions,
   ): Promise<void> {
-    await Box._staticRequest<void>(
-      "DELETE",
-      `/v2/box/agent-credentials/${provider}`,
-      options,
-    );
+    await Box._staticRequest<void>("DELETE", `/v2/box/agent-credentials/${provider}`, options);
   }
 
   // ==================== GitHub Integration ====================
@@ -1107,10 +1098,7 @@ export class Box {
   private async _listFiles(path?: string): Promise<FileEntry[]> {
     const resolved = path ? this._resolvePath(path) : "";
     const p = resolved ? `?path=${encodeURIComponent(resolved)}` : "";
-    const data = await this._request<ListFilesResponse>(
-      "GET",
-      `/v2/box/${this.id}/files/list${p}`,
-    );
+    const data = await this._request<ListFilesResponse>("GET", `/v2/box/${this.id}/files/list${p}`);
     return data.files;
   }
 
@@ -1221,10 +1209,7 @@ export class Box {
    * List all snapshots for this box.
    */
   async listSnapshots(): Promise<Snapshot[]> {
-    const data = await this._request<ListSnapshotsResponse>(
-      "GET",
-      `/v2/box/${this.id}/snapshots`,
-    );
+    const data = await this._request<ListSnapshotsResponse>("GET", `/v2/box/${this.id}/snapshots`);
     return data.snapshots ?? [];
   }
 
@@ -1357,7 +1342,6 @@ export class Box {
     await this._request("POST", `/v2/box/${this.id}/runs/${runId}/cancel`);
   }
 
-
   // ==================== Streaming Run ====================
 
   /**
@@ -1385,15 +1369,12 @@ export class Box {
 
     void (async () => {
       try {
-        const response = await fetch(
-          `${this._baseUrl}/v2/box/${this.id}/run/stream`,
-          {
-            method: "POST",
-            headers: { ...this._headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt }),
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch(`${this._baseUrl}/v2/box/${this.id}/run/stream`, {
+          method: "POST",
+          headers: { ...this._headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal,
+        });
 
         if (!response.ok || !response.body) {
           const msg = await parseErrorResponse(response);
@@ -1485,13 +1466,10 @@ export class Box {
 
     void (async () => {
       try {
-        const response = await fetch(
-          `${this._baseUrl}/v2/box/${this.id}/logs?stream=true`,
-          {
-            headers: this._headers,
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch(`${this._baseUrl}/v2/box/${this.id}/logs?stream=true`, {
+          headers: this._headers,
+          signal: controller.signal,
+        });
 
         if (!response.ok || !response.body) {
           const msg = await parseErrorResponse(response);

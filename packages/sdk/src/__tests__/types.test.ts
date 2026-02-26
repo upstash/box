@@ -228,7 +228,9 @@ describe("RunOptions", () => {
       prompt: "Add tests",
       timeout: 30000,
       maxRetries: 3,
-      onStream: () => { /* noop */ },
+      onStream: () => {
+        /* noop */
+      },
       webhook: { url: "https://example.com/hook" },
     };
     expect(opts.maxRetries).toBe(3);
@@ -246,8 +248,12 @@ describe("StreamOptions", () => {
   it("accepts onChunk and onToolUse callbacks", () => {
     const opts: StreamOptions = {
       prompt: "Stream output",
-      onChunk: () => { /* noop */ },
-      onToolUse: () => { /* noop */ },
+      onChunk: () => {
+        /* noop */
+      },
+      onToolUse: () => {
+        /* noop */
+      },
     };
     expect(typeof opts.onChunk).toBe("function");
     expect(typeof opts.onToolUse).toBe("function");
@@ -324,7 +330,11 @@ describe("RunCost", () => {
 
 describe("RunLog", () => {
   it("has ISO timestamp, level, and message", () => {
-    const log: RunLog = { timestamp: "2025-01-01T00:00:00Z", level: "info", message: "Starting..." };
+    const log: RunLog = {
+      timestamp: "2025-01-01T00:00:00Z",
+      level: "info",
+      message: "Starting...",
+    };
     expect(log.level).toBe("info");
     expect(log.timestamp).toBe("2025-01-01T00:00:00Z");
   });
@@ -358,7 +368,9 @@ describe("WebhookPayload", () => {
   });
 
   it("accepts a typed result via generic", () => {
-    interface MyResult { answer: number }
+    interface MyResult {
+      answer: number;
+    }
     const payload: WebhookPayload<MyResult> = {
       runId: "run-2",
       boxId: "box-2",
@@ -504,7 +516,10 @@ describe("FileEntry", () => {
 
 describe("UploadFileEntry", () => {
   it("has path and destination", () => {
-    const entry: UploadFileEntry = { path: "/local/myfile.ts", destination: "/workspace/myfile.ts" };
+    const entry: UploadFileEntry = {
+      path: "/local/myfile.ts",
+      destination: "/workspace/myfile.ts",
+    };
     expect(entry.path).toBe("/local/myfile.ts");
     expect(entry.destination).toBe("/workspace/myfile.ts");
   });
@@ -525,7 +540,15 @@ describe("DownloadFileOptions", () => {
 describe("ListFilesResponse", () => {
   it("wraps a FileEntry array", () => {
     const res: ListFilesResponse = {
-      files: [{ name: "app.ts", path: "/workspace/app.ts", size: 100, is_dir: false, mod_time: "2025-01-01T00:00:00Z" }],
+      files: [
+        {
+          name: "app.ts",
+          path: "/workspace/app.ts",
+          size: 100,
+          is_dir: false,
+          mod_time: "2025-01-01T00:00:00Z",
+        },
+      ],
     };
     expect(res.files).toHaveLength(1);
     expect(res.files[0]!.is_dir).toBe(false);
@@ -606,7 +629,12 @@ describe("GitPROptions", () => {
 
 describe("PullRequest", () => {
   it("has all fields", () => {
-    const pr: PullRequest = { url: "https://github.com/org/repo/pull/1", number: 1, title: "Fix", base: "main" };
+    const pr: PullRequest = {
+      url: "https://github.com/org/repo/pull/1",
+      number: 1,
+      title: "Fix",
+      base: "main",
+    };
     expect(pr.number).toBe(1);
   });
 });
@@ -616,7 +644,12 @@ describe("PullRequest", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe("LogEntry", () => {
   it("has typed source field", () => {
-    const entry: LogEntry = { timestamp: 1700000000, level: "info", source: "agent", message: "done" };
+    const entry: LogEntry = {
+      timestamp: 1700000000,
+      level: "info",
+      source: "agent",
+      message: "done",
+    };
     expect(entry.source).toBe("agent");
   });
 });
@@ -648,7 +681,13 @@ describe("GetAllLogsResponse", () => {
   it("wraps BoxLogEntryWithBox array", () => {
     const res: GetAllLogsResponse = {
       logs: [
-        { timestamp: 1700000000, level: "error", source: "system", message: "crash", box_id: "box-1" },
+        {
+          timestamp: 1700000000,
+          level: "error",
+          source: "system",
+          message: "crash",
+          box_id: "box-1",
+        },
       ],
     };
     expect(res.logs[0]!.box_id).toBe("box-1");
@@ -735,7 +774,14 @@ describe("ListSnapshotsResponse", () => {
   it("wraps Snapshot array", () => {
     const res: ListSnapshotsResponse = {
       snapshots: [
-        { id: "s1", name: "snap", box_id: "b1", size_bytes: 512, status: "ready", created_at: 1700000000 },
+        {
+          id: "s1",
+          name: "snap",
+          box_id: "b1",
+          size_bytes: 512,
+          status: "ready",
+          created_at: 1700000000,
+        },
       ],
     };
     expect(res.snapshots[0]!.status).toBe("ready");
@@ -950,8 +996,20 @@ describe("SDK integration with new response types", () => {
     const { box, fetchMock } = await createTestBox();
     const payload: ListFilesResponse = {
       files: [
-        { name: "index.ts", path: "/workspace/home/index.ts", size: 512, is_dir: false, mod_time: "2025-01-01T00:00:00Z" },
-        { name: "src", path: "/workspace/home/src", size: 0, is_dir: true, mod_time: "2025-01-01T00:00:00Z" },
+        {
+          name: "index.ts",
+          path: "/workspace/home/index.ts",
+          size: 512,
+          is_dir: false,
+          mod_time: "2025-01-01T00:00:00Z",
+        },
+        {
+          name: "src",
+          path: "/workspace/home/src",
+          size: 0,
+          is_dir: true,
+          mod_time: "2025-01-01T00:00:00Z",
+        },
       ],
     };
     fetchMock.mockResolvedValueOnce(mockResponse(payload));
@@ -963,7 +1021,10 @@ describe("SDK integration with new response types", () => {
 
   it("box.files.read() response conforms to ReadFileResponse shape", async () => {
     const { box, fetchMock } = await createTestBox();
-    const payload: ReadFileResponse = { path: "/workspace/home/app.ts", content: "export default {}" };
+    const payload: ReadFileResponse = {
+      path: "/workspace/home/app.ts",
+      content: "export default {}",
+    };
     fetchMock.mockResolvedValueOnce(mockResponse(payload));
 
     const content = await box.files.read("app.ts");

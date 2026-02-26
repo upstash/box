@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Box, BoxError } from "../client.js";
 import { mockResponse, TEST_BOX_DATA, TEST_CONFIG } from "./helpers.js";
-import type { AgentCredential, BoxLogEntryWithBox, GitHubRepo, GitHubBranch, Snapshot } from "../types.js";
+import type {
+  AgentCredential,
+  BoxLogEntryWithBox,
+  GitHubRepo,
+  GitHubBranch,
+  Snapshot,
+} from "../types.js";
 
 const TEST_LOG: BoxLogEntryWithBox = {
   box_id: "box-123",
@@ -227,9 +233,7 @@ describe("Box.listAgentCredentials", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("GETs /v2/box/agent-credentials and returns AgentCredential[]", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ credentials: [TEST_CREDENTIAL] }),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ credentials: [TEST_CREDENTIAL] }));
 
     const creds = await Box.listAgentCredentials({
       apiKey: TEST_CONFIG.apiKey,
