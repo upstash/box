@@ -77,7 +77,13 @@ function getSuggestion(cmdName: string): string | undefined {
   }
 }
 
-export class BoxREPLClient {
+export interface IBoxREPLClient {
+  readonly box: Box;
+  readonly promptUser: (prompt: string) => Promise<string>;
+  startLoop(): Promise<void>;
+}
+
+export class BoxREPLClient implements IBoxREPLClient {
   readonly box: Box;
   readonly promptUser: (prompt: string) => Promise<string>;
   private readonly hooks: REPLHooks;

@@ -4,14 +4,14 @@
   "description": "CLI for Upstash Box — REPL-first interface for AI coding agents",
   "type": "module",
   "bin": {
-    "box": "./dist/index.js"
+    "box": "./dist/cli.js"
   },
-  "main": "dist/repl/client.js",
-  "types": "dist/repl/client.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/repl/client.js",
-      "types": "./dist/repl/client.d.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
