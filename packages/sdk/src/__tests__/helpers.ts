@@ -86,3 +86,16 @@ export async function createTestBox(
   });
   return { box, fetchMock };
 }
+
+/**
+ * Creates a Box instance via Box.get() and clears the mock call history
+ * so that test assertions on fetchMock.mock.calls start from index 0.
+ */
+export async function createAttachedBox(
+  overrides?: Partial<BoxData>,
+): Promise<{ box: Box; fetchMock: ReturnType<typeof vi.fn> }> {
+  const { box, fetchMock } = await createTestBox(overrides);
+  // Clear the Box.get() call so tests can assert from calls[0]
+  fetchMock.mockClear();
+  return { box, fetchMock };
+}
