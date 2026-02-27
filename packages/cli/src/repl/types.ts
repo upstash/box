@@ -10,7 +10,8 @@ export type BoxREPLCommandName =
   | "delete"
   | "console"
   | "clear"
-  | "help";
+  | "help"
+  | "exit";
 
 /** Known tool names from the agent stream */
 export type AgentToolName =

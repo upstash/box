@@ -27,6 +27,7 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   console: { description: "Open the box in Upstash console", handler: handleConsole },
   clear: { description: "Clear terminal output", handler: noop },
   help: { description: "Show all commands", handler: noop },
+  exit: { description: "Exit the REPL", handler: noop },
 };
 
 /** All available command names (without / prefix). */
@@ -57,12 +58,12 @@ function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefin
 
 export interface BoxREPLClientOptions {
   /** Commands to hide from suggestions, help output, and welcome message. */
-  hiddenCommands?: string[];
+  hiddenCommands?: BoxREPLCommandName[];
 }
 
 export class BoxREPLClient {
   readonly box: Box;
-  readonly hiddenCommands: ReadonlySet<string>;
+  readonly hiddenCommands: ReadonlySet<BoxREPLCommandName>;
 
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
