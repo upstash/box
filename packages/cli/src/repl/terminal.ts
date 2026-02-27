@@ -13,7 +13,6 @@ import {
   red,
   yellow,
   cursorUp,
-  eraseLine,
   eraseDown,
   stripAnsi,
 } from "../utils/ansi.js";
@@ -33,14 +32,31 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
 
   // --- Spinner tracking ---
   let activeSpinnerStop: (() => void) | null = null;
+  let inCommand = false;
 
   // --- Todo checklist tracking ---
   let todoLines = 0;
+
+  // --- Stream newline tracking ---
+  let needsNewline = false;
 
   function ensureSpinnerStopped() {
     if (activeSpinnerStop) {
       activeSpinnerStop();
       activeSpinnerStop = null;
+    }
+  }
+
+  function ensureNewline() {
+    if (needsNewline) {
+      stdout.write("\n");
+      needsNewline = false;
+    }
+  }
+
+  function restartSpinnerIfInCommand() {
+    if (inCommand) {
+      activeSpinnerStop = startSpinner();
     }
   }
 
@@ -76,13 +92,22 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
     stdout.write(`\x1b[${text.length}D`);
   }
 
+  // --- Multi-line input tracking ---
+  let isMetaReturn = false;
+
   if (stdin.isTTY) {
     // Must run before readline's handler so the cursor is still on the input line
-    stdin.prependListener("keypress", (_str: string, key: { name?: string }) => {
-      if (key?.name === "return") {
-        clearPreview();
-      }
-    });
+    stdin.prependListener(
+      "keypress",
+      (_str: string, key: { name?: string; meta?: boolean; shift?: boolean }) => {
+        if (key?.name === "return") {
+          clearPreview();
+          if (key.meta || key.shift) {
+            isMetaReturn = true;
+          }
+        }
+      },
+    );
 
     stdin.on("keypress", (_str: string, key: { name?: string }) => {
       // Handle ghost text: Tab accepts, any other key dismisses
@@ -126,25 +151,37 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   function processEvent(event: BoxREPLEvent): boolean {
     switch (event.type) {
       case "command:start":
+        inCommand = true;
         stdout.write("\n");
         activeSpinnerStop = startSpinner();
         break;
       case "log":
         ensureSpinnerStopped();
+        ensureNewline();
         clearPreview();
         console.log(event.message);
+        needsNewline = false;
+        todoLines = 0;
+        restartSpinnerIfInCommand();
         break;
       case "error":
         ensureSpinnerStopped();
+        ensureNewline();
         clearPreview();
         console.error(red(event.message));
+        needsNewline = false;
+        todoLines = 0;
+        restartSpinnerIfInCommand();
         break;
       case "stream":
         ensureSpinnerStopped();
         process.stdout.write(event.text);
+        needsNewline = !event.text.endsWith("\n");
+        todoLines = 0;
         break;
       case "tool": {
         ensureSpinnerStopped();
+        ensureNewline();
         const { name, summary, detail } = event.tool;
         if (name === "Bash") {
           let line = dim("  ⚡ ") + yellow(name) + dim(": " + summary);
@@ -155,10 +192,14 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
         } else {
           console.log(dim("  ⚡ ") + yellow(name) + dim("(" + summary + ")"));
         }
+        needsNewline = false;
+        todoLines = 0;
+        restartSpinnerIfInCommand();
         break;
       }
       case "todo": {
         ensureSpinnerStopped();
+        ensureNewline();
         if (todoLines > 0) {
           stdout.write(cursorUp(todoLines) + eraseDown);
         }
@@ -168,15 +209,21 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
           } else if (item.status === "in_progress") {
             console.log(cyan("  ◼") + " " + item.content);
           } else {
-            console.log(dim("  ◻") + " " + item.content);
+            console.log(dim("  ◻ " + item.content));
           }
         }
-        todoLines = event.todos.length;
+        stdout.write("\n"); // bottom margin
+        todoLines = event.todos.length + 1; // items + bottom margin
+        needsNewline = false;
+        restartSpinnerIfInCommand();
         break;
       }
       case "command:complete": {
+        inCommand = false;
         ensureSpinnerStopped();
+        ensureNewline();
         todoLines = 0;
+        needsNewline = false;
         const seconds = (event.durationMs / 1000).toFixed(1);
         console.log(dim(`\n  /${event.command} completed in ${seconds}s\n`));
         break;
@@ -185,6 +232,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
         nextSuggestion = event.text;
         break;
       case "command:not-found":
+        ensureNewline();
         console.error(yellow(`\nUnknown command: /${event.typed}`));
         if (event.suggestions.length > 0) {
           console.log(
@@ -219,19 +267,46 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   );
 
   // --- Main REPL loop ---
+  const continuationPrompt = " ".repeat(promptVisualLen);
+
   try {
     while (true) {
       clearPreview();
       const suggestion = nextSuggestion;
       nextSuggestion = null;
 
-      const answer = await rl.question(prompt).then((input) => {
-        // Rewrite the prompt line with the input in green
-        if (input.trim()) {
-          stdout.write(`\x1b[A\r${eraseLine}${prompt}${green(input)}\n`);
+      // Collect input (supports multi-line via alt+enter / shift+enter)
+      const inputLines: string[] = [];
+      isMetaReturn = false;
+
+      const firstLine = await rl.question(prompt);
+      inputLines.push(firstLine);
+
+      if (isMetaReturn && stdin.isTTY) {
+        while (true) {
+          isMetaReturn = false;
+          const nextLine = await rl.question(continuationPrompt);
+          inputLines.push(nextLine);
+          if (!isMetaReturn) break;
         }
-        return input;
-      });
+      }
+
+      const answer = inputLines.join("\n");
+
+      // Rewrite all input lines in green
+      if (answer.trim()) {
+        const termWidth = stdout.columns || 80;
+        let totalVisualRows = 0;
+        for (const line of inputLines) {
+          const totalChars = promptVisualLen + line.length;
+          totalVisualRows += Math.ceil(totalChars / termWidth) || 1;
+        }
+        stdout.write(cursorUp(totalVisualRows) + "\r" + eraseDown);
+        for (let i = 0; i < inputLines.length; i++) {
+          const p = i === 0 ? prompt : continuationPrompt;
+          stdout.write(p + green(inputLines[i]!) + "\n");
+        }
+      }
 
       if (suggestion && stdin.isTTY) {
         setImmediate(() => showGhost(suggestion));
@@ -246,9 +321,13 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
           }
         }
       } catch (err) {
-        ensureSpinnerStopped();
         console.error(red(`Error: ${err instanceof Error ? err.message : err}`));
       }
+
+      // Always clean up after event processing — handles cases where the
+      // generator ends without a command:complete (e.g. after an error event).
+      inCommand = false;
+      ensureSpinnerStopped();
 
       if (shouldExit) break;
     }
