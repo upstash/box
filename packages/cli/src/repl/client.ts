@@ -88,9 +88,9 @@ export class BoxREPLClient {
 
   /** Return commands whose name starts with the given prefix, excluding hidden ones. */
   suggestCommands(prefix: string): BoxREPLCommand[] {
-    return COMMAND_NAMES
-      .filter((name) => name.startsWith(prefix) && !this.hiddenCommands.has(name))
-      .map((name) => ({ name, ...COMMANDS[name] }));
+    return COMMAND_NAMES.filter(
+      (name) => name.startsWith(prefix) && !this.hiddenCommands.has(name),
+    ).map((name) => ({ name, ...COMMANDS[name] }));
   }
 
   /** Process a single line of input and yield events. */
@@ -109,8 +109,7 @@ export class BoxREPLClient {
     }
 
     if (trimmed === "/help") {
-      const lines = COMMAND_NAMES
-        .filter((name) => !this.hiddenCommands.has(name))
+      const lines = COMMAND_NAMES.filter((name) => !this.hiddenCommands.has(name))
         .map((name) => `  /${name.padEnd(16)}${COMMANDS[name].description}`)
         .join("\n");
       yield { type: "log", message: `\nAvailable commands:\n${lines}\n` };
