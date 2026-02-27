@@ -10,6 +10,9 @@ import { handleDelete } from "./commands/delete.js";
 import { handleConsole } from "./commands/console.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
 
+// Dummy handler for commands intercepted in handleInput()
+async function* noop(): AsyncGenerator<BoxREPLEvent> {}
+
 const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   run: { description: "Run the agent with a prompt", handler: handleRun },
   exec: { description: "Execute a shell command", handler: handleExec },
@@ -22,6 +25,8 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   pause: { description: "Pause the box and exit", handler: handlePause },
   delete: { description: "Delete the box and exit", handler: handleDelete },
   console: { description: "Open the box in Upstash console", handler: handleConsole },
+  clear: { description: "Clear terminal output", handler: noop },
+  help: { description: "Show all commands", handler: noop },
 };
 
 /** All available command names (without / prefix). */
@@ -50,11 +55,18 @@ function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefin
   }
 }
 
+export interface BoxREPLClientOptions {
+  /** Commands to hide from suggestions, help output, and welcome message. */
+  hiddenCommands?: string[];
+}
+
 export class BoxREPLClient {
   readonly box: Box;
+  readonly hiddenCommands: ReadonlySet<string>;
 
-  constructor(box: Box) {
+  constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
+    this.hiddenCommands = new Set(options?.hiddenCommands ?? []);
   }
 
   /** Parse input and return the matching command + args, or null. */
@@ -73,12 +85,11 @@ export class BoxREPLClient {
     return { command: { name: cmdName as BoxREPLCommandName, ...entry }, args };
   }
 
-  /** Return commands whose name starts with the given prefix. */
-  static suggestCommands(prefix: string): BoxREPLCommand[] {
-    return COMMAND_NAMES.filter((name) => name.startsWith(prefix)).map((name) => ({
-      name,
-      ...COMMANDS[name],
-    }));
+  /** Return commands whose name starts with the given prefix, excluding hidden ones. */
+  suggestCommands(prefix: string): BoxREPLCommand[] {
+    return COMMAND_NAMES
+      .filter((name) => name.startsWith(prefix) && !this.hiddenCommands.has(name))
+      .map((name) => ({ name, ...COMMANDS[name] }));
   }
 
   /** Process a single line of input and yield events. */
@@ -88,6 +99,20 @@ export class BoxREPLClient {
 
     if (trimmed === "exit" || trimmed === "/exit") {
       yield { type: "exit", message: "Goodbye." };
+      return;
+    }
+
+    if (trimmed === "/clear") {
+      yield { type: "clear" };
+      return;
+    }
+
+    if (trimmed === "/help") {
+      const lines = COMMAND_NAMES
+        .filter((name) => !this.hiddenCommands.has(name))
+        .map((name) => `  /${name.padEnd(16)}${COMMANDS[name].description}`)
+        .join("\n");
+      yield { type: "log", message: `\nAvailable commands:\n${lines}\n` };
       return;
     }
 

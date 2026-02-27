@@ -3,7 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import type { Box } from "@upstash/box";
 import type { BoxREPLEvent } from "./types.js";
-import { BoxREPLClient } from "./client.js";
+import { BoxREPLClient, type BoxREPLClientOptions } from "./client.js";
 import { startSpinner } from "./spinner.js";
 import {
   bold,
@@ -21,7 +21,7 @@ import {
 /**
  * Start an interactive REPL session for the given box (CLI entry point).
  */
-export async function startRepl(box: Box): Promise<void> {
+export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promise<void> {
   const rl = createInterface({
     input: stdin,
     output: stdout,
@@ -29,7 +29,7 @@ export async function startRepl(box: Box): Promise<void> {
   });
 
   const prompt = `${bold(cyan(box.id))}${dim(">")} `;
-  const client = new BoxREPLClient(box);
+  const client = new BoxREPLClient(box, options);
 
   // --- Spinner tracking ---
   let activeSpinnerStop: (() => void) | null = null;
@@ -108,7 +108,7 @@ export async function startRepl(box: Box): Promise<void> {
 
         if (line.startsWith("/") && !line.includes(" ")) {
           const partial = line.slice(1);
-          const matches = BoxREPLClient.suggestCommands(partial).slice(0, 5);
+          const matches = client.suggestCommands(partial).slice(0, 5);
           if (matches.length > 0) {
             const preview = matches
               .map((c) => `  ${dim(`/${c.name}`)} ${dim("—")} ${dim(c.description)}`)
@@ -192,6 +192,9 @@ export async function startRepl(box: Box): Promise<void> {
           );
         }
         break;
+      case "clear":
+        stdout.write("\x1b[2J\x1b[H");
+        break;
       case "open-url": {
         const openCmd =
           process.platform === "darwin"
@@ -209,10 +212,10 @@ export async function startRepl(box: Box): Promise<void> {
   }
 
   // --- Welcome message ---
-  const allCommands = BoxREPLClient.suggestCommands("");
+  const allCommands = client.suggestCommands("");
   console.log(`\nConnected to box ${box.id}`);
   console.log(
-    `Type a prompt to run the agent, or use commands: ${allCommands.map((c) => `/${c.name}`).join(", ")}, /exit\n`,
+    `Type a prompt to run the agent, or use commands: ${allCommands.map((c) => `/${c.name}`).join(", ")}\n`,
   );
 
   // --- Main REPL loop ---

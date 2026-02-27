@@ -8,7 +8,9 @@ export type BoxREPLCommandName =
   | "snapshot"
   | "pause"
   | "delete"
-  | "console";
+  | "console"
+  | "clear"
+  | "help";
 
 /** Known tool names from the agent stream */
 export type AgentToolName =
@@ -48,6 +50,7 @@ export type BoxREPLEvent =
   | { type: "command:complete"; command: BoxREPLCommandName; durationMs: number }
   | { type: "command:not-found"; typed: string; suggestions: BoxREPLCommandName[] }
   | { type: "suggestion"; text: string }
+  | { type: "clear" }
   | { type: "open-url"; url: string }
   | { type: "exit"; message: string };
 
