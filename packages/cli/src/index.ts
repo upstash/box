@@ -4,4 +4,7 @@ export type {
   BoxREPLCommand,
   BoxREPLCommandHandler,
   BoxREPLCommandName,
+  AgentToolName,
+  TodoItem,
+  ToolCallSummary,
 } from "./repl/types.js";

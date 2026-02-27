@@ -34,6 +34,9 @@ export async function startRepl(box: Box): Promise<void> {
   // --- Spinner tracking ---
   let activeSpinnerStop: (() => void) | null = null;
 
+  // --- Todo checklist tracking ---
+  let todoLines = 0;
+
   function ensureSpinnerStopped() {
     if (activeSpinnerStop) {
       activeSpinnerStop();
@@ -140,7 +143,40 @@ export async function startRepl(box: Box): Promise<void> {
         ensureSpinnerStopped();
         process.stdout.write(event.text);
         break;
+      case "tool": {
+        ensureSpinnerStopped();
+        const { name, summary, detail } = event.tool;
+        if (name === "Bash") {
+          let line = dim("  ⚡ ") + yellow(name) + dim(": " + summary);
+          if (detail) {
+            line += dim("\n      $ " + detail);
+          }
+          console.log(line);
+        } else {
+          console.log(dim("  ⚡ ") + yellow(name) + dim("(" + summary + ")"));
+        }
+        break;
+      }
+      case "todo": {
+        ensureSpinnerStopped();
+        if (todoLines > 0) {
+          stdout.write(cursorUp(todoLines) + eraseDown);
+        }
+        for (const item of event.todos) {
+          if (item.status === "completed") {
+            console.log(green("  ✔") + " " + item.content);
+          } else if (item.status === "in_progress") {
+            console.log(cyan("  ◼") + " " + item.content);
+          } else {
+            console.log(dim("  ◻") + " " + item.content);
+          }
+        }
+        todoLines = event.todos.length;
+        break;
+      }
       case "command:complete": {
+        ensureSpinnerStopped();
+        todoLines = 0;
         const seconds = (event.durationMs / 1000).toFixed(1);
         console.log(dim(`\n  /${event.command} completed in ${seconds}s\n`));
         break;
