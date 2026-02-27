@@ -1,5 +1,12 @@
 # @upstash/box-cli
 
+## 0.1.11
+
+### Patch Changes
+
+- 4503a09: Add /clear, /help commands and hiddenCommands option to REPL
+- ea26326: Handle tool-call and todo events in CLI
+
 ## 0.1.10
 
 ### Patch Changes
