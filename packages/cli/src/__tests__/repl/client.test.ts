@@ -103,18 +103,20 @@ describe("BoxREPLClient", () => {
   });
 
   describe("suggestCommands", () => {
+    const client = new BoxREPLClient({} as any);
+
     it("returns commands matching prefix", () => {
-      const suggestions = BoxREPLClient.suggestCommands("ex");
+      const suggestions = client.suggestCommands("ex");
       expect(suggestions.map((c) => c.name)).toContain("exec");
     });
 
     it("returns empty for no match", () => {
-      const suggestions = BoxREPLClient.suggestCommands("zzz");
+      const suggestions = client.suggestCommands("zzz");
       expect(suggestions).toEqual([]);
     });
 
     it("returns all commands for empty prefix", () => {
-      const suggestions = BoxREPLClient.suggestCommands("");
+      const suggestions = client.suggestCommands("");
       expect(suggestions.length).toBeGreaterThan(0);
     });
   });
