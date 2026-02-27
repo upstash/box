@@ -15,6 +15,8 @@ import type {
   WebhookConfig,
   WebhookPayload,
   ExecResult,
+  CodeExecutionOptions,
+  CodeExecutionResult,
   ErrorResponse,
   FileEntry,
   GitCloneOptions,
@@ -815,6 +817,27 @@ export class Box {
     run._status = result.exit_code === 0 ? "completed" : "failed";
     run._computeMs = Date.now() - start;
     return run;
+  }
+
+  // ==================== Code Execution ====================
+
+  /**
+   * Execute inline code (JS, TS, or Python) inside the box.
+   *
+   * @example
+   * ```ts
+   * const result = await box.code({
+   *   code: `console.log(JSON.stringify({ sum: 1 + 2 }))`,
+   *   language: "js",
+   * });
+   * console.log(result.output);    // '{"sum":3}'
+   * console.log(result.exit_code); // 0
+   * ```
+   */
+  async code(options: CodeExecutionOptions): Promise<CodeExecutionResult> {
+    return this._request<CodeExecutionResult>("POST", `/v2/box/${this.id}/code`, {
+      body: { code: options.code, language: options.language },
+    });
   }
 
   // ==================== File Operations ====================
