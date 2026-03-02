@@ -256,16 +256,22 @@ export interface CodeExecutionResult {
 
 export type BoxData = {
   id: string;
+  customer_id?: string;
   name?: string;
   model?: string;
   runtime?: string;
-  repo?: string;
   status: BoxStatus;
+  clone_repo?: string;
   total_input_tokens?: number;
   total_output_tokens?: number;
   total_prompts?: number;
-  total_compute_cost_usd?: number;
+  session_id?: string;
+  agent_id?: string;
   total_cpu_ns?: number;
+  total_compute_cost_usd?: number;
+  total_token_cost_usd?: number;
+  use_managed_key?: boolean;
+  last_activity_at?: number;
   created_at: number;
   updated_at: number;
 };
