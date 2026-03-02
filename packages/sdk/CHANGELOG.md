@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.11
+
+### Patch Changes
+
+- ac53303: make zod peer dependency
+
 ## 0.1.10
 
 ### Patch Changes
