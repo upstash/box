@@ -16,10 +16,13 @@ const box = await Box.create({
   mcpServers: [
     {
       name: "web-search",
-      source: "npm",
-      packageOrUrl: "@anthropic/mcp-web-search",
-      headers: { ANTHROPIC_API_KEY: process.env.CLAUDE_KEY! },
+      package: "@anthropic/mcp-web-search",
     },
+    {
+      name: "file-system",
+      url: "https://mcp.context7.com/mcp",
+      headers: { Authorization: `Bearer ${process.env.CONTEXT7_KEY!}` },
+    }
   ],
 });
 
