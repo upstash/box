@@ -235,7 +235,9 @@ export interface CodeExecutionOptions {
   /** The source code to execute */
   code: string;
   /** Language of the code snippet */
-  language: CodeLanguage;
+  lang: CodeLanguage;
+  /** Execution timeout in milliseconds */
+  timeout?: number;
 }
 
 /**

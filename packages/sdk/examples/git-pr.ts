@@ -42,7 +42,7 @@ export function slugify(text: string): string {
 console.log("Helper utility written.");
 
 // Step 4: Run a shell command
-const lsRun = await box.exec("ls -la src/");
+const lsRun = await box.exec.command("ls -la src/");
 console.log("Files in src/:", lsRun.result);
 
 // Step 5: Ask the agent to make changes

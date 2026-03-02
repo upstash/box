@@ -4,12 +4,12 @@ import { mockResponse, createTestBox, TEST_CONFIG } from "./helpers.js";
 describe("Box instance methods", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  describe("exec", () => {
+  describe("exec.command", () => {
     it("executes a command and returns completed run", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "hello world" }));
 
-      const run = await box.exec("echo hello world");
+      const run = await box.exec.command("echo hello world");
       expect(run.result).toBe("hello world");
       expect(run._status).toBe("completed");
       expect(run.type).toBe("shell");
@@ -24,22 +24,20 @@ describe("Box instance methods", () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 1, output: "error message" }));
 
-      const run = await box.exec("false");
+      const run = await box.exec.command("false");
       expect(run._status).toBe("failed");
       expect(run.result).toBe("error message");
     });
   });
 
-  describe("code", () => {
+  describe("exec.code", () => {
     it("executes JavaScript code and returns result", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ output: '{"sum":3}', exit_code: 0 }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: '{"sum":3}', exit_code: 0 }));
 
-      const result = await box.code({
-        code: 'console.log(JSON.stringify({ sum: 1 + 2 }))',
-        language: "js",
+      const result = await box.exec.code({
+        code: "console.log(JSON.stringify({ sum: 1 + 2 }))",
+        lang: "js",
       });
 
       expect(result.output).toBe('{"sum":3}');
@@ -59,9 +57,9 @@ describe("Box instance methods", () => {
         mockResponse({ output: "Oldest user: Alice (age 30)", exit_code: 0 }),
       );
 
-      const result = await box.code({
-        code: 'const x: number = 42; console.log(x)',
-        language: "ts",
+      const result = await box.exec.code({
+        code: "const x: number = 42; console.log(x)",
+        lang: "ts",
       });
 
       expect(result.output).toBe("Oldest user: Alice (age 30)");
@@ -70,13 +68,11 @@ describe("Box instance methods", () => {
 
     it("executes Python code", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ output: '{"sum": 15}', exit_code: 0 }),
-      );
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: '{"sum": 15}', exit_code: 0 }));
 
-      const result = await box.code({
+      const result = await box.exec.code({
         code: 'import json; print(json.dumps({"sum": 15}))',
-        language: "python",
+        lang: "python",
       });
 
       expect(result.output).toBe('{"sum": 15}');
@@ -89,17 +85,46 @@ describe("Box instance methods", () => {
         mockResponse({
           output: "",
           exit_code: 1,
-          error: 'Error: something went wrong\n    at Object.<anonymous>',
+          error: "Error: something went wrong\n    at Object.<anonymous>",
         }),
       );
 
-      const result = await box.code({
+      const result = await box.exec.code({
         code: 'throw new Error("something went wrong")',
-        language: "js",
+        lang: "js",
       });
 
       expect(result.exit_code).toBe(1);
       expect(result.error).toContain("something went wrong");
+    });
+
+    it("passes timeout when provided", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "ok", exit_code: 0 }));
+
+      await box.exec.code({
+        code: 'console.log("ok")',
+        lang: "js",
+        timeout: 5000,
+      });
+
+      const [, init] = fetchMock.mock.calls[1]!;
+      const body = JSON.parse(init?.body as string);
+      expect(body.timeout).toBe(5000);
+    });
+
+    it("omits timeout when not provided", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "ok", exit_code: 0 }));
+
+      await box.exec.code({
+        code: 'console.log("ok")',
+        lang: "js",
+      });
+
+      const [, init] = fetchMock.mock.calls[1]!;
+      const body = JSON.parse(init?.body as string);
+      expect(body.timeout).toBeUndefined();
     });
   });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import dotenv from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Box, OpenAICodex, ClaudeCode } from "../index.js";
+import { Box, OpenAICodex } from "../index.js";
 
 // Load .env from monorepo root before evaluating skip condition
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,10 +31,19 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     }
   }, 30000);
 
-  it("exec: runs a shell command", async () => {
-    const run = await box.exec("echo hello");
+  it("exec.command: runs a shell command", async () => {
+    const run = await box.exec.command("echo hello");
     expect(run.result).toContain("hello");
     expect(run._status).toBe("completed");
+  });
+
+  it("exec.code: runs inline JavaScript", async () => {
+    const result = await box.exec.code({
+      code: "console.log(JSON.stringify({ sum: 1 + 2 }))",
+      lang: "js",
+    });
+    expect(result.exit_code).toBe(0);
+    expect(result.output).toContain('"sum":3');
   });
 
   it("files: write then read roundtrip", async () => {

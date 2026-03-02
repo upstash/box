@@ -23,7 +23,7 @@ console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 
 // Shell command
 console.log("\n\n=== Shell ===");
-const shell = await box.exec("ls -la");
+const shell = await box.exec.command("ls -la");
 const shellOutput = shell.result;
 console.log(shellOutput);
 

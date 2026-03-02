@@ -23,7 +23,7 @@ const box = await Box.create({
 console.log(`Box created: ${box.id}\n`);
 
 // Verify env vars are available inside the sandbox
-const result = await box.exec("echo $DATABASE_URL && echo $NODE_ENV");
+const result = await box.exec.command("echo $DATABASE_URL && echo $NODE_ENV");
 console.log("Env vars inside sandbox:");
 console.log(result.result);
 

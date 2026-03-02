@@ -160,7 +160,7 @@ describe("generateMainTs", () => {
     expect(content).toContain("Box.create(config)");
     expect(content).toContain('box.files.write({ path: "hello.txt"');
     expect(content).toContain('box.files.read("hello.txt")');
-    expect(content).toContain('box.exec("ls -la")');
+    expect(content).toContain('box.exec.command("ls -la")');
     expect(content).toContain("run.result");
     expect(content).toContain("box.agent.stream({");
     expect(content).toContain("box.pause()");

@@ -29,7 +29,7 @@ describe("levenshtein", () => {
 });
 
 describe("fuzzyMatch", () => {
-  const commands = ["run", "exec", "files", "git", "snapshot", "pause", "delete"];
+  const commands = ["run", "command", "files", "git", "snapshot", "pause", "delete"];
 
   it("returns exact match first", () => {
     const result = fuzzyMatch("run", commands);

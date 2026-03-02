@@ -112,12 +112,12 @@ for await (const part of box.agent.stream({
 }
 ```
 
-#### `box.exec(command: string): Promise<Run>`
+#### `box.exec.command(command: string): Promise<Run>`
 
 Execute a shell command in the box.
 
 ```ts
-const run = await box.exec("node index.js");
+const run = await box.exec.command("node index.js");
 console.log(run.result);
 ```
 

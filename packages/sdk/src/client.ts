@@ -45,7 +45,7 @@ export class BoxError extends Error {
 
 /**
  * A run represents a single agent or shell execution.
- * Returned by box.agent.run() and box.exec().
+ * Returned by box.agent.run() and box.exec.command().
  */
 export class Run<T = string> {
   readonly type: "agent" | "shell";
@@ -194,6 +194,12 @@ export class Box {
     download: (options?: { path?: string }) => Promise<void>;
   };
 
+  /** Execution namespace — shell commands and inline code */
+  readonly exec: {
+    command: (command: string) => Promise<Run<string>>;
+    code: (options: CodeExecutionOptions) => Promise<CodeExecutionResult>;
+  };
+
   /** Git operations namespace */
   readonly git: {
     clone: (options: GitCloneOptions) => Promise<void>;
@@ -266,6 +272,11 @@ export class Box {
         return self._stream(options);
       },
     } as this["agent"];
+
+    this.exec = {
+      command: (command) => this._execCommand(command),
+      code: (options) => this._execCode(options),
+    };
 
     this.files = {
       read: (path) => this._readFile(path),
@@ -794,19 +805,12 @@ export class Box {
     }
   }
 
-  // ==================== Shell ====================
+  // ==================== Execution ====================
 
   /**
    * Execute an OS-level command in the box.
-   *
-   * @example
-   * ```ts
-   * const run = await box.exec("node /work/index.js");
-   * console.log(run.result);
-   * console.log(await run.status()); // "completed"
-   * ```
    */
-  async exec(command: string): Promise<Run<string>> {
+  private async _execCommand(command: string): Promise<Run<string>> {
     const start = Date.now();
     const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
       body: { command: ["sh", "-c", command] },
@@ -819,24 +823,16 @@ export class Box {
     return run;
   }
 
-  // ==================== Code Execution ====================
-
   /**
    * Execute inline code (JS, TS, or Python) inside the box.
-   *
-   * @example
-   * ```ts
-   * const result = await box.code({
-   *   code: `console.log(JSON.stringify({ sum: 1 + 2 }))`,
-   *   language: "js",
-   * });
-   * console.log(result.output);    // '{"sum":3}'
-   * console.log(result.exit_code); // 0
-   * ```
    */
-  async code(options: CodeExecutionOptions): Promise<CodeExecutionResult> {
+  private async _execCode(options: CodeExecutionOptions): Promise<CodeExecutionResult> {
     return this._request<CodeExecutionResult>("POST", `/v2/box/${this.id}/code`, {
-      body: { code: options.code, language: options.language },
+      body: {
+        code: options.code,
+        language: options.lang,
+        ...(options.timeout !== undefined && { timeout: options.timeout }),
+      },
     });
   }
 

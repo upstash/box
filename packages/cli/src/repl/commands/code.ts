@@ -13,7 +13,8 @@ export async function* handleCode(box: Box, args: string): AsyncGenerator<BoxREP
   if (!args) {
     yield {
       type: "log",
-      message: "Usage: /code <js|ts|python> <code>\n\nExamples:\n  /code js console.log(1 + 2)\n  /code ts const x: number = 42; console.log(x)\n  /code python print('hello')",
+      message:
+        "Usage: /code <js|ts|python> <code>\n\nExamples:\n  /code js console.log(1 + 2)\n  /code ts const x: number = 42; console.log(x)\n  /code python print('hello')",
     };
     return;
   }
@@ -38,7 +39,7 @@ export async function* handleCode(box: Box, args: string): AsyncGenerator<BoxREP
     return;
   }
 
-  const result = await box.code({ code, language });
+  const result = await box.exec.code({ code, lang: language });
 
   if (result.output) {
     yield { type: "log", message: result.output };
