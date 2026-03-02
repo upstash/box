@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.9
+
+### Patch Changes
+
+- d0fddcd: Improve BoxData type
+- 3b9aa5b: Change box.exec() as box.exec.command() and add box.exec.code() and /code
+
 ## 0.1.8
 
 ### Patch Changes

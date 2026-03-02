@@ -1,5 +1,14 @@
 # @upstash/box-cli
 
+## 0.1.12
+
+### Patch Changes
+
+- 3b9aa5b: Change box.exec() as box.exec.command() and add box.exec.code() and /code
+- Updated dependencies [d0fddcd]
+- Updated dependencies [3b9aa5b]
+  - @upstash/box@0.1.9
+
 ## 0.1.11
 
 ### Patch Changes
