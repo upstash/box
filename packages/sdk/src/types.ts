@@ -82,14 +82,14 @@ export type Chunk =
   | { type: "reasoning"; text: string }
   | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
   | {
-    type: "finish";
-    output: string;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-    };
-    sessionId: string;
-  }
+      type: "finish";
+      output: string;
+      usage: {
+        inputTokens: number;
+        outputTokens: number;
+      };
+      sessionId: string;
+    }
   | { type: "stats"; cpuNs: number; memoryPeakBytes: number }
   | { type: "unknown"; event: string; data: unknown };
 
