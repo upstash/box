@@ -1,3 +1,4 @@
+import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
 import type {
   BoxConfig,
   BoxData,
@@ -7,11 +8,9 @@ import type {
   RunOptions,
   StreamOptions,
   Chunk,
-  RunResult,
   RunStatus,
   RunCost,
   RunLog,
-  SchemaLike,
   WebhookConfig,
   WebhookPayload,
   ExecResult,
@@ -27,6 +26,7 @@ import type {
   UploadFileEntry,
   Snapshot,
 } from "./types.js";
+import type { ZodType } from "zod/v3";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
@@ -180,7 +180,7 @@ export class Box {
 
   /** Agent operations namespace */
   readonly agent: {
-    run<T>(options: RunOptions<T> & { responseSchema: SchemaLike<T> }): Promise<Run<T>>;
+    run<T>(options: RunOptions<T> & { responseSchema: RunOptions<T>["responseSchema"] }): Promise<Run<T>>;
     run(options: RunOptions): Promise<Run<string>>;
     stream(options: StreamOptions): AsyncGenerator<Chunk>;
   };
@@ -515,16 +515,6 @@ export class Box {
   }
 
   private async _executeRun<T>(options: RunOptions<T>, _attempt: number): Promise<Run<T | string>> {
-    // Build prompt with schema instructions if needed
-    let prompt = options.prompt;
-    if (options.responseSchema) {
-      const shape = extractSchemaShape(options.responseSchema);
-      prompt += `\n\nRespond with ONLY a valid JSON object. No markdown, no code blocks, no explanation — just raw JSON. Use proper JSON types: numbers must be numbers (not strings), arrays must be arrays (not strings).`;
-      if (shape) {
-        prompt += `\n\nThe JSON must use these exact field names and types:\n${shape}`;
-      }
-    }
-
     const run = new Run<T | string>(this, "agent");
     const abortController = new AbortController();
     run._abortController = abortController;
@@ -533,11 +523,19 @@ export class Box {
       setTimeout(() => abortController.abort(), options.timeout);
     }
 
+    const requestBody: Record<string, unknown> = { prompt: options.prompt };
+    if (options.responseSchema) {
+      const jsonSchema = toJsonSchema(options.responseSchema);
+      if (jsonSchema) {
+        requestBody.json_schema = jsonSchema;
+      }
+    }
+
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const response = await fetch(url, {
       method: "POST",
       headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(requestBody),
       signal: abortController.signal,
     });
 
@@ -1178,43 +1176,19 @@ export class Box {
 
 // ==================== Helpers ====================
 
-/** @internal */
-export function extractSchemaShape(schema: SchemaLike<unknown>): string | null {
+/** @internal — Convert a Zod schema to a JSON Schema object for the API's json_schema parameter */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toJsonSchema(schema: ZodType<any>): Record<string, unknown> | null {
   try {
-    const s = schema as unknown as Record<string, unknown>;
-    if (s.shape && typeof s.shape === "object") {
-      const shape = s.shape as Record<
-        string,
-        { _def?: { typeName?: string; type?: { _def?: { typeName?: string } } } }
-      >;
-      const fields: Record<string, string> = {};
-      for (const [key, val] of Object.entries(shape)) {
-        fields[key] = zodTypeToExample(val);
-      }
-      return JSON.stringify(fields, null, 2);
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = zodToJsonSchemaLib(schema as any);
+    // Strip the $schema meta key — the API only needs the schema body
+    const { $schema: _, ...jsonSchema } = result as Record<string, unknown>;
+    return jsonSchema;
   } catch {
-    // Not a Zod schema or can't introspect
+    // Not a Zod schema or conversion failed
   }
   return null;
-}
-
-/** @internal */
-export function zodTypeToExample(field: unknown): string {
-  const f = field as { _def?: { typeName?: string; type?: unknown } };
-  const typeName = f?._def?.typeName;
-  switch (typeName) {
-    case "ZodString":
-      return "string";
-    case "ZodNumber":
-      return "number";
-    case "ZodBoolean":
-      return "boolean";
-    case "ZodArray":
-      return `[${zodTypeToExample(f._def?.type)}]`;
-    default:
-      return "any";
-  }
 }
 
 /** @internal */

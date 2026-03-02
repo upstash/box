@@ -11,7 +11,6 @@ export type {
   RunStatus,
   RunCost,
   RunLog,
-  SchemaLike,
   PullRequest,
   WebhookConfig,
   WebhookPayload,

@@ -1,3 +1,5 @@
+import type { ZodType } from "zod/v3";
+
 /**
  * Runtime environments available for boxes
  */
@@ -58,13 +60,6 @@ export interface McpServerConfig {
 // ==================== Run ====================
 
 /**
- * Any object with a .parse() method (compatible with Zod schemas).
- */
-export interface SchemaLike<T> {
-  parse(data: unknown): T;
-}
-
-/**
  * Webhook configuration for fire-and-forget runs
  */
 export interface WebhookConfig {
@@ -114,7 +109,7 @@ export interface RunOptions<T = undefined> {
   /** The prompt/task for the AI agent */
   prompt: string;
   /** Zod schema for structured output — typed, validated results */
-  responseSchema?: SchemaLike<T>;
+  responseSchema?: ZodType<T>;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Retries with exponential backoff on transient failures */
