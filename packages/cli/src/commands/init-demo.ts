@@ -3,22 +3,24 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import readline from "node:readline";
 import { resolveToken } from "../auth.js";
+import { resolveAgentApiKey } from "../agent-key.js";
 import { bold, cyan, green, dim, red, yellow } from "../utils/ansi.js";
 
 interface InitDemoFlags {
   token?: string;
   agentModel?: string;
-  agentApiKey?: string;
+  agentApiKey?: string | true;
   runtime?: string;
   gitToken?: string;
   directory?: string;
 }
 
 function generateEnvFile(flags: InitDemoFlags, token: string): string {
+  const resolvedKey = flags.agentModel ? resolveAgentApiKey(flags.agentApiKey) : "";
   const lines = [
     `UPSTASH_BOX_API_KEY=${token}`,
     `AGENT_MODEL=${flags.agentModel ?? ""}`,
-    `AGENT_API_KEY=${flags.agentApiKey ?? ""}`,
+    `AGENT_API_KEY=${resolvedKey ?? ""}`,
     `RUNTIME=${flags.runtime ?? "node"}`,
     `GIT_TOKEN=${flags.gitToken ?? ""}`,
   ];
@@ -38,10 +40,10 @@ async function main() {
     config.runtime = process.env.RUNTIME;
   }
 
-  if (process.env.AGENT_MODEL && process.env.AGENT_API_KEY) {
+  if (process.env.AGENT_MODEL) {
     config.agent = {
       model: process.env.AGENT_MODEL,
-      apiKey: process.env.AGENT_API_KEY,
+      ...(process.env.AGENT_API_KEY && { apiKey: process.env.AGENT_API_KEY }),
     };
   }
 
@@ -76,7 +78,7 @@ async function main() {
     console.log(files.map((f: { name: string }) => f.name).join("  "));
 
     // Agent demo (if configured)
-    if (process.env.AGENT_MODEL && process.env.AGENT_API_KEY) {
+    if (process.env.AGENT_MODEL) {
       console.log("\\nRunning agent prompt...");
       const stream = box.agent.stream({
         prompt: "Create a file called demo.js that prints 'Hello World'",
@@ -158,11 +160,6 @@ function askQuestion(query: string): Promise<string> {
 
 export async function initDemoCommand(flags: InitDemoFlags): Promise<void> {
   const token = resolveToken(flags.token);
-
-  if (flags.agentModel && !flags.agentApiKey) {
-    console.error(red("Error: --agent-api-key is required if --agent-model is set"));
-    process.exit(1);
-  }
 
   const dir = flags.directory ?? "box-demo";
   const absDir = path.resolve(dir);

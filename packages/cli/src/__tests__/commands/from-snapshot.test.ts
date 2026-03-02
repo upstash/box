@@ -5,6 +5,10 @@ vi.mock("@upstash/box", () => ({
   Box: {
     fromSnapshot: vi.fn(),
   },
+  BoxApiKey: {
+    UpstashKey: "UPSTASH_KEY",
+    StoredKey: "STORED_KEY",
+  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -52,9 +56,18 @@ describe("fromSnapshotCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("exits when --agent-api-key is missing", async () => {
+  it("defaults to UpstashKey when --agent-api-key is omitted", async () => {
+    const mockBox = { id: "box-2" };
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);
+
     await fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-api-key is required"));
+
+    expect(Box.fromSnapshot).toHaveBeenCalledWith(
+      "snap-1",
+      expect.objectContaining({
+        agent: { model: "model", apiKey: "UPSTASH_KEY" },
+      }),
+    );
+    expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 });

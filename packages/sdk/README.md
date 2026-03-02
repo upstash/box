@@ -15,10 +15,7 @@ import { Box, Runtime, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
   runtime: Runtime.Node,
-  agent: {
-    model: ClaudeCode.Sonnet_4_5,
-    apiKey: process.env.CLAUDE_KEY!,
-  },
+  agent: { model: ClaudeCode.Sonnet_4_5 },
 });
 
 const run = await box.agent.run({
@@ -42,12 +39,16 @@ Pass `apiKey` in the config or set the `UPSTASH_BOX_API_KEY` environment variabl
 Create a new sandboxed box.
 
 ```ts
+import { Box, Runtime, ClaudeCode, BoxApiKey } from "@upstash/box";
+
 const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: Runtime.Node, // node, python, golang, ruby, rust
   agent: {
     model: ClaudeCode.Sonnet_4_5,
-    apiKey: process.env.CLAUDE_KEY!,
+    apiKey: BoxApiKey.UpstashKey, // default — Upstash-managed key
+    // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
+    // apiKey: process.env.CLAUDE_KEY!, // or pass a direct API key
   },
   git: { token: process.env.GITHUB_TOKEN! },
   env: { NODE_ENV: "production" },
@@ -78,7 +79,7 @@ Create a new box from a saved snapshot.
 
 ```ts
 const box = await Box.fromSnapshot("snap_abc123", {
-  agent: { model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
+  agent: { model: ClaudeCode.Sonnet_4_5 },
 });
 ```
 

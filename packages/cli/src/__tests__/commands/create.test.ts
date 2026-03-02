@@ -5,6 +5,10 @@ vi.mock("@upstash/box", () => ({
   Box: {
     create: vi.fn(),
   },
+  BoxApiKey: {
+    UpstashKey: "UPSTASH_KEY",
+    StoredKey: "STORED_KEY",
+  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -51,10 +55,30 @@ describe("createCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("exits when --agent-api-key is missing", async () => {
+  it("defaults to UpstashKey when --agent-api-key is omitted", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
     await createCommand({ token: "key", agentModel: "model" });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-api-key is required"));
+
+    expect(Box.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: { model: "model", apiKey: "UPSTASH_KEY" },
+      }),
+    );
+  });
+
+  it("resolves 'stored' to StoredKey", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+    await createCommand({ token: "key", agentModel: "model", agentApiKey: "stored" });
+
+    expect(Box.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: { model: "model", apiKey: "STORED_KEY" },
+      }),
+    );
   });
 
   it("passes runtime, git token, and env vars", async () => {
