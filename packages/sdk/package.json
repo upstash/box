@@ -57,7 +57,9 @@
   },
   "homepage": "https://upstash.com/docs/box",
   "dependencies": {
-    "zod": "^4.3.6",
     "zod-to-json-schema": "^3.25.1"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.0 || ^4.0.0"
   }
 }
