@@ -221,6 +221,37 @@ export interface BoxGetOptions {
   debug?: boolean;
 }
 
+// ==================== Code Execution ====================
+
+/**
+ * Supported languages for inline code execution
+ */
+export type CodeLanguage = "js" | "ts" | "python";
+
+/**
+ * Options for executing inline code in a box
+ */
+export interface CodeExecutionOptions {
+  /** The source code to execute */
+  code: string;
+  /** Language of the code snippet */
+  lang: CodeLanguage;
+  /** Execution timeout in milliseconds */
+  timeout?: number;
+}
+
+/**
+ * Result of an inline code execution
+ */
+export interface CodeExecutionResult {
+  /** stdout produced by the code */
+  output: string;
+  /** Process exit code (0 = success) */
+  exit_code: number;
+  /** stderr / error output, if any */
+  error?: string;
+}
+
 // ==================== Internal API Types ====================
 
 export type BoxData = {

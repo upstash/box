@@ -66,7 +66,7 @@ async function main() {
 
     // Execute a command
     console.log("\\nRunning: ls -la");
-    const run = await box.exec("ls -la");
+    const run = await box.exec.command("ls -la");
     const output = run.result;
     console.log(output);
 
@@ -90,7 +90,7 @@ async function main() {
     // Git demo (if configured)
     if (process.env.GIT_TOKEN) {
       console.log("\\nGit status:");
-      const gitRun = await box.exec("git status");
+      const gitRun = await box.exec.command("git status");
       const gitOutput = gitRun.result;
       console.log(gitOutput);
     }

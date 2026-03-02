@@ -61,13 +61,13 @@ await test("Upload file with relative destination", async () => {
 });
 
 await test("Shell: ls (runs in /workspace/home)", async () => {
-  const run = await box.exec("ls");
+  const run = await box.exec.command("ls");
   const output = run.result;
   return (await run.status()) === 0 && output.includes("test.txt");
 });
 
 await test("Shell: create subdirectory", async () => {
-  const run = await box.exec("mkdir -p subdir && touch subdir/file.txt");
+  const run = await box.exec.command("mkdir -p subdir && touch subdir/file.txt");
   return (await run.status()) === 0;
 });
 
@@ -75,17 +75,17 @@ await test("Shell: create subdirectory", async () => {
 console.log("\n=== Restricted operations (should fail) ===\n");
 
 await test("Shell: ls /workspace (can't list root)", async () => {
-  const run = await box.exec("ls /workspace");
+  const run = await box.exec.command("ls /workspace");
   return (await run.status()) !== 0;
 });
 
 await test("Shell: write to /workspace root", async () => {
-  const run = await box.exec("touch /workspace/secret.txt");
+  const run = await box.exec.command("touch /workspace/secret.txt");
   return (await run.status()) !== 0;
 });
 
 await test("Shell: read /workspace/.box.log", async () => {
-  const run = await box.exec("cat /workspace/.box.log");
+  const run = await box.exec.command("cat /workspace/.box.log");
   return (await run.status()) !== 0;
 });
 
@@ -123,24 +123,24 @@ await test("Write file to /tmp via API", async () => {
 console.log("\n=== System paths (should remain accessible for tooling) ===\n");
 
 await test("Shell: git --version", async () => {
-  const run = await box.exec("git --version");
+  const run = await box.exec.command("git --version");
   const output = run.result;
   return (await run.status()) === 0 && output.includes("git version");
 });
 
 await test("Shell: node --version", async () => {
-  const run = await box.exec("node --version");
+  const run = await box.exec.command("node --version");
   return (await run.status()) === 0;
 });
 
 await test("Shell: read /etc/ssl/certs (TLS works)", async () => {
-  const run = await box.exec("ls /etc/ssl/certs | head -3");
+  const run = await box.exec.command("ls /etc/ssl/certs | head -3");
   const output = run.result;
   return (await run.status()) === 0 && output.length > 0;
 });
 
 await test("Shell: DNS resolution works", async () => {
-  const run = await box.exec("cat /etc/resolv.conf");
+  const run = await box.exec.command("cat /etc/resolv.conf");
   const output = run.result;
   return (await run.status()) === 0 && output.includes("nameserver");
 });

@@ -46,7 +46,7 @@ console.log(modified);
 
 // 4. Run it
 console.log("--- Running ---");
-const shellRun = await box.exec("npx tsx /workspace/home/hello.ts");
+const shellRun = await box.exec.command("npx tsx /workspace/home/hello.ts");
 console.log("Output:", shellRun.result);
 
 // await box.delete();

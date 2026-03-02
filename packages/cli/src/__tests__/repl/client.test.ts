@@ -30,15 +30,15 @@ describe("BoxREPLClient", () => {
 
     it("dispatches known /command with start, complete, and suggestion events", async () => {
       const mockBox = {
-        exec: vi.fn().mockResolvedValue({ result: "output" }),
+        exec: { command: vi.fn().mockResolvedValue({ result: "output" }) },
       };
       const client = new BoxREPLClient(mockBox as any);
-      const events = await collectEvents(client.handleInput("/exec ls"));
+      const events = await collectEvents(client.handleInput("/command ls"));
 
-      expect(events[0]).toEqual({ type: "command:start", command: "exec", args: "ls" });
+      expect(events[0]).toEqual({ type: "command:start", command: "command", args: "ls" });
       expect(events).toContainEqual({ type: "log", message: "output" });
       expect(events).toContainEqual(
-        expect.objectContaining({ type: "command:complete", command: "exec" }),
+        expect.objectContaining({ type: "command:complete", command: "command" }),
       );
       expect(events).toContainEqual({ type: "suggestion", text: "/files list ." });
     });
@@ -71,10 +71,10 @@ describe("BoxREPLClient", () => {
 
     it("catches handler errors and yields error event", async () => {
       const mockBox = {
-        exec: vi.fn().mockRejectedValue(new Error("boom")),
+        exec: { command: vi.fn().mockRejectedValue(new Error("boom")) },
       };
       const client = new BoxREPLClient(mockBox as any);
-      const events = await collectEvents(client.handleInput("/exec fail"));
+      const events = await collectEvents(client.handleInput("/command fail"));
 
       expect(events).toContainEqual({ type: "error", message: "Error: boom" });
     });
@@ -95,9 +95,9 @@ describe("BoxREPLClient", () => {
     });
 
     it("parses command with args", () => {
-      const result = client["getCommand"]("/exec ls -la");
+      const result = client["getCommand"]("/command ls -la");
       expect(result).not.toBeNull();
-      expect(result!.command.name).toBe("exec");
+      expect(result!.command.name).toBe("command");
       expect(result!.args).toBe("ls -la");
     });
   });
@@ -106,8 +106,8 @@ describe("BoxREPLClient", () => {
     const client = new BoxREPLClient({} as any);
 
     it("returns commands matching prefix", () => {
-      const suggestions = client.suggestCommands("ex");
-      expect(suggestions.map((c) => c.name)).toContain("exec");
+      const suggestions = client.suggestCommands("co");
+      expect(suggestions.map((c) => c.name)).toContain("command");
     });
 
     it("returns empty for no match", () => {

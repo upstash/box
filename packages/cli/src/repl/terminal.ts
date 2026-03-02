@@ -82,7 +82,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   }
 
   // --- Ghost suggestion in input ---
-  let nextSuggestion: string | null = "/exec ls";
+  let nextSuggestion: string | null = "/command ls";
   let ghostText: string | null = null;
 
   function showGhost(text: string) {

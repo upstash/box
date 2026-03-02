@@ -27,6 +27,9 @@ export type {
   RunResult,
   RunMetadata,
   ExecResult,
+  CodeLanguage,
+  CodeExecutionOptions,
+  CodeExecutionResult,
   ErrorResponse,
   BoxRunData,
 } from "./types.js";

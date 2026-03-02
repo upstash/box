@@ -33,7 +33,7 @@ console.log("Script created.");
 console.log(output.slice(0, 300));
 
 // Step 2: Create output directory
-await box.exec("mkdir -p output");
+await box.exec.command("mkdir -p output");
 
 // Step 3: Upload and process each CSV
 const dataDir = "./data";
@@ -49,7 +49,7 @@ for (const file of csvFiles) {
     { path: join(dataDir, file), destination: file },
   ]);
 
-  const proc = await box.exec(
+  const proc = await box.exec.command(
     `python process.py ${file} output/${file}`,
   );
 

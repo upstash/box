@@ -1,7 +1,8 @@
 import type { Box } from "@upstash/box";
 import type { BoxREPLEvent, BoxREPLCommand, BoxREPLCommandName } from "./types.js";
 import { handleRun } from "./commands/run.js";
-import { handleExec } from "./commands/exec.js";
+import { handleCommand } from "./commands/command.js";
+import { handleCode } from "./commands/code.js";
 import { handleFiles } from "./commands/files.js";
 import { handleGit } from "./commands/git.js";
 import { handleSnapshot } from "./commands/snapshot.js";
@@ -15,7 +16,8 @@ async function* noop(): AsyncGenerator<BoxREPLEvent> {}
 
 const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   run: { description: "Run the agent with a prompt", handler: handleRun },
-  exec: { description: "Execute a shell command", handler: handleExec },
+  command: { description: "Execute a shell command", handler: handleCommand },
+  code: { description: "Execute inline code (js, ts, python)", handler: handleCode },
   files: {
     description: "File operations (read, write, list, upload, download)",
     handler: handleFiles,
@@ -41,12 +43,14 @@ export const COMMAND_DESCRIPTIONS: Record<BoxREPLCommandName, string> = Object.f
 /** Context-aware suggestion after a command completes. */
 function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefined {
   switch (cmdName) {
-    case "exec":
+    case "command":
+      return "/files list .";
+    case "code":
       return "/files list .";
     case "run":
       return "/snapshot";
     case "files":
-      return "/exec ls";
+      return "/command ls";
     case "git":
       return "/snapshot";
     case "snapshot":

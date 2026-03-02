@@ -23,7 +23,7 @@ const run = await box.agent.run({
 console.log(run.result);
 
 // Step 2: Create the output directory
-await box.exec("mkdir -p processed");
+await box.exec.command("mkdir -p processed");
 
 // Step 3: Process each mp3 file one by one
 const localFolder = "./mp3s";
@@ -39,7 +39,7 @@ for (const file of mp3Files) {
   ]);
 
   // Run the trim script
-  const trim = await box.exec(
+  const trim = await box.exec.command(
     `python trim.py ${file} processed/${file}`,
   );
 
