@@ -8,8 +8,6 @@ on:
 
 jobs:
   integration:
-    # Disabled until secrets are configured. Remove `if: false` to enable.
-    if: false
     runs-on: ubuntu-latest
 
     steps:
