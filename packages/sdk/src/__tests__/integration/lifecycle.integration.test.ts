@@ -46,7 +46,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
       created_at: expect.any(Number),
       customer_id: expect.any(String),
       completed_at: expect.any(Number),
-    })
+    });
   });
 
   it("run.logs: returns logs for a completed run", async () => {

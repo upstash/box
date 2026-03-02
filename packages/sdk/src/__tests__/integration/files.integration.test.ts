@@ -47,9 +47,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("files", () => {
     const localPath = join(tmpDir, "upload-test.txt");
     writeFileSync(localPath, "uploaded content");
 
-    await box.files.upload([
-      { path: localPath, destination: "uploaded.txt" },
-    ]);
+    await box.files.upload([{ path: localPath, destination: "uploaded.txt" }]);
 
     const content = await box.files.read("uploaded.txt");
     expect(content).toBe("uploaded content");
