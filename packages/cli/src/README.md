@@ -21,6 +21,7 @@ src/
 ├── commands/             CLI commands
 │   ├── connect.ts        Connect to existing box (interactive selector if TTY)
 │   ├── create.ts         Create new box
+│   ├── create-wizard.ts  Interactive setup wizard for box create
 │   ├── from-snapshot.ts  Create box from snapshot
 │   ├── list.ts           List all boxes
 │   ├── get.ts            Get box details

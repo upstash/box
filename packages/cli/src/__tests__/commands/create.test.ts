@@ -19,8 +19,13 @@ vi.mock("../../auth.js", () => ({
   resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
 }));
 
+vi.mock("../../commands/create-wizard.js", () => ({
+  createWizard: vi.fn(),
+}));
+
 import { Box } from "@upstash/box";
 import { startRepl } from "../../repl/terminal.js";
+import { createWizard } from "../../commands/create-wizard.js";
 
 describe("createCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
@@ -112,5 +117,63 @@ describe("createCommand", () => {
     });
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid env format"));
+  });
+
+  describe("wizard delegation", () => {
+    let origIsTTY: boolean | undefined;
+
+    beforeEach(() => {
+      origIsTTY = process.stdin.isTTY;
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
+    });
+
+    it("calls wizard when no config flags and TTY", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      const mockBox = { id: "box-1" };
+      vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+      vi.mocked(createWizard).mockResolvedValueOnce({
+        runtime: "python",
+        agentModel: "claude/sonnet_4_5",
+      });
+
+      await createCommand({ token: "key" });
+
+      expect(createWizard).toHaveBeenCalled();
+      expect(Box.create).toHaveBeenCalledWith(expect.objectContaining({ runtime: "python" }));
+    });
+
+    it("skips wizard when config flags are present", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      const mockBox = { id: "box-1" };
+      vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+      await createCommand({ token: "key", agentModel: "claude/sonnet_4_5" });
+
+      expect(createWizard).not.toHaveBeenCalled();
+    });
+
+    it("aborts when wizard returns undefined", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      vi.mocked(createWizard).mockResolvedValueOnce(undefined);
+
+      await createCommand({ token: "key" });
+
+      expect(createWizard).toHaveBeenCalled();
+      expect(Box.create).not.toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Aborted"));
+    });
+
+    it("skips wizard when not TTY", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+      const mockBox = { id: "box-1" };
+      vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+      await createCommand({ token: "key" });
+
+      expect(createWizard).not.toHaveBeenCalled();
+    });
   });
 });
