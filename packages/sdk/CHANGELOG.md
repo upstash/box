@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.10
+
+### Patch Changes
+
+- 5eb899b: use server side json schema for structured output
+- 952d208: Allow empty agent api key for Upstash managed key and add BoxApiKey options
+
 ## 0.1.9
 
 ### Patch Changes
