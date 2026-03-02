@@ -28,15 +28,19 @@ export async function connectCommand(
     if (process.stdin.isTTY && active.length > 1) {
       const items = active.slice(0, 10);
       const idWidth = Math.max(...items.map((b) => b.id.length));
+      const nameWidth = Math.max(...items.map((b) => (b.name ?? "").length), 0);
       const statusWidth = Math.max(...items.map((b) => b.status.length));
 
       const selected = await interactiveSelect({
         prompt: "Select a box to connect to:",
-        items: items.map((b) => ({
-          label: b.id.padEnd(idWidth),
-          value: b.id,
-          description: `${b.status.padEnd(statusWidth)}  ${b.model ?? ""}`,
-        })),
+        items: items.map((b) => {
+          const name = b.name ? `  ${b.name.padEnd(nameWidth)}` : nameWidth > 0 ? `  ${"".padEnd(nameWidth)}` : "";
+          return {
+            label: `${b.id.padEnd(idWidth)}${name}`,
+            value: b.id,
+            description: `${b.status.padEnd(statusWidth)}  ${b.model ?? ""}`,
+          };
+        }),
       });
 
       if (!selected) {

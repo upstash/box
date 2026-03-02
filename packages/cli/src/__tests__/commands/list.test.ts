@@ -25,15 +25,15 @@ describe("listCommand", () => {
 
   it("prints boxes", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([
-      { id: "box-1", status: "running", model: "claude", created_at: "2025-01-01" },
+      { id: "box-1", name: "my-app", status: "running", model: "claude", created_at: "2025-01-01" },
       { id: "box-2", status: "stopped", model: "gpt", created_at: "2025-01-02" },
     ] as any);
 
     await listCommand({ token: "key" });
 
     const calls = logSpy.mock.calls.map((c: unknown[]) => c[0]);
-    expect(calls[0]).toMatch(/^ID\s+STATUS\s+MODEL\s+CREATED/);
-    expect(calls[1]).toMatch(/^box-1\s+running\s+claude\s+2025-01-01/);
+    expect(calls[0]).toMatch(/^ID\s+NAME\s+STATUS\s+MODEL\s+CREATED/);
+    expect(calls[1]).toMatch(/^box-1\s+my-app\s+running\s+claude\s+2025-01-01/);
     expect(calls[2]).toMatch(/^box-2\s+stopped\s+gpt\s+2025-01-02/);
   });
 

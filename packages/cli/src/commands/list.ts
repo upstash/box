@@ -15,8 +15,8 @@ export async function listCommand(flags: ListFlags): Promise<void> {
     return;
   }
 
-  const headers = ["ID", "STATUS", "MODEL", "CREATED"];
-  const rows = boxes.map((b) => [b.id, b.status, b.model ?? "", String(b.created_at)]);
+  const headers = ["ID", "NAME", "STATUS", "MODEL", "CREATED"];
+  const rows = boxes.map((b) => [b.id, b.name ?? "", b.status, b.model ?? "", String(b.created_at)]);
 
   const colWidths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
 
