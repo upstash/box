@@ -118,7 +118,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     });
 
     const run = await box.agent.run({
-      prompt: 'Return a JSON object with city "Tokyo", country "Japan", and population 14000000. Nothing else.',
+      prompt:
+        'Return a JSON object with city "Tokyo", country "Japan", and population 14000000. Nothing else.',
       responseSchema: schema,
     });
 

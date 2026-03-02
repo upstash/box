@@ -180,7 +180,9 @@ export class Box {
 
   /** Agent operations namespace */
   readonly agent: {
-    run<T>(options: RunOptions<T> & { responseSchema: RunOptions<T>["responseSchema"] }): Promise<Run<T>>;
+    run<T>(
+      options: RunOptions<T> & { responseSchema: RunOptions<T>["responseSchema"] },
+    ): Promise<Run<T>>;
     run(options: RunOptions): Promise<Run<string>>;
     stream(options: StreamOptions): AsyncGenerator<Chunk>;
   };
