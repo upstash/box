@@ -1,5 +1,15 @@
 # @upstash/box-cli
 
+## 0.1.13
+
+### Patch Changes
+
+- e26cebc: add interactive wizard for `box create`
+- 952d208: Allow empty agent api key for Upstash managed key and add BoxApiKey options
+- Updated dependencies [5eb899b]
+- Updated dependencies [952d208]
+  - @upstash/box@0.1.10
+
 ## 0.1.12
 
 ### Patch Changes
