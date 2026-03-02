@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import dotenv from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod/v3";
 import { Box, OpenAICodex } from "../index.js";
 
 // Load .env from monorepo root before evaluating skip condition
@@ -107,6 +108,25 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
     }
     expect(partCount).toBeGreaterThan(0);
     expect(text).toBeTruthy();
+  }, 120000);
+
+  it("agent.run: structured output with responseSchema", async () => {
+    const schema = z.object({
+      city: z.string(),
+      country: z.string(),
+      population: z.number(),
+    });
+
+    const run = await box.agent.run({
+      prompt:
+        'Return a JSON object with city "Tokyo", country "Japan", and population 14000000. Nothing else.',
+      responseSchema: schema,
+    });
+
+    const result = run.result;
+    expect(result.city).toBe("Tokyo");
+    expect(result.country).toBe("Japan");
+    expect(typeof result.population).toBe("number");
   }, 120000);
 
   it("snapshot: create, list, delete", async () => {

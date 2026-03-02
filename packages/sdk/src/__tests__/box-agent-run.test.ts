@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { BoxError } from "../client.js";
+import { z } from "zod/v3";
 import type { Chunk } from "../types.js";
 import { mockSSEResponse, mockResponse, createTestBox } from "./helpers.js";
 
@@ -58,13 +58,10 @@ describe("box.agent.run", () => {
       ]),
     );
 
-    const schema = {
-      parse: (d: unknown) => d as { name: string; count: number },
-      shape: {
-        name: { _def: { typeName: "ZodString" } },
-        count: { _def: { typeName: "ZodNumber" } },
-      },
-    };
+    const schema = z.object({
+      name: z.string(),
+      count: z.number(),
+    });
 
     const run = await box.agent.run({
       prompt: "test",
@@ -73,6 +70,76 @@ describe("box.agent.run", () => {
 
     const result = run.result;
     expect(result).toEqual({ name: "test", count: 42 });
+  });
+
+  it("sends json_schema in request body when responseSchema is provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: '{"name":"test","count":42}' } },
+      ]),
+    );
+
+    const schema = z.object({
+      name: z.string(),
+      count: z.number(),
+    });
+
+    await box.agent.run({ prompt: "analyze this", responseSchema: schema });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.prompt).toBe("analyze this");
+    expect(body.json_schema).toEqual({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        count: { type: "number" },
+      },
+      required: ["name", "count"],
+      additionalProperties: false,
+    });
+  });
+
+  it("does not modify prompt when responseSchema is provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: '{"name":"test"}' } },
+      ]),
+    );
+
+    const schema = z.object({
+      name: z.string(),
+    });
+
+    await box.agent.run({ prompt: "do something", responseSchema: schema });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.prompt).toBe("do something");
+    expect(body.prompt).not.toContain("Respond with ONLY a valid JSON");
+  });
+
+  it("does not send json_schema when no responseSchema", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "hello" } },
+      ]),
+    );
+
+    await box.agent.run({ prompt: "say hello" });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.json_schema).toBeUndefined();
   });
 
   it("extracts JSON from markdown code blocks", async () => {
@@ -86,7 +153,7 @@ describe("box.agent.run", () => {
       ]),
     );
 
-    const schema = { parse: (d: unknown) => d as { value: number } };
+    const schema = z.object({ value: z.number() });
 
     const run = await box.agent.run({
       prompt: "test",
@@ -107,11 +174,7 @@ describe("box.agent.run", () => {
       ]),
     );
 
-    const schema = {
-      parse: () => {
-        throw new Error("invalid");
-      },
-    };
+    const schema = z.object({ value: z.number() });
 
     await expect(box.agent.run({ prompt: "test", responseSchema: schema })).rejects.toThrow(
       "Failed to parse structured output",

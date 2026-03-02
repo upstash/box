@@ -4,7 +4,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/structured-output.ts
  */
-import { z } from "zod";
+import { z } from "zod/v3";
 import { Box, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
