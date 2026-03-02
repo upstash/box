@@ -34,7 +34,11 @@ export async function connectCommand(
       const selected = await interactiveSelect({
         prompt: "Select a box to connect to:",
         items: items.map((b) => {
-          const name = b.name ? `  ${b.name.padEnd(nameWidth)}` : nameWidth > 0 ? `  ${"".padEnd(nameWidth)}` : "";
+          const name = b.name
+            ? `  ${b.name.padEnd(nameWidth)}`
+            : nameWidth > 0
+              ? `  ${"".padEnd(nameWidth)}`
+              : "";
           return {
             label: `${b.id.padEnd(idWidth)}${name}`,
             value: b.id,
