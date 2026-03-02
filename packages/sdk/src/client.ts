@@ -194,6 +194,21 @@ export class Box {
     write: (options: { path: string; content: string }) => Promise<void>;
     list: (path?: string) => Promise<FileEntry[]>;
     upload: (files: UploadFileEntry[]) => Promise<void>;
+    /**
+     * Download files from the box to the local filesystem.
+     *
+     * The `path` option must point to a directory, not a single file.
+     * When omitted, the entire workspace is downloaded.
+     *
+     * @example
+     * ```ts
+     * // Download a specific directory
+     * await box.files.download({ path: "src" });
+     *
+     * // Download the entire workspace
+     * await box.files.download();
+     * ```
+     */
     download: (options?: { path?: string }) => Promise<void>;
   };
 
@@ -336,9 +351,9 @@ export class Box {
     if (config.mcpServers?.length) {
       body.mcp_servers = config.mcpServers.map((s) => ({
         name: s.name,
-        source: s.source,
-        package_or_url: s.packageOrUrl,
-        headers: s.headers,
+        ...("package" in s
+          ? { source: "npm", package_or_url: s.package }
+          : { source: "url", package_or_url: s.url, headers: s.headers }),
       }));
     }
 

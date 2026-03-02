@@ -64,6 +64,16 @@ export interface BoxConfig {
     token: string;
   };
   env?: Record<string, string>;
+  /**
+   * GitHub repositories to install as skills on the box.
+   *
+   * Each entry is an `owner/repo` path (e.g. `"upstash/qstash-js"`).
+   *
+   * @example
+   * ```ts
+   * { skills: ["upstash/workflow-js", "upstash/qstash-js"] }
+   * ```
+   */
   skills?: string[];
   mcpServers?: McpServerConfig[];
   baseUrl?: string;
@@ -71,12 +81,37 @@ export interface BoxConfig {
   debug?: boolean;
 }
 
-export interface McpServerConfig {
+/**
+ * MCP server configuration — either a local package or a remote URL.
+ *
+ * @example Package-based server
+ * ```ts
+ * { name: "filesystem", package: "@modelcontextprotocol/server-filesystem" }
+ * ```
+ *
+ * @example Remote server
+ * ```ts
+ * { name: "custom", url: "https://mcp.example.com/sse" }
+ * ```
+ */
+export type McpServerConfig = {
+  /** Display name used to identify this server */
   name: string;
-  source: string;
-  packageOrUrl: string;
-  headers?: Record<string, string>;
-}
+} & (
+  | {
+      /** npm package specifier to run locally (e.g. "@org/mcp-server") */
+      package: string;
+      url?: never;
+      headers?: never;
+    }
+  | {
+      /** Remote MCP server endpoint */
+      url: string;
+      /** Custom headers sent with requests to the remote server */
+      headers?: Record<string, string>;
+      package?: never;
+    }
+);
 
 // ==================== Run ====================
 
@@ -349,15 +384,21 @@ export interface ErrorResponse {
 export interface BoxRunData {
   id: string;
   box_id: string;
+  customer_id: string;
   type: "agent" | "shell";
-  status: RunStatus;
+  status: "running" | "completed" | "failed" | "cancelled";
   prompt?: string;
   model?: string;
-  input_tokens?: number;
-  output_tokens?: number;
-  cost_usd?: number;
-  duration_ms?: number;
+  output?: string;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+  duration_ms: number;
+  cpu_ns?: number;
+  compute_cost_usd?: number;
+  memory_peak_bytes?: number;
   error_message?: string;
+  session_id?: string;
   created_at: number;
   completed_at?: number;
 }

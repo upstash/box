@@ -3,7 +3,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "test": "vitest run",
+    "test": "pnpm -r test",
     "test:integration": "vitest run -c packages/sdk/vitest.integration.config.ts",
     "changeset": "changeset",
     "ci:version": "changeset version",

@@ -99,9 +99,12 @@ describe("Box.create", () => {
       skills: ["frontend-design"],
       mcpServers: [
         {
-          name: "test-mcp",
-          source: "npm",
-          packageOrUrl: "@test/mcp",
+          name: "test-mcp-package",
+          package: "@test/mcp",
+        },
+        {
+          name: "test-mcp-url",
+          url: "https://mcp.example.com/sse",
           headers: { "x-key": "val" },
         },
       ],
@@ -111,9 +114,14 @@ describe("Box.create", () => {
     expect(body.skills).toEqual(["frontend-design"]);
     expect(body.mcp_servers).toEqual([
       {
-        name: "test-mcp",
+        name: "test-mcp-package",
         source: "npm",
         package_or_url: "@test/mcp",
+      },
+      {
+        name: "test-mcp-url",
+        source: "url",
+        package_or_url: "https://mcp.example.com/sse",
         headers: { "x-key": "val" },
       },
     ]);
