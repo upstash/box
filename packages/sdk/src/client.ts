@@ -628,6 +628,9 @@ export class Box {
       const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch?.[1]) jsonStr = jsonMatch[1].trim();
 
+      const braceIndex = jsonStr.indexOf("{");
+      if (braceIndex > 0) jsonStr = jsonStr.slice(braceIndex);
+
       try {
         const parsed = JSON.parse(jsonStr);
         output = options.responseSchema.parse(parsed);
