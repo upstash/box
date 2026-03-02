@@ -82,14 +82,14 @@ export type Chunk =
   | { type: "reasoning"; text: string }
   | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
   | {
-      type: "finish";
-      output: string;
-      usage: {
-        inputTokens: number;
-        outputTokens: number;
-      };
-      sessionId: string;
-    }
+    type: "finish";
+    output: string;
+    usage: {
+      inputTokens: number;
+      outputTokens: number;
+    };
+    sessionId: string;
+  }
   | { type: "stats"; cpuNs: number; memoryPeakBytes: number }
   | { type: "unknown"; event: string; data: unknown };
 
@@ -254,21 +254,27 @@ export interface CodeExecutionResult {
 
 // ==================== Internal API Types ====================
 
-export type BoxData = {
+export interface BoxData {
   id: string;
+  customer_id?: string;
   name?: string;
   model?: string;
   runtime?: string;
-  repo?: string;
   status: BoxStatus;
+  clone_repo?: string;
   total_input_tokens?: number;
   total_output_tokens?: number;
   total_prompts?: number;
-  total_compute_cost_usd?: number;
+  session_id?: string;
+  agent_id?: string;
   total_cpu_ns?: number;
+  total_compute_cost_usd?: number;
+  total_token_cost_usd?: number;
+  use_managed_key?: boolean;
+  last_activity_at?: number;
   created_at: number;
   updated_at: number;
-};
+}
 
 export interface RunResult {
   output: string;
