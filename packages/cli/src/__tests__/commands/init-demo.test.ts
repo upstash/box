@@ -11,6 +11,13 @@ vi.mock("../../auth.js", () => ({
   resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
 }));
 
+vi.mock("@upstash/box", () => ({
+  BoxApiKey: {
+    UpstashKey: "UPSTASH_KEY",
+    StoredKey: "STORED_KEY",
+  },
+}));
+
 let readlineAnswers: string[] = [];
 vi.mock("node:readline", () => ({
   default: {
@@ -72,11 +79,12 @@ describe("initDemoCommand", () => {
     expect(writeSpy).not.toHaveBeenCalled();
   });
 
-  it("exits if --agent-model set without --agent-api-key", async () => {
-    await initDemoCommand({ token: "key", agentModel: "model" });
+  it("creates box with UpstashKey when --agent-model set without --agent-api-key", async () => {
+    await initDemoCommand({ token: "key", agentModel: "model", directory: "test-demo" });
 
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--agent-api-key is required"));
+    // Should NOT exit — agent without explicit key now defaults to UpstashKey
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(mkdirSpy).toHaveBeenCalled();
   });
 
   it("creates directory and writes all files", async () => {
@@ -121,7 +129,7 @@ describe("initDemoCommand", () => {
 });
 
 describe("generateEnvFile", () => {
-  it("contains correct values", () => {
+  it("contains correct values with explicit key", () => {
     const env = generateEnvFile(
       {
         token: "tok",
@@ -140,7 +148,13 @@ describe("generateEnvFile", () => {
     expect(env).toContain("GIT_TOKEN=gh-tok");
   });
 
-  it("leaves optional values empty", () => {
+  it("defaults to UPSTASH_KEY when model set without key", () => {
+    const env = generateEnvFile({ agentModel: "claude/sonnet_4_5" }, "my-token");
+
+    expect(env).toContain("AGENT_API_KEY=UPSTASH_KEY");
+  });
+
+  it("leaves optional values empty when no model", () => {
     const env = generateEnvFile({}, "my-token");
 
     expect(env).toContain("UPSTASH_BOX_API_KEY=my-token");

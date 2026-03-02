@@ -4,6 +4,7 @@
 src/
 ├── index.ts              CLI entry point (Commander.js)
 ├── auth.ts               Token resolution (flag → env var)
+├── agent-key.ts          Agent API key resolution (flag → BoxApiKey enum)
 ├── output.ts             Format utilities (JSON, raw)
 ├── repl/
 │   ├── client.ts         BoxREPLClient — exported library for programmatic use

@@ -32,12 +32,33 @@ export enum OpenAICodex {
   GPT_5_1_Codex_Max = "openai/gpt-5.1-codex-max",
 }
 
+export enum BoxApiKey {
+  /**
+   * Use an LLM API key provided by Upstash
+   */
+  UpstashKey = "UPSTASH_KEY",
+  /**
+   * Use an LLM API key previously stored via the UI or API
+   */
+  StoredKey = "STORED_KEY",
+}
+
 export interface BoxConfig {
   apiKey?: string;
   runtime?: Runtime | string;
   agent?: {
     model: ClaudeCode | OpenAICodex | string;
-    apiKey?: string;
+    /**
+     * API key for the agent model.
+     *
+     * Options:
+     * - BoxApiKey.UpstashKey: Use an LLM API key provided by Upstash
+     * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
+     * - Direct API key string (e.g. OpenAI key)
+     *
+     * @default BoxApiKey.UpstashKey
+     */
+    apiKey?: BoxApiKey | string;
   };
   git?: {
     token: string;

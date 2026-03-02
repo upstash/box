@@ -1,23 +1,19 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
+import { resolveAgentApiKey } from "../agent-key.js";
 import { startRepl } from "../repl/terminal.js";
 
 interface CreateFlags {
   token?: string;
   runtime?: string;
   agentModel?: string;
-  agentApiKey?: string;
+  agentApiKey?: string | true;
   gitToken?: string;
   env?: string[];
 }
 
 export async function createCommand(flags: CreateFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
-
-  if (flags.agentModel && !flags.agentApiKey) {
-    console.error("Error: --agent-api-key is required if --agent-model is set");
-    process.exit(1);
-  }
 
   const env: Record<string, string> = {};
   if (flags.env) {
@@ -35,10 +31,9 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
   const box = await Box.create({
     apiKey,
     runtime: flags.runtime,
-    agent:
-      flags.agentModel && flags.agentApiKey
-        ? { model: flags.agentModel, apiKey: flags.agentApiKey }
-        : undefined,
+    agent: flags.agentModel
+      ? { model: flags.agentModel, apiKey: resolveAgentApiKey(flags.agentApiKey) }
+      : undefined,
     git: flags.gitToken ? { token: flags.gitToken } : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,
   });

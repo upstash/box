@@ -1,5 +1,5 @@
 export { Box, BoxError, Run } from "./client.js";
-export { Runtime, ClaudeCode, OpenAICodex } from "./types.js";
+export { Runtime, ClaudeCode, OpenAICodex, BoxApiKey } from "./types.js";
 
 export type {
   BoxConfig,

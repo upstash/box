@@ -3,24 +3,22 @@ import dotenv from "dotenv";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod/v3";
-import { Box, OpenAICodex } from "../index.js";
+import { Box, ClaudeCode } from "../index.js";
 
 // Load .env from monorepo root before evaluating skip condition
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../../.env") });
 
 const UPSTASH_BOX_API_KEY = process.env.UPSTASH_BOX_API_KEY;
-const AGENT_API_KEY = process.env.AGENT_API_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("Integration tests", () => {
   let box: Box;
   let snapshotId: string;
 
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: OpenAICodex.GPT_5_1_Codex_Max, apiKey: AGENT_API_KEY! },
+      agent: { model: ClaudeCode.Opus_4_6 },
     });
   }, 120000);
 
@@ -152,13 +150,13 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !AGENT_API_KEY)("Integration tests", () 
   });
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY || !OPENAI_API_KEY)("Integration tests (OpenAI)", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("Integration tests (OpenAI)", () => {
   let box: Box;
 
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: OpenAICodex.GPT_5_2_Codex, apiKey: OPENAI_API_KEY! },
+      agent: { model: ClaudeCode.Opus_4_6 },
     });
   }, 120000);
 

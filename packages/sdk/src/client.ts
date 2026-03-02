@@ -1,30 +1,31 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
-import type {
-  BoxConfig,
-  BoxData,
-  BoxGetOptions,
-  BoxRunData,
-  ListOptions,
-  RunOptions,
-  StreamOptions,
-  Chunk,
-  RunStatus,
-  RunCost,
-  RunLog,
-  WebhookConfig,
-  WebhookPayload,
-  ExecResult,
-  CodeExecutionOptions,
-  CodeExecutionResult,
-  ErrorResponse,
-  FileEntry,
-  GitCloneOptions,
-  GitPROptions,
-  GitCommitResult,
-  PullRequest,
-  LogEntry,
-  UploadFileEntry,
-  Snapshot,
+import {
+  type BoxConfig,
+  type BoxData,
+  type BoxGetOptions,
+  type BoxRunData,
+  type ListOptions,
+  type RunOptions,
+  type StreamOptions,
+  type Chunk,
+  type RunStatus,
+  type RunCost,
+  type RunLog,
+  type WebhookConfig,
+  type WebhookPayload,
+  type ExecResult,
+  type CodeExecutionOptions,
+  type CodeExecutionResult,
+  type ErrorResponse,
+  type FileEntry,
+  type GitCloneOptions,
+  type GitPROptions,
+  type GitCommitResult,
+  type PullRequest,
+  type LogEntry,
+  type UploadFileEntry,
+  type Snapshot,
+  BoxApiKey,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
 
@@ -311,9 +312,6 @@ export class Box {
     if (config.agent && !config.agent.model) {
       throw new BoxError("agent.model is required when agent is configured");
     }
-    if (config.agent && !config.agent.apiKey) {
-      throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
-    }
 
     const baseUrl = (
       config.baseUrl ??
@@ -329,7 +327,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config.agent) {
       body.model = config.agent.model;
-      body.agent_api_key = config.agent.apiKey!;
+      body.agent_api_key = config.agent.apiKey ?? BoxApiKey.UpstashKey;
     }
     if (config.runtime) body.runtime = config.runtime;
     if (config.git?.token) body.github_token = config.git.token;

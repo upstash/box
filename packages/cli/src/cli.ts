@@ -23,7 +23,10 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment (node, python, golang, ruby, rust)")
   .option("--agent-model <model>", "Agent model identifier")
-  .option("--agent-api-key <key>", "Agent API key (Anthropic or OpenAI)")
+  .option(
+    "--agent-api-key [key]",
+    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+  )
   .option("--git-token <token>", "GitHub personal access token")
   .option(
     "--env <KEY=VAL>",
@@ -45,7 +48,10 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment")
   .option("--agent-model <model>", "Agent model identifier")
-  .option("--agent-api-key <key>", "Agent API key")
+  .option(
+    "--agent-api-key [key]",
+    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+  )
   .option("--git-token <token>", "GitHub personal access token")
   .option(
     "--env <KEY=VAL>",
@@ -79,7 +85,10 @@ program
   .description("Scaffold a standalone demo project for @upstash/box")
   .option("--token <token>", "Upstash Box API token")
   .option("--agent-model <model>", "Agent model identifier")
-  .option("--agent-api-key <key>", "Agent API key (required if --agent-model is set)")
+  .option(
+    "--agent-api-key [key]",
+    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+  )
   .option("--runtime <runtime>", "Runtime environment", "node")
   .option("--git-token <token>", "GitHub personal access token")
   .option("--directory <dir>", "Output directory", "box-demo")
