@@ -254,7 +254,7 @@ export interface CodeExecutionResult {
 
 // ==================== Internal API Types ====================
 
-export interface BoxData {
+export type BoxData = {
   id: string;
   customer_id?: string;
   name?: string;
@@ -274,7 +274,7 @@ export interface BoxData {
   last_activity_at?: number;
   created_at: number;
   updated_at: number;
-}
+};
 
 export interface RunResult {
   output: string;
