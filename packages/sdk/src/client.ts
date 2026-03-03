@@ -1246,10 +1246,7 @@ export class Box {
   private async _gitDiff(): Promise<string> {
     const folder = this._getFolder();
     const qs = folder ? `?folder=${encodeURIComponent(folder)}` : "";
-    const data = await this._request<{ diff: string }>(
-      "GET",
-      `/v2/box/${this.id}/git/diff${qs}`,
-    );
+    const data = await this._request<{ diff: string }>("GET", `/v2/box/${this.id}/git/diff${qs}`);
     return data.diff;
   }
 

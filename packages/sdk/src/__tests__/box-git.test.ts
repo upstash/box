@@ -115,7 +115,6 @@ describe("Box git operations", () => {
       const body = JSON.parse(init?.body as string);
       expect(body.args).toEqual(["log", "--oneline", "-2"]);
     });
-
   });
 
   describe("git.checkout", () => {
