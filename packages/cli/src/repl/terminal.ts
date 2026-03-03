@@ -146,12 +146,18 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
           const partial = line.slice(1);
           const matches = client.suggestCommands(partial).slice(0, 5);
           if (matches.length > 0) {
+            const termWidth = stdout.columns || 80;
+            let visualRows = 0;
             const preview = matches
-              .map((c) => `  ${dim(`/${c.name}`)} ${dim("—")} ${dim(c.description)}`)
+              .map((c) => {
+                const plain = `  /${c.name} — ${c.description}`;
+                visualRows += Math.ceil(plain.length / termWidth) || 1;
+                return `  ${dim(`/${c.name}`)} ${dim("—")} ${dim(c.description)}`;
+              })
               .join("\n");
-            stdout.write("\n" + preview + cursorUp(matches.length));
+            stdout.write("\n" + preview + cursorUp(visualRows));
             restoreCursorColumn();
-            previewLines = matches.length;
+            previewLines = visualRows;
           }
         }
       });
