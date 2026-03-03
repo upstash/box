@@ -2,7 +2,7 @@ import type { Box } from "@upstash/box";
 import type { BoxREPLEvent } from "../types.js";
 
 /**
- * Handle git subcommands: clone, diff, create-pr.
+ * Handle git subcommands: clone, diff, status, commit, push, create-pr, exec, checkout.
  */
 export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
   const parts = args.split(/\s+/);
@@ -23,6 +23,27 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
     case "diff": {
       const diff = await box.git.diff();
       yield { type: "log", message: diff || "(no changes)" };
+      break;
+    }
+    case "status": {
+      const status = await box.git.status();
+      yield { type: "log", message: status || "(clean)" };
+      break;
+    }
+    case "commit": {
+      const message = parts.slice(1).join(" ");
+      if (!message) {
+        yield { type: "log", message: "Usage: git commit <message>" };
+        return;
+      }
+      const result = await box.git.commit({ message });
+      yield { type: "log", message: `Committed ${result.sha}: ${result.message}` };
+      break;
+    }
+    case "push": {
+      const branch = parts[1];
+      await box.git.push(branch ? { branch } : undefined);
+      yield { type: "log", message: branch ? `Pushed to ${branch}` : "Pushed" };
       break;
     }
     case "create-pr": {
@@ -56,6 +77,9 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       break;
     }
     default:
-      yield { type: "log", message: "Usage: git <clone|diff|create-pr|exec|checkout> [args...]" };
+      yield {
+        type: "log",
+        message: "Usage: git <clone|diff|status|commit|push|create-pr|exec|checkout> [args...]",
+      };
   }
 }

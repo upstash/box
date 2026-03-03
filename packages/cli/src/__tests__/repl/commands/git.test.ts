@@ -8,6 +8,9 @@ describe("handleGit", () => {
       git: {
         clone: vi.fn().mockResolvedValue(undefined),
         diff: vi.fn().mockResolvedValue("+added line"),
+        status: vi.fn().mockResolvedValue("M src/index.ts"),
+        commit: vi.fn().mockResolvedValue({ sha: "abc123", message: "fix bug" }),
+        push: vi.fn().mockResolvedValue(undefined),
         createPR: vi.fn().mockResolvedValue({ number: 42, url: "https://github.com/pr/42" }),
         exec: vi.fn().mockResolvedValue({ output: "git exec output" }),
         checkout: vi.fn().mockResolvedValue(undefined),
@@ -47,6 +50,52 @@ describe("handleGit", () => {
       box.git.diff.mockResolvedValue("");
       const events = await collectEvents(handleGit(box as any, "diff"));
       expect(events).toContainEqual({ type: "log", message: "(no changes)" });
+    });
+  });
+
+  describe("status", () => {
+    it("prints status", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "status"));
+      expect(box.git.status).toHaveBeenCalled();
+      expect(events).toContainEqual({ type: "log", message: "M src/index.ts" });
+    });
+
+    it("prints clean when status is empty", async () => {
+      const box = createMockBox();
+      box.git.status.mockResolvedValue("");
+      const events = await collectEvents(handleGit(box as any, "status"));
+      expect(events).toContainEqual({ type: "log", message: "(clean)" });
+    });
+  });
+
+  describe("commit", () => {
+    it("commits with message", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "commit fix bug"));
+      expect(box.git.commit).toHaveBeenCalledWith({ message: "fix bug" });
+      expect(events).toContainEqual({ type: "log", message: "Committed abc123: fix bug" });
+    });
+
+    it("prints usage without message", async () => {
+      const events = await collectEvents(handleGit(createMockBox() as any, "commit"));
+      expect(events).toContainEqual({ type: "log", message: "Usage: git commit <message>" });
+    });
+  });
+
+  describe("push", () => {
+    it("pushes to default branch", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "push"));
+      expect(box.git.push).toHaveBeenCalledWith(undefined);
+      expect(events).toContainEqual({ type: "log", message: "Pushed" });
+    });
+
+    it("pushes to specific branch", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "push feature"));
+      expect(box.git.push).toHaveBeenCalledWith({ branch: "feature" });
+      expect(events).toContainEqual({ type: "log", message: "Pushed to feature" });
     });
   });
 
