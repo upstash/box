@@ -1,5 +1,15 @@
 # @upstash/box
 
+## 0.1.12
+
+### Patch Changes
+
+- 3e8c5dc: Add args option to MCP initialization
+- 387af1d: stop defaulting agent api key to UpstashKey when omitted
+- 35bd038: add git/exec and git/checkout endpoints
+- ccbbce8: Add box.cd and /cd
+- 21b801d: Arange mcpServers option when creating a box. Split integration tests and enable integration test wf
+
 ## 0.1.11
 
 ### Patch Changes
