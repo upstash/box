@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { z } from "zod/v3";
-import { Box, ClaudeCode } from "../../index.js";
-import { CONTEXT7_API_KEY, UPSTASH_BOX_API_KEY } from "./setup.js";
+import { CONTEXT7_API_KEY, UPSTASH_BOX_API_KEY, withBox } from "./setup.js";
 
 const mcpResultSchema = z.object({
   success: z.boolean(),
@@ -14,73 +13,57 @@ const PROMPT =
   "If there is no MCP tool available or it fails, return success: false and put the error reason in content.";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)", () => {
-  let box: Box;
+  it.concurrent(
+    "agent can use Context7 MCP tool via package",
+    () =>
+      withBox(
+        async (box) => {
+          const run = await box.agent.run({
+            prompt: PROMPT,
+            responseSchema: mcpResultSchema,
+          });
 
-  beforeAll(async () => {
-    box = await Box.create({
-      apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
-      mcpServers: [
-        {
-          name: "context7",
-          package: "@upstash/context7-mcp",
-          args: ["--api-key", CONTEXT7_API_KEY!],
+          expect(run.result.success).toBe(true);
+          expect(run.result.content).toBeTruthy();
         },
-      ],
-    });
-  }, 120000);
-
-  afterAll(async () => {
-    try {
-      await box?.delete();
-    } catch {
-      // cleanup best-effort
-    }
-  }, 30000);
-
-  it("agent can use Context7 MCP tool via package", async () => {
-    const run = await box.agent.run({
-      prompt: PROMPT,
-      responseSchema: mcpResultSchema,
-    });
-
-    expect(run.result.success).toBe(true);
-    expect(run.result.content).toBeTruthy();
-  }, 180000);
+        {
+          mcpServers: [
+            {
+              name: "context7",
+              package: "@upstash/context7-mcp",
+              args: ["--api-key", CONTEXT7_API_KEY!],
+            },
+          ],
+        },
+      ),
+    180000,
+  );
 });
 
 describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (url-based)", () => {
-  let box: Box;
+  it.concurrent(
+    "agent can use Context7 MCP tool via URL",
+    () =>
+      withBox(
+        async (box) => {
+          const run = await box.agent.run({
+            prompt: PROMPT,
+            responseSchema: mcpResultSchema,
+          });
 
-  beforeAll(async () => {
-    box = await Box.create({
-      apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
-      mcpServers: [
-        {
-          name: "context7",
-          url: "https://mcp.context7.com/mcp",
-          headers: { CONTEXT7_API_KEY: CONTEXT7_API_KEY! },
+          expect(run.result.success).toBe(true);
+          expect(run.result.content).toBeTruthy();
         },
-      ],
-    });
-  }, 120000);
-
-  afterAll(async () => {
-    try {
-      await box?.delete();
-    } catch {
-      // cleanup best-effort
-    }
-  }, 30000);
-
-  it("agent can use Context7 MCP tool via URL", async () => {
-    const run = await box.agent.run({
-      prompt: PROMPT,
-      responseSchema: mcpResultSchema,
-    });
-
-    expect(run.result.success).toBe(true);
-    expect(run.result.content).toBeTruthy();
-  }, 180000);
+        {
+          mcpServers: [
+            {
+              name: "context7",
+              url: "https://mcp.context7.com/mcp",
+              headers: { CONTEXT7_API_KEY: CONTEXT7_API_KEY! },
+            },
+          ],
+        },
+      ),
+    180000,
+  );
 });
