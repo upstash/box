@@ -30,3 +30,4 @@ jobs:
         env:
           UPSTASH_BOX_API_KEY: ${{ secrets.UPSTASH_BOX_API_KEY }}
           AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
