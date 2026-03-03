@@ -60,7 +60,7 @@ describe("createCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("defaults to UpstashKey when --agent-api-key is omitted", async () => {
+  it("sends undefined apiKey when --agent-api-key is omitted", async () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
@@ -68,7 +68,7 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { model: "model", apiKey: "UPSTASH_KEY" },
+        agent: { model: "model", apiKey: undefined },
       }),
     );
   });
