@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -6,11 +6,12 @@ import { Box, ClaudeCode } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
+  let snapshotId: string;
   let box: Box;
   let tmpDir: string;
 
   beforeAll(async () => {
-    box = await Box.create({
+    const setupBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { model: ClaudeCode.Opus_4_6 },
     });
@@ -18,12 +19,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     tmpDir = join(tmpdir(), `box-cd-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
 
-    // Create folder structure on the box using exec + heredocs so
-    // directories and files are created atomically:
+    // Create folder structure on the box:
     //   /workspace/home/
     //     project-a/  (src/index.ts, README.md)
     //     project-b/  (main.py)
-    await box.exec.command(
+    await setupBox.exec.command(
       [
         "mkdir -p project-a/src project-b",
         "echo 'export const a = 1;' > project-a/src/index.ts",
@@ -31,16 +31,30 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
         "echo \"print('hello')\" > project-b/main.py",
       ].join(" && "),
     );
-  }, 120000);
+
+    const snapshot = await setupBox.snapshot({ name: `cd-test-${Date.now()}` });
+    snapshotId = snapshot.id;
+    await setupBox.delete();
+  }, 180000);
 
   afterAll(async () => {
     try {
-      await box?.delete();
+      rmSync(tmpDir, { recursive: true, force: true });
     } catch {
       // cleanup best-effort
     }
+  }, 30000);
+
+  beforeEach(async () => {
+    box = await Box.fromSnapshot(snapshotId, {
+      apiKey: UPSTASH_BOX_API_KEY!,
+      agent: { model: ClaudeCode.Opus_4_6 },
+    });
+  }, 120000);
+
+  afterEach(async () => {
     try {
-      rmSync(tmpDir, { recursive: true, force: true });
+      await box?.delete();
     } catch {
       // cleanup best-effort
     }
@@ -57,16 +71,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   it("cd into existing directory (relative)", async () => {
     await box.cd("project-a");
     expect(box.cwd).toBe("/workspace/home/project-a");
-
-    // go back
-    await box.cd("/workspace/home");
   });
 
   it("cd with absolute path", async () => {
     await box.cd("/workspace/home/project-b");
     expect(box.cwd).toBe("/workspace/home/project-b");
-
-    await box.cd("/workspace/home");
   });
 
   it("cd with ..", async () => {
@@ -86,16 +95,12 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
     await box.cd("../../project-b");
     expect(box.cwd).toBe("/workspace/home/project-b");
-
-    await box.cd("/workspace/home");
   });
 
   it("cd with ./relative", async () => {
     await box.cd("project-a");
     await box.cd("./src");
     expect(box.cwd).toBe("/workspace/home/project-a/src");
-
-    await box.cd("/workspace/home");
   });
 
   it("cd to non-existent directory throws", async () => {
@@ -119,8 +124,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
     await expect(box.cd("nonexistent")).rejects.toThrow();
     expect(box.cwd).toBe("/workspace/home/project-a");
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== exec.command respects cwd ====================
@@ -141,22 +144,17 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("src");
     const srcRun = await box.exec.command("ls");
     expect(srcRun.result).toContain("index.ts");
-
-    await box.cd("/workspace/home");
   });
 
   it("exec.command in project-b", async () => {
     await box.cd("project-b");
     const run = await box.exec.command("ls");
     expect(run.result).toContain("main.py");
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== exec.code respects cwd ====================
 
   it("exec.code runs in cwd context", async () => {
-    // Write a file in project-a to read with code
     await box.cd("project-a");
 
     const result = await box.exec.code({
@@ -166,8 +164,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     expect(result.exit_code).toBe(0);
     expect(result.output).toContain("src");
     expect(result.output).toContain("README.md");
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== files.read resolves against cwd ====================
@@ -186,8 +182,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("src");
     const srcContent = await box.files.read("index.ts");
     expect(srcContent.trim()).toBe("export const a = 1;");
-
-    await box.cd("/workspace/home");
   });
 
   it("files.read with absolute path ignores cwd", async () => {
@@ -196,8 +190,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     // Absolute path should reach project-a even though cwd is project-b
     const content = await box.files.read("/workspace/home/project-a/README.md");
     expect(content.trim()).toBe("# Project A");
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== files.write resolves against cwd ====================
@@ -209,10 +201,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     // Verify by reading with absolute path
     const content = await box.files.read("/workspace/home/project-a/new-file.txt");
     expect(content).toBe("written from cwd");
-
-    // Clean up
-    await box.exec.command("rm new-file.txt");
-    await box.cd("/workspace/home");
   });
 
   it("files.write with absolute path ignores cwd", async () => {
@@ -225,9 +213,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("/workspace/home/project-b");
     const content = await box.files.read("from-a.txt");
     expect(content).toBe("cross-project write");
-
-    await box.exec.command("rm from-a.txt");
-    await box.cd("/workspace/home");
   });
 
   // ==================== files.list respects cwd ====================
@@ -252,8 +237,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     const srcFiles = await box.files.list();
     const srcNames = srcFiles.map((f) => f.name);
     expect(srcNames).toContain("index.ts");
-
-    await box.cd("/workspace/home");
   });
 
   it("files.list with explicit path resolves against cwd", async () => {
@@ -262,8 +245,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     const srcFiles = await box.files.list("src");
     const names = srcFiles.map((f) => f.name);
     expect(names).toContain("index.ts");
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== files.upload resolves destination against cwd ====================
@@ -278,21 +259,15 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     // Verify the file landed in project-b
     const content = await box.files.read("/workspace/home/project-b/uploaded-via-cd.txt");
     expect(content).toBe("uploaded to cwd");
-
-    await box.exec.command("rm uploaded-via-cd.txt");
-    await box.cd("/workspace/home");
   });
 
   // ==================== git operations respect cwd ====================
 
   it("git.clone then cd into cloned repo and use git ops", async () => {
-    // Clone a small public repo into project-a/sub-repo context
-    // Instead, let's init a git repo inside project-a to test git ops
     await box.cd("project-a");
     await box.exec.command("git init && git add -A && git commit -m 'init'");
 
     const status = await box.git.status();
-    // After committing everything, status should be clean or empty
     expect(status).toBeDefined();
 
     // Make a change
@@ -300,27 +275,26 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.exec.command("git add new.txt");
 
     const diff = await box.git.diff();
-    // There might be a diff if staged, or not (depends on git diff vs git diff --staged)
     expect(diff).toBeDefined();
 
     const commit = await box.git.commit({ message: "add new.txt" });
     expect(commit.sha).toBeTruthy();
     expect(commit.message).toContain("add new.txt");
-
-    await box.cd("/workspace/home");
   });
 
   it("git.exec respects cwd", async () => {
     await box.cd("project-a");
+    await box.exec.command("git init && git add -A && git commit -m 'init'");
+    await box.files.write({ path: "new.txt", content: "change" });
+    await box.exec.command("git add new.txt && git commit -m 'add new.txt'");
 
     const result = await box.git.exec({ args: ["log", "--oneline", "-1"] });
     expect(result.output).toContain("add new.txt");
-
-    await box.cd("/workspace/home");
   });
 
   it("git.checkout respects cwd", async () => {
     await box.cd("project-a");
+    await box.exec.command("git init && git add -A && git commit -m 'init'");
 
     // Create a new branch and switch to it
     await box.git.exec({ args: ["branch", "test-branch"] });
@@ -333,13 +307,21 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.git.checkout({ branch: "master" });
     const backResult = await box.git.exec({ args: ["branch", "--show-current"] });
     expect(backResult.output.trim()).toBe("master");
-
-    await box.cd("/workspace/home");
   });
 
   it("git.exec in different cwd sees different repos", async () => {
-    // project-a log should reference "add new.txt"
+    // Set up project-a git repo
     await box.cd("project-a");
+    await box.exec.command("git init && git add -A && git commit -m 'init'");
+    await box.files.write({ path: "new.txt", content: "change" });
+    await box.exec.command("git add new.txt && git commit -m 'add new.txt'");
+
+    // Set up project-b git repo
+    await box.cd("/workspace/home/project-b");
+    await box.exec.command("git init && git add -A && git commit -m 'init b'");
+
+    // project-a log should reference "add new.txt"
+    await box.cd("/workspace/home/project-a");
     const aLog = await box.git.exec({ args: ["log", "--oneline"] });
     expect(aLog.output).toContain("add new.txt");
 
@@ -348,12 +330,15 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     const bLog = await box.git.exec({ args: ["log", "--oneline"] });
     expect(bLog.output).toContain("init b");
     expect(bLog.output).not.toContain("add new.txt");
-
-    await box.cd("/workspace/home");
   });
 
   it("git operations in project-b are independent from project-a", async () => {
-    await box.cd("project-b");
+    // Set up project-a git repo
+    await box.cd("project-a");
+    await box.exec.command("git init && git add -A && git commit -m 'init a'");
+
+    // Set up and test project-b git repo
+    await box.cd("/workspace/home/project-b");
     await box.exec.command("git init && git add -A && git commit -m 'init b'");
 
     const status = await box.git.status();
@@ -363,8 +348,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.exec.command("git add extra.py");
     const commit = await box.git.commit({ message: "add extra" });
     expect(commit.sha).toBeTruthy();
-
-    await box.cd("/workspace/home");
   });
 
   // ==================== multi-folder workflow ====================
@@ -408,9 +391,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     expect(box.cwd).toBe("/workspace/home/project-b");
     const bContent = await box.files.read("main.py");
     expect(bContent.trim()).toBe("print('hello')");
-
-    // Back to root
-    await box.cd("/workspace/home");
   });
 
   // ==================== error: cd to deeply nested non-existent path ====================
@@ -423,6 +403,9 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   // ==================== rapid cd and verify state ====================
 
   it("rapid sequential cd calls maintain consistent state", async () => {
+    // Create project-c needed for this test
+    await box.exec.command("mkdir -p project-c/lib");
+
     await box.cd("project-a");
     expect(box.cwd).toBe("/workspace/home/project-a");
 
