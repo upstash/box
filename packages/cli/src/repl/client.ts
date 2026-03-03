@@ -2,7 +2,8 @@ import type { Box } from "@upstash/box";
 import type { BoxREPLEvent, BoxREPLCommand, BoxREPLCommandName } from "./types.js";
 import { handleRun } from "./commands/run.js";
 import { handleCd } from "./commands/cd.js";
-import { handleCommand } from "./commands/command.js";
+import { handleAgent } from "./commands/agent.js";
+import { handleShell } from "./commands/shell.js";
 import { handleCode } from "./commands/code.js";
 import { handleFiles } from "./commands/files.js";
 import { handleGit } from "./commands/git.js";
@@ -16,9 +17,9 @@ import { fuzzyMatch } from "../utils/fuzzy.js";
 async function* noop(): AsyncGenerator<BoxREPLEvent> {}
 
 const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
-  run: { description: "Run the agent with a prompt", handler: handleRun },
+  agent: { description: "Switch to agent mode", handler: handleAgent },
+  shell: { description: "Switch to shell mode", handler: handleShell },
   cd: { description: "Change working directory", handler: handleCd },
-  command: { description: "Execute a shell command", handler: handleCommand },
   code: { description: "Execute inline code (js, ts, python)", handler: handleCode },
   files: {
     description: "File operations (read, write, list, upload, download)",
@@ -48,14 +49,10 @@ export const COMMAND_DESCRIPTIONS: Record<BoxREPLCommandName, string> = Object.f
 /** Context-aware suggestion after a command completes. */
 function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefined {
   switch (cmdName) {
-    case "command":
-      return "/files list .";
     case "code":
       return "/files list .";
-    case "run":
-      return "/snapshot";
     case "files":
-      return "/command ls";
+      return "ls";
     case "git":
       return "/snapshot";
     case "snapshot":
@@ -73,10 +70,26 @@ export interface BoxREPLClientOptions {
 export class BoxREPLClient {
   readonly box: Box;
   readonly hiddenCommands: ReadonlySet<BoxREPLCommandName>;
+  mode: "shell" | "agent" = "shell";
 
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
     this.hiddenCommands = new Set(options?.hiddenCommands ?? []);
+  }
+
+  /** Label and display cwd for rendering prompts (CLI and UI). */
+  get promptInfo(): { label: string; cwd: string } {
+    const cwd = this.box.cwd;
+    const display =
+      cwd === "/workspace/home"
+        ? "~"
+        : cwd.startsWith("/workspace/home/")
+          ? "~/" + cwd.slice("/workspace/home/".length)
+          : cwd;
+    return {
+      label: this.mode === "agent" ? "agent" : this.box.id,
+      cwd: display,
+    };
   }
 
   /** Parse input and return the matching command + args, or null. */
@@ -95,11 +108,22 @@ export class BoxREPLClient {
     return { command: { name: cmdName as BoxREPLCommandName, ...entry }, args };
   }
 
-  /** Return commands whose name starts with the given prefix, excluding hidden ones. */
+  /** Return commands whose name starts with the given prefix, excluding hidden ones and current mode. */
   suggestCommands(prefix: string): BoxREPLCommand[] {
     return COMMAND_NAMES.filter(
-      (name) => name.startsWith(prefix) && !this.hiddenCommands.has(name),
+      (name) =>
+        name.startsWith(prefix) &&
+        !this.hiddenCommands.has(name) &&
+        !(name === "shell" && this.mode === "shell") &&
+        !(name === "agent" && this.mode === "agent"),
     ).map((name) => ({ name, ...COMMANDS[name] }));
+  }
+
+  /** Execute a shell command in the box. */
+  private async *execShellCommand(command: string): AsyncGenerator<BoxREPLEvent> {
+    const run = await this.box.exec.command(command);
+    const result = run.result;
+    if (result) yield { type: "log", message: result };
   }
 
   /** Process a single line of input and yield events. */
@@ -130,6 +154,11 @@ export class BoxREPLClient {
 
       if (parsed) {
         const { command, args } = parsed;
+
+        // Toggle mode before running the handler
+        if (command.name === "agent") this.mode = "agent";
+        if (command.name === "shell") this.mode = "shell";
+
         yield { type: "command:start", command: command.name, args };
         const start = Date.now();
         try {
@@ -149,16 +178,59 @@ export class BoxREPLClient {
         yield { type: "command:not-found", typed: cmdName, suggestions };
       }
     } else {
-      // No / prefix — treat as agent prompt
-      yield { type: "command:start", command: "run", args: trimmed };
-      const start = Date.now();
-      try {
-        yield* handleRun(this.box, trimmed);
-        const durationMs = Date.now() - start;
-        yield { type: "command:complete", command: "run", durationMs };
-        yield { type: "suggestion", text: "/snapshot" };
-      } catch (err) {
-        yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+      // No / prefix — behavior depends on current mode
+
+      // Intercept bare `cd <path>` (single arg) as /cd
+      if (trimmed.startsWith("cd ") || trimmed === "cd") {
+        const afterCd = trimmed.slice(2).trim();
+        // Single argument (no spaces, no &&, no ;, no |) → treat as /cd
+        if (afterCd && !afterCd.includes(" ") && !/[;&|]/.test(afterCd)) {
+          yield { type: "command:start", command: "cd", args: afterCd };
+          const start = Date.now();
+          try {
+            yield* handleCd(this.box, afterCd);
+            const durationMs = Date.now() - start;
+            yield { type: "command:complete", command: "cd", durationMs };
+          } catch (err) {
+            yield {
+              type: "error",
+              message: `Error: ${err instanceof Error ? err.message : err}`,
+            };
+          }
+          return;
+        }
+      }
+
+      if (this.mode === "shell") {
+        yield { type: "command:start", command: "shell", args: trimmed };
+        const start = Date.now();
+        try {
+          yield* this.execShellCommand(trimmed);
+          const durationMs = Date.now() - start;
+          yield { type: "command:complete", command: "shell", durationMs };
+
+          // Warn if input contained cd with extra args (multi-arg cd)
+          if (trimmed.startsWith("cd ")) {
+            yield {
+              type: "log",
+              message: "Tip: use just 'cd <path>' to change the working directory",
+            };
+          }
+        } catch (err) {
+          yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+        }
+      } else {
+        // Agent mode
+        yield { type: "command:start", command: "agent", args: trimmed };
+        const start = Date.now();
+        try {
+          yield* handleRun(this.box, trimmed);
+          const durationMs = Date.now() - start;
+          yield { type: "command:complete", command: "agent", durationMs };
+          yield { type: "suggestion", text: "/snapshot" };
+        } catch (err) {
+          yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+        }
       }
     }
   }
