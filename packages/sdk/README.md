@@ -42,11 +42,11 @@ Create a new sandboxed box.
 import { Box, Runtime, ClaudeCode, BoxApiKey } from "@upstash/box";
 
 const box = await Box.create({
-  apiKey: "abx_...",     // or set UPSTASH_BOX_API_KEY
+  apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: Runtime.Node, // node, python, golang, ruby, rust
   agent: {
     model: ClaudeCode.Sonnet_4_5,
-    apiKey: BoxApiKey.UpstashKey,       // Upstash-managed key
+    apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
     // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
     // apiKey: process.env.CLAUDE_KEY!, // or pass a direct API key
   },
