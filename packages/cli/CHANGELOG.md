@@ -1,5 +1,11 @@
 # @upstash/box-cli
 
+## 0.1.16
+
+### Patch Changes
+
+- 22c5937: remove logs from cd handler
+
 ## 0.1.15
 
 ### Patch Changes
