@@ -24,7 +24,10 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
     description: "File operations (read, write, list, upload, download)",
     handler: handleFiles,
   },
-  git: { description: "Git operations (clone, diff, create-pr)", handler: handleGit },
+  git: {
+    description: "Git operations (clone, diff, status, commit, push, create-pr, exec, checkout)",
+    handler: handleGit,
+  },
   snapshot: { description: "Create a snapshot of the current box", handler: handleSnapshot },
   pause: { description: "Pause the box and exit", handler: handlePause },
   delete: { description: "Delete the box and exit", handler: handleDelete },

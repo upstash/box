@@ -101,4 +101,54 @@ describe("Box git operations", () => {
       expect(body.base).toBe("main");
     });
   });
+
+  describe("git.exec", () => {
+    it("executes a git command", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "abc123\ndef456" }));
+
+      const result = await box.git.exec({ args: ["log", "--oneline", "-2"] });
+      expect(result.output).toBe("abc123\ndef456");
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/git/exec");
+      const body = JSON.parse(init?.body as string);
+      expect(body.args).toEqual(["log", "--oneline", "-2"]);
+    });
+
+    it("passes folder option", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "" }));
+
+      await box.git.exec({ args: ["status"], folder: "/workspace/project" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.folder).toBe("/workspace/project");
+    });
+  });
+
+  describe("git.checkout", () => {
+    it("checks out a branch", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.git.checkout({ branch: "feature" });
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/git/checkout");
+      const body = JSON.parse(init?.body as string);
+      expect(body.branch).toBe("feature");
+    });
+
+    it("passes folder option", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.git.checkout({ branch: "main", folder: "/workspace/project" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.branch).toBe("main");
+      expect(body.folder).toBe("/workspace/project");
+    });
+  });
 });

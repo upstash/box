@@ -19,6 +19,9 @@ import {
   type ErrorResponse,
   type FileEntry,
   type GitCloneOptions,
+  type GitExecOptions,
+  type GitExecResult,
+  type GitCheckoutOptions,
   type GitPROptions,
   type GitCommitResult,
   type PullRequest,
@@ -226,6 +229,8 @@ export class Box {
     commit: (options: { message: string }) => Promise<GitCommitResult>;
     push: (options?: { branch?: string }) => Promise<void>;
     createPR: (options: GitPROptions) => Promise<PullRequest>;
+    exec: (options: GitExecOptions) => Promise<GitExecResult>;
+    checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
   /**
@@ -321,6 +326,8 @@ export class Box {
       commit: (options) => this._gitCommit(options),
       push: (options) => this._gitPush(options),
       createPR: (options) => this._gitCreatePR(options),
+      exec: (options) => this._gitExec(options),
+      checkout: (options) => this._gitCheckout(options),
     };
   }
 
@@ -352,7 +359,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config.agent) {
       body.model = config.agent.model;
-      body.agent_api_key = config.agent.apiKey ?? BoxApiKey.UpstashKey;
+      body.agent_api_key = config.agent.apiKey;
     }
     if (config.runtime) body.runtime = config.runtime;
     if (config.git?.token) body.github_token = config.git.token;
@@ -362,7 +369,7 @@ export class Box {
       body.mcp_servers = config.mcpServers.map((s) => ({
         name: s.name,
         ...("package" in s
-          ? { source: "npm", package_or_url: s.package }
+          ? { source: "npm", package_or_url: s.package, args: s.args }
           : { source: "url", package_or_url: s.url, headers: s.headers }),
       }));
     }
@@ -662,12 +669,8 @@ export class Box {
     // Parse structured output if schema provided
     let output: T | string = rawOutput.trim();
     if (options.responseSchema) {
-      let jsonStr = (output as string).trim();
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch?.[1]) jsonStr = jsonMatch[1].trim();
-
       try {
-        const parsed = JSON.parse(jsonStr);
+        const parsed = JSON.parse(output);
         output = options.responseSchema.parse(parsed);
       } catch (e) {
         throw new BoxError(
@@ -1103,9 +1106,6 @@ export class Box {
       snapshot_id: snapshotId,
     };
     if (config.agent) {
-      if (!config.agent.apiKey) {
-        throw new BoxError("Agent API key is undefined. Please provide a valid provider API key.");
-      }
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
     }
@@ -1286,6 +1286,18 @@ export class Box {
         base: options.base,
         ...(folder ? { folder } : {}),
       },
+    });
+  }
+
+  private async _gitExec(options: GitExecOptions): Promise<GitExecResult> {
+    return this._request<GitExecResult>("POST", `/v2/box/${this.id}/git/exec`, {
+      body: { args: options.args, folder: options.folder },
+    });
+  }
+
+  private async _gitCheckout(options: GitCheckoutOptions): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/git/checkout`, {
+      body: { branch: options.branch, folder: options.folder },
     });
   }
 }

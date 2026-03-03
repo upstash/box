@@ -56,7 +56,7 @@ describe("fromSnapshotCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
-  it("defaults to UpstashKey when --agent-api-key is omitted", async () => {
+  it("sends undefined apiKey when --agent-api-key is omitted", async () => {
     const mockBox = { id: "box-2" };
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);
 
@@ -65,7 +65,7 @@ describe("fromSnapshotCommand", () => {
     expect(Box.fromSnapshot).toHaveBeenCalledWith(
       "snap-1",
       expect.objectContaining({
-        agent: { model: "model", apiKey: "UPSTASH_KEY" },
+        agent: { model: "model", apiKey: undefined },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);

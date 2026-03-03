@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
 import { Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { CONTEXT7_API_KEY, UPSTASH_BOX_API_KEY } from "./setup.js";
 
 const mcpResultSchema = z.object({
   success: z.boolean(),
@@ -13,14 +13,20 @@ const PROMPT =
   "If the tool works and you find documentation, return success: true and put a short summary in content. " +
   "If there is no MCP tool available or it fails, return success: false and put the error reason in content.";
 
-describe.skipIf(!UPSTASH_BOX_API_KEY || true)("mcp (package-based)", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)", () => {
   let box: Box;
 
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { model: ClaudeCode.Opus_4_6 },
-      mcpServers: [{ name: "context7", package: "@upstash/context7-mcp" }],
+      mcpServers: [
+        {
+          name: "context7",
+          package: "@upstash/context7-mcp",
+          args: ["--api-key", CONTEXT7_API_KEY!],
+        },
+      ],
     });
   }, 120000);
 
@@ -43,14 +49,20 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || true)("mcp (package-based)", () => {
   }, 180000);
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY || true)("mcp (url-based)", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (url-based)", () => {
   let box: Box;
 
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { model: ClaudeCode.Opus_4_6 },
-      mcpServers: [{ name: "context7", url: "https://mcp.context7.com/mcp" }],
+      mcpServers: [
+        {
+          name: "context7",
+          url: "https://mcp.context7.com/mcp",
+          headers: { CONTEXT7_API_KEY: CONTEXT7_API_KEY! },
+        },
+      ],
     });
   }, 120000);
 

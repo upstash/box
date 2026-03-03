@@ -56,7 +56,7 @@ export interface BoxConfig {
      * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
      * - Direct API key string (e.g. OpenAI key)
      *
-     * @default BoxApiKey.UpstashKey
+     * When omitted, the server decides which key to use.
      */
     apiKey?: BoxApiKey | string;
   };
@@ -101,6 +101,7 @@ export type McpServerConfig = {
   | {
       /** npm package specifier to run locally (e.g. "@org/mcp-server") */
       package: string;
+      args?: string[];
       url?: never;
       headers?: never;
     }
@@ -110,6 +111,7 @@ export type McpServerConfig = {
       /** Custom headers sent with requests to the remote server */
       headers?: Record<string, string>;
       package?: never;
+      args?: never;
     }
 );
 
@@ -354,6 +356,20 @@ export interface FileEntry {
 export interface GitCloneOptions {
   repo: string;
   branch?: string;
+}
+
+export interface GitExecOptions {
+  args: string[];
+  folder?: string;
+}
+
+export interface GitExecResult {
+  output: string;
+}
+
+export interface GitCheckoutOptions {
+  branch: string;
+  folder?: string;
 }
 
 export interface GitPROptions {
