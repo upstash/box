@@ -24,7 +24,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)"
         {
           name: "context7",
           package: "@upstash/context7-mcp",
-          args: { "--api-key": CONTEXT7_API_KEY },
+          args: ["--api-key", CONTEXT7_API_KEY!],
         },
       ],
     });
