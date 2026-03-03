@@ -952,7 +952,7 @@ export class Box {
     let qs = "";
     if (path) {
       const resolved = this._resolvePath(path);
-      qs = `?path=${encodeURIComponent(resolved)}`;
+      qs = `?folder=${encodeURIComponent(resolved)}`;
     } else {
       const folder = this._getFolder();
       if (folder) qs = `?folder=${encodeURIComponent(folder)}`;

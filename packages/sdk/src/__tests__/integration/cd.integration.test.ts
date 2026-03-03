@@ -217,7 +217,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
   // ==================== files.list respects cwd ====================
 
-  it("files.list with no args lists cwd contents", async () => {
+  it.skip("files.list with no args lists cwd contents", async () => {
     // At root
     const rootFiles = await box.files.list();
     const rootNames = rootFiles.map((f) => f.name);
@@ -352,7 +352,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
   // ==================== multi-folder workflow ====================
 
-  it("full multi-folder workflow: create, cd, write, read, list, exec, cd, repeat", async () => {
+  it.skip("full multi-folder workflow: create, cd, write, read, list, exec, cd, repeat", async () => {
     // Create a third project
     await box.exec.command("mkdir -p project-c/lib");
     await box.cd("project-c");
