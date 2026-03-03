@@ -19,6 +19,9 @@ import {
   type ErrorResponse,
   type FileEntry,
   type GitCloneOptions,
+  type GitExecOptions,
+  type GitExecResult,
+  type GitCheckoutOptions,
   type GitPROptions,
   type GitCommitResult,
   type PullRequest,
@@ -226,6 +229,8 @@ export class Box {
     commit: (options: { message: string }) => Promise<GitCommitResult>;
     push: (options?: { branch?: string }) => Promise<void>;
     createPR: (options: GitPROptions) => Promise<PullRequest>;
+    exec: (options: GitExecOptions) => Promise<GitExecResult>;
+    checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
   private _baseUrl: string;
@@ -311,6 +316,8 @@ export class Box {
       commit: (options) => this._gitCommit(options),
       push: (options) => this._gitPush(options),
       createPR: (options) => this._gitCreatePR(options),
+      exec: (options) => this._gitExec(options),
+      checkout: (options) => this._gitCheckout(options),
     };
   }
 
@@ -1178,6 +1185,18 @@ export class Box {
   private async _gitCreatePR(options: GitPROptions): Promise<PullRequest> {
     return this._request<PullRequest>("POST", `/v2/box/${this.id}/git/create-pr`, {
       body: { title: options.title, body: options.body, base: options.base },
+    });
+  }
+
+  private async _gitExec(options: GitExecOptions): Promise<GitExecResult> {
+    return this._request<GitExecResult>("POST", `/v2/box/${this.id}/git/exec`, {
+      body: { args: options.args, folder: options.folder },
+    });
+  }
+
+  private async _gitCheckout(options: GitCheckoutOptions): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/git/checkout`, {
+      body: { branch: options.branch, folder: options.folder },
     });
   }
 }

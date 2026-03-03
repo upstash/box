@@ -358,6 +358,20 @@ export interface GitCloneOptions {
   branch?: string;
 }
 
+export interface GitExecOptions {
+  args: string[];
+  folder?: string;
+}
+
+export interface GitExecResult {
+  output: string;
+}
+
+export interface GitCheckoutOptions {
+  branch: string;
+  folder?: string;
+}
+
 export interface GitPROptions {
   title: string;
   body?: string;
