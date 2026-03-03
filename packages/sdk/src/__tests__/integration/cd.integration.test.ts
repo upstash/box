@@ -310,6 +310,48 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("/workspace/home");
   });
 
+  it("git.exec respects cwd", async () => {
+    await box.cd("project-a");
+
+    const result = await box.git.exec({ args: ["log", "--oneline", "-1"] });
+    expect(result.output).toContain("add new.txt");
+
+    await box.cd("/workspace/home");
+  });
+
+  it("git.checkout respects cwd", async () => {
+    await box.cd("project-a");
+
+    // Create a new branch and switch to it
+    await box.git.exec({ args: ["branch", "test-branch"] });
+    await box.git.checkout({ branch: "test-branch" });
+
+    const branchResult = await box.git.exec({ args: ["branch", "--show-current"] });
+    expect(branchResult.output.trim()).toBe("test-branch");
+
+    // Switch back to the default branch
+    await box.git.checkout({ branch: "master" });
+    const backResult = await box.git.exec({ args: ["branch", "--show-current"] });
+    expect(backResult.output.trim()).toBe("master");
+
+    await box.cd("/workspace/home");
+  });
+
+  it("git.exec in different cwd sees different repos", async () => {
+    // project-a log should reference "add new.txt"
+    await box.cd("project-a");
+    const aLog = await box.git.exec({ args: ["log", "--oneline"] });
+    expect(aLog.output).toContain("add new.txt");
+
+    // project-b log should reference "init b", not "add new.txt"
+    await box.cd("/workspace/home/project-b");
+    const bLog = await box.git.exec({ args: ["log", "--oneline"] });
+    expect(bLog.output).toContain("init b");
+    expect(bLog.output).not.toContain("add new.txt");
+
+    await box.cd("/workspace/home");
+  });
+
   it("git operations in project-b are independent from project-a", async () => {
     await box.cd("project-b");
     await box.exec.command("git init && git add -A && git commit -m 'init b'");

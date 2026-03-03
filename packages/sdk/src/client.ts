@@ -1290,14 +1290,16 @@ export class Box {
   }
 
   private async _gitExec(options: GitExecOptions): Promise<GitExecResult> {
+    const folder = this._getFolder();
     return this._request<GitExecResult>("POST", `/v2/box/${this.id}/git/exec`, {
-      body: { args: options.args, folder: options.folder },
+      body: { args: options.args, ...(folder ? { folder } : {}) },
     });
   }
 
   private async _gitCheckout(options: GitCheckoutOptions): Promise<void> {
+    const folder = this._getFolder();
     await this._request("POST", `/v2/box/${this.id}/git/checkout`, {
-      body: { branch: options.branch, folder: options.folder },
+      body: { branch: options.branch, ...(folder ? { folder } : {}) },
     });
   }
 }
