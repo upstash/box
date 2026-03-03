@@ -129,7 +129,7 @@ await box.files.write({ path: "hello.txt", content: "Hello!" });
 const content = await box.files.read("hello.txt");
 const entries = await box.files.list(".");
 await box.files.upload([{ path: "./local.txt", destination: "remote.txt" }]);
-await box.files.download({ path: "output/" });
+await box.files.download({ folder: "output/" });
 ```
 
 ### Git

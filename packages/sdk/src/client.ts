@@ -200,19 +200,19 @@ export class Box {
     /**
      * Download files from the box to the local filesystem.
      *
-     * The `path` option must point to a directory, not a single file.
+     * The `folder` option must point to a directory, not a single file.
      * When omitted, the entire workspace is downloaded.
      *
      * @example
      * ```ts
      * // Download a specific directory
-     * await box.files.download({ path: "src" });
+     * await box.files.download({ folder: "src" });
      *
      * // Download the entire workspace
      * await box.files.download();
      * ```
      */
-    download: (options?: { path?: string }) => Promise<void>;
+    download: (options?: { folder?: string }) => Promise<void>;
   };
 
   /** Execution namespace — shell commands and inline code */
@@ -316,7 +316,7 @@ export class Box {
       write: (opts) => this._writeFile(opts.path, opts.content),
       list: (path) => this._listFiles(path),
       upload: (files) => this._uploadFiles(files),
-      download: (opts) => this._downloadFiles(opts?.path),
+      download: (opts) => this._downloadFiles(opts?.folder),
     };
 
     this.git = {
@@ -992,7 +992,7 @@ export class Box {
 
     for (const file of files) {
       if (file.is_dir) continue;
-      const url = `${this._baseUrl}/v2/box/${this.id}/files/download?path=${encodeURIComponent(file.path)}`;
+      const url = `${this._baseUrl}/v2/box/${this.id}/files/download?folder=${encodeURIComponent(file.path)}`;
       const response = await fetch(url, { headers: this._headers });
       if (!response.ok) {
         throw new BoxError(`Failed to download ${file.path}`, response.status);

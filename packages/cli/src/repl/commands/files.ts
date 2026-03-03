@@ -51,8 +51,8 @@ export async function* handleFiles(box: Box, args: string): AsyncGenerator<BoxRE
       break;
     }
     case "download": {
-      const path = parts[1];
-      await box.files.download(path ? { path } : undefined);
+      const folder = parts[1];
+      await box.files.download(folder ? { folder } : undefined);
       yield { type: "log", message: "Downloaded." };
       break;
     }

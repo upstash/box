@@ -42,6 +42,6 @@ console.log(`Tokens: ${cost.inputTokens + cost.outputTokens}`);
 
 // Save the report to the box and download it
 await box.files.write({ path: "review.md", content: output });
-await box.files.download({ path: "." });
+await box.files.download({ folder: "." });
 
 await box.delete();
