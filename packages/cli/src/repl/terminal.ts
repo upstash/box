@@ -27,7 +27,18 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
     completer: (): [string[], string] => [[], ""],
   });
 
-  const prompt = `${bold(cyan(box.id))}${dim(">")} `;
+  const getPrompt = () => {
+    const cwd = box.cwd;
+    const display =
+      cwd === "/workspace/home"
+        ? "~"
+        : cwd.startsWith("/workspace/home/")
+          ? "~/" + cwd.slice("/workspace/home/".length)
+          : cwd;
+    return `${bold(cyan(box.id))}${dim(":")}${yellow(display)}${dim(">")} `;
+  };
+
+  let currentPrompt = getPrompt();
   const client = new BoxREPLClient(box, options);
 
   // --- Spinner tracking ---
@@ -62,7 +73,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
 
   // --- Command preview while typing ---
   let previewLines = 0;
-  const promptVisualLen = stripAnsi(prompt).length;
+  let promptVisualLen = stripAnsi(currentPrompt).length;
 
   function restoreCursorColumn() {
     const cursor = (rl as unknown as { cursor: number }).cursor ?? 0;
@@ -267,11 +278,12 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   );
 
   // --- Main REPL loop ---
-  const continuationPrompt = " ".repeat(promptVisualLen);
-
   try {
     while (true) {
       clearPreview();
+      currentPrompt = getPrompt();
+      promptVisualLen = stripAnsi(currentPrompt).length;
+      const continuationPrompt = " ".repeat(promptVisualLen);
       const suggestion = nextSuggestion;
       nextSuggestion = null;
 
@@ -279,7 +291,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
       const inputLines: string[] = [];
       isMetaReturn = false;
 
-      const firstLine = await rl.question(prompt);
+      const firstLine = await rl.question(currentPrompt);
       inputLines.push(firstLine);
 
       if (isMetaReturn && stdin.isTTY) {
@@ -303,7 +315,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
         }
         stdout.write(cursorUp(totalVisualRows) + "\r" + eraseDown);
         for (let i = 0; i < inputLines.length; i++) {
-          const p = i === 0 ? prompt : continuationPrompt;
+          const p = i === 0 ? currentPrompt : continuationPrompt;
           stdout.write(p + green(inputLines[i]!) + "\n");
         }
       }

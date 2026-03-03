@@ -228,6 +228,15 @@ export class Box {
     createPR: (options: GitPROptions) => Promise<PullRequest>;
   };
 
+  /**
+   * The current working directory tracked in the SDK (not in the box).
+   * Every new session starts at /workspace/home.
+   */
+  get cwd(): string {
+    return this._cwd;
+  }
+
+  private _cwd: string;
   private _baseUrl: string;
   private _headers: Record<string, string>;
   private _timeout: number;
@@ -264,6 +273,7 @@ export class Box {
     },
   ) {
     this.id = data.id;
+    this._cwd = Box.WORKSPACE;
     this._baseUrl = config.baseUrl;
     this._headers = config.headers;
     this._timeout = config.timeout;
@@ -539,6 +549,8 @@ export class Box {
     }
 
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
+    const folder = this._getFolder();
+    if (folder) requestBody.folder = folder;
     if (options.responseSchema) {
       const jsonSchema = toJsonSchema(options.responseSchema);
       if (jsonSchema) {
@@ -680,11 +692,12 @@ export class Box {
       setTimeout(() => abortController.abort(), options.timeout);
     }
 
+    const folder = this._getFolder();
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const response = await fetch(url, {
       method: "POST",
       headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: options.prompt }),
+      body: JSON.stringify({ prompt: options.prompt, ...(folder ? { folder } : {}) }),
       signal: abortController.signal,
     });
 
@@ -825,8 +838,9 @@ export class Box {
    */
   private async _execCommand(command: string): Promise<Run<string>> {
     const start = Date.now();
+    const folder = this._getFolder();
     const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
-      body: { command: ["sh", "-c", command] },
+      body: { command: ["sh", "-c", command], ...(folder ? { folder } : {}) },
     });
 
     const run = new Run<string>(this, "shell");
@@ -840,11 +854,13 @@ export class Box {
    * Execute inline code (JS, TS, or Python) inside the box.
    */
   private async _execCode(options: CodeExecutionOptions): Promise<CodeExecutionResult> {
+    const folder = this._getFolder();
     return this._request<CodeExecutionResult>("POST", `/v2/box/${this.id}/code`, {
       body: {
         code: options.code,
         language: options.lang,
         ...(options.timeout !== undefined && { timeout: options.timeout }),
+        ...(folder ? { folder } : {}),
       },
     });
   }
@@ -853,9 +869,64 @@ export class Box {
 
   private static readonly WORKSPACE = "/workspace/home";
 
+  /**
+   * Change the in-memory working directory.
+   *
+   * The cwd is tracked in the SDK, not in the box itself.
+   * Every new session starts at `/workspace/home`. Calling `cd` updates the
+   * path used by all subsequent file, exec, git, and agent operations.
+   *
+   * Verifies the target directory exists by running `ls` on the box.
+   * Throws if the path does not exist.
+   */
+  async cd(path: string): Promise<void> {
+    let newPath: string;
+    if (path.startsWith("/")) {
+      newPath = Box._normalizePath(path);
+    } else {
+      newPath = Box._normalizePath(`${this._cwd}/${path}`);
+    }
+
+    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
+      body: { command: ["ls", newPath] },
+    });
+
+    if (result.exit_code !== 0) {
+      throw new BoxError(`cd: ${path}: No such file or directory`);
+    }
+
+    this._cwd = newPath;
+  }
+
+  /** Normalize a path by resolving `.` and `..` segments. */
+  private static _normalizePath(p: string): string {
+    const parts = p.split("/");
+    const resolved: string[] = [];
+    for (const part of parts) {
+      if (part === "" || part === ".") continue;
+      if (part === "..") {
+        resolved.pop();
+      } else {
+        resolved.push(part);
+      }
+    }
+    return "/" + resolved.join("/");
+  }
+
+  /**
+   * Derive the `folder` parameter (relative to WORKSPACE) from the current working directory.
+   * Returns an empty string when cwd is at the workspace root.
+   */
+  private _getFolder(): string {
+    const prefix = Box.WORKSPACE + "/";
+    if (this._cwd === Box.WORKSPACE) return "";
+    if (this._cwd.startsWith(prefix)) return this._cwd.slice(prefix.length);
+    return "";
+  }
+
   private _resolvePath(p: string): string {
     if (p.startsWith("/")) return p;
-    return `${Box.WORKSPACE}/${p}`;
+    return `${this._cwd}/${p}`;
   }
 
   private async _readFile(path: string): Promise<string> {
@@ -875,11 +946,17 @@ export class Box {
   }
 
   private async _listFiles(path?: string): Promise<FileEntry[]> {
-    const resolved = path ? this._resolvePath(path) : "";
-    const p = resolved ? `?path=${encodeURIComponent(resolved)}` : "";
+    let qs = "";
+    if (path) {
+      const resolved = this._resolvePath(path);
+      qs = `?path=${encodeURIComponent(resolved)}`;
+    } else {
+      const folder = this._getFolder();
+      if (folder) qs = `?folder=${encodeURIComponent(folder)}`;
+    }
     const data = await this._request<{ files: FileEntry[] }>(
       "GET",
-      `/v2/box/${this.id}/files/list${p}`,
+      `/v2/box/${this.id}/files/list${qs}`,
     );
     return data.files;
   }
@@ -900,8 +977,12 @@ export class Box {
     const fs = await this._getFs();
     const path = await this._getPath();
 
-    const resolved = remotePath ? this._resolvePath(remotePath) : Box.WORKSPACE;
-    const dest = remotePath ? `./${path.basename(resolved)}` : "./workspace";
+    const resolved = remotePath ? this._resolvePath(remotePath) : this._cwd;
+    const dest = remotePath
+      ? `./${path.basename(resolved)}`
+      : this._cwd === Box.WORKSPACE
+        ? "./workspace"
+        : `./${path.basename(this._cwd)}`;
 
     const files = await this._listFiles(resolved);
     await fs.mkdir(dest, { recursive: true });
@@ -1151,40 +1232,60 @@ export class Box {
   // ==================== Git (private, exposed via this.git) ====================
 
   private async _gitClone(options: GitCloneOptions): Promise<void> {
+    const folder = this._getFolder();
     await this._request("POST", `/v2/box/${this.id}/git/clone`, {
       body: {
         repo: options.repo,
         branch: options.branch,
         github_token: this._gitToken,
+        ...(folder ? { folder } : {}),
       },
     });
   }
 
   private async _gitDiff(): Promise<string> {
-    const data = await this._request<{ diff: string }>("GET", `/v2/box/${this.id}/git/diff`);
+    const folder = this._getFolder();
+    const qs = folder ? `?folder=${encodeURIComponent(folder)}` : "";
+    const data = await this._request<{ diff: string }>(
+      "GET",
+      `/v2/box/${this.id}/git/diff${qs}`,
+    );
     return data.diff;
   }
 
   private async _gitStatus(): Promise<string> {
-    const data = await this._request<{ status: string }>("GET", `/v2/box/${this.id}/git/status`);
+    const folder = this._getFolder();
+    const qs = folder ? `?folder=${encodeURIComponent(folder)}` : "";
+    const data = await this._request<{ status: string }>(
+      "GET",
+      `/v2/box/${this.id}/git/status${qs}`,
+    );
     return data.status;
   }
 
   private async _gitCommit(options: { message: string }): Promise<GitCommitResult> {
+    const folder = this._getFolder();
     return this._request<GitCommitResult>("POST", `/v2/box/${this.id}/git/commit`, {
-      body: { message: options.message },
+      body: { message: options.message, ...(folder ? { folder } : {}) },
     });
   }
 
   private async _gitPush(options?: { branch?: string }): Promise<void> {
+    const folder = this._getFolder();
     await this._request("POST", `/v2/box/${this.id}/git/push`, {
-      body: { branch: options?.branch },
+      body: { branch: options?.branch, ...(folder ? { folder } : {}) },
     });
   }
 
   private async _gitCreatePR(options: GitPROptions): Promise<PullRequest> {
+    const folder = this._getFolder();
     return this._request<PullRequest>("POST", `/v2/box/${this.id}/git/create-pr`, {
-      body: { title: options.title, body: options.body, base: options.base },
+      body: {
+        title: options.title,
+        body: options.body,
+        base: options.base,
+        ...(folder ? { folder } : {}),
+      },
     });
   }
 }

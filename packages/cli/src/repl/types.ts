@@ -2,6 +2,7 @@ import type { Box } from "@upstash/box";
 
 export type BoxREPLCommandName =
   | "run"
+  | "cd"
   | "command"
   | "code"
   | "files"

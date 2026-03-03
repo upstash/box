@@ -1,6 +1,7 @@
 import type { Box } from "@upstash/box";
 import type { BoxREPLEvent, BoxREPLCommand, BoxREPLCommandName } from "./types.js";
 import { handleRun } from "./commands/run.js";
+import { handleCd } from "./commands/cd.js";
 import { handleCommand } from "./commands/command.js";
 import { handleCode } from "./commands/code.js";
 import { handleFiles } from "./commands/files.js";
@@ -16,6 +17,7 @@ async function* noop(): AsyncGenerator<BoxREPLEvent> {}
 
 const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   run: { description: "Run the agent with a prompt", handler: handleRun },
+  cd: { description: "Change working directory", handler: handleCd },
   command: { description: "Execute a shell command", handler: handleCommand },
   code: { description: "Execute inline code (js, ts, python)", handler: handleCode },
   files: {
