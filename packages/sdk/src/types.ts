@@ -101,6 +101,7 @@ export type McpServerConfig = {
   | {
       /** npm package specifier to run locally (e.g. "@org/mcp-server") */
       package: string;
+      args?: string[];
       url?: never;
       headers?: never;
     }
@@ -110,6 +111,7 @@ export type McpServerConfig = {
       /** Custom headers sent with requests to the remote server */
       headers?: Record<string, string>;
       package?: never;
+      args?: never;
     }
 );
 

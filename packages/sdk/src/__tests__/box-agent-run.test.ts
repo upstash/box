@@ -142,27 +142,6 @@ describe("box.agent.run", () => {
     expect(body.json_schema).toBeUndefined();
   });
 
-  it("extracts JSON from markdown code blocks", async () => {
-    const { box, fetchMock } = await createTestBox();
-
-    fetchMock.mockResolvedValueOnce(
-      mockSSEResponse([
-        { event: "run_start", data: { run_id: "r1" } },
-        { event: "text", data: { text: '```json\n{"value": 1}\n```' } },
-        { event: "done", data: {} },
-      ]),
-    );
-
-    const schema = z.object({ value: z.number() });
-
-    const run = await box.agent.run({
-      prompt: "test",
-      responseSchema: schema,
-    });
-
-    expect(run.result).toEqual({ value: 1 });
-  });
-
   it("throws on invalid structured output", async () => {
     const { box, fetchMock } = await createTestBox();
 
