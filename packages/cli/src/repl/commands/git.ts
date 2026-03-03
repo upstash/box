@@ -35,7 +35,27 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       yield { type: "log", message: `PR #${pr.number}: ${pr.url}` };
       break;
     }
+    case "exec": {
+      const execArgs = parts.slice(1);
+      if (execArgs.length === 0) {
+        yield { type: "log", message: "Usage: git exec <args...>" };
+        return;
+      }
+      const result = await box.git.exec({ args: execArgs });
+      yield { type: "log", message: result.output || "(no output)" };
+      break;
+    }
+    case "checkout": {
+      const branch = parts[1];
+      if (!branch) {
+        yield { type: "log", message: "Usage: git checkout <branch>" };
+        return;
+      }
+      await box.git.checkout({ branch });
+      yield { type: "log", message: `Switched to branch ${branch}` };
+      break;
+    }
     default:
-      yield { type: "log", message: "Usage: git <clone|diff|create-pr> [args...]" };
+      yield { type: "log", message: "Usage: git <clone|diff|create-pr|exec|checkout> [args...]" };
   }
 }

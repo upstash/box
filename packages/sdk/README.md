@@ -141,6 +141,17 @@ const status = await box.git.status();
 await box.git.commit({ message: "feat: add feature" });
 await box.git.push({ branch: "main" });
 const pr = await box.git.createPR({ title: "New feature", body: "Description" });
+
+// Run an arbitrary git command
+const result = await box.git.exec({ args: ["log", "--oneline", "-5"] });
+console.log(result.output);
+
+// Run git in a specific folder
+await box.git.exec({ args: ["status"], folder: "/workspace/my-project" });
+
+// Switch branches
+await box.git.checkout({ branch: "feature-branch" });
+await box.git.checkout({ branch: "main", folder: "/workspace/my-project" });
 ```
 
 ### Lifecycle
