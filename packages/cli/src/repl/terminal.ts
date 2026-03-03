@@ -9,6 +9,7 @@ import {
   bold,
   cyan,
   dim,
+  gray,
   green,
   red,
   yellow,
@@ -28,18 +29,12 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   });
 
   const getPrompt = () => {
-    const cwd = box.cwd;
-    const display =
-      cwd === "/workspace/home"
-        ? "~"
-        : cwd.startsWith("/workspace/home/")
-          ? "~/" + cwd.slice("/workspace/home/".length)
-          : cwd;
-    return `${bold(cyan(box.id))}${dim(":")}${yellow(display)}${dim(">")} `;
+    const { label, cwd } = client.promptInfo;
+    return `${bold(cyan(label))}${dim(":")}${gray(cwd)}${dim(">")} `;
   };
 
-  let currentPrompt = getPrompt();
   const client = new BoxREPLClient(box, options);
+  let currentPrompt = getPrompt();
 
   // --- Spinner tracking ---
   let activeSpinnerStop: (() => void) | null = null;
@@ -93,7 +88,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   }
 
   // --- Ghost suggestion in input ---
-  let nextSuggestion: string | null = "/command ls";
+  let nextSuggestion: string | null = "ls";
   let ghostText: string | null = null;
 
   function showGhost(text: string) {
@@ -280,7 +275,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   const allCommands = client.suggestCommands("");
   console.log(`\nConnected to box ${box.id}`);
   console.log(
-    `Type a prompt to run the agent, or use commands: ${allCommands.map((c) => `/${c.name}`).join(", ")}\n`,
+    `Type a command to run in the box, or use: ${allCommands.map((c) => `/${c.name}`).join(", ")}\n`,
   );
 
   // --- Main REPL loop ---

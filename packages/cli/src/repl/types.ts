@@ -1,9 +1,9 @@
 import type { Box } from "@upstash/box";
 
 export type BoxREPLCommandName =
-  | "run"
+  | "agent"
+  | "shell"
   | "cd"
-  | "command"
   | "code"
   | "files"
   | "git"
