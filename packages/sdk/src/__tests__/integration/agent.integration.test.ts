@@ -69,32 +69,38 @@ describe.skip("agent (OpenAI)", () => {
   it.concurrent(
     "agent.run: returns result with OpenAI model",
     () =>
-      withBox(async (box) => {
-        const run = await box.agent.run({
-          prompt: "Reply with exactly: OPENAI_OK",
-        });
-        expect(run.result).toBeTruthy();
-      }, { model: OPENAI_MODEL }),
+      withBox(
+        async (box) => {
+          const run = await box.agent.run({
+            prompt: "Reply with exactly: OPENAI_OK",
+          });
+          expect(run.result).toBeTruthy();
+        },
+        { model: OPENAI_MODEL },
+      ),
     120000,
   );
 
   it.concurrent(
     "agent.stream: yields stream parts with OpenAI model",
     () =>
-      withBox(async (box) => {
-        let text = "";
-        let partCount = 0;
-        for await (const part of box.agent.stream({
-          prompt: "Reply with exactly: OPENAI_STREAM_OK",
-        })) {
-          partCount++;
-          if (part.type === "text-delta") {
-            text += part.text;
+      withBox(
+        async (box) => {
+          let text = "";
+          let partCount = 0;
+          for await (const part of box.agent.stream({
+            prompt: "Reply with exactly: OPENAI_STREAM_OK",
+          })) {
+            partCount++;
+            if (part.type === "text-delta") {
+              text += part.text;
+            }
           }
-        }
-        expect(partCount).toBeGreaterThan(0);
-        expect(text).toBeTruthy();
-      }, { model: OPENAI_MODEL }),
+          expect(partCount).toBeGreaterThan(0);
+          expect(text).toBeTruthy();
+        },
+        { model: OPENAI_MODEL },
+      ),
     120000,
   );
 });
