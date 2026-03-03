@@ -1,5 +1,21 @@
 # @upstash/box-cli
 
+## 0.1.15
+
+### Patch Changes
+
+- 387af1d: stop defaulting agent api key to UpstashKey when omitted
+- 35bd038: add git/exec and git/checkout endpoints
+- 35bd038: Add git commands status/commit/push
+- ccbbce8: Add box.cd and /cd
+- 8368191: REPL dual-mode (shell default, agent via /agent)
+- Updated dependencies [3e8c5dc]
+- Updated dependencies [387af1d]
+- Updated dependencies [35bd038]
+- Updated dependencies [ccbbce8]
+- Updated dependencies [21b801d]
+  - @upstash/box@0.1.12
+
 ## 0.1.14
 
 ### Patch Changes
