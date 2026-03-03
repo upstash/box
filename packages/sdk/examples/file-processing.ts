@@ -68,7 +68,7 @@ for (const file of csvFiles) {
 }
 
 // Step 4: Download processed files
-await box.files.download({ path: "output" });
+await box.files.download({ folder: "output" });
 
 // Print summaries
 console.log("\n=== Summaries ===");

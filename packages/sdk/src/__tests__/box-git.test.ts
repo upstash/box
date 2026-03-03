@@ -115,16 +115,6 @@ describe("Box git operations", () => {
       const body = JSON.parse(init?.body as string);
       expect(body.args).toEqual(["log", "--oneline", "-2"]);
     });
-
-    it("passes folder option", async () => {
-      const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({ output: "" }));
-
-      await box.git.exec({ args: ["status"], folder: "/workspace/project" });
-
-      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
-      expect(body.folder).toBe("/workspace/project");
-    });
   });
 
   describe("git.checkout", () => {
@@ -138,17 +128,6 @@ describe("Box git operations", () => {
       expect(url).toContain("/git/checkout");
       const body = JSON.parse(init?.body as string);
       expect(body.branch).toBe("feature");
-    });
-
-    it("passes folder option", async () => {
-      const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({}));
-
-      await box.git.checkout({ branch: "main", folder: "/workspace/project" });
-
-      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
-      expect(body.branch).toBe("main");
-      expect(body.folder).toBe("/workspace/project");
     });
   });
 });

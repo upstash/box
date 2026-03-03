@@ -129,7 +129,7 @@ await box.files.write({ path: "hello.txt", content: "Hello!" });
 const content = await box.files.read("hello.txt");
 const entries = await box.files.list(".");
 await box.files.upload([{ path: "./local.txt", destination: "remote.txt" }]);
-await box.files.download({ path: "output/" });
+await box.files.download({ folder: "output/" });
 ```
 
 ### Git
@@ -146,12 +146,24 @@ const pr = await box.git.createPR({ title: "New feature", body: "Description" })
 const result = await box.git.exec({ args: ["log", "--oneline", "-5"] });
 console.log(result.output);
 
-// Run git in a specific folder
-await box.git.exec({ args: ["status"], folder: "/workspace/my-project" });
-
 // Switch branches
 await box.git.checkout({ branch: "feature-branch" });
-await box.git.checkout({ branch: "main", folder: "/workspace/my-project" });
+```
+
+### Working directory
+
+```ts
+box.cwd; // "/workspace/home" (default)
+
+await box.cd("my-project");
+box.cwd; // "/workspace/home/my-project"
+
+// All operations now run relative to my-project/
+const run = await box.exec.command("ls");
+const files = await box.files.list();
+const status = await box.git.status();
+
+await box.cd(".."); // back to /workspace/home
 ```
 
 ### Lifecycle

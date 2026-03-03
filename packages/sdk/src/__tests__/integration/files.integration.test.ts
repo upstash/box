@@ -62,7 +62,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("files", () => {
     const origCwd = process.cwd();
     process.chdir(tmpDir);
     try {
-      await box.files.download({ path: "dl-test" });
+      await box.files.download({ folder: "dl-test" });
     } finally {
       process.chdir(origCwd);
     }

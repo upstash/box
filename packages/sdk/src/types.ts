@@ -360,7 +360,6 @@ export interface GitCloneOptions {
 
 export interface GitExecOptions {
   args: string[];
-  folder?: string;
 }
 
 export interface GitExecResult {
@@ -369,7 +368,6 @@ export interface GitExecResult {
 
 export interface GitCheckoutOptions {
   branch: string;
-  folder?: string;
 }
 
 export interface GitPROptions {

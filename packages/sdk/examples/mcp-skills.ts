@@ -42,7 +42,7 @@ Use modern CSS, no frameworks. Make it look professional.`,
 }
 
 // Download the generated landing page
-await box.files.download({ path: "landing" });
+await box.files.download({ folder: "landing" });
 console.log("\nDownloaded landing/");
 
 await box.delete();

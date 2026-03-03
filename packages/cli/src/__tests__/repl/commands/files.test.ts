@@ -83,7 +83,7 @@ describe("handleFiles", () => {
     it("downloads files", async () => {
       const box = createMockBox();
       const events = await collectEvents(handleFiles(box as any, "download /work"));
-      expect(box.files.download).toHaveBeenCalledWith({ path: "/work" });
+      expect(box.files.download).toHaveBeenCalledWith({ folder: "/work" });
       expect(events).toContainEqual({ type: "log", message: "Downloaded." });
     });
 

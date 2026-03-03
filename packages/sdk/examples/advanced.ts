@@ -48,7 +48,7 @@ for (const file of mp3Files) {
 }
 
 // Step 4: Download all processed files
-await box.files.download({ path: "processed" });
+await box.files.download({ folder: "processed" });
 
 console.log(`Processed ${mp3Files.length} files → ./processed/`);
 
