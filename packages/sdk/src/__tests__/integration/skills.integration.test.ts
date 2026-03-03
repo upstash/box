@@ -8,7 +8,7 @@ const skillResultSchema = z.object({
   content: z.string(),
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY || true)("skills", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("skills", () => {
   let box: Box;
 
   beforeAll(async () => {

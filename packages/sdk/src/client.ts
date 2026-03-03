@@ -352,7 +352,7 @@ export class Box {
       body.mcp_servers = config.mcpServers.map((s) => ({
         name: s.name,
         ...("package" in s
-          ? { source: "npm", package_or_url: s.package }
+          ? { source: "npm", package_or_url: s.package, args: s.args }
           : { source: "url", package_or_url: s.url, headers: s.headers }),
       }));
     }

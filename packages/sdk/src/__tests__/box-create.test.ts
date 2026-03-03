@@ -101,6 +101,7 @@ describe("Box.create", () => {
         {
           name: "test-mcp-package",
           package: "@test/mcp",
+          args: { "--option": "value" },
         },
         {
           name: "test-mcp-url",
@@ -117,6 +118,7 @@ describe("Box.create", () => {
         name: "test-mcp-package",
         source: "npm",
         package_or_url: "@test/mcp",
+        args: { "--option": "value" },
       },
       {
         name: "test-mcp-url",
