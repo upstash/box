@@ -79,10 +79,10 @@ describe("initDemoCommand", () => {
     expect(writeSpy).not.toHaveBeenCalled();
   });
 
-  it("creates box with UpstashKey when --agent-model set without --agent-api-key", async () => {
+  it("creates box when --agent-model set without --agent-api-key", async () => {
     await initDemoCommand({ token: "key", agentModel: "model", directory: "test-demo" });
 
-    // Should NOT exit — agent without explicit key now defaults to UpstashKey
+    // Should NOT exit — agent without explicit key lets server decide
     expect(exitSpy).not.toHaveBeenCalled();
     expect(mkdirSpy).toHaveBeenCalled();
   });
@@ -148,10 +148,10 @@ describe("generateEnvFile", () => {
     expect(env).toContain("GIT_TOKEN=gh-tok");
   });
 
-  it("defaults to UPSTASH_KEY when model set without key", () => {
+  it("leaves AGENT_API_KEY empty when model set without key", () => {
     const env = generateEnvFile({ agentModel: "claude/sonnet_4_5" }, "my-token");
 
-    expect(env).toContain("AGENT_API_KEY=UPSTASH_KEY");
+    expect(env).toContain("AGENT_API_KEY=");
   });
 
   it("leaves optional values empty when no model", () => {

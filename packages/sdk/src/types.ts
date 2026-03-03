@@ -56,7 +56,7 @@ export interface BoxConfig {
      * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
      * - Direct API key string (e.g. OpenAI key)
      *
-     * @default BoxApiKey.UpstashKey
+     * When omitted, the server decides which key to use.
      */
     apiKey?: BoxApiKey | string;
   };
