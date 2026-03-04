@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.17
+
+### Patch Changes
+
+- 8f80c1c: Add suggestion getter to BoxREPLClient, fix list files returning null in empty directories, remove /code
+- Updated dependencies [8f80c1c]
+  - @upstash/box@0.1.13
+
 ## 0.1.16
 
 ### Patch Changes
