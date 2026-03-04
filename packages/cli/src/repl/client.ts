@@ -4,7 +4,6 @@ import { handleRun } from "./commands/run.js";
 import { handleCd } from "./commands/cd.js";
 import { handleAgent } from "./commands/agent.js";
 import { handleShell } from "./commands/shell.js";
-import { handleCode } from "./commands/code.js";
 import { handleFiles } from "./commands/files.js";
 import { handleGit } from "./commands/git.js";
 import { handleSnapshot } from "./commands/snapshot.js";
@@ -12,6 +11,7 @@ import { handlePause } from "./commands/pause.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleConsole } from "./commands/console.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
+import { getNextSuggestion } from "./suggestions.js";
 
 // Dummy handler for commands intercepted in handleInput()
 async function* noop(): AsyncGenerator<BoxREPLEvent> {}
@@ -20,7 +20,6 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   agent: { description: "Switch to agent mode", handler: handleAgent },
   shell: { description: "Switch to shell mode", handler: handleShell },
   cd: { description: "Change working directory", handler: handleCd },
-  code: { description: "Execute inline code (js, ts, python)", handler: handleCode },
   files: {
     description: "File operations (read, write, list, upload, download)",
     handler: handleFiles,
@@ -46,22 +45,6 @@ export const COMMAND_DESCRIPTIONS: Record<BoxREPLCommandName, string> = Object.f
   COMMAND_NAMES.map((name) => [name, COMMANDS[name].description]),
 ) as Record<BoxREPLCommandName, string>;
 
-/** Context-aware suggestion after a command completes. */
-function getNextCommandSuggestion(cmdName: BoxREPLCommandName): string | undefined {
-  switch (cmdName) {
-    case "code":
-      return "/files list .";
-    case "files":
-      return "ls";
-    case "git":
-      return "/snapshot";
-    case "snapshot":
-      return "/pause";
-    default:
-      return undefined;
-  }
-}
-
 export interface BoxREPLClientOptions {
   /** Commands to hide from suggestions, help output, and welcome message. */
   hiddenCommands?: BoxREPLCommandName[];
@@ -71,10 +54,20 @@ export class BoxREPLClient {
   readonly box: Box;
   readonly hiddenCommands: ReadonlySet<BoxREPLCommandName>;
   mode: "shell" | "agent" = "shell";
+  private _suggestion: string | null = "ls";
 
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
     this.hiddenCommands = new Set(options?.hiddenCommands ?? []);
+  }
+
+  /**
+   * The next suggested command (e.g. after a command completes).
+   * In the terminal, Tab accepts the ghost text; any other key dismisses it.
+   * Persists until the next call to handleInput replaces or clears it.
+   */
+  get suggestion(): string | null {
+    return this._suggestion;
   }
 
   /** Label and display cwd for rendering prompts (CLI and UI). */
@@ -136,7 +129,7 @@ export class BoxREPLClient {
       return;
     }
 
-    if (trimmed === "/clear") {
+    if (trimmed === "/clear" || trimmed === "clear") {
       yield { type: "clear" };
       return;
     }
@@ -156,8 +149,15 @@ export class BoxREPLClient {
         const { command, args } = parsed;
 
         // Toggle mode before running the handler
-        if (command.name === "agent") this.mode = "agent";
-        if (command.name === "shell") this.mode = "shell";
+        if (command.name === "agent") {
+          this.mode = "agent";
+          this._suggestion = getNextSuggestion({ kind: "agent", initial: true });
+        } else if (command.name === "shell") {
+          this.mode = "shell";
+          this._suggestion = getNextSuggestion({ kind: "shell", input: "ls" });
+        } else {
+          this._suggestion = getNextSuggestion({ kind: "command", command: command.name });
+        }
 
         yield { type: "command:start", command: command.name, args };
         const start = Date.now();
@@ -165,8 +165,6 @@ export class BoxREPLClient {
           yield* command.handler(this.box, args);
           const durationMs = Date.now() - start;
           yield { type: "command:complete", command: command.name, durationMs };
-          const suggestion = getNextCommandSuggestion(command.name);
-          if (suggestion) yield { type: "suggestion", text: suggestion };
         } catch (err) {
           yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
         }
@@ -202,6 +200,7 @@ export class BoxREPLClient {
       }
 
       if (this.mode === "shell") {
+        this._suggestion = getNextSuggestion({ kind: "shell", input: trimmed });
         yield { type: "command:start", command: "shell", args: trimmed };
         const start = Date.now();
         try {
@@ -221,13 +220,13 @@ export class BoxREPLClient {
         }
       } else {
         // Agent mode
+        this._suggestion = getNextSuggestion({ kind: "agent", initial: false });
         yield { type: "command:start", command: "agent", args: trimmed };
         const start = Date.now();
         try {
           yield* handleRun(this.box, trimmed);
           const durationMs = Date.now() - start;
           yield { type: "command:complete", command: "agent", durationMs };
-          yield { type: "suggestion", text: "/snapshot" };
         } catch (err) {
           yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
         }

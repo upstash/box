@@ -4,7 +4,6 @@ export type BoxREPLCommandName =
   | "agent"
   | "shell"
   | "cd"
-  | "code"
   | "files"
   | "git"
   | "snapshot"
@@ -52,7 +51,6 @@ export type BoxREPLEvent =
   | { type: "command:start"; command: BoxREPLCommandName; args: string }
   | { type: "command:complete"; command: BoxREPLCommandName; durationMs: number }
   | { type: "command:not-found"; typed: string; suggestions: BoxREPLCommandName[] }
-  | { type: "suggestion"; text: string }
   | { type: "clear" }
   | { type: "open-url"; url: string }
   | { type: "exit"; message: string };
