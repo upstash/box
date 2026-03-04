@@ -88,7 +88,6 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   }
 
   // --- Ghost suggestion in input ---
-  let nextSuggestion: string | null = "ls";
   let ghostText: string | null = null;
 
   function showGhost(text: string) {
@@ -240,9 +239,6 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
         console.log(dim(`\n  /${event.command} completed in ${seconds}s\n`));
         break;
       }
-      case "suggestion":
-        nextSuggestion = event.text;
-        break;
       case "command:not-found":
         ensureNewline();
         console.error(yellow(`\nUnknown command: /${event.typed}`));
@@ -285,12 +281,15 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
       currentPrompt = getPrompt();
       promptVisualLen = stripAnsi(currentPrompt).length;
       const continuationPrompt = " ".repeat(promptVisualLen);
-      const suggestion = nextSuggestion;
-      nextSuggestion = null;
-
       // Collect input (supports multi-line via alt+enter / shift+enter)
       const inputLines: string[] = [];
       isMetaReturn = false;
+
+      // Show ghost suggestion from previous command once the prompt renders
+      const suggestion = client.suggestion;
+      if (suggestion && stdin.isTTY) {
+        setImmediate(() => showGhost(suggestion));
+      }
 
       const firstLine = await rl.question(currentPrompt);
       inputLines.push(firstLine);
@@ -319,10 +318,6 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
           const p = i === 0 ? currentPrompt : continuationPrompt;
           stdout.write(p + green(inputLines[i]!) + "\n");
         }
-      }
-
-      if (suggestion && stdin.isTTY) {
-        setImmediate(() => showGhost(suggestion));
       }
 
       let shouldExit = false;

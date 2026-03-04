@@ -957,11 +957,11 @@ export class Box {
       const folder = this._getFolder();
       if (folder) qs = `?folder=${encodeURIComponent(folder)}`;
     }
-    const data = await this._request<{ files: FileEntry[] }>(
+    const data = await this._request<{ files: FileEntry[] | null }>(
       "GET",
       `/v2/box/${this.id}/files/list${qs}`,
     );
-    return data.files;
+    return data.files ?? [];
   }
 
   private async _uploadFiles(files: UploadFileEntry[]): Promise<void> {

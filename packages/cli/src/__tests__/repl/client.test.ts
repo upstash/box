@@ -156,10 +156,10 @@ describe("BoxREPLClient", () => {
     });
 
     it("parses command with args", () => {
-      const result = client["getCommand"]("/code console.log('hi')");
+      const result = client["getCommand"]("/files list .");
       expect(result).not.toBeNull();
-      expect(result!.command.name).toBe("code");
-      expect(result!.args).toBe("console.log('hi')");
+      expect(result!.command.name).toBe("files");
+      expect(result!.args).toBe("list .");
     });
   });
 
@@ -167,7 +167,6 @@ describe("BoxREPLClient", () => {
     it("returns commands matching prefix", () => {
       const client = new BoxREPLClient({} as any);
       const suggestions = client.suggestCommands("co");
-      expect(suggestions.map((c) => c.name)).toContain("code");
       expect(suggestions.map((c) => c.name)).toContain("console");
     });
 
