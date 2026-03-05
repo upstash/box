@@ -39,7 +39,7 @@ export enum BoxApiKey {
 
 export interface BoxConfig {
   apiKey?: string;
-  runtime?: Runtime | string;
+  runtime?: Runtime;
   agent?: {
     model: ClaudeCode | OpenAICodex | string;
     /**
