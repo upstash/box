@@ -199,7 +199,9 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
             const newLine = prefix + tabCompletions[tabIndex]!;
 
             // Erase current line on screen, then set readline internals directly
-            stdout.write("\r" + currentPrompt + " ".repeat(rlAny.line.length) + "\r" + currentPrompt);
+            stdout.write(
+              "\r" + currentPrompt + " ".repeat(rlAny.line.length) + "\r" + currentPrompt,
+            );
             rlAny.line = newLine;
             rlAny.cursor = newLine.length;
             stdout.write(newLine);
