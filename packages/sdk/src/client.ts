@@ -938,6 +938,23 @@ export class Box {
 
         buffer += decoder.decode(value, { stream: true });
 
+        // Check for SSE error event
+        const errorIndex = buffer.indexOf("event: error\n");
+        if (errorIndex !== -1) {
+          const afterEvent = buffer.slice(errorIndex + "event: error\n".length);
+          const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+          if (dataMatch) {
+            try {
+              const parsed = JSON.parse(dataMatch[1]!);
+              throw new BoxError(parsed.error ?? "Stream error");
+            } catch (e) {
+              if (e instanceof BoxError) throw e;
+              throw new BoxError("Stream error");
+            }
+          }
+          throw new BoxError("Stream error");
+        }
+
         const exitIndex = buffer.indexOf("event: exit\n");
         if (exitIndex === -1) {
           // No exit event yet — yield everything in the buffer as output
@@ -973,32 +990,53 @@ export class Box {
 
       // Stream ended — flush any remaining buffer
       if (buffer.length > 0) {
-        // Check if buffer contains exit event
-        const exitIndex = buffer.indexOf("event: exit\n");
-        if (exitIndex !== -1) {
-          if (exitIndex > 0) {
-            yield { type: "output", data: buffer.slice(0, exitIndex) };
-          }
-          const afterEvent = buffer.slice(exitIndex + "event: exit\n".length);
-          const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
-          if (dataMatch) {
-            try {
-              const parsed = JSON.parse(dataMatch[1]!);
-              yield {
-                type: "exit",
-                exitCode: parsed.exit_code ?? 0,
-                cpuNs: parsed.cpu_ns ?? 0,
-              };
-            } catch {
-              yield { type: "exit", exitCode: 0, cpuNs: 0 };
-            }
-          }
-        } else {
-          yield { type: "output", data: buffer };
-        }
+        yield* this._flushExecStreamBuffer(buffer);
       }
     } finally {
       reader.releaseLock();
+    }
+  }
+
+  private *_flushExecStreamBuffer(buffer: string): Generator<ExecStreamChunk> {
+    // Check for error event
+    const errorIndex = buffer.indexOf("event: error\n");
+    if (errorIndex !== -1) {
+      const afterEvent = buffer.slice(errorIndex + "event: error\n".length);
+      const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+      if (dataMatch) {
+        try {
+          const parsed = JSON.parse(dataMatch[1]!);
+          throw new BoxError(parsed.error ?? "Stream error");
+        } catch (e) {
+          if (e instanceof BoxError) throw e;
+          throw new BoxError("Stream error");
+        }
+      }
+      throw new BoxError("Stream error");
+    }
+
+    // Check for exit event
+    const exitIndex = buffer.indexOf("event: exit\n");
+    if (exitIndex !== -1) {
+      if (exitIndex > 0) {
+        yield { type: "output", data: buffer.slice(0, exitIndex) };
+      }
+      const afterEvent = buffer.slice(exitIndex + "event: exit\n".length);
+      const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+      if (dataMatch) {
+        try {
+          const parsed = JSON.parse(dataMatch[1]!);
+          yield {
+            type: "exit",
+            exitCode: parsed.exit_code ?? 0,
+            cpuNs: parsed.cpu_ns ?? 0,
+          };
+        } catch {
+          yield { type: "exit", exitCode: 0, cpuNs: 0 };
+        }
+      }
+    } else {
+      yield { type: "output", data: buffer };
     }
   }
 

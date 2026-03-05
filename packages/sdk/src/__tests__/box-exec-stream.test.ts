@@ -37,6 +37,36 @@ function mockExecStreamResponse(
   } as Response;
 }
 
+function mockExecStreamErrorResponse(errorMessage: string): Response {
+  const raw = `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(raw));
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(raw),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamErrorResponse(errorMessage),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+
 async function collect(gen: AsyncGenerator<ExecStreamChunk>): Promise<ExecStreamChunk[]> {
   const chunks: ExecStreamChunk[] = [];
   for await (const chunk of gen) {
@@ -108,6 +138,13 @@ describe("exec.stream", () => {
 
     await expect(collect(box.exec.stream("echo hi"))).rejects.toThrow("not found");
   });
+
+  it("throws on SSE error event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("failed to start stream"));
+
+    await expect(collect(box.exec.stream("echo hi"))).rejects.toThrow("failed to start stream");
+  });
 });
 
 describe("exec.streamCode", () => {
@@ -159,6 +196,15 @@ describe("exec.streamCode", () => {
 
     await expect(collect(box.exec.streamCode({ code: "x", lang: "js" }))).rejects.toThrow(
       "server error",
+    );
+  });
+
+  it("throws on SSE error event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("failed to start stream"));
+
+    await expect(collect(box.exec.streamCode({ code: "x", lang: "js" }))).rejects.toThrow(
+      "failed to start stream",
     );
   });
 });
