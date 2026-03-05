@@ -1257,35 +1257,35 @@ export class Box {
   /**
    * Create a new box from a saved snapshot.
    */
-  static async fromSnapshot(snapshotId: string, config: BoxConfig): Promise<Box> {
-    const apiKey = config.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+  static async fromSnapshot(snapshotId: string, config?: BoxConfig): Promise<Box> {
+    const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
     }
-    if (config.git && !config.git.token) {
+    if (config?.git && !config.git.token) {
       throw new BoxError("git.token is required when git is configured");
     }
 
     const baseUrl = (
-      config.baseUrl ??
+      config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
-    const timeout = config.timeout ?? 600000;
-    const debug = config.debug ?? false;
+    const timeout = config?.timeout ?? 600000;
+    const debug = config?.debug ?? false;
 
     const body: Record<string, unknown> = {
       snapshot_id: snapshotId,
     };
-    if (config.agent) {
+    if (config?.agent) {
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
     }
-    if (config.runtime) body.runtime = config.runtime;
-    if (config.git?.token) body.github_token = config.git.token;
+    if (config?.runtime) body.runtime = config.runtime;
+    if (config?.git?.token) body.github_token = config.git.token;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",
@@ -1325,8 +1325,8 @@ export class Box {
       headers,
       timeout,
       debug,
-      gitToken: config.git?.token,
-      isAgentConfigured: Boolean(config.agent),
+      gitToken: config?.git?.token,
+      isAgentConfigured: Boolean(config?.agent),
     });
   }
 
