@@ -32,6 +32,7 @@ export type {
   CodeLanguage,
   CodeExecutionOptions,
   CodeExecutionResult,
+  ExecStreamChunk,
   ErrorResponse,
   BoxRunData,
 } from "./types.js";

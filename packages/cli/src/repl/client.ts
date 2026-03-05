@@ -133,11 +133,13 @@ export class BoxREPLClient {
     ).map((name) => ({ name, ...COMMANDS[name] }));
   }
 
-  /** Execute a shell command in the box. */
+  /** Execute a shell command in the box, streaming output in real time. */
   private async *execShellCommand(command: string): AsyncGenerator<BoxREPLEvent> {
-    const run = await this.box.exec.command(command);
-    const result = run.result;
-    if (result) yield { type: "log", message: result };
+    for await (const chunk of this.box.exec.stream(command)) {
+      if (chunk.type === "output") {
+        yield { type: "stream", text: chunk.data };
+      }
+    }
   }
 
   /** Process a single line of input and yield events. */

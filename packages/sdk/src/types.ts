@@ -305,6 +305,12 @@ export interface CodeExecutionResult {
   error?: string;
 }
 
+// ==================== Exec Streaming ====================
+
+export type ExecStreamChunk =
+  | { type: "output"; data: string }
+  | { type: "exit"; exitCode: number; cpuNs: number };
+
 // ==================== Internal API Types ====================
 
 export type BoxData = {
