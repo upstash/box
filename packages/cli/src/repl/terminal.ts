@@ -34,6 +34,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   };
 
   const client = new BoxREPLClient(box, options);
+  client.refreshCwdEntries();
   let currentPrompt = getPrompt();
 
   // --- Spinner tracking ---
@@ -97,6 +98,29 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
     stdout.write(`\x1b[${text.length}D`);
   }
 
+  // --- Tab file-completion state ---
+  let tabCompletions: string[] | null = null;
+  let tabIndex = -1;
+  let tabOriginalLine = "";
+  let tabPreviewLines = 0;
+
+  function clearTabPreview() {
+    if (tabPreviewLines > 0) {
+      stdout.write("\n" + eraseDown + cursorUp(1));
+      restoreCursorColumn();
+      tabPreviewLines = 0;
+    }
+  }
+
+  function resetTabState() {
+    if (tabCompletions !== null) {
+      clearTabPreview();
+      tabCompletions = null;
+      tabIndex = -1;
+      tabOriginalLine = "";
+    }
+  }
+
   // --- Multi-line input tracking ---
   let isMetaReturn = false;
 
@@ -107,6 +131,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
       (_str: string, key: { name?: string; meta?: boolean; shift?: boolean }) => {
         if (key?.name === "return") {
           clearPreview();
+          resetTabState();
           if (key.meta || key.shift) {
             isMetaReturn = true;
           }
@@ -129,6 +154,65 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
           stdout.write("\x1b[K");
           restoreCursorColumn();
         });
+      }
+
+      // --- Tab file completion ---
+      if (key?.name === "tab") {
+        setImmediate(() => {
+          const line = (rl as unknown as { line: string }).line ?? "";
+          const rlAny = rl as unknown as { line: string; cursor: number };
+
+          if (tabCompletions === null) {
+            // First Tab press — compute matches
+            const lastSpace = line.lastIndexOf(" ");
+            const partial = lastSpace === -1 ? line : line.slice(lastSpace + 1);
+            const matches = client.getCompletions(partial);
+
+            if (matches.length === 0) return;
+
+            if (matches.length === 1) {
+              // Single match — insert remaining suffix
+              const suffix = matches[0]!.slice(partial.length);
+              if (suffix) rl.write(suffix);
+              return;
+            }
+
+            // Multiple matches — save state, insert first match
+            tabOriginalLine = line;
+            tabCompletions = matches;
+            tabIndex = 0;
+
+            const suffix = matches[0]!.slice(partial.length);
+            if (suffix) rl.write(suffix);
+
+            // Show all matches below prompt
+            clearTabPreview();
+            const display = matches.join("  ");
+            stdout.write("\n" + dim(display) + cursorUp(1));
+            restoreCursorColumn();
+            tabPreviewLines = 1;
+          } else {
+            // Subsequent Tab — cycle to next match
+            tabIndex = (tabIndex + 1) % tabCompletions.length;
+            const lastSpace = tabOriginalLine.lastIndexOf(" ");
+            const prefix = lastSpace === -1 ? "" : tabOriginalLine.slice(0, lastSpace + 1);
+            const newLine = prefix + tabCompletions[tabIndex]!;
+
+            // Erase current line on screen, then set readline internals directly
+            stdout.write(
+              "\r" + currentPrompt + " ".repeat(rlAny.line.length) + "\r" + currentPrompt,
+            );
+            rlAny.line = newLine;
+            rlAny.cursor = newLine.length;
+            stdout.write(newLine);
+          }
+        });
+        return;
+      }
+
+      // Any non-Tab key resets tab state
+      if (tabCompletions !== null) {
+        resetTabState();
       }
 
       // Command preview logic (deferred so rl.line is up to date)
