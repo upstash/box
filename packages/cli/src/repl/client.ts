@@ -55,10 +55,31 @@ export class BoxREPLClient {
   readonly hiddenCommands: ReadonlySet<BoxREPLCommandName>;
   mode: "shell" | "agent" = "shell";
   private _suggestion: string | null = "ls";
+  private _cwdEntries: string[] = [];
 
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
     this.hiddenCommands = new Set(options?.hiddenCommands ?? []);
+  }
+
+  /** Refresh the cached list of files/directories in the current working directory. */
+  async refreshCwdEntries(): Promise<void> {
+    try {
+      const run = await this.box.exec.command("ls -1 -p");
+      const output = run.result ?? "";
+      this._cwdEntries = output
+        .split("\n")
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+    } catch {
+      this._cwdEntries = [];
+    }
+  }
+
+  /** Return cwd entries that start with the given partial (case-insensitive). */
+  getCompletions(partial: string): string[] {
+    const lower = partial.toLowerCase();
+    return this._cwdEntries.filter((e) => e.toLowerCase().startsWith(lower));
   }
 
   /**
@@ -165,6 +186,7 @@ export class BoxREPLClient {
           yield* command.handler(this.box, args);
           const durationMs = Date.now() - start;
           yield { type: "command:complete", command: command.name, durationMs };
+          if (command.name === "cd") this.refreshCwdEntries();
         } catch (err) {
           yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
         }
@@ -189,6 +211,7 @@ export class BoxREPLClient {
             yield* handleCd(this.box, afterCd);
             const durationMs = Date.now() - start;
             yield { type: "command:complete", command: "cd", durationMs };
+            this.refreshCwdEntries();
           } catch (err) {
             yield {
               type: "error",
