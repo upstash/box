@@ -3,13 +3,7 @@ import type { ZodType } from "zod/v3";
 /**
  * Runtime environments available for boxes
  */
-export enum Runtime {
-  Node = "node",
-  Python = "python",
-  Golang = "golang",
-  Ruby = "ruby",
-  Rust = "rust",
-}
+export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
 
 /**
  * Claude Code model identifiers
