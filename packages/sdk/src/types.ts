@@ -61,7 +61,7 @@ export interface BoxConfig {
     apiKey?: BoxApiKey | string;
   };
   git?: {
-    token: string;
+    token?: string;
   };
   env?: Record<string, string>;
   /**

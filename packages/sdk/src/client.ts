@@ -348,6 +348,9 @@ export class Box {
     if (config?.agent && !config.agent.model) {
       throw new BoxError("agent.model is required when agent is configured");
     }
+    if (config?.git && !config.git.token) {
+      throw new BoxError("git.token is required when git is configured");
+    }
 
     const baseUrl = (
       config?.baseUrl ??
@@ -1222,6 +1225,9 @@ export class Box {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
+    }
+    if (config.git && !config.git.token) {
+      throw new BoxError("git.token is required when git is configured");
     }
 
     const baseUrl = (
