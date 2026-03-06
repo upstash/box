@@ -1,5 +1,17 @@
 # @upstash/box-cli
 
+## 0.1.18
+
+### Patch Changes
+
+- d46dd09: Remove client-side tilde expansion from cd() and fix \_getFolder() to return absolute paths when cwd is outside /workspace/home
+- 597b5bf: handle Ctrl+C AbortError in REPL prompt gracefully
+- ff4574e: add Tab autocomplete for file/directory names in CLI REPL
+- b337178: add exec.stream and exec.streamCode for real-time streaming output. Use exec.stream in CLI
+- Updated dependencies [d46dd09]
+- Updated dependencies [b337178]
+  - @upstash/box@0.1.14
+
 ## 0.1.17
 
 ### Patch Changes
