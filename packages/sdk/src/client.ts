@@ -16,6 +16,7 @@ import {
   type ExecResult,
   type CodeExecutionOptions,
   type CodeExecutionResult,
+  type ExecStreamChunk,
   type ErrorResponse,
   type FileEntry,
   type GitCloneOptions,
@@ -28,7 +29,6 @@ import {
   type LogEntry,
   type UploadFileEntry,
   type Snapshot,
-  BoxApiKey,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
 
@@ -219,6 +219,8 @@ export class Box {
   readonly exec: {
     command: (command: string) => Promise<Run<string>>;
     code: (options: CodeExecutionOptions) => Promise<CodeExecutionResult>;
+    stream: (command: string) => AsyncGenerator<ExecStreamChunk>;
+    streamCode: (options: CodeExecutionOptions) => AsyncGenerator<ExecStreamChunk>;
   };
 
   /** Git operations namespace */
@@ -309,6 +311,8 @@ export class Box {
     this.exec = {
       command: (command) => this._execCommand(command),
       code: (options) => this._execCode(options),
+      stream: (command) => this._execStream(command),
+      streamCode: (options) => this._execStreamCode(options),
     };
 
     this.files = {
@@ -334,38 +338,41 @@ export class Box {
   /**
    * Create a new sandboxed box.
    */
-  static async create(config: BoxConfig): Promise<Box> {
-    const apiKey = config.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+  static async create(config?: BoxConfig): Promise<Box> {
+    const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
     }
-    if (config.agent && !config.agent.model) {
+    if (config?.agent && !config.agent.model) {
       throw new BoxError("agent.model is required when agent is configured");
+    }
+    if (config?.git && !config.git.token) {
+      throw new BoxError("git.token is required when git is configured");
     }
 
     const baseUrl = (
-      config.baseUrl ??
+      config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = {
       "X-Box-Api-Key": apiKey,
     };
-    const timeout = config.timeout ?? 600000;
-    const debug = config.debug ?? false;
+    const timeout = config?.timeout ?? 600000;
+    const debug = config?.debug ?? false;
 
     const body: Record<string, unknown> = {};
-    if (config.agent) {
+    if (config?.agent) {
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
     }
-    if (config.runtime) body.runtime = config.runtime;
-    if (config.git?.token) body.github_token = config.git.token;
-    if (config.env) body.env_vars = config.env;
-    if (config.skills?.length) body.skills = config.skills;
-    if (config.mcpServers?.length) {
+    if (config?.runtime) body.runtime = config.runtime;
+    if (config?.git?.token) body.github_token = config.git.token;
+    if (config?.env) body.env_vars = config.env;
+    if (config?.skills?.length) body.skills = config.skills;
+    if (config?.mcpServers?.length) {
       body.mcp_servers = config.mcpServers.map((s) => ({
         name: s.name,
         ...("package" in s
@@ -412,8 +419,8 @@ export class Box {
       headers,
       timeout,
       debug,
-      gitToken: config.git?.token,
-      isAgentConfigured: Boolean(config.agent),
+      gitToken: config?.git?.token,
+      isAgentConfigured: Boolean(config?.agent),
     });
   }
 
@@ -868,6 +875,171 @@ export class Box {
     });
   }
 
+  /**
+   * Stream output from a shell command executed in the box.
+   */
+  private async *_execStream(command: string): AsyncGenerator<ExecStreamChunk> {
+    const folder = this._getFolder();
+    const url = `${this._baseUrl}/v2/box/${this.id}/exec-stream`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...this._headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ command: ["sh", "-c", command], ...(folder ? { folder } : {}) }),
+    });
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    yield* this._parseExecStream(response);
+  }
+
+  /**
+   * Stream output from inline code execution in the box.
+   */
+  private async *_execStreamCode(options: CodeExecutionOptions): AsyncGenerator<ExecStreamChunk> {
+    const folder = this._getFolder();
+    const url = `${this._baseUrl}/v2/box/${this.id}/code-stream`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...this._headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: options.code,
+        language: options.lang,
+        ...(options.timeout !== undefined && { timeout: options.timeout }),
+        ...(folder ? { folder } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    yield* this._parseExecStream(response);
+  }
+
+  /**
+   * Shared parser for exec-stream / code-stream responses.
+   * Reads raw text chunks and detects the trailing SSE `event: exit` boundary.
+   */
+  private async *_parseExecStream(response: Response): AsyncGenerator<ExecStreamChunk> {
+    const reader = response.body?.getReader();
+    if (!reader) throw new BoxError("Streaming not supported");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Check for SSE error event
+        const errorIndex = buffer.indexOf("event: error\n");
+        if (errorIndex !== -1) {
+          const afterEvent = buffer.slice(errorIndex + "event: error\n".length);
+          const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+          if (dataMatch) {
+            try {
+              const parsed = JSON.parse(dataMatch[1]!);
+              throw new BoxError(parsed.error ?? "Stream error");
+            } catch (e) {
+              if (e instanceof BoxError) throw e;
+              throw new BoxError("Stream error");
+            }
+          }
+          throw new BoxError("Stream error");
+        }
+
+        const exitIndex = buffer.indexOf("event: exit\n");
+        if (exitIndex === -1) {
+          // No exit event yet — yield everything in the buffer as output
+          if (buffer.length > 0) {
+            yield { type: "output", data: buffer };
+            buffer = "";
+          }
+          continue;
+        }
+
+        // Yield any raw output before the exit event
+        if (exitIndex > 0) {
+          yield { type: "output", data: buffer.slice(0, exitIndex) };
+        }
+
+        // Parse the exit event
+        const afterEvent = buffer.slice(exitIndex + "event: exit\n".length);
+        const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+        if (dataMatch) {
+          try {
+            const parsed = JSON.parse(dataMatch[1]!);
+            yield {
+              type: "exit",
+              exitCode: parsed.exit_code ?? 0,
+              cpuNs: parsed.cpu_ns ?? 0,
+            };
+          } catch {
+            yield { type: "exit", exitCode: 0, cpuNs: 0 };
+          }
+        }
+        return;
+      }
+
+      // Stream ended — flush any remaining buffer
+      if (buffer.length > 0) {
+        yield* this._flushExecStreamBuffer(buffer);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  private *_flushExecStreamBuffer(buffer: string): Generator<ExecStreamChunk> {
+    // Check for error event
+    const errorIndex = buffer.indexOf("event: error\n");
+    if (errorIndex !== -1) {
+      const afterEvent = buffer.slice(errorIndex + "event: error\n".length);
+      const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+      if (dataMatch) {
+        try {
+          const parsed = JSON.parse(dataMatch[1]!);
+          throw new BoxError(parsed.error ?? "Stream error");
+        } catch (e) {
+          if (e instanceof BoxError) throw e;
+          throw new BoxError("Stream error");
+        }
+      }
+      throw new BoxError("Stream error");
+    }
+
+    // Check for exit event
+    const exitIndex = buffer.indexOf("event: exit\n");
+    if (exitIndex !== -1) {
+      if (exitIndex > 0) {
+        yield { type: "output", data: buffer.slice(0, exitIndex) };
+      }
+      const afterEvent = buffer.slice(exitIndex + "event: exit\n".length);
+      const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
+      if (dataMatch) {
+        try {
+          const parsed = JSON.parse(dataMatch[1]!);
+          yield {
+            type: "exit",
+            exitCode: parsed.exit_code ?? 0,
+            cpuNs: parsed.cpu_ns ?? 0,
+          };
+        } catch {
+          yield { type: "exit", exitCode: 0, cpuNs: 0 };
+        }
+      }
+    } else {
+      yield { type: "output", data: buffer };
+    }
+  }
+
   // ==================== File Operations ====================
 
   private static readonly WORKSPACE = "/workspace/home";
@@ -1085,32 +1257,35 @@ export class Box {
   /**
    * Create a new box from a saved snapshot.
    */
-  static async fromSnapshot(snapshotId: string, config: BoxConfig): Promise<Box> {
-    const apiKey = config.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+  static async fromSnapshot(snapshotId: string, config?: BoxConfig): Promise<Box> {
+    const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
     }
+    if (config?.git && !config.git.token) {
+      throw new BoxError("git.token is required when git is configured");
+    }
 
     const baseUrl = (
-      config.baseUrl ??
+      config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
       DEFAULT_BASE_URL
     ).replace(/\/$/, "");
     const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
-    const timeout = config.timeout ?? 600000;
-    const debug = config.debug ?? false;
+    const timeout = config?.timeout ?? 600000;
+    const debug = config?.debug ?? false;
 
     const body: Record<string, unknown> = {
       snapshot_id: snapshotId,
     };
-    if (config.agent) {
+    if (config?.agent) {
       body.model = config.agent.model;
       body.agent_api_key = config.agent.apiKey;
     }
-    if (config.runtime) body.runtime = config.runtime;
-    if (config.git?.token) body.github_token = config.git.token;
+    if (config?.runtime) body.runtime = config.runtime;
+    if (config?.git?.token) body.github_token = config.git.token;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",
@@ -1150,8 +1325,8 @@ export class Box {
       headers,
       timeout,
       debug,
-      gitToken: config.git?.token,
-      isAgentConfigured: Boolean(config.agent),
+      gitToken: config?.git?.token,
+      isAgentConfigured: Boolean(config?.agent),
     });
   }
 

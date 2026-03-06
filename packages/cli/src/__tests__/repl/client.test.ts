@@ -38,7 +38,11 @@ describe("BoxREPLClient", () => {
 
     it("catches handler errors and yields error event", async () => {
       const mockBox = {
-        exec: { command: vi.fn().mockRejectedValue(new Error("boom")) },
+        exec: {
+          stream: vi.fn().mockImplementation(async function* () {
+            throw new Error("boom");
+          }),
+        },
       };
       const client = new BoxREPLClient(mockBox as any);
       const events = await collectEvents(client.handleInput("failing-command"));
@@ -48,18 +52,23 @@ describe("BoxREPLClient", () => {
 
     // --- Shell mode (default) ---
 
-    it("defaults to shell mode: bare text calls exec.command", async () => {
+    it("defaults to shell mode: bare text calls exec.stream", async () => {
       const mockBox = {
-        exec: { command: vi.fn().mockResolvedValue({ result: "output" }) },
+        exec: {
+          stream: vi.fn().mockImplementation(async function* () {
+            yield { type: "output", data: "output" };
+            yield { type: "exit", exitCode: 0, cpuNs: 0 };
+          }),
+        },
       };
       const client = new BoxREPLClient(mockBox as any);
       expect(client.mode).toBe("shell");
 
       const events = await collectEvents(client.handleInput("ls -la"));
 
-      expect(mockBox.exec.command).toHaveBeenCalledWith("ls -la");
+      expect(mockBox.exec.stream).toHaveBeenCalledWith("ls -la");
       expect(events[0]).toEqual({ type: "command:start", command: "shell", args: "ls -la" });
-      expect(events).toContainEqual({ type: "log", message: "output" });
+      expect(events).toContainEqual({ type: "stream", text: "output" });
       expect(events).toContainEqual(
         expect.objectContaining({ type: "command:complete", command: "shell" }),
       );
@@ -128,12 +137,17 @@ describe("BoxREPLClient", () => {
 
     it("cd with compound command runs as shell and logs warning", async () => {
       const mockBox = {
-        exec: { command: vi.fn().mockResolvedValue({ result: "file1\nfile2" }) },
+        exec: {
+          stream: vi.fn().mockImplementation(async function* () {
+            yield { type: "output", data: "file1\nfile2" };
+            yield { type: "exit", exitCode: 0, cpuNs: 0 };
+          }),
+        },
       };
       const client = new BoxREPLClient(mockBox as any);
       const events = await collectEvents(client.handleInput("cd src && ls"));
 
-      expect(mockBox.exec.command).toHaveBeenCalledWith("cd src && ls");
+      expect(mockBox.exec.stream).toHaveBeenCalledWith("cd src && ls");
       expect(events).toContainEqual({
         type: "log",
         message: "Tip: use just 'cd <path>' to change the working directory",

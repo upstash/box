@@ -3,13 +3,7 @@ import type { ZodType } from "zod/v3";
 /**
  * Runtime environments available for boxes
  */
-export enum Runtime {
-  Node = "node",
-  Python = "python",
-  Golang = "golang",
-  Ruby = "ruby",
-  Rust = "rust",
-}
+export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
 
 /**
  * Claude Code model identifiers
@@ -45,7 +39,7 @@ export enum BoxApiKey {
 
 export interface BoxConfig {
   apiKey?: string;
-  runtime?: Runtime | string;
+  runtime?: Runtime;
   agent?: {
     model: ClaudeCode | OpenAICodex | string;
     /**
@@ -61,7 +55,7 @@ export interface BoxConfig {
     apiKey?: BoxApiKey | string;
   };
   git?: {
-    token: string;
+    token?: string;
   };
   env?: Record<string, string>;
   /**
@@ -304,6 +298,12 @@ export interface CodeExecutionResult {
   /** stderr / error output, if any */
   error?: string;
 }
+
+// ==================== Exec Streaming ====================
+
+export type ExecStreamChunk =
+  | { type: "output"; data: string }
+  | { type: "exit"; exitCode: number; cpuNs: number };
 
 // ==================== Internal API Types ====================
 

@@ -1,4 +1,5 @@
 import { Box } from "@upstash/box";
+import type { Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
 import { startRepl } from "../repl/terminal.js";
@@ -33,7 +34,7 @@ export async function fromSnapshotCommand(
   console.log("Creating box from snapshot...");
   const box = await Box.fromSnapshot(snapshotId, {
     apiKey,
-    runtime: flags.runtime,
+    runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? { model: flags.agentModel, apiKey: resolveAgentApiKey(flags.agentApiKey) }
       : undefined,
