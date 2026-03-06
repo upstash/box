@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.14
+
+### Patch Changes
+
+- d46dd09: Remove client-side tilde expansion from cd() and fix \_getFolder() to return absolute paths when cwd is outside /workspace/home
+- b337178: add exec.stream and exec.streamCode for real-time streaming output. Use exec.stream in CLI
+
 ## 0.1.13
 
 ### Patch Changes
