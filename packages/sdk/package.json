@@ -2,6 +2,10 @@
   "name": "@upstash/box",
   "version": "0.1.14",
   "description": "Upstash Box SDK - TypeScript client for async and parallel AI coding agents",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:upstash/box.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
