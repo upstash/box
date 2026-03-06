@@ -307,7 +307,7 @@ describe("Box instance methods", () => {
       // cd ~ should go to home directory
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~");
-      expect(box.cwd).toBe("/home/boxuser");
+      expect(box.cwd).toBe("~");
     });
 
     it("cd ~/ resets to home directory", async () => {
@@ -317,7 +317,7 @@ describe("Box instance methods", () => {
 
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/");
-      expect(box.cwd).toBe("/home/boxuser");
+      expect(box.cwd).toBe("~");
     });
 
     it("cd ~/subdir resolves relative to home directory", async () => {
@@ -327,14 +327,14 @@ describe("Box instance methods", () => {
 
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/my-folder");
-      expect(box.cwd).toBe("/home/boxuser/my-folder");
+      expect(box.cwd).toBe("~/my-folder");
     });
 
     it("cd ~/a/b resolves nested path relative to home directory", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/project/src");
-      expect(box.cwd).toBe("/home/boxuser/project/src");
+      expect(box.cwd).toBe("~/project/src");
     });
   });
 });

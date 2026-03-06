@@ -1043,7 +1043,6 @@ export class Box {
   // ==================== File Operations ====================
 
   private static readonly WORKSPACE = "/workspace/home";
-  private static readonly HOME = "/home/boxuser";
 
   /**
    * Change the in-memory working directory.
@@ -1056,15 +1055,12 @@ export class Box {
    * Throws if the path does not exist.
    */
   async cd(path: string): Promise<void> {
-    // Expand ~ to home directory (e.g. "~/foo" → "/home/boxuser/foo", "~" → "/home/boxuser")
-    if (path === "~" || path === "~/") {
-      path = Box.HOME;
-    } else if (path.startsWith("~/")) {
-      path = Box.HOME + path.slice(1);
-    }
-
     let newPath: string;
-    if (path.startsWith("/")) {
+    if (path === "~" || path === "~/") {
+      newPath = "~";
+    } else if (path.startsWith("~/")) {
+      newPath = path;
+    } else if (path.startsWith("/")) {
       newPath = Box._normalizePath(path);
     } else {
       newPath = Box._normalizePath(`${this._cwd}/${path}`);

@@ -95,10 +95,10 @@ export class BoxREPLClient {
   get promptInfo(): { label: string; cwd: string } {
     const cwd = this.box.cwd;
     const display =
-      cwd === "/workspace/home"
+      cwd === "/home/boxuser"
         ? "~"
-        : cwd.startsWith("/workspace/home/")
-          ? "~/" + cwd.slice("/workspace/home/".length)
+        : cwd.startsWith("/home/boxuser/")
+          ? "~/" + cwd.slice("/home/boxuser/".length)
           : cwd;
     return {
       label: this.mode === "agent" ? "agent" : this.box.id,

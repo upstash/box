@@ -406,6 +406,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     // Create project-c needed for this test
     await box.exec.command("mkdir -p project-c/lib");
 
+    // relative path
     await box.cd("project-a");
     expect(box.cwd).toBe("/workspace/home/project-a");
 
@@ -418,11 +419,27 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("project-b");
     expect(box.cwd).toBe("/workspace/home/project-b");
 
+    // absolute path
     await box.cd("/workspace/home/project-c/lib");
     expect(box.cwd).toBe("/workspace/home/project-c/lib");
 
     await box.cd("../..");
     expect(box.cwd).toBe("/workspace/home");
+
+    // cd ~ returns to home
+    await box.cd("project-a/src");
+    expect(box.cwd).toBe("/workspace/home/project-a/src");
+
+    await box.cd("~");
+    expect(box.cwd).toBe("~");
+
+    // cd ~/subdir navigates relative to home
+    await box.cd("~/project-b");
+    expect(box.cwd).toBe("~/project-b");
+
+    // verify exec works from ~/subdir
+    const run = await box.exec.command("ls");
+    expect(run.result).toContain("main.py");
   });
 
   // ==================== pwd reflects cwd outside workspace ====================
@@ -451,7 +468,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("project-a");
 
     const run = await box.agent.run({
-      prompt: "Read the file README.md in the current directory and reply with its exact contents, nothing else.",
+      prompt:
+        "Read the file README.md in the current directory and reply with its exact contents, nothing else.",
     });
 
     expect(run.result).toContain("# Project A");
