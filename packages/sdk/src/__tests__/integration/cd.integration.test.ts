@@ -13,7 +13,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeAll(async () => {
     const setupBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
+      agent: { model: ClaudeCode.Sonnet_4_5 },
     });
 
     tmpDir = join(tmpdir(), `box-cd-test-${Date.now()}`);
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeEach(async () => {
     box = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
+      agent: { model: ClaudeCode.Sonnet_4_5 },
     });
   }, 120000);
 
@@ -406,6 +406,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     // Create project-c needed for this test
     await box.exec.command("mkdir -p project-c/lib");
 
+    // relative path
     await box.cd("project-a");
     expect(box.cwd).toBe("/workspace/home/project-a");
 
@@ -418,10 +419,47 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("project-b");
     expect(box.cwd).toBe("/workspace/home/project-b");
 
+    // absolute path
     await box.cd("/workspace/home/project-c/lib");
     expect(box.cwd).toBe("/workspace/home/project-c/lib");
 
     await box.cd("../..");
     expect(box.cwd).toBe("/workspace/home");
   });
+
+  // ==================== shell tilde expansion ====================
+
+  it("exec.command: cd ~ && pwd", async () => {
+    const run = await box.exec.command("cd ~ && pwd");
+    expect(run._status).toBe("completed");
+  });
+
+  it("exec.command: ls ~", async () => {
+    const run = await box.exec.command("ls ~");
+    expect(run._status).toBe("completed");
+  });
+
+  it("box.cd to /home/boxuser then pwd", async () => {
+    await box.cd("/home/boxuser");
+    expect(box.cwd).toBe("/home/boxuser");
+
+    expect(box.exec.command("pwd")).rejects.toThrow("Failed to execute command");
+  });
+
+  // ==================== agent respects cwd ====================
+
+  it("agent.run respects cwd after cd", async () => {
+    await box.agent.run({
+      prompt: "say hi!",
+    });
+
+    await box.cd("project-a");
+
+    const run = await box.agent.run({
+      prompt:
+        "Read the file README.md in the current directory and reply with its exact contents, nothing else.",
+    });
+
+    expect(run.result).toContain("# Project A");
+  }, 120000);
 });

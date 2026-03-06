@@ -1062,11 +1062,9 @@ export class Box {
       newPath = Box._normalizePath(`${this._cwd}/${path}`);
     }
 
-    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
-      body: { command: ["ls", newPath] },
-    });
+    const result = await this.exec.command(`ls ${newPath}`);
 
-    if (result.exit_code !== 0) {
+    if (result._status === "failed") {
       throw new BoxError(`cd: ${path}: No such file or directory`);
     }
 
@@ -1096,7 +1094,8 @@ export class Box {
     const prefix = Box.WORKSPACE + "/";
     if (this._cwd === Box.WORKSPACE) return "";
     if (this._cwd.startsWith(prefix)) return this._cwd.slice(prefix.length);
-    return "";
+    // Outside workspace — pass absolute path
+    return this._cwd;
   }
 
   private _resolvePath(p: string): string {
