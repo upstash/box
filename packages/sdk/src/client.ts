@@ -1043,6 +1043,7 @@ export class Box {
   // ==================== File Operations ====================
 
   private static readonly WORKSPACE = "/workspace/home";
+  private static readonly HOME = "/home/boxuser";
 
   /**
    * Change the in-memory working directory.
@@ -1097,16 +1098,24 @@ export class Box {
    * Returns an empty string when cwd is at the workspace root.
    */
   private _getFolder(): string {
+    const cwd = this._expandTilde(this._cwd);
     const prefix = Box.WORKSPACE + "/";
-    if (this._cwd === Box.WORKSPACE) return "";
-    if (this._cwd.startsWith(prefix)) return this._cwd.slice(prefix.length);
+    if (cwd === Box.WORKSPACE) return "";
+    if (cwd.startsWith(prefix)) return cwd.slice(prefix.length);
     // Outside workspace — pass absolute path
-    return this._cwd;
+    return cwd;
   }
 
   private _resolvePath(p: string): string {
     if (p.startsWith("/")) return p;
-    return `${this._cwd}/${p}`;
+    return `${this._expandTilde(this._cwd)}/${p}`;
+  }
+
+  /** Expand ~ to /home/boxuser for server-bound paths. */
+  private _expandTilde(p: string): string {
+    if (p === "~" || p === "~/") return Box.HOME;
+    if (p.startsWith("~/")) return Box.HOME + p.slice(1);
+    return p;
   }
 
   private async _readFile(path: string): Promise<string> {

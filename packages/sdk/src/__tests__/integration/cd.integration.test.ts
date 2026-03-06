@@ -426,20 +426,24 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     await box.cd("../..");
     expect(box.cwd).toBe("/workspace/home");
 
-    // cd ~ returns to home
     await box.cd("project-a/src");
     expect(box.cwd).toBe("/workspace/home/project-a/src");
-
+    
+    // cd ~ returns to home (/home/boxuser)
     await box.cd("~");
     expect(box.cwd).toBe("~");
 
-    // cd ~/subdir navigates relative to home
-    await box.cd("~/project-b");
-    expect(box.cwd).toBe("~/project-b");
+    // verify exec works from ~
+    const pwdRun = await box.exec.command("pwd");
+    expect(pwdRun.result?.trim()).toBe("/home/boxuser");
 
-    // verify exec works from ~/subdir
-    const run = await box.exec.command("ls");
-    expect(run.result).toContain("main.py");
+    // cd ~/subdir navigates relative to home
+    await box.exec.command("mkdir -p ~/test-dir");
+    await box.cd("~/test-dir");
+    expect(box.cwd).toBe("~/test-dir");
+
+    const run = await box.exec.command("pwd");
+    expect(run.result?.trim()).toBe("/home/boxuser/test-dir");
   });
 
   // ==================== pwd reflects cwd outside workspace ====================
