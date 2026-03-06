@@ -1062,9 +1062,11 @@ export class Box {
       newPath = Box._normalizePath(`${this._cwd}/${path}`);
     }
 
-    const result = await this.exec.command(`ls ${newPath}`);
+    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
+      body: { command: ["ls", newPath] },
+    });
 
-    if (result._status === "failed") {
+    if (result.exit_code !== 0) {
       throw new BoxError(`cd: ${path}: No such file or directory`);
     }
 
