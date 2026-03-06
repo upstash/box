@@ -1043,7 +1043,6 @@ export class Box {
   // ==================== File Operations ====================
 
   private static readonly WORKSPACE = "/workspace/home";
-  private static readonly HOME = "/home/boxuser";
 
   /**
    * Change the in-memory working directory.
@@ -1057,21 +1056,15 @@ export class Box {
    */
   async cd(path: string): Promise<void> {
     let newPath: string;
-    if (path === "~" || path === "~/") {
-      newPath = "~";
-    } else if (path.startsWith("~/")) {
-      newPath = path;
-    } else if (path.startsWith("/")) {
+    if (path.startsWith("/")) {
       newPath = Box._normalizePath(path);
     } else {
       newPath = Box._normalizePath(`${this._cwd}/${path}`);
     }
 
-    const result = await this._request<ExecResult>("POST", `/v2/box/${this.id}/exec`, {
-      body: { command: ["ls", newPath] },
-    });
+    const result = await this.exec.command(`ls ${newPath}`);
 
-    if (result.exit_code !== 0) {
+    if (result._status === "failed") {
       throw new BoxError(`cd: ${path}: No such file or directory`);
     }
 
@@ -1098,24 +1091,16 @@ export class Box {
    * Returns an empty string when cwd is at the workspace root.
    */
   private _getFolder(): string {
-    const cwd = this._expandTilde(this._cwd);
     const prefix = Box.WORKSPACE + "/";
-    if (cwd === Box.WORKSPACE) return "";
-    if (cwd.startsWith(prefix)) return cwd.slice(prefix.length);
+    if (this._cwd === Box.WORKSPACE) return "";
+    if (this._cwd.startsWith(prefix)) return this._cwd.slice(prefix.length);
     // Outside workspace — pass absolute path
-    return cwd;
+    return this._cwd;
   }
 
   private _resolvePath(p: string): string {
     if (p.startsWith("/")) return p;
-    return `${this._expandTilde(this._cwd)}/${p}`;
-  }
-
-  /** Expand ~ to /home/boxuser for server-bound paths. */
-  private _expandTilde(p: string): string {
-    if (p === "~" || p === "~/") return Box.HOME;
-    if (p.startsWith("~/")) return Box.HOME + p.slice(1);
-    return p;
+    return `${this._cwd}/${p}`;
   }
 
   private async _readFile(path: string): Promise<string> {

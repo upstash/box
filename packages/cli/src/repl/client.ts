@@ -94,12 +94,7 @@ export class BoxREPLClient {
   /** Label and display cwd for rendering prompts (CLI and UI). */
   get promptInfo(): { label: string; cwd: string } {
     const cwd = this.box.cwd;
-    const display =
-      cwd === "/home/boxuser"
-        ? "~"
-        : cwd.startsWith("/home/boxuser/")
-          ? "~/" + cwd.slice("/home/boxuser/".length)
-          : cwd;
+    const display = cwd;
     return {
       label: this.mode === "agent" ? "agent" : this.box.id,
       cwd: display,

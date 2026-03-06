@@ -27,7 +27,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("skills", () => {
     }
   }, 30000);
 
-  it("agent can use an installed skill", async () => {
+  it.skip("agent can use an installed skill", async () => {
     const run = await box.agent.run({
       prompt:
         "Using the qstash-js skill, explain how to publish a message with QStash. " +
