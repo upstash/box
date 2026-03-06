@@ -375,14 +375,25 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
         setImmediate(() => showGhost(suggestion));
       }
 
-      const firstLine = await rl.question(currentPrompt);
+      let firstLine: string;
+      try {
+        firstLine = await rl.question(currentPrompt);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") break;
+        throw err;
+      }
       inputLines.push(firstLine);
 
       if (isMetaReturn && stdin.isTTY) {
         while (true) {
           isMetaReturn = false;
-          const nextLine = await rl.question(continuationPrompt);
-          inputLines.push(nextLine);
+          try {
+            const nextLine = await rl.question(continuationPrompt);
+            inputLines.push(nextLine);
+          } catch (err) {
+            if (err instanceof Error && err.name === "AbortError") break;
+            throw err;
+          }
           if (!isMetaReturn) break;
         }
       }
