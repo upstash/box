@@ -428,7 +428,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
     await box.cd("project-a/src");
     expect(box.cwd).toBe("/workspace/home/project-a/src");
-    
+
     // cd ~ returns to home (/home/boxuser)
     await box.cd("~");
     expect(box.cwd).toBe("~");
