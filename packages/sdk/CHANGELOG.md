@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.15
+
+### Patch Changes
+
+- 2200960: send box.cd with \_request instead of exec.command
+
 ## 0.1.14
 
 ### Patch Changes
