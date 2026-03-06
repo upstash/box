@@ -1055,6 +1055,13 @@ export class Box {
    * Throws if the path does not exist.
    */
   async cd(path: string): Promise<void> {
+    // Expand ~ to workspace root (e.g. "~/foo" → "/workspace/home/foo", "~" → "/workspace/home")
+    if (path === "~" || path === "~/") {
+      path = Box.WORKSPACE;
+    } else if (path.startsWith("~/")) {
+      path = Box.WORKSPACE + path.slice(1);
+    }
+
     let newPath: string;
     if (path.startsWith("/")) {
       newPath = Box._normalizePath(path);

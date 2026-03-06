@@ -295,4 +295,46 @@ describe("Box instance methods", () => {
       expect(runs[0]!.id).toBe("r1");
     });
   });
+
+  describe("cd tilde expansion", () => {
+    it("cd ~ resets to workspace root", async () => {
+      const { box, fetchMock } = await createTestBox();
+      // cd into a subdirectory first
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("mydir");
+      expect(box.cwd).toBe("/workspace/home/mydir");
+
+      // cd ~ should reset to workspace root
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("~");
+      expect(box.cwd).toBe("/workspace/home");
+    });
+
+    it("cd ~/ resets to workspace root", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("mydir");
+
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("~/");
+      expect(box.cwd).toBe("/workspace/home");
+    });
+
+    it("cd ~/subdir resolves relative to workspace root", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("deeply/nested");
+
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("~/my-folder");
+      expect(box.cwd).toBe("/workspace/home/my-folder");
+    });
+
+    it("cd ~/a/b resolves nested path relative to workspace root", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("~/project/src");
+      expect(box.cwd).toBe("/workspace/home/project/src");
+    });
+  });
 });
