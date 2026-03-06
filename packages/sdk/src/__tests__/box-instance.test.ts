@@ -297,44 +297,44 @@ describe("Box instance methods", () => {
   });
 
   describe("cd tilde expansion", () => {
-    it("cd ~ resets to workspace root", async () => {
+    it("cd ~ resets to home directory", async () => {
       const { box, fetchMock } = await createTestBox();
       // cd into a subdirectory first
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("mydir");
       expect(box.cwd).toBe("/workspace/home/mydir");
 
-      // cd ~ should reset to workspace root
+      // cd ~ should go to home directory
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~");
-      expect(box.cwd).toBe("/workspace/home");
+      expect(box.cwd).toBe("/home/boxuser");
     });
 
-    it("cd ~/ resets to workspace root", async () => {
+    it("cd ~/ resets to home directory", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("mydir");
 
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/");
-      expect(box.cwd).toBe("/workspace/home");
+      expect(box.cwd).toBe("/home/boxuser");
     });
 
-    it("cd ~/subdir resolves relative to workspace root", async () => {
+    it("cd ~/subdir resolves relative to home directory", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("deeply/nested");
 
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/my-folder");
-      expect(box.cwd).toBe("/workspace/home/my-folder");
+      expect(box.cwd).toBe("/home/boxuser/my-folder");
     });
 
-    it("cd ~/a/b resolves nested path relative to workspace root", async () => {
+    it("cd ~/a/b resolves nested path relative to home directory", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
       await box.cd("~/project/src");
-      expect(box.cwd).toBe("/workspace/home/project/src");
+      expect(box.cwd).toBe("/home/boxuser/project/src");
     });
   });
 });

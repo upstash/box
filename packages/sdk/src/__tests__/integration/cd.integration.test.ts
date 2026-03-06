@@ -425,6 +425,22 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     expect(box.cwd).toBe("/workspace/home");
   });
 
+  // ==================== pwd reflects cwd outside workspace ====================
+
+  it("pwd returns correct path after cd to /home/boxuser", async () => {
+    // At workspace root, pwd should be /workspace/home
+    const rootRun = await box.exec.command("pwd");
+    expect(rootRun.result?.trim()).toBe("/workspace/home");
+
+    // cd to /home/boxuser (outside workspace)
+    await box.cd("/home/boxuser");
+    expect(box.cwd).toBe("/home/boxuser");
+
+    // pwd should now reflect the new directory
+    const run = await box.exec.command("pwd");
+    expect(run.result?.trim()).toBe("/home/boxuser");
+  });
+
   // ==================== agent respects cwd ====================
 
   it("agent.run respects cwd after cd", async () => {

@@ -1043,6 +1043,7 @@ export class Box {
   // ==================== File Operations ====================
 
   private static readonly WORKSPACE = "/workspace/home";
+  private static readonly HOME = "/home/boxuser";
 
   /**
    * Change the in-memory working directory.
@@ -1055,11 +1056,11 @@ export class Box {
    * Throws if the path does not exist.
    */
   async cd(path: string): Promise<void> {
-    // Expand ~ to workspace root (e.g. "~/foo" → "/workspace/home/foo", "~" → "/workspace/home")
+    // Expand ~ to home directory (e.g. "~/foo" → "/home/boxuser/foo", "~" → "/home/boxuser")
     if (path === "~" || path === "~/") {
-      path = Box.WORKSPACE;
+      path = Box.HOME;
     } else if (path.startsWith("~/")) {
-      path = Box.WORKSPACE + path.slice(1);
+      path = Box.HOME + path.slice(1);
     }
 
     let newPath: string;
@@ -1103,7 +1104,8 @@ export class Box {
     const prefix = Box.WORKSPACE + "/";
     if (this._cwd === Box.WORKSPACE) return "";
     if (this._cwd.startsWith(prefix)) return this._cwd.slice(prefix.length);
-    return "";
+    // Outside workspace — pass absolute path
+    return this._cwd;
   }
 
   private _resolvePath(p: string): string {
