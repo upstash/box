@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.16
+
+### Patch Changes
+
+- bbb71ce: unify Run API with StreamRun, typed chunks, and private internals
+
 ## 0.1.15
 
 ### Patch Changes

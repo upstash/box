@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.20
+
+### Patch Changes
+
+- bbb71ce: unify Run API with StreamRun, typed chunks, and private internals
+- Updated dependencies [bbb71ce]
+  - @upstash/box@0.1.16
+
 ## 0.1.19
 
 ### Patch Changes
