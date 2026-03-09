@@ -75,13 +75,9 @@ export function mockSSEResponse(events: Array<{ event: string; data: unknown }>)
  * Like mockSSEResponse, but enqueues each event as a separate chunk
  * so consumers can break between events (for testing early termination).
  */
-export function mockSSEResponseChunked(
-  events: Array<{ event: string; data: unknown }>,
-): Response {
+export function mockSSEResponseChunked(events: Array<{ event: string; data: unknown }>): Response {
   const encoder = new TextEncoder();
-  const lines = events.map(
-    (e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`,
-  );
+  const lines = events.map((e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`);
   const allText = lines.join("");
 
   const stream = new ReadableStream({
