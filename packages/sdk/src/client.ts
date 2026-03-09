@@ -52,26 +52,18 @@ export class BoxError extends Error {
  * Returned by box.agent.run() and box.exec.command().
  */
 export class Run<T = string> {
-  readonly type: "agent" | "shell";
+  readonly type: "agent" | "command" | "code";
 
-  /** @internal */
-  _id: string;
-  /** @internal */
-  _result: T | null = null;
-  /** @internal */
-  _status: RunStatus = "running";
-  /** @internal */
-  _inputTokens = 0;
-  /** @internal */
-  _outputTokens = 0;
-  /** @internal */
-  _computeMs = 0;
-  /** @internal */
-  _box: Box;
-  /** @internal */
-  _abortController?: AbortController;
-  /** @internal */
-  _startTime: number;
+  private _id: string;
+  private _result: T | null = null;
+  private _status: RunStatus = "running";
+  private _exitCode: number | null = null;
+  private _inputTokens = 0;
+  private _outputTokens = 0;
+  private _computeMs = 0;
+  private _box: Box;
+  private _abortController?: AbortController;
+  private _startTime: number;
 
   /** The run ID. Initially a local UUID, replaced by backend run_id from run_start event. */
   get id(): string {
@@ -79,7 +71,7 @@ export class Run<T = string> {
   }
 
   /** @internal */
-  constructor(box: Box, type: "agent" | "shell", id?: string) {
+  constructor(box: Box, type: "agent" | "command" | "code", id?: string) {
     this._id = id ?? crypto.randomUUID();
     this.type = type;
     this._box = box;
@@ -87,21 +79,9 @@ export class Run<T = string> {
   }
 
   /**
-   * Get the current run status. Polls the backend for the latest status if the run may still be active.
+   * Final status of the run.
    */
-  async status(): Promise<RunStatus> {
-    if (["completed", "failed", "cancelled"].includes(this._status)) {
-      return this._status;
-    }
-    try {
-      const data = await this._box._request<{ status: RunStatus }>(
-        "GET",
-        `/v2/box/${this._box.id}/runs/${this._id}`,
-      );
-      this._status = data.status;
-    } catch {
-      // Fallback to local status if backend call fails
-    }
+  get status(): RunStatus {
     return this._status;
   }
 
@@ -113,6 +93,13 @@ export class Run<T = string> {
       return "" as T;
     }
     return this._result;
+  }
+
+  /**
+   * Process exit code. Only present for command and code runs — null for agent runs.
+   */
+  get exitCode(): number | null {
+    return this._exitCode;
   }
 
   /**
@@ -153,6 +140,47 @@ export class Run<T = string> {
         message: l.message,
       }));
   }
+
+  /** @internal — Set internal fields from Box methods. */
+  static _update<T>(
+    run: Run<T>,
+    data: {
+      id?: string;
+      result?: T | null;
+      status?: RunStatus;
+      exitCode?: number;
+      inputTokens?: number;
+      outputTokens?: number;
+      computeMs?: number;
+      abortController?: AbortController;
+    },
+  ): void {
+    if (data.id !== undefined) run._id = data.id;
+    if (data.result !== undefined) run._result = data.result;
+    if (data.status !== undefined) run._status = data.status;
+    if (data.exitCode !== undefined) run._exitCode = data.exitCode;
+    if (data.inputTokens !== undefined) run._inputTokens = data.inputTokens;
+    if (data.outputTokens !== undefined) run._outputTokens = data.outputTokens;
+    if (data.computeMs !== undefined) run._computeMs = data.computeMs;
+    if (data.abortController !== undefined) run._abortController = data.abortController;
+  }
+}
+
+/**
+ * A streaming run that can be iterated to receive chunks in real time.
+ * Returned by box.agent.stream(), box.exec.stream(), and box.exec.streamCode().
+ */
+export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIterable<C> {
+  private _iterator!: AsyncIterableIterator<C>;
+
+  [Symbol.asyncIterator](): AsyncIterableIterator<C> {
+    return this._iterator;
+  }
+
+  /** @internal — Set the async iterator from Box streaming methods. */
+  static _setIterator<T, C>(run: StreamRun<T, C>, iterator: AsyncIterableIterator<C>): void {
+    run._iterator = iterator;
+  }
 }
 
 /**
@@ -172,8 +200,9 @@ export class Run<T = string> {
  * console.log(run.result);
  *
  * // Streaming
- * for await (const part of box.agent.stream({ prompt: "Add tests" })) {
- *   if (part.type === "text-delta") process.stdout.write(part.text);
+ * const stream = await box.agent.stream({ prompt: "Add tests" });
+ * for await (const chunk of stream) {
+ *   if (chunk.type === "text-delta") process.stdout.write(chunk.text);
  * }
  *
  * await box.delete();
@@ -188,7 +217,7 @@ export class Box {
       options: RunOptions<T> & { responseSchema: RunOptions<T>["responseSchema"] },
     ): Promise<Run<T>>;
     run(options: RunOptions): Promise<Run<string>>;
-    stream(options: StreamOptions): AsyncGenerator<Chunk>;
+    stream(options: StreamOptions): Promise<StreamRun<string, Chunk>>;
   };
 
   /** File operations namespace */
@@ -218,9 +247,9 @@ export class Box {
   /** Execution namespace — shell commands and inline code */
   readonly exec: {
     command: (command: string) => Promise<Run<string>>;
-    code: (options: CodeExecutionOptions) => Promise<CodeExecutionResult>;
-    stream: (command: string) => AsyncGenerator<ExecStreamChunk>;
-    streamCode: (options: CodeExecutionOptions) => AsyncGenerator<ExecStreamChunk>;
+    code: (options: CodeExecutionOptions) => Promise<Run<string>>;
+    stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
+    streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
   };
 
   /** Git operations namespace */
@@ -298,7 +327,7 @@ export class Box {
         }
         return self._run(options);
       },
-      stream(options: StreamOptions): AsyncGenerator<Chunk> {
+      stream(options: StreamOptions): Promise<StreamRun<string, Chunk>> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
             'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
@@ -491,7 +520,7 @@ export class Box {
   // ==================== Run ====================
 
   /** @internal */
-  async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
+  private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
     if (!options.prompt) throw new BoxError("prompt is required");
 
     // Webhook mode: fire-and-forget — run in background, POST result to webhook URL
@@ -508,7 +537,7 @@ export class Box {
             runId: completedRun.id,
             boxId,
             status: "completed",
-            result: completedRun._result as string | null,
+            result: completedRun.result as string | null,
             cost,
             completedAt: new Date().toISOString(),
           };
@@ -554,9 +583,10 @@ export class Box {
   }
 
   private async _executeRun<T>(options: RunOptions<T>, _attempt: number): Promise<Run<T | string>> {
+    const start = Date.now();
     const run = new Run<T | string>(this, "agent");
     const abortController = new AbortController();
-    run._abortController = abortController;
+    Run._update(run, { abortController });
 
     if (options.timeout) {
       setTimeout(() => abortController.abort(), options.timeout);
@@ -599,7 +629,7 @@ export class Box {
         const parsed = JSON.parse(data);
         switch (type) {
           case "run_start": {
-            if (parsed.run_id) run._id = parsed.run_id;
+            if (parsed.run_id) Run._update(run, { id: parsed.run_id });
             break;
           }
           case "text": {
@@ -614,8 +644,10 @@ export class Box {
             break;
           }
           case "done": {
-            run._inputTokens = parsed.input_tokens ?? 0;
-            run._outputTokens = parsed.output_tokens ?? 0;
+            Run._update(run, {
+              inputTokens: parsed.input_tokens ?? 0,
+              outputTokens: parsed.output_tokens ?? 0,
+            });
             if (parsed.output) rawOutput = parsed.output;
             break;
           }
@@ -666,8 +698,7 @@ export class Box {
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
-        run._status = "cancelled";
-        run._computeMs = Date.now() - run._startTime;
+        Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
         throw new BoxError("Run timed out");
       }
       throw e;
@@ -686,18 +717,19 @@ export class Box {
       }
     }
 
-    run._result = output;
-    run._status = "completed";
-    run._computeMs = Date.now() - run._startTime;
+    Run._update(run, { result: output, status: "completed", computeMs: Date.now() - start });
 
     return run;
   }
 
-  /** @internal */
-  async *_stream(options: StreamOptions): AsyncGenerator<Chunk> {
+  private async _stream(options: StreamOptions): Promise<StreamRun<string, Chunk>> {
     if (!options.prompt) throw new BoxError("prompt is required");
 
+    const start = Date.now();
+    const run = new StreamRun<string, Chunk>(this, "agent");
     const abortController = new AbortController();
+    Run._update(run, { abortController });
+
     if (options.timeout) {
       setTimeout(() => abortController.abort(), options.timeout);
     }
@@ -716,129 +748,154 @@ export class Box {
       throw new BoxError(msg, response.status);
     }
 
-    const reader = response.body?.getReader();
-    if (!reader) throw new BoxError("Streaming not supported");
+    const bodyReader = response.body?.getReader();
+    if (!bodyReader) throw new BoxError("Streaming not supported");
+    const reader = bodyReader;
 
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let eventType = "";
-    let eventData = "";
+    let rawOutput = "";
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        let chunk = decoder.decode(value, { stream: true });
-        chunk = chunk.replace(/\x1B\[[0-9;]*[A-Za-z]/g, "");
-        buffer += chunk;
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (let line of lines) {
-          line = line.replace(/\r$/, "").replace(/^[\\\|\/\-\s]*/, "");
-
-          if (line.startsWith("event: ")) {
-            eventType = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            eventData = line.slice(6);
-          } else if ((line === "" || line.trim() === "") && eventType && eventData) {
-            const part = this._processStreamPart(eventType, eventData);
-            if (part !== null) {
-              options.onChunk?.(part);
-              if (part.type === "tool-call") {
-                options.onToolUse?.({ name: part.toolName, input: part.input });
-              }
-              yield part;
+    const processEvent = (type: string, data: string): Chunk | null => {
+      try {
+        const parsed = JSON.parse(data);
+        switch (type) {
+          case "run_start": {
+            if (parsed.run_id) Run._update(run, { id: parsed.run_id });
+            const chunk: Chunk = { type: "start", runId: parsed.run_id ?? "" };
+            options.onChunk?.(chunk);
+            return chunk;
+          }
+          case "text": {
+            const text = parsed.text ?? "";
+            if (text) {
+              rawOutput += text;
+              const chunk: Chunk = { type: "text-delta", text };
+              options.onChunk?.(chunk);
+              return chunk;
             }
+            return null;
+          }
+          case "thinking": {
+            const text = parsed.text ?? "";
+            if (text) {
+              const chunk: Chunk = { type: "reasoning", text };
+              options.onChunk?.(chunk);
+              return chunk;
+            }
+            return null;
+          }
+          case "tool": {
+            const chunk: Chunk = {
+              type: "tool-call",
+              toolName: parsed.name ?? "",
+              input: parsed.input ?? {},
+            };
+            options.onChunk?.(chunk);
+            options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {} });
+            return chunk;
+          }
+          case "done": {
+            Run._update(run, {
+              inputTokens: parsed.input_tokens ?? 0,
+              outputTokens: parsed.output_tokens ?? 0,
+            });
+            if (parsed.output) rawOutput = parsed.output;
+            const chunk: Chunk = {
+              type: "finish",
+              output: parsed.output ?? "",
+              usage: {
+                inputTokens: parsed.input_tokens ?? 0,
+                outputTokens: parsed.output_tokens ?? 0,
+              },
+              sessionId: parsed.session_id ?? "",
+            };
+            options.onChunk?.(chunk);
+            return chunk;
+          }
+          case "stats": {
+            const chunk: Chunk = {
+              type: "stats",
+              cpuNs: parsed.cpu_ns ?? 0,
+              memoryPeakBytes: parsed.memory_peak_bytes ?? 0,
+            };
+            options.onChunk?.(chunk);
+            return chunk;
+          }
+          case "error":
+            throw new BoxError(parsed.error ?? "Stream error");
+          default: {
+            const chunk: Chunk = { type: "unknown", event: type, data: parsed };
+            options.onChunk?.(chunk);
+            return chunk;
+          }
+        }
+      } catch (e) {
+        if (e instanceof BoxError) throw e;
+        return null;
+      }
+    };
+
+    async function* iterate(): AsyncGenerator<Chunk> {
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let eventType = "";
+      let eventData = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          let chunk = decoder.decode(value, { stream: true });
+          chunk = chunk.replace(/\x1B\[[0-9;]*[A-Za-z]/g, "");
+          buffer += chunk;
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (let line of lines) {
+            line = line.replace(/\r$/, "").replace(/^[\\\|\/\-\s]*/, "");
+
+            if (line.startsWith("event: ")) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              eventData = line.slice(6);
+            } else if ((line === "" || line.trim() === "") && eventType && eventData) {
+              const parsed = processEvent(eventType, eventData);
+              if (parsed !== null) yield parsed;
+              eventType = "";
+              eventData = "";
+            }
+          }
+
+          if (eventType && eventData && (buffer === "" || buffer.trim() === "")) {
+            const parsed = processEvent(eventType, eventData);
+            if (parsed !== null) yield parsed;
             eventType = "";
             eventData = "";
           }
         }
 
-        if (eventType && eventData && (buffer === "" || buffer.trim() === "")) {
-          const part = this._processStreamPart(eventType, eventData);
-          if (part !== null) {
-            options.onChunk?.(part);
-            if (part.type === "tool-call") {
-              options.onToolUse?.({ name: part.toolName, input: part.input });
-            }
-            yield part;
-          }
-          eventType = "";
-          eventData = "";
+        if (eventType && eventData) {
+          const parsed = processEvent(eventType, eventData);
+          if (parsed !== null) yield parsed;
         }
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") {
+          Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
+          throw new BoxError("Stream timed out");
+        }
+        throw e;
       }
 
-      if (eventType && eventData) {
-        const part = this._processStreamPart(eventType, eventData);
-        if (part !== null) {
-          options.onChunk?.(part);
-          if (part.type === "tool-call") {
-            options.onToolUse?.({ name: part.toolName, input: part.input });
-          }
-          yield part;
-        }
-      }
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        throw new BoxError("Stream timed out");
-      }
-      throw e;
+      Run._update(run, {
+        result: rawOutput.trim(),
+        status: "completed",
+        computeMs: Date.now() - start,
+      });
     }
-  }
 
-  private _processStreamPart(type: string, data: string): Chunk | null {
-    try {
-      const parsed = JSON.parse(data);
-      switch (type) {
-        case "run_start": {
-          const runId = parsed.run_id ?? "";
-          return { type: "start", runId };
-        }
-        case "text": {
-          const text = parsed.text ?? "";
-          return text ? { type: "text-delta", text } : null;
-        }
-        case "thinking": {
-          const text = parsed.text ?? "";
-          return text ? { type: "reasoning", text } : null;
-        }
-        case "tool": {
-          return {
-            type: "tool-call",
-            toolName: parsed.name ?? "",
-            input: parsed.input ?? {},
-          };
-        }
-        case "done": {
-          return {
-            type: "finish",
-            output: parsed.output ?? "",
-            usage: {
-              inputTokens: parsed.input_tokens ?? 0,
-              outputTokens: parsed.output_tokens ?? 0,
-            },
-            sessionId: parsed.session_id ?? "",
-          };
-        }
-        case "stats": {
-          return {
-            type: "stats",
-            cpuNs: parsed.cpu_ns ?? 0,
-            memoryPeakBytes: parsed.memory_peak_bytes ?? 0,
-          };
-        }
-        case "error":
-          throw new BoxError(parsed.error ?? "Stream error");
-        default:
-          return { type: "unknown", event: type, data: parsed };
-      }
-    } catch (e) {
-      if (e instanceof BoxError) throw e;
-      return null;
-    }
+    StreamRun._setIterator(run, iterate());
+    return run;
   }
 
   // ==================== Execution ====================
@@ -853,19 +910,23 @@ export class Box {
       body: { command: ["sh", "-c", command], ...(folder ? { folder } : {}) },
     });
 
-    const run = new Run<string>(this, "shell");
-    run._result = result.error ? result.error : result.output;
-    run._status = result.exit_code === 0 ? "completed" : "failed";
-    run._computeMs = Date.now() - start;
+    const run = new Run<string>(this, "command");
+    Run._update(run, {
+      result: result.error ? result.error : result.output,
+      status: result.exit_code === 0 ? "completed" : "failed",
+      exitCode: result.exit_code,
+      computeMs: Date.now() - start,
+    });
     return run;
   }
 
   /**
    * Execute inline code (JS, TS, or Python) inside the box.
    */
-  private async _execCode(options: CodeExecutionOptions): Promise<CodeExecutionResult> {
+  private async _execCode(options: CodeExecutionOptions): Promise<Run<string>> {
+    const start = Date.now();
     const folder = this._getFolder();
-    return this._request<CodeExecutionResult>("POST", `/v2/box/${this.id}/code`, {
+    const result = await this._request<CodeExecutionResult>("POST", `/v2/box/${this.id}/code`, {
       body: {
         code: options.code,
         language: options.lang,
@@ -873,12 +934,24 @@ export class Box {
         ...(folder ? { folder } : {}),
       },
     });
+
+    const run = new Run<string>(this, "code");
+    Run._update(run, {
+      result: result.error ? result.error : result.output,
+      status: result.exit_code === 0 ? "completed" : "failed",
+      exitCode: result.exit_code,
+      computeMs: Date.now() - start,
+    });
+    return run;
   }
 
   /**
    * Stream output from a shell command executed in the box.
    */
-  private async *_execStream(command: string): AsyncGenerator<ExecStreamChunk> {
+  private async _execStream(command: string): Promise<StreamRun<string, ExecStreamChunk>> {
+    const run = new StreamRun<string, ExecStreamChunk>(this, "command");
+    const start = Date.now();
+
     const folder = this._getFolder();
     const url = `${this._baseUrl}/v2/box/${this.id}/exec-stream`;
     const response = await fetch(url, {
@@ -892,13 +965,38 @@ export class Box {
       throw new BoxError(msg, response.status);
     }
 
-    yield* this._parseExecStream(response);
+    const self = this;
+    let fullOutput = "";
+
+    async function* iterate(): AsyncGenerator<ExecStreamChunk> {
+      for await (const chunk of self._parseExecStream(response)) {
+        if (chunk.type === "output") {
+          fullOutput += chunk.data;
+        } else if (chunk.type === "exit") {
+          Run._update(run, {
+            exitCode: chunk.exitCode,
+            status: chunk.exitCode === 0 ? "completed" : "failed",
+          });
+        }
+        yield chunk;
+      }
+      Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
+      if (run.status === "running") Run._update(run, { status: "completed" });
+    }
+
+    StreamRun._setIterator(run, iterate());
+    return run;
   }
 
   /**
    * Stream output from inline code execution in the box.
    */
-  private async *_execStreamCode(options: CodeExecutionOptions): AsyncGenerator<ExecStreamChunk> {
+  private async _execStreamCode(
+    options: CodeExecutionOptions,
+  ): Promise<StreamRun<string, ExecStreamChunk>> {
+    const run = new StreamRun<string, ExecStreamChunk>(this, "code");
+    const start = Date.now();
+
     const folder = this._getFolder();
     const url = `${this._baseUrl}/v2/box/${this.id}/code-stream`;
     const response = await fetch(url, {
@@ -917,7 +1015,27 @@ export class Box {
       throw new BoxError(msg, response.status);
     }
 
-    yield* this._parseExecStream(response);
+    const self = this;
+    let fullOutput = "";
+
+    async function* iterate(): AsyncGenerator<ExecStreamChunk> {
+      for await (const chunk of self._parseExecStream(response)) {
+        if (chunk.type === "output") {
+          fullOutput += chunk.data;
+        } else if (chunk.type === "exit") {
+          Run._update(run, {
+            exitCode: chunk.exitCode,
+            status: chunk.exitCode === 0 ? "completed" : "failed",
+          });
+        }
+        yield chunk;
+      }
+      Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
+      if (run.status === "running") Run._update(run, { status: "completed" });
+    }
+
+    StreamRun._setIterator(run, iterate());
+    return run;
   }
 
   /**

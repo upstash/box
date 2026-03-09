@@ -157,13 +157,13 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   it("exec.code runs in cwd context", async () => {
     await box.cd("project-a");
 
-    const result = await box.exec.code({
+    const run = await box.exec.code({
       code: 'const fs = require("fs"); console.log(fs.readdirSync(".").join(","))',
       lang: "js",
     });
-    expect(result.exit_code).toBe(0);
-    expect(result.output).toContain("src");
-    expect(result.output).toContain("README.md");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("src");
+    expect(run.result).toContain("README.md");
   });
 
   // ==================== files.read resolves against cwd ====================
@@ -431,19 +431,19 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
 
   it("exec.command: cd ~ && pwd", async () => {
     const run = await box.exec.command("cd ~ && pwd");
-    expect(run._status).toBe("completed");
+    expect(run.status).toBe("completed");
   });
 
   it("exec.command: ls ~", async () => {
     const run = await box.exec.command("ls ~");
-    expect(run._status).toBe("completed");
+    expect(run.status).toBe("completed");
   });
 
   it("box.cd to /home/boxuser then pwd", async () => {
     await box.cd("/home/boxuser");
     expect(box.cwd).toBe("/home/boxuser");
 
-    expect(box.exec.command("pwd")).rejects.toThrow("Failed to execute command");
+    await expect(box.exec.command("pwd")).rejects.toThrow("Failed to execute command");
   });
 
   // ==================== agent respects cwd ====================

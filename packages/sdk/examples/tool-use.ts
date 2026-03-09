@@ -18,9 +18,10 @@ const box = await Box.create({
 
 console.log(`Box created: ${box.id}\n`);
 
-for await (const chunk of box.agent.stream({
+const run = await box.agent.stream({
   prompt: "Create a CLI tool that converts CSV to JSON",
-})) {
+});
+for await (const chunk of run) {
   if (chunk.type === "text-delta") process.stdout.write(chunk.text);
   if (chunk.type === "tool-call") {
     const input = JSON.stringify(chunk.input).slice(0, 120);

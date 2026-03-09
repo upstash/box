@@ -39,9 +39,7 @@ describe("BoxREPLClient", () => {
     it("catches handler errors and yields error event", async () => {
       const mockBox = {
         exec: {
-          stream: vi.fn().mockImplementation(async function* () {
-            throw new Error("boom");
-          }),
+          stream: vi.fn().mockRejectedValue(new Error("boom")),
         },
       };
       const client = new BoxREPLClient(mockBox as any);
@@ -55,9 +53,11 @@ describe("BoxREPLClient", () => {
     it("defaults to shell mode: bare text calls exec.stream", async () => {
       const mockBox = {
         exec: {
-          stream: vi.fn().mockImplementation(async function* () {
-            yield { type: "output", data: "output" };
-            yield { type: "exit", exitCode: 0, cpuNs: 0 };
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "output", data: "output" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
           }),
         },
       };
@@ -85,11 +85,15 @@ describe("BoxREPLClient", () => {
       expect(switchEvents).toContainEqual({ type: "log", message: "Switched to agent mode" });
 
       // Bare text should now go to agent
-      async function* fakeStream() {
-        yield { type: "text-delta" as const, text: "hi" };
-      }
       const mockBox = {
-        agent: { stream: vi.fn().mockReturnValue(fakeStream()) },
+        agent: {
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "text-delta", text: "hi" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
+          }),
+        },
       };
       const agentClient = new BoxREPLClient(mockBox as any);
       agentClient.mode = "agent";
@@ -138,9 +142,11 @@ describe("BoxREPLClient", () => {
     it("cd with compound command runs as shell and logs warning", async () => {
       const mockBox = {
         exec: {
-          stream: vi.fn().mockImplementation(async function* () {
-            yield { type: "output", data: "file1\nfile2" };
-            yield { type: "exit", exitCode: 0, cpuNs: 0 };
+          stream: vi.fn().mockImplementation(async () => {
+            async function* iterate() {
+              yield { type: "output", data: "file1\nfile2" };
+            }
+            return { [Symbol.asyncIterator]: () => iterate() };
           }),
         },
       };

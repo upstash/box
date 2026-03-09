@@ -1,24 +1,38 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleRun } from "../../../repl/commands/run.js";
-import { Chunk } from "@upstash/box";
 import { collectEvents } from "../helpers.js";
 
-describe("handleRun", () => {
-  it("streams agent output to stdout", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield { type: "text-delta", text: "chunk1" };
-      yield { type: "text-delta", text: "chunk2" };
-    }
+/**
+ * Helper: creates a mock box whose agent.stream() returns a StreamRun-like
+ * async iterable that yields Chunk objects.
+ */
+function createMockBox(chunks: Array<{ type: string; [key: string]: any }>) {
+  return {
+    agent: {
+      stream: vi.fn().mockImplementation(async () => {
+        async function* iterate() {
+          for (const chunk of chunks) {
+            yield chunk;
+          }
+        }
+        return { [Symbol.asyncIterator]: () => iterate() };
+      }),
+    },
+  };
+}
 
-    const mockBox = {
-      agent: {
-        stream: vi.fn().mockReturnValue(fakeStream()),
-      },
-    };
+describe("handleRun", () => {
+  it("streams agent text output", async () => {
+    const mockBox = createMockBox([
+      { type: "text-delta", text: "chunk1" },
+      { type: "text-delta", text: "chunk2" },
+    ]);
 
     const events = await collectEvents(handleRun(mockBox as any, "fix the bug"));
 
-    expect(mockBox.agent.stream).toHaveBeenCalledWith({ prompt: "fix the bug" });
+    expect(mockBox.agent.stream).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "fix the bug" }),
+    );
     expect(events).toContainEqual({ type: "stream", text: "chunk1" });
     expect(events).toContainEqual({ type: "stream", text: "chunk2" });
     // Trailing newline
@@ -31,15 +45,14 @@ describe("handleRun", () => {
   });
 
   it("yields tool event for Bash with description and command detail", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "Bash",
         input: { command: "npm install", description: "Install dependencies" },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "setup project"));
 
     expect(events).toContainEqual({
@@ -49,15 +62,14 @@ describe("handleRun", () => {
   });
 
   it("yields tool event for Read tool-call with basename", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "Read",
         input: { file_path: "/Users/dev/project/config.ts" },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "read config"));
 
     expect(events).toContainEqual({
@@ -67,8 +79,8 @@ describe("handleRun", () => {
   });
 
   it("yields todo event for TodoWrite tool-call", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "TodoWrite",
         input: {
@@ -78,10 +90,9 @@ describe("handleRun", () => {
             { content: "Deploy", status: "completed" },
           ],
         },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "plan work"));
 
     const todoEvent = events.find((e) => e.type === "todo");
@@ -97,15 +108,14 @@ describe("handleRun", () => {
   });
 
   it("yields tool event for unknown tool name", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "CustomTool",
         input: { foo: "bar" },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "do something"));
 
     expect(events).toContainEqual({
@@ -116,15 +126,14 @@ describe("handleRun", () => {
 
   it("yields Bash tool with truncated command when no description", async () => {
     const longCommand = "a".repeat(80);
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "Bash",
         input: { command: longCommand },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "run long cmd"));
 
     const toolEvent = events.find((e) => e.type === "tool");
@@ -139,15 +148,14 @@ describe("handleRun", () => {
   });
 
   it("yields Grep tool event with pattern summary", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "Grep",
         input: { pattern: "TODO|FIXME", path: "/src" },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "find todos"));
 
     expect(events).toContainEqual({
@@ -157,17 +165,16 @@ describe("handleRun", () => {
   });
 
   it("defaults invalid todo status to pending", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "TodoWrite",
         input: {
           todos: [{ content: "Task", status: "invalid_status" }],
         },
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "plan"));
 
     const todoEvent = events.find((e) => e.type === "todo");
@@ -178,20 +185,43 @@ describe("handleRun", () => {
   });
 
   it("yields tool event for EnterPlanMode", async () => {
-    async function* fakeStream(): AsyncGenerator<Chunk> {
-      yield {
+    const mockBox = createMockBox([
+      {
         type: "tool-call",
         toolName: "EnterPlanMode",
         input: {},
-      };
-    }
+      },
+    ]);
 
-    const mockBox = { agent: { stream: vi.fn().mockReturnValue(fakeStream()) } };
     const events = await collectEvents(handleRun(mockBox as any, "plan this"));
 
     expect(events).toContainEqual({
       type: "tool",
       tool: { name: "EnterPlanMode", summary: "Planning implementation", detail: undefined },
     });
+  });
+
+  it("ignores non-text non-tool chunks", async () => {
+    const mockBox = createMockBox([
+      { type: "start", runId: "r1" },
+      { type: "text-delta", text: "hello" },
+      { type: "reasoning", text: "thinking..." },
+      {
+        type: "finish",
+        output: "hello",
+        usage: { inputTokens: 1, outputTokens: 1 },
+        sessionId: "s",
+      },
+    ]);
+
+    const events = await collectEvents(handleRun(mockBox as any, "test"));
+
+    const streamEvents = events.filter((e) => e.type === "stream");
+    expect(streamEvents).toEqual([
+      { type: "stream", text: "hello" },
+      { type: "stream", text: "\n" },
+    ]);
+    // No tool or todo events
+    expect(events.filter((e) => e.type === "tool" || e.type === "todo")).toEqual([]);
   });
 });

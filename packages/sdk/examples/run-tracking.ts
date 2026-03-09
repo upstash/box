@@ -18,8 +18,8 @@ const run = await box.agent.run({
 // Run ID is assigned by the backend via the run_start SSE event
 console.log(`\nRun ID: ${run.id}`);
 
-// Status is fetched from the backend
-const status = await run.status();
+// Status is available as a property
+const status = run.status;
 console.log(`Status: ${status}`);
 
 // Cost includes real USD pricing from the backend

@@ -1,4 +1,4 @@
-export { Box, BoxError, Run } from "./client.js";
+export { Box, BoxError, Run, StreamRun } from "./client.js";
 export { ClaudeCode, OpenAICodex, BoxApiKey } from "./types.js";
 
 export type {
@@ -32,7 +32,6 @@ export type {
   ExecResult,
   CodeLanguage,
   CodeExecutionOptions,
-  CodeExecutionResult,
   ExecStreamChunk,
   ErrorResponse,
   BoxRunData,

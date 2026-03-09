@@ -11,8 +11,9 @@ describe("Box instance methods", () => {
 
       const run = await box.exec.command("echo hello world");
       expect(run.result).toBe("hello world");
-      expect(run._status).toBe("completed");
-      expect(run.type).toBe("shell");
+      expect(run.status).toBe("completed");
+      expect(run.type).toBe("command");
+      expect(run.exitCode).toBe(0);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/v2/box/box-123/exec");
@@ -25,23 +26,26 @@ describe("Box instance methods", () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 1, output: "error message" }));
 
       const run = await box.exec.command("false");
-      expect(run._status).toBe("failed");
+      expect(run.status).toBe("failed");
+      expect(run.exitCode).toBe(1);
       expect(run.result).toBe("error message");
     });
   });
 
   describe("exec.code", () => {
-    it("executes JavaScript code and returns result", async () => {
+    it("executes JavaScript code and returns run", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ output: '{"sum":3}', exit_code: 0 }));
 
-      const result = await box.exec.code({
+      const run = await box.exec.code({
         code: "console.log(JSON.stringify({ sum: 1 + 2 }))",
         lang: "js",
       });
 
-      expect(result.output).toBe('{"sum":3}');
-      expect(result.exit_code).toBe(0);
+      expect(run.result).toBe('{"sum":3}');
+      expect(run.exitCode).toBe(0);
+      expect(run.type).toBe("code");
+      expect(run.status).toBe("completed");
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/v2/box/box-123/code");
@@ -57,26 +61,26 @@ describe("Box instance methods", () => {
         mockResponse({ output: "Oldest user: Alice (age 30)", exit_code: 0 }),
       );
 
-      const result = await box.exec.code({
+      const run = await box.exec.code({
         code: "const x: number = 42; console.log(x)",
         lang: "ts",
       });
 
-      expect(result.output).toBe("Oldest user: Alice (age 30)");
-      expect(result.exit_code).toBe(0);
+      expect(run.result).toBe("Oldest user: Alice (age 30)");
+      expect(run.exitCode).toBe(0);
     });
 
     it("executes Python code", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ output: '{"sum": 15}', exit_code: 0 }));
 
-      const result = await box.exec.code({
+      const run = await box.exec.code({
         code: 'import json; print(json.dumps({"sum": 15}))',
         lang: "python",
       });
 
-      expect(result.output).toBe('{"sum": 15}');
-      expect(result.exit_code).toBe(0);
+      expect(run.result).toBe('{"sum": 15}');
+      expect(run.exitCode).toBe(0);
     });
 
     it("returns error on failed execution", async () => {
@@ -89,13 +93,14 @@ describe("Box instance methods", () => {
         }),
       );
 
-      const result = await box.exec.code({
+      const run = await box.exec.code({
         code: 'throw new Error("something went wrong")',
         lang: "js",
       });
 
-      expect(result.exit_code).toBe(1);
-      expect(result.error).toContain("something went wrong");
+      expect(run.exitCode).toBe(1);
+      expect(run.status).toBe("failed");
+      expect(run.result).toContain("something went wrong");
     });
 
     it("passes timeout when provided", async () => {

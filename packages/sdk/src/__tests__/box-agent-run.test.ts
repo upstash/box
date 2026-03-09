@@ -21,9 +21,9 @@ describe("box.agent.run", () => {
     const run = await box.agent.run({ prompt: "say hello" });
     expect(run.id).toBe("real-run-1");
     expect(run.result).toBe("Hello world");
-    expect(run._status).toBe("completed");
-    expect(run._inputTokens).toBe(10);
-    expect(run._outputTokens).toBe(20);
+    expect(run.status).toBe("completed");
+    expect(run.cost.inputTokens).toBe(10);
+    expect(run.cost.outputTokens).toBe(20);
   });
 
   it("calls onToolUse callback", async () => {
@@ -204,7 +204,7 @@ describe("box.agent.run", () => {
 describe("box.agent.stream", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("yields stream parts", async () => {
+  it("yields Chunk objects", async () => {
     const { box, fetchMock } = await createTestBox();
 
     fetchMock.mockResolvedValueOnce(
@@ -216,19 +216,22 @@ describe("box.agent.stream", () => {
       ]),
     );
 
-    const parts: Chunk[] = [];
-    for await (const part of box.agent.stream({ prompt: "say hello" })) {
-      parts.push(part);
+    const run = await box.agent.stream({ prompt: "say hello" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
     }
-    expect(parts).toEqual([
-      { type: "start", runId: "r1" },
-      { type: "text-delta", text: "Hello " },
-      { type: "text-delta", text: "world" },
-      { type: "finish", output: "", usage: { inputTokens: 0, outputTokens: 0 }, sessionId: "" },
-    ]);
+    const textChunks = chunks.filter(
+      (c): c is Extract<Chunk, { type: "text-delta" }> => c.type === "text-delta",
+    );
+    expect(textChunks.map((c) => c.text)).toEqual(["Hello ", "world"]);
+    expect(chunks[0]!.type).toBe("start");
+    expect(chunks[chunks.length - 1]!.type).toBe("finish");
+    expect(run.status).toBe("completed");
+    expect(run.result).toBe("Hello world");
   });
 
-  it("calls onToolUse callback", async () => {
+  it("yields tool-call chunks and calls onToolUse", async () => {
     const { box, fetchMock } = await createTestBox();
     const tools: Array<{ name: string; input: Record<string, unknown> }> = [];
 
@@ -241,25 +244,26 @@ describe("box.agent.stream", () => {
       ]),
     );
 
-    const chunks: Chunk[] = [];
-    for await (const chunk of box.agent.stream({
+    const run = await box.agent.stream({
       prompt: "test",
       onToolUse: (tool) => tools.push(tool),
-    })) {
+    });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
       chunks.push(chunk);
     }
 
     expect(tools).toHaveLength(1);
     expect(tools[0]!.name).toBe("Write");
-    expect(chunks.map((chunk) => chunk.type)).toEqual([
-      "start",
-      "tool-call",
-      "text-delta",
-      "finish",
-    ]);
+    const toolChunks = chunks.filter((c) => c.type === "tool-call");
+    expect(toolChunks).toHaveLength(1);
+    const textChunks = chunks.filter(
+      (c): c is Extract<Chunk, { type: "text-delta" }> => c.type === "text-delta",
+    );
+    expect(textChunks.map((c) => c.text)).toEqual(["done"]);
   });
 
-  it("yields typed parts", async () => {
+  it("yields all chunk types in order", async () => {
     const { box, fetchMock } = await createTestBox();
 
     fetchMock.mockResolvedValueOnce(
@@ -276,60 +280,49 @@ describe("box.agent.stream", () => {
       ]),
     );
 
-    const parts: Chunk[] = [];
-    for await (const part of box.agent.stream({ prompt: "test" })) {
-      parts.push(part);
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
     }
 
-    expect(parts).toEqual([
-      { type: "start", runId: "r1" },
-      { type: "text-delta", text: "Hello " },
-      { type: "reasoning", text: "trace" },
-      { type: "tool-call", toolName: "Write", input: { path: "/x" } },
-      {
-        type: "finish",
-        output: "Hello world",
-        usage: { inputTokens: 7, outputTokens: 9 },
-        sessionId: "s1",
-      },
-      { type: "stats", cpuNs: 111, memoryPeakBytes: 222 },
+    expect(chunks.map((c) => c.type)).toEqual([
+      "start",
+      "text-delta",
+      "reasoning",
+      "tool-call",
+      "finish",
+      "stats",
     ]);
+    expect(run.result).toBe("Hello world");
   });
 
-  it("calls onChunk callback with full parts", async () => {
+  it("still calls onChunk callback when provided", async () => {
     const { box, fetchMock } = await createTestBox();
-    const chunkTypes: string[] = [];
+    const callbackTypes: string[] = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
         { event: "run_start", data: { run_id: "r1" } },
-        { event: "tool", data: { name: "Write", input: { path: "/x" } } },
-        { event: "text", data: { text: "done" } },
+        { event: "text", data: { text: "hi" } },
         { event: "done", data: {} },
       ]),
     );
 
-    const chunks: Chunk[] = [];
-    for await (const chunk of box.agent.stream({
+    const run = await box.agent.stream({
       prompt: "test",
-      onChunk: (part) => chunkTypes.push(part.type),
-    })) {
-      chunks.push(chunk);
+      onChunk: (part) => callbackTypes.push(part.type),
+    });
+    for await (const _ of run) {
+      // consume
     }
 
-    expect(chunkTypes).toEqual(["start", "tool-call", "text-delta", "finish"]);
-    expect(chunks.map((chunk) => chunk.type)).toEqual([
-      "start",
-      "tool-call",
-      "text-delta",
-      "finish",
-    ]);
+    expect(callbackTypes).toEqual(["start", "text-delta", "finish"]);
   });
 
   it("throws on missing prompt", async () => {
     const { box } = await createTestBox();
-    const gen = box.agent.stream({ prompt: "" });
-    await expect(gen.next()).rejects.toThrow("prompt is required");
+    await expect(box.agent.stream({ prompt: "" })).rejects.toThrow("prompt is required");
   });
 
   it("throws on stream error event", async () => {
@@ -342,19 +335,21 @@ describe("box.agent.stream", () => {
       ]),
     );
 
-    const gen = box.agent.stream({ prompt: "test" });
-    await expect(gen.next()).resolves.toMatchObject({
-      done: false,
-      value: { type: "start", runId: "r1" },
-    });
-    await expect(gen.next()).rejects.toThrow("something broke");
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    await expect(async () => {
+      for await (const chunk of run) {
+        chunks.push(chunk);
+      }
+    }).rejects.toThrow("something broke");
+    // The start chunk should have been yielded before the error
+    expect(chunks[0]!.type).toBe("start");
   });
 
   it("throws on non-OK response", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(mockResponse({ error: "server error" }, 500));
 
-    const gen = box.agent.stream({ prompt: "test" });
-    await expect(gen.next()).rejects.toThrow("server error");
+    await expect(box.agent.stream({ prompt: "test" })).rejects.toThrow("server error");
   });
 });

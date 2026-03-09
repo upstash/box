@@ -72,7 +72,10 @@ export async function* handleRun(box: Box, prompt: string): AsyncGenerator<BoxRE
     yield { type: "log", message: "Usage: run <prompt>" };
     return;
   }
-  for await (const chunk of box.agent.stream({ prompt })) {
+
+  const run = await box.agent.stream({ prompt });
+
+  for await (const chunk of run) {
     if (chunk.type === "text-delta") {
       yield { type: "stream", text: chunk.text };
     } else if (chunk.type === "tool-call") {

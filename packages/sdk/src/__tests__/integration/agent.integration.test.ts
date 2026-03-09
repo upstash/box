@@ -29,19 +29,21 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
     expect(result).toBeTruthy();
   }, 120000);
 
-  it("agent.stream: yields stream parts", async () => {
+  it("agent.stream: yields Chunk objects", async () => {
     let text = "";
-    let partCount = 0;
-    for await (const part of box.agent.stream({
+    let chunkCount = 0;
+    const run = await box.agent.stream({
       prompt: "Reply with exactly: STREAM_OK",
-    })) {
-      partCount++;
-      if (part.type === "text-delta") {
-        text += part.text;
+    });
+    for await (const chunk of run) {
+      chunkCount++;
+      if (chunk.type === "text-delta") {
+        text += chunk.text;
       }
     }
-    expect(partCount).toBeGreaterThan(0);
+    expect(chunkCount).toBeGreaterThan(0);
     expect(text).toBeTruthy();
+    expect(run.status).toBe("completed");
   }, 120000);
 
   it("agent.run: structured output with responseSchema", async () => {
@@ -90,18 +92,19 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI)", () => {
     expect(run.result).toBeTruthy();
   }, 120000);
 
-  it("agent.stream: yields stream parts with OpenAI model", async () => {
+  it("agent.stream: yields Chunk objects with OpenAI model", async () => {
     let text = "";
-    let partCount = 0;
-    for await (const part of box.agent.stream({
+    let chunkCount = 0;
+    const run = await box.agent.stream({
       prompt: "Reply with exactly: OPENAI_STREAM_OK",
-    })) {
-      partCount++;
-      if (part.type === "text-delta") {
-        text += part.text;
+    });
+    for await (const chunk of run) {
+      chunkCount++;
+      if (chunk.type === "text-delta") {
+        text += chunk.text;
       }
     }
-    expect(partCount).toBeGreaterThan(0);
+    expect(chunkCount).toBeGreaterThan(0);
     expect(text).toBeTruthy();
   }, 120000);
 });

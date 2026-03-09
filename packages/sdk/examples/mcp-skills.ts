@@ -28,7 +28,7 @@ const box = await Box.create({
 
 console.log(`Box: ${box.id}\n`);
 
-for await (const chunk of box.agent.stream({
+const run = await box.agent.stream({
   prompt: `Create a landing page at landing/index.html for a developer tool
 called "ShipFast". It should have:
 - A hero section with a headline and CTA button
@@ -37,7 +37,8 @@ called "ShipFast". It should have:
 - A footer
 
 Use modern CSS, no frameworks. Make it look professional.`,
-})) {
+});
+for await (const chunk of run) {
   if (chunk.type === "text-delta") process.stdout.write(chunk.text);
 }
 

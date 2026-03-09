@@ -54,7 +54,7 @@ for (const file of csvFiles) {
   );
 
   const procOutput = proc.result;
-  const procStatus = await proc.status();
+  const procStatus = proc.status;
 
   if (procStatus === "completed") {
     try {

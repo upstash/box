@@ -51,7 +51,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
 
   it("run.logs: returns logs for a completed run", async () => {
     const run = await box.exec.command("echo log-test");
-    expect(run._status).toBe("completed");
+    expect(run.status).toBe("completed");
 
     const logs = await run.logs();
     expect(Array.isArray(logs)).toBe(true);
@@ -81,17 +81,17 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
 
   it("run.cancel: cancels a running agent execution", async () => {
     // Start streaming so the run is in-flight
-    const stream = box.agent.stream({
+    const run = await box.agent.stream({
       prompt: "Write a very long essay about the history of computing. Make it extremely detailed.",
     });
 
     // Read a few chunks then cancel
-    const iterator = stream[Symbol.asyncIterator]();
+    const iterator = run[Symbol.asyncIterator]();
     const first = await iterator.next();
     expect(first.done).not.toBe(true);
 
-    // Get the run from listRuns while it's active, then cancel via the stream return
-    await iterator.return!(undefined);
+    // Cancel the run
+    await run.cancel();
 
     // Verify the run shows up in listRuns
     const runs = await box.listRuns();

@@ -14,7 +14,7 @@ const box = await Box.create({
 
 // 1. Run JavaScript
 console.log("=== JavaScript ===");
-const jsResult = await box.exec.code({
+const jsRun = await box.exec.code({
   code: `
     const data = [1, 2, 3, 4, 5];
     const sum = data.reduce((a, b) => a + b, 0);
@@ -23,13 +23,13 @@ const jsResult = await box.exec.code({
   `,
   lang: "js",
 });
-console.log("Output:", jsResult.output.trim());
-console.log("Exit code:", jsResult.exit_code);
+console.log("Output:", jsRun.result.trim());
+console.log("Exit code:", jsRun.exitCode);
 console.log();
 
 // 2. Run TypeScript
 console.log("=== TypeScript ===");
-const tsResult = await box.exec.code({
+const tsRun = await box.exec.code({
   code: `
     interface User {
       name: string;
@@ -46,13 +46,13 @@ const tsResult = await box.exec.code({
   `,
   lang: "ts",
 });
-console.log("Output:", tsResult.output.trim());
-console.log("Exit code:", tsResult.exit_code);
+console.log("Output:", tsRun.result.trim());
+console.log("Exit code:", tsRun.exitCode);
 console.log();
 
 // 3. Run Python (requires python runtime box — will fail on node runtime)
 console.log("=== Python (expected to fail on node runtime) ===");
-const pyResult = await box.exec.code({
+const pyRun = await box.exec.code({
   code: `
 import json
 data = [1, 2, 3, 4, 5]
@@ -61,18 +61,18 @@ print(json.dumps(result))
   `,
   lang: "python",
 });
-console.log("Output:", pyResult.output?.trim() || pyResult.error?.split("\n")[0]);
-console.log("Exit code:", pyResult.exit_code);
+console.log("Output:", pyRun.result.trim() || "(error)");
+console.log("Exit code:", pyRun.exitCode);
 console.log();
 
 // 4. Error handling
 console.log("=== Error Handling ===");
-const errResult = await box.exec.code({
+const errRun = await box.exec.code({
   code: `throw new Error("something went wrong")`,
   lang: "js",
 });
-console.log("Exit code:", errResult.exit_code);
-console.log("Error:", errResult.error?.split("\n").slice(0, 3).join("\n"));
+console.log("Exit code:", errRun.exitCode);
+console.log("Error:", errRun.result.split("\n").slice(0, 3).join("\n"));
 console.log();
 
 // Cleanup

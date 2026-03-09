@@ -37,7 +37,7 @@ const run = await box.agent.run({
 console.log(run.result);
 
 const cost = run.cost;
-console.log(`\n\nTokens: ${cost.inputTokens + cost.outputTokens} | Status: ${await run.status()}`);
+console.log(`\n\nTokens: ${cost.inputTokens + cost.outputTokens} | Status: ${run.status}`);
 
 // 3. Read the modified file
 console.log("\n--- Modified file ---");
