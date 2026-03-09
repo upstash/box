@@ -23,7 +23,7 @@ const run = await box.agent.run({
 
 console.log("OUTPUT:", JSON.stringify(run.result));
 const cost = run.cost;
-console.log(`Tokens: ${cost.inputTokens + cost.outputTokens} (${run._inputTokens} in / ${run._outputTokens} out)`);
+console.log(`Tokens: ${cost.inputTokens + cost.outputTokens} (${cost.inputTokens} in / ${cost.outputTokens} out)`);
 
 // Streaming with async iterator
 console.log("\n--- Streaming ---");

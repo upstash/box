@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mockResponse, createTestBox, TEST_CONFIG } from "./helpers.js";
+import { mockResponse, createTestBox } from "./helpers.js";
 import type { StreamRun } from "../client.js";
 import type { ExecStreamChunk } from "../types.js";
 
@@ -61,6 +61,45 @@ function mockExecStreamErrorResponse(errorMessage: string): Response {
     blob: () => Promise.resolve(new Blob()),
     formData: () => Promise.resolve(new FormData()),
     clone: () => mockExecStreamErrorResponse(errorMessage),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+
+function mockExecStreamResponseChunked(
+  textChunks: string[],
+  exitData: { exit_code: number; cpu_ns: number },
+): Response {
+  const encoder = new TextEncoder();
+  const exitEvent = `event: exit\ndata: ${JSON.stringify(exitData)}\n\n`;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const text of textChunks) {
+        controller.enqueue(encoder.encode(text));
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      controller.enqueue(encoder.encode(exitEvent));
+      await new Promise((r) => setTimeout(r, 0));
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(textChunks.join("") + exitEvent),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamResponseChunked(textChunks, exitData),
     redirected: false,
     type: "basic" as ResponseType,
     url: "",
@@ -156,6 +195,36 @@ describe("exec.stream", () => {
     const run = await box.exec.stream("echo hi");
     await expect(collect(run)).rejects.toThrow("failed to start stream");
   });
+
+  it("sets status to detached when consumer breaks early", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponseChunked(["line1\n", "line2\n", "line3\n"], {
+        exit_code: 0,
+        cpu_ns: 100,
+      }),
+    );
+
+    const run = await box.exec.stream("echo lines");
+    for await (const chunk of run) {
+      if (chunk.type === "output") break; // early exit after first output
+    }
+
+    expect(run.status).toBe("detached");
+    expect(run.result).toBe("line1\n");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("sets status to failed on error and preserves partial output", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("exec failed"));
+
+    const run = await box.exec.stream("bad cmd");
+    await expect(collect(run)).rejects.toThrow("exec failed");
+
+    expect(run.status).toBe("failed");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
 });
 
 describe("exec.streamCode", () => {
@@ -225,5 +294,35 @@ describe("exec.streamCode", () => {
 
     const run = await box.exec.streamCode({ code: "x", lang: "js" });
     await expect(collect(run)).rejects.toThrow("failed to start stream");
+  });
+
+  it("sets status to detached when consumer breaks early", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamResponseChunked(["output1\n", "output2\n"], {
+        exit_code: 0,
+        cpu_ns: 100,
+      }),
+    );
+
+    const run = await box.exec.streamCode({ code: "print('hi')", lang: "python" });
+    for await (const chunk of run) {
+      if (chunk.type === "output") break;
+    }
+
+    expect(run.status).toBe("detached");
+    expect(run.result).toBe("output1\n");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("sets status to failed on error and preserves partial output", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockExecStreamErrorResponse("code exec failed"));
+
+    const run = await box.exec.streamCode({ code: "x", lang: "js" });
+    await expect(collect(run)).rejects.toThrow("code exec failed");
+
+    expect(run.status).toBe("failed");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
   });
 });

@@ -72,6 +72,50 @@ export function mockSSEResponse(events: Array<{ event: string; data: unknown }>)
 }
 
 /**
+ * Like mockSSEResponse, but enqueues each event as a separate chunk
+ * so consumers can break between events (for testing early termination).
+ */
+export function mockSSEResponseChunked(
+  events: Array<{ event: string; data: unknown }>,
+): Response {
+  const encoder = new TextEncoder();
+  const lines = events.map(
+    (e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`,
+  );
+  const allText = lines.join("");
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const line of lines) {
+        controller.enqueue(encoder.encode(line));
+        // Yield to microtask queue so the consumer can process each chunk
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("SSE response")),
+    text: () => Promise.resolve(allText),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockSSEResponseChunked(events),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+
+/**
  * Creates a real Box instance by mocking the fetch for Box.get().
  */
 export async function createTestBox(

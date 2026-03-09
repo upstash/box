@@ -174,7 +174,7 @@ export interface RunOptions<T = undefined> {
 
 export type BoxStatus = "creating" | "idle" | "running" | "paused" | "error" | "deleted";
 
-export type RunStatus = "running" | "completed" | "failed" | "cancelled";
+export type RunStatus = "running" | "completed" | "failed" | "cancelled" | "detached";
 
 export interface RunCost {
   /** Input tokens consumed */

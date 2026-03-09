@@ -839,6 +839,7 @@ export class Box {
       let buffer = "";
       let eventType = "";
       let eventData = "";
+      let finished = false;
 
       try {
         while (true) {
@@ -879,19 +880,41 @@ export class Box {
           const parsed = processEvent(eventType, eventData);
           if (parsed !== null) yield parsed;
         }
+
+        finished = true;
+        Run._update(run, {
+          result: rawOutput.trim(),
+          status: "completed",
+          computeMs: Date.now() - start,
+        });
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") {
           Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
           throw new BoxError("Stream timed out");
         }
+        Run._update(run, {
+          result: rawOutput.trim(),
+          status: "failed",
+          computeMs: Date.now() - start,
+        });
         throw e;
+      } finally {
+        if (!finished) {
+          // Early termination (consumer break/return) — run may still be executing server-side
+          if (run.status === "running") {
+            Run._update(run, {
+              result: rawOutput.trim(),
+              status: "detached",
+              computeMs: Date.now() - start,
+            });
+          }
+        }
+        try {
+          reader.cancel();
+        } catch {
+          // ignore cancel errors
+        }
       }
-
-      Run._update(run, {
-        result: rawOutput.trim(),
-        status: "completed",
-        computeMs: Date.now() - start,
-      });
     }
 
     StreamRun._setIterator(run, iterate());
@@ -969,19 +992,38 @@ export class Box {
     let fullOutput = "";
 
     async function* iterate(): AsyncGenerator<ExecStreamChunk> {
-      for await (const chunk of self._parseExecStream(response)) {
-        if (chunk.type === "output") {
-          fullOutput += chunk.data;
-        } else if (chunk.type === "exit") {
+      let finished = false;
+      try {
+        for await (const chunk of self._parseExecStream(response)) {
+          if (chunk.type === "output") {
+            fullOutput += chunk.data;
+          } else if (chunk.type === "exit") {
+            Run._update(run, {
+              exitCode: chunk.exitCode,
+              status: chunk.exitCode === 0 ? "completed" : "failed",
+            });
+          }
+          yield chunk;
+        }
+        finished = true;
+        Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
+        if (run.status === "running") Run._update(run, { status: "completed" });
+      } catch (e) {
+        Run._update(run, {
+          result: fullOutput,
+          status: "failed",
+          computeMs: Date.now() - start,
+        });
+        throw e;
+      } finally {
+        if (!finished && run.status === "running") {
           Run._update(run, {
-            exitCode: chunk.exitCode,
-            status: chunk.exitCode === 0 ? "completed" : "failed",
+            result: fullOutput,
+            status: "detached",
+            computeMs: Date.now() - start,
           });
         }
-        yield chunk;
       }
-      Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
-      if (run.status === "running") Run._update(run, { status: "completed" });
     }
 
     StreamRun._setIterator(run, iterate());
@@ -1019,19 +1061,38 @@ export class Box {
     let fullOutput = "";
 
     async function* iterate(): AsyncGenerator<ExecStreamChunk> {
-      for await (const chunk of self._parseExecStream(response)) {
-        if (chunk.type === "output") {
-          fullOutput += chunk.data;
-        } else if (chunk.type === "exit") {
+      let finished = false;
+      try {
+        for await (const chunk of self._parseExecStream(response)) {
+          if (chunk.type === "output") {
+            fullOutput += chunk.data;
+          } else if (chunk.type === "exit") {
+            Run._update(run, {
+              exitCode: chunk.exitCode,
+              status: chunk.exitCode === 0 ? "completed" : "failed",
+            });
+          }
+          yield chunk;
+        }
+        finished = true;
+        Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
+        if (run.status === "running") Run._update(run, { status: "completed" });
+      } catch (e) {
+        Run._update(run, {
+          result: fullOutput,
+          status: "failed",
+          computeMs: Date.now() - start,
+        });
+        throw e;
+      } finally {
+        if (!finished && run.status === "running") {
           Run._update(run, {
-            exitCode: chunk.exitCode,
-            status: chunk.exitCode === 0 ? "completed" : "failed",
+            result: fullOutput,
+            status: "detached",
+            computeMs: Date.now() - start,
           });
         }
-        yield chunk;
       }
-      Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
-      if (run.status === "running") Run._update(run, { status: "completed" });
     }
 
     StreamRun._setIterator(run, iterate());

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod/v3";
 import type { Chunk } from "../types.js";
-import { mockSSEResponse, mockResponse, createTestBox } from "./helpers.js";
+import { mockSSEResponse, mockResponse, createTestBox, mockSSEResponseChunked } from "./helpers.js";
 
 describe("box.agent.run", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -351,5 +351,51 @@ describe("box.agent.stream", () => {
     fetchMock.mockResolvedValueOnce(mockResponse({ error: "server error" }, 500));
 
     await expect(box.agent.stream({ prompt: "test" })).rejects.toThrow("server error");
+  });
+
+  it("sets status to detached when consumer breaks early", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponseChunked([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "Hello " } },
+        { event: "text", data: { text: "world" } },
+        { event: "done", data: { output: "Hello world" } },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    for await (const chunk of run) {
+      if (chunk.type === "text-delta") break; // early exit after first text
+    }
+
+    expect(run.status).toBe("detached");
+    expect(run.result).toBe("Hello"); // trimmed by the iterator
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("sets status to failed on stream error and preserves partial output", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponseChunked([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "partial" } },
+        { event: "error", data: { error: "something broke" } },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    await expect(async () => {
+      for await (const chunk of run) {
+        chunks.push(chunk);
+      }
+    }).rejects.toThrow("something broke");
+
+    expect(run.status).toBe("failed");
+    expect(run.result).toBe("partial");
+    expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
   });
 });
