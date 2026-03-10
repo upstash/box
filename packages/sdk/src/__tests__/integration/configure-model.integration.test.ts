@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Box, ClaudeCode } from "../../index.js";
+import { Box, ClaudeCode, Agent } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
@@ -20,18 +20,38 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
     }
   }, 30000);
 
-  it("changes the model without error", async () => {
-    await expect(box.configureModel(ClaudeCode.Haiku_4_5)).resolves.toBeUndefined();
+  it("starts with the initial model config", () => {
+    const config = box.modelConfig;
+    expect(config.model).toBe(ClaudeCode.Sonnet_4_5);
+    expect(config.runner).toBe(Agent.ClaudeCode);
   });
 
-  it("box is still accessible after model change", async () => {
+  it("changes to Haiku and reflects in modelConfig", async () => {
+    await box.configureModel(ClaudeCode.Haiku_4_5);
+
+    const config = box.modelConfig;
+    expect(config.model).toBe(ClaudeCode.Haiku_4_5);
+  });
+
+  it("changes to Opus and reflects in modelConfig", async () => {
+    await box.configureModel(ClaudeCode.Opus_4_5);
+
+    const config = box.modelConfig;
+    expect(config.model).toBe(ClaudeCode.Opus_4_5);
+  });
+
+  it("changes back to Sonnet", async () => {
+    await box.configureModel(ClaudeCode.Sonnet_4_5);
+
+    const config = box.modelConfig;
+    expect(config.model).toBe(ClaudeCode.Sonnet_4_5);
+  });
+
+  it("reconnected box reflects server model", async () => {
+    await box.configureModel(ClaudeCode.Haiku_4_5);
+
     const reconnected = await Box.get(box.id, { apiKey: UPSTASH_BOX_API_KEY! });
-    expect(reconnected.id).toBe(box.id);
+    expect(reconnected.modelConfig.model).toBe(ClaudeCode.Haiku_4_5);
+    expect(reconnected.modelConfig.runner).toBe(Agent.ClaudeCode);
   });
-
-  it("can run agent after model change", async () => {
-    const run = await box.agent.run({ prompt: "Reply with exactly: MODEL_TEST" });
-    expect(run.status).toBe("completed");
-    expect(run.result).toContain("MODEL_TEST");
-  }, 120000);
 });

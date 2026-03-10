@@ -281,7 +281,14 @@ export class Box {
     return this._cwd;
   }
 
+  /** Current runner and model configured for this box. */
+  get modelConfig(): { runner: Agent | undefined; model: string | undefined } {
+    return { runner: this._agent, model: this._model };
+  }
+
   private _cwd: string;
+  private _model: string | undefined;
+  private _agent: Agent | undefined;
   private _baseUrl: string;
   private _headers: Record<string, string>;
   private _timeout: number;
@@ -319,6 +326,8 @@ export class Box {
   ) {
     this.id = data.id;
     this._cwd = Box.WORKSPACE;
+    this._model = data.model;
+    this._agent = data.agent;
     this._baseUrl = config.baseUrl;
     this._headers = config.headers;
     this._timeout = config.timeout;
@@ -1380,6 +1389,7 @@ export class Box {
     await this._request("PUT", `/v2/box/${this.id}/config/model`, {
       body: { model },
     });
+    this._model = model;
   }
 
   /**
