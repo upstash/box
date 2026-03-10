@@ -40,7 +40,6 @@ describe("Box.create", () => {
     expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
   });
 
-
   it("polls until box is ready", async () => {
     const creating = { ...TEST_BOX_DATA, status: "creating" };
     const running = { ...TEST_BOX_DATA, status: "running" };
