@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.23
+
+### Patch Changes
+
+- Updated dependencies [322acc5]
+- Updated dependencies [322acc5]
+  - @upstash/box@0.1.19
+
 ## 0.1.22
 
 ### Patch Changes

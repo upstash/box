@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.19
+
+### Patch Changes
+
+- 322acc5: Add more models to opencode
+- 322acc5: make runner required
+
 ## 0.1.18
 
 ### Patch Changes
