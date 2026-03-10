@@ -57,9 +57,18 @@ export enum OpenRouterModel {
  */
 export enum OpenCodeModel {
   // Anthropic models (direct provider key)
+  Claude_Opus_4_5 = "claude/opus_4_5",
+  Claude_Opus_4_6 = "claude/opus_4_6",
+  Claude_Sonnet_4 = "claude/sonnet_4",
   Claude_Sonnet_4_5 = "claude/sonnet_4_5",
+  Claude_Sonnet_4_6 = "claude/sonnet_4_6",
   Claude_Haiku_4_5 = "claude/haiku_4_5",
   // OpenAI models (direct provider key)
+  GPT_5_3_Codex = "openai/gpt-5.3-codex",
+  GPT_5_3_Codex_Spark = "openai/gpt-5.3-codex-spark",
+  GPT_5_2_Codex = "openai/gpt-5.2-codex",
+  GPT_5_1_Codex_Max = "openai/gpt-5.1-codex-max",
+  GPT_5_1_Codex_Mini = "openai/gpt-5.1-codex-mini",
   GPT_4_1 = "openai/gpt-4.1",
   O3 = "openai/o3",
   O4_Mini = "openai/o4-mini",
@@ -111,7 +120,6 @@ export type AgentConfig = {
    */
   apiKey?: BoxApiKey | string;
 } & (
-  | { model: ClaudeCode | OpenAICodex; runner?: never }
   | { runner: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel }
   | { runner: Agent.Codex; model: OpenAICodex | OpenRouterModel }
   | { runner: Agent.OpenCode; model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel }

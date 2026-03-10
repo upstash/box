@@ -84,13 +84,22 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: OpenCodeModel.Claude_Opus_4_5, label: "Claude Opus 4.5" },
+        { value: OpenCodeModel.Claude_Opus_4_6, label: "Claude Opus 4.6" },
+        { value: OpenCodeModel.Claude_Sonnet_4, label: "Claude Sonnet 4" },
         { value: OpenCodeModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
+        { value: OpenCodeModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: OpenCodeModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5" },
       ],
     },
     {
       label: "OpenAI",
       options: [
+        { value: OpenCodeModel.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
+        { value: OpenCodeModel.GPT_5_3_Codex_Spark, label: "GPT-5.3 Codex Spark" },
+        { value: OpenCodeModel.GPT_5_2_Codex, label: "GPT-5.2 Codex" },
+        { value: OpenCodeModel.GPT_5_1_Codex_Max, label: "GPT-5.1 Codex Max" },
+        { value: OpenCodeModel.GPT_5_1_Codex_Mini, label: "GPT-5.1 Codex Mini" },
         { value: OpenCodeModel.GPT_4_1, label: "GPT-4.1" },
         { value: OpenCodeModel.O3, label: "o3" },
         { value: OpenCodeModel.O4_Mini, label: "o4-mini" },
