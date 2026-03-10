@@ -1,5 +1,13 @@
 # @upstash/box
 
+## 0.1.17
+
+### Patch Changes
+
+- 27db087: send agent instead of runner in API body and set \_isAgentConfigured in configureModel
+- f77a087: add /model command with interactive picker and runner support
+- f77a087: Add new enums (Agent, OpenRouterModel, OpenCodeModel) and update types with agent
+
 ## 0.1.16
 
 ### Patch Changes

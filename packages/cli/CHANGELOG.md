@@ -1,5 +1,17 @@
 # @upstash/box-cli
 
+## 0.1.21
+
+### Patch Changes
+
+- f77a087: make box peer dependency in cli
+- 27db087: send agent instead of runner in API body and set \_isAgentConfigured in configureModel
+- f77a087: add /model command with interactive picker and runner support
+- Updated dependencies [27db087]
+- Updated dependencies [f77a087]
+- Updated dependencies [f77a087]
+  - @upstash/box@0.1.17
+
 ## 0.1.20
 
 ### Patch Changes
