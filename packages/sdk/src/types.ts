@@ -103,9 +103,6 @@ export enum BoxApiKey {
 
 /**
  * Agent configuration for a box.
- *
- * When `runner` is omitted the SDK infers it from the model prefix.
- * When `runner` is provided the model type is constrained to match.
  */
 export type AgentConfig = {
   /**
