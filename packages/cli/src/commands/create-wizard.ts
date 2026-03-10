@@ -1,5 +1,7 @@
 import readline from "node:readline";
+import { Agent } from "@upstash/box";
 import { interactiveSelect, type SelectItem } from "../utils/interactive-select.js";
+import { MODEL_OPTIONS_BY_AGENT } from "../models.js";
 import { bold, cyan, dim, green } from "../utils/ansi.js";
 import type { CreateFlags } from "./create.js";
 
@@ -13,26 +15,10 @@ const RUNTIMES: SelectItem<string>[] = [
   { label: "Rust", value: "rust" },
 ];
 
-type Provider = "claude" | "openai";
-
-const PROVIDERS: SelectItem<Provider>[] = [
-  { label: "Claude", value: "claude" },
-  { label: "OpenAI Codex", value: "openai" },
-];
-
-const CLAUDE_MODELS: SelectItem<string>[] = [
-  { label: "Sonnet 4.5", value: "claude/sonnet_4_5" },
-  { label: "Opus 4.5", value: "claude/opus_4_5" },
-  { label: "Opus 4.6", value: "claude/opus_4_6" },
-  { label: "Sonnet 4", value: "claude/sonnet_4" },
-  { label: "Haiku 4.5", value: "claude/haiku_4_5" },
-];
-
-const OPENAI_MODELS: SelectItem<string>[] = [
-  { label: "GPT 5.3 Codex", value: "openai/gpt-5.3-codex" },
-  { label: "GPT 5.3 Codex Spark", value: "openai/gpt-5.3-codex-spark" },
-  { label: "GPT 5.2 Codex", value: "openai/gpt-5.2-codex" },
-  { label: "GPT 5.1 Codex Max", value: "openai/gpt-5.1-codex-max" },
+const PROVIDERS: SelectItem<Agent>[] = [
+  { label: "Claude Code", value: Agent.ClaudeCode },
+  { label: "OpenAI Codex", value: Agent.Codex },
+  { label: "OpenCode", value: Agent.OpenCode },
 ];
 
 type ApiKeyOption = "upstash" | "stored" | "custom";
@@ -114,13 +100,21 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
   });
   if (provider === undefined) return false;
 
-  const models = provider === "claude" ? CLAUDE_MODELS : OPENAI_MODELS;
+  const groups = MODEL_OPTIONS_BY_AGENT[provider];
+  const modelItems: SelectItem<string>[] = [];
+  for (const group of groups) {
+    for (const opt of group.options) {
+      modelItems.push({ label: opt.label, value: opt.value, description: dim(opt.value) });
+    }
+  }
+
   const model = await interactiveSelect({
     prompt: cyan("Select a model:"),
-    items: models,
+    items: modelItems,
   });
   if (model === undefined) return false;
   result.agentModel = model;
+  result.agentRunner = provider;
 
   const keyOption = await interactiveSelect({
     prompt: cyan("Agent API key:"),
