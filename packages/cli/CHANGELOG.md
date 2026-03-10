@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.25
+
+### Patch Changes
+
+- 4bd4972: update opencode models
+- Updated dependencies [4bd4972]
+  - @upstash/box@0.1.21
+
 ## 0.1.24
 
 ### Patch Changes

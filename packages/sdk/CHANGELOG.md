@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.21
+
+### Patch Changes
+
+- 4bd4972: update opencode models
+
 ## 0.1.20
 
 ### Patch Changes
