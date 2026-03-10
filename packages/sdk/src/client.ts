@@ -29,10 +29,19 @@ import {
   type LogEntry,
   type UploadFileEntry,
   type Snapshot,
+  Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
+
+/** Infer the runner agent from a model string prefix. */
+export function inferDefaultRunner(model: string): Agent {
+  if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
+  if (model.startsWith("opencode/")) return Agent.OpenCode;
+  if (model.startsWith("openai/")) return Agent.Codex;
+  return Agent.ClaudeCode;
+}
 
 /**
  * Error thrown by the Box SDK
@@ -395,6 +404,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config?.agent) {
       body.model = config.agent.model;
+      body.runner = config.agent.runner ?? inferDefaultRunner(config.agent.model);
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
@@ -1364,6 +1374,15 @@ export class Box {
   }
 
   /**
+   * Update the AI model configured for this box.
+   */
+  async configureModel(model: string): Promise<void> {
+    await this._request("PUT", `/v2/box/${this.id}/config/model`, {
+      body: { model },
+    });
+  }
+
+  /**
    * Pause the box (release compute, preserve state).
    */
   async pause(): Promise<void> {
@@ -1462,6 +1481,7 @@ export class Box {
     };
     if (config?.agent) {
       body.model = config.agent.model;
+      body.runner = config.agent.runner ?? inferDefaultRunner(config.agent.model);
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;

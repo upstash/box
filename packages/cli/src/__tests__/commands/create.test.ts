@@ -9,6 +9,12 @@ vi.mock("@upstash/box", () => ({
     UpstashKey: "UPSTASH_KEY",
     StoredKey: "STORED_KEY",
   },
+  inferDefaultRunner: (model: string) => {
+    if (model.startsWith("openrouter/")) return "claude-code";
+    if (model.startsWith("opencode/")) return "opencode";
+    if (model.startsWith("openai/")) return "codex";
+    return "claude-code";
+  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -54,7 +60,7 @@ describe("createCommand", () => {
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: "my-key",
-        agent: { model: "claude/sonnet_4_5", apiKey: "agent-key" },
+        agent: { runner: "claude-code", model: "claude/sonnet_4_5", apiKey: "agent-key" },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -68,7 +74,7 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { model: "model", apiKey: undefined },
+        agent: { runner: "claude-code", model: "model", apiKey: undefined },
       }),
     );
   });
@@ -81,7 +87,7 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { model: "model", apiKey: "STORED_KEY" },
+        agent: { runner: "claude-code", model: "model", apiKey: "STORED_KEY" },
       }),
     );
   });

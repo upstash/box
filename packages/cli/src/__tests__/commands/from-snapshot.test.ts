@@ -9,6 +9,12 @@ vi.mock("@upstash/box", () => ({
     UpstashKey: "UPSTASH_KEY",
     StoredKey: "STORED_KEY",
   },
+  inferDefaultRunner: (model: string) => {
+    if (model.startsWith("openrouter/")) return "claude-code";
+    if (model.startsWith("opencode/")) return "opencode";
+    if (model.startsWith("openai/")) return "codex";
+    return "claude-code";
+  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -50,7 +56,7 @@ describe("fromSnapshotCommand", () => {
       "snap-1",
       expect.objectContaining({
         apiKey: "key",
-        agent: { model: "model", apiKey: "agent-key" },
+        agent: { runner: "claude-code", model: "model", apiKey: "agent-key" },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -65,7 +71,7 @@ describe("fromSnapshotCommand", () => {
     expect(Box.fromSnapshot).toHaveBeenCalledWith(
       "snap-1",
       expect.objectContaining({
-        agent: { model: "model", apiKey: undefined },
+        agent: { runner: "claude-code", model: "model", apiKey: undefined },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);

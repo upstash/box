@@ -1,4 +1,4 @@
-import { Box } from "@upstash/box";
+import { Box, inferDefaultRunner } from "@upstash/box";
 import type { Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
@@ -8,6 +8,7 @@ interface FromSnapshotFlags {
   token?: string;
   runtime?: string;
   agentModel?: string;
+  agentRunner?: string;
   agentApiKey?: string | true;
   gitToken?: string;
   env?: string[];
@@ -36,7 +37,11 @@ export async function fromSnapshotCommand(
     apiKey,
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
-      ? { model: flags.agentModel, apiKey: resolveAgentApiKey(flags.agentApiKey) }
+      ? {
+          runner: flags.agentRunner ?? inferDefaultRunner(flags.agentModel),
+          model: flags.agentModel,
+          apiKey: resolveAgentApiKey(flags.agentApiKey),
+        }
       : undefined,
     git: flags.gitToken ? { token: flags.gitToken } : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,

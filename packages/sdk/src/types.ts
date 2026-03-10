@@ -91,23 +91,36 @@ export enum BoxApiKey {
   StoredKey = "STORED_KEY",
 }
 
+/**
+ * Agent configuration for a box.
+ *
+ * When `runner` is omitted the SDK infers it from the model prefix.
+ * When `runner` is provided the model type is constrained to match.
+ */
+export type AgentConfig = {
+  /**
+   * API key for the agent model.
+   *
+   * Options:
+   * - BoxApiKey.UpstashKey: Use an LLM API key provided by Upstash
+   * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
+   * - Direct API key string (e.g. OpenAI key)
+   *
+   * When omitted, the server decides which key to use.
+   */
+  apiKey?: BoxApiKey | string;
+} & (
+  | { model: ClaudeCode | OpenAICodex; runner?: never }
+  | { runner: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel }
+  | { runner: Agent.Codex; model: OpenAICodex | OpenRouterModel }
+  | { runner: Agent.OpenCode; model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel }
+  | { runner: string; model: string }
+);
+
 export interface BoxConfig {
   apiKey?: string;
   runtime?: Runtime;
-  agent?: {
-    model: ClaudeCode | OpenAICodex | OpenRouterModel | OpenCodeModel | string;
-    /**
-     * API key for the agent model.
-     *
-     * Options:
-     * - BoxApiKey.UpstashKey: Use an LLM API key provided by Upstash
-     * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
-     * - Direct API key string (e.g. OpenAI key)
-     *
-     * When omitted, the server decides which key to use.
-     */
-    apiKey?: BoxApiKey | string;
-  };
+  agent?: AgentConfig;
   git?: {
     token?: string;
   };

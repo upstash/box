@@ -9,3 +9,4 @@ export type {
   TodoItem,
   ToolCallSummary,
 } from "./repl/types.js";
+export { MODEL_OPTIONS_BY_AGENT } from "./models.js";

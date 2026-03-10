@@ -1,14 +1,15 @@
 import { vi } from "vitest";
 import { Box } from "../client.js";
-import type { BoxData } from "../types.js";
+import { ClaudeCode } from "../types.js";
+import type { BoxData, BoxConfig } from "../types.js";
 
-export const TEST_CONFIG = {
+export const TEST_CONFIG: BoxConfig = {
   apiKey: "test-api-key",
   baseUrl: "https://test.api.example.com",
-  agent: { model: "claude/sonnet_4_5", apiKey: "test-agent-key" },
-} as const;
+  agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "test-agent-key" },
+};
 
-export const TEST_BOX_DATA: BoxData = {
+export const TEST_BOX_DATA = {
   id: "box-123",
   model: "claude/sonnet_4_5",
   runtime: "node",

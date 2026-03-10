@@ -1,4 +1,4 @@
-export { Box, BoxError, Run, StreamRun } from "./client.js";
+export { Box, BoxError, Run, StreamRun, inferDefaultRunner } from "./client.js";
 export {
   ClaudeCode,
   OpenAICodex,
@@ -10,6 +10,7 @@ export {
 } from "./types.js";
 
 export type {
+  AgentConfig,
   BoxConfig,
   BoxGetOptions,
   ListOptions,

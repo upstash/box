@@ -1,9 +1,11 @@
 import { exec } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import type { Box } from "@upstash/box";
+import type { Box, Agent } from "@upstash/box";
 import type { BoxREPLEvent } from "./types.js";
 import { BoxREPLClient, type BoxREPLClientOptions } from "./client.js";
+import { interactiveSelect, type SelectItem } from "../utils/interactive-select.js";
+import { MODEL_OPTIONS_BY_AGENT } from "../models.js";
 import { startSpinner } from "./spinner.js";
 import {
   bold,
@@ -33,7 +35,52 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
     return `${bold(cyan(label))}${dim(":")}${gray(cwd)}${dim(">")} `;
   };
 
-  const client = new BoxREPLClient(box, options);
+  const client = new BoxREPLClient(box, {
+    ...options,
+    onModelConfiguration: async () => {
+      const agent = (box as unknown as { _agent?: string })._agent;
+      const groups =
+        MODEL_OPTIONS_BY_AGENT[(agent as Agent) ?? ("claude-code" as Agent)] ??
+        Object.values(MODEL_OPTIONS_BY_AGENT)[0]!;
+      const items: SelectItem<string>[] = [];
+      for (const group of groups) {
+        for (const opt of group.options) {
+          items.push({ label: opt.label, value: opt.value, description: dim(opt.value) });
+        }
+      }
+      items.push({
+        label: "Custom model",
+        value: "__custom__",
+        description: dim("enter manually"),
+      });
+
+      rl.pause();
+      const origTtyWrite = (rl as unknown as { _ttyWrite: Function })._ttyWrite;
+      (rl as unknown as { _ttyWrite: Function })._ttyWrite = () => {};
+
+      const selected = await interactiveSelect({ items, prompt: "Select a model:" });
+
+      (rl as unknown as { _ttyWrite: Function })._ttyWrite = origTtyWrite;
+      rl.resume();
+
+      if (!selected) {
+        rl.close();
+        process.exit(0);
+      }
+
+      let model = selected;
+      if (model === "__custom__") {
+        try {
+          model = await rl.question(dim("  Enter model identifier: "));
+          model = model.trim();
+        } catch {
+          model = "";
+        }
+      }
+
+      return model || undefined;
+    },
+  });
   client.refreshCwdEntries();
   let currentPrompt = getPrompt();
 
@@ -217,6 +264,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
 
       // Command preview logic (deferred so rl.line is up to date)
       setImmediate(() => {
+        if ((rl as unknown as { paused: boolean }).paused) return;
         const line = (rl as unknown as { line: string }).line ?? "";
         clearPreview();
 
@@ -379,7 +427,12 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
       try {
         firstLine = await rl.question(currentPrompt);
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") break;
+        if (
+          err instanceof Error &&
+          (err.name === "AbortError" ||
+            (err as NodeJS.ErrnoException).code === "ERR_USE_AFTER_CLOSE")
+        )
+          break;
         throw err;
       }
       inputLines.push(firstLine);

@@ -1,5 +1,5 @@
 import { stdin, stdout } from "node:process";
-import { bold, cyan, dim, cursorHide, cursorShow, cursorUp, eraseLine } from "./ansi.js";
+import { bold, cyan, dim, cursorHide, cursorShow, cursorUp, eraseLine, eraseDown } from "./ansi.js";
 
 export interface SelectItem<T> {
   label: string;
@@ -25,10 +25,13 @@ export function interactiveSelect<T>(opts: SelectOptions<T>): Promise<T | undefi
     let cursor = 0;
     const visible = Math.min(items.length, pageSize);
 
+    // Track how many lines we've rendered so we can erase them on exit.
+    // Layout: \n  prompt\n  \n  <visible items>\n  = 3 + visible lines below start.
+    const headerLines = 3; // blank + prompt + blank
+
     function render(initial = false) {
-      // Move up to overwrite previous render (skip on first draw)
       if (!initial) {
-        stdout.write(cursorUp(visible) + eraseLine);
+        stdout.write(cursorUp(visible));
       }
 
       const start = Math.max(0, Math.min(cursor - visible + 1, items.length - visible));
@@ -37,8 +40,10 @@ export function interactiveSelect<T>(opts: SelectOptions<T>): Promise<T | undefi
         const prefix = i === cursor ? cyan("> ") : "  ";
         const label = i === cursor ? bold(item.label) : item.label;
         const desc = item.description ? dim(` ${item.description}`) : "";
-        stdout.write(`${eraseLine}${prefix}${label}${desc}\n`);
+        stdout.write(`\r${eraseLine}${prefix}${label}${desc}\n`);
       }
+      // Clear any leftover content below the visible window
+      stdout.write(eraseDown);
     }
 
     stdout.write(cursorHide);
@@ -55,27 +60,29 @@ export function interactiveSelect<T>(opts: SelectOptions<T>): Promise<T | undefi
     stdin.setRawMode(true);
     stdin.resume();
 
-    function cleanup() {
-      stdin.setRawMode(wasRaw);
+    function finish(value: T | undefined) {
       stdin.removeListener("data", onKey);
-      stdin.pause();
+      stdin.setRawMode(wasRaw);
+
+      // Erase all rendered output (items + header) and restore cursor
+      stdout.write(cursorUp(headerLines + visible - 1) + "\r" + eraseDown);
       stdout.write(cursorShow);
+
+      resolve(value);
     }
 
     function onKey(data: Buffer) {
       const key = data.toString();
 
-      // Escape
+      // Escape / Ctrl+C
       if (key === "\x1b" || key === "\x03") {
-        cleanup();
-        resolve(undefined);
+        finish(undefined);
         return;
       }
 
       // Enter
       if (key === "\r" || key === "\n") {
-        cleanup();
-        resolve(items[cursor]?.value);
+        finish(items[cursor]?.value);
         return;
       }
 

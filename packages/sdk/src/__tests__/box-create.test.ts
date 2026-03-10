@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Box, BoxError } from "../client.js";
+import { Agent, OpenAICodex } from "../types.js";
 import { mockResponse, TEST_BOX_DATA, TEST_CONFIG } from "./helpers.js";
 
 describe("Box.create", () => {
@@ -22,7 +23,35 @@ describe("Box.create", () => {
     expect(init?.method).toBe("POST");
     const body = JSON.parse(init?.body as string);
     expect(body.model).toBe("claude/sonnet_4_5");
+    expect(body.runner).toBe("claude-code");
     expect(body.agent_api_key).toBe("test-agent-key");
+  });
+
+  it("sends explicit runner when provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: { runner: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.runner).toBe(Agent.Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
+  });
+
+  it("infers codex runner for openai/ model prefix", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: { model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.runner).toBe(Agent.Codex);
   });
 
   it("polls until box is ready", async () => {
@@ -69,7 +98,7 @@ describe("Box.create", () => {
   });
 
   it("throws when agent.model is missing", async () => {
-    const config = { ...TEST_CONFIG, agent: { model: "", apiKey: "key" } };
+    const config = { ...TEST_CONFIG, agent: { runner: "claude-code", model: "", apiKey: "key" } };
     await expect(Box.create(config)).rejects.toThrow("agent.model is required");
   });
 

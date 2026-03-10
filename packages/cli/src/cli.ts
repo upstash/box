@@ -23,6 +23,7 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment (node, python, golang, ruby, rust)")
   .option("--agent-model <model>", "Agent model identifier")
+  .option("--agent-runner <runner>", "Agent runner (claude-code, codex, opencode)")
   .option(
     "--agent-api-key [key]",
     'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
@@ -48,6 +49,7 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment")
   .option("--agent-model <model>", "Agent model identifier")
+  .option("--agent-runner <runner>", "Agent runner (claude-code, codex, opencode)")
   .option(
     "--agent-api-key [key]",
     'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',

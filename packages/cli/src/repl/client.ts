@@ -10,6 +10,7 @@ import { handleSnapshot } from "./commands/snapshot.js";
 import { handlePause } from "./commands/pause.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleConsole } from "./commands/console.js";
+import { handleModel } from "./commands/model.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
 import { getNextSuggestion } from "./suggestions.js";
 
@@ -29,6 +30,7 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
     handler: handleGit,
   },
   snapshot: { description: "Create a snapshot of the current box", handler: handleSnapshot },
+  model: { description: "Switch the AI model", handler: handleModel },
   pause: { description: "Pause the box and exit", handler: handlePause },
   delete: { description: "Delete the box and exit", handler: handleDelete },
   console: { description: "Open the box in Upstash console", handler: handleConsole },
@@ -48,18 +50,28 @@ export const COMMAND_DESCRIPTIONS: Record<BoxREPLCommandName, string> = Object.f
 export interface BoxREPLClientOptions {
   /** Commands to hide from suggestions, help output, and welcome message. */
   hiddenCommands?: BoxREPLCommandName[];
+  /**
+   * Callback for interactive model selection (invoked by `/model` with no args).
+   * Should display a picker UI and return the selected model string,
+   * or undefined if the user cancels. If not provided, `/model` is hidden.
+   */
+  onModelConfiguration?: () => Promise<string | undefined>;
 }
 
 export class BoxREPLClient {
   readonly box: Box;
   readonly hiddenCommands: ReadonlySet<BoxREPLCommandName>;
+  private readonly _onModelConfiguration?: () => Promise<string | undefined>;
   mode: "shell" | "agent" = "shell";
   private _suggestion: string | null = "ls";
   private _cwdEntries: string[] = [];
 
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
-    this.hiddenCommands = new Set(options?.hiddenCommands ?? []);
+    this._onModelConfiguration = options?.onModelConfiguration;
+    const hidden = new Set(options?.hiddenCommands ?? []);
+    if (!this._onModelConfiguration) hidden.add("model");
+    this.hiddenCommands = hidden;
   }
 
   /** Refresh the cached list of files/directories in the current working directory. */
@@ -166,6 +178,20 @@ export class BoxREPLClient {
 
       if (parsed) {
         const { command, args } = parsed;
+
+        // Interactive model picker (no args)
+        if (command.name === "model" && !args.trim() && this._onModelConfiguration) {
+          this._suggestion = getNextSuggestion({ kind: "command", command: "model" });
+          const start = Date.now();
+          const model = await this._onModelConfiguration();
+          if (model) {
+            await this.box.configureModel(model);
+            const durationMs = Date.now() - start;
+            yield { type: "log", message: `Model changed to ${model}` };
+            yield { type: "command:complete", command: "model", durationMs };
+          }
+          return;
+        }
 
         // Toggle mode before running the handler
         if (command.name === "agent") {
