@@ -197,10 +197,10 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  *
  * @example
  * ```ts
- * import { Box, Runtime, ClaudeCode } from "@upstash/box";
+ * import { Box, ClaudeCode } from "@upstash/box";
  *
  * const box = await Box.create({
- *   runtime: Runtime.Node,
+ *   runtime: "node",
  *   agent: { model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
  * });
  *

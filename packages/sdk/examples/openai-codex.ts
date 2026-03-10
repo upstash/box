@@ -1,4 +1,4 @@
-import { Box, Runtime, OpenAICodex } from "@upstash/box";
+import { Box, OpenAICodex } from "@upstash/box";
 
 // Use OpenAI Codex instead of Claude Code.
 // The only difference is the model enum and the API key — everything else is identical.
@@ -6,7 +6,7 @@ import { Box, Runtime, OpenAICodex } from "@upstash/box";
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
-  runtime: Runtime.Node,
+  runtime: "node",
   agent: {
     model: OpenAICodex.GPT_5_2_Codex,
     apiKey: process.env.OPENAI_API_KEY!,

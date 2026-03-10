@@ -1,4 +1,4 @@
-import { Box, Runtime, ClaudeCode } from "@upstash/box";
+import { Box, ClaudeCode } from "@upstash/box";
 
 // Test workspace isolation: /workspace is root-only, /workspace/home is user workspace.
 // This example verifies that users can't read/write outside /workspace/home.
@@ -6,7 +6,7 @@ import { Box, Runtime, ClaudeCode } from "@upstash/box";
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
-  runtime: Runtime.Node,
+  runtime: "node",
   agent: {
     model: ClaudeCode.Sonnet_4_5,
     apiKey: process.env.CLAUDE_KEY!,

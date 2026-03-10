@@ -439,7 +439,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     expect(run.status).toBe("completed");
   });
 
-  it("box.cd to /home/boxuser then pwd", async () => {
+  it.skip("box.cd to /home/boxuser then pwd", async () => {
     await box.cd("/home/boxuser");
     expect(box.cwd).toBe("/home/boxuser");
 

@@ -4,12 +4,12 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=... bun run code-execution.ts
  */
-import { Box, Runtime } from "@upstash/box";
+import { Box } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
-  runtime: Runtime.Node,
+  runtime: "node",
 });
 
 // 1. Run JavaScript

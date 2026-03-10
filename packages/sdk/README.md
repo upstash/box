@@ -11,10 +11,10 @@ npm install @upstash/box
 ## Quick start
 
 ```ts
-import { Box, Runtime, ClaudeCode } from "@upstash/box";
+import { Box, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
-  runtime: Runtime.Node,
+  runtime: "node",
   agent: { model: ClaudeCode.Sonnet_4_5 },
 });
 
@@ -39,11 +39,11 @@ Pass `apiKey` in the config or set the `UPSTASH_BOX_API_KEY` environment variabl
 Create a new sandboxed box.
 
 ```ts
-import { Box, Runtime, Agent, ClaudeCode, BoxApiKey } from "@upstash/box";
+import { Box, Agent, ClaudeCode, BoxApiKey } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
-  runtime: Runtime.Node, // node, python, golang, ruby, rust
+  runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
   agent: {
     runner: Agent.ClaudeCode, // optional — inferred from model prefix
     model: ClaudeCode.Sonnet_4_5,
@@ -268,13 +268,7 @@ The `runner` field in agent config is optional — the SDK infers it from the mo
 
 ## Runtimes
 
-| Enum             | Value    |
-| ---------------- | -------- |
-| `Runtime.Node`   | `node`   |
-| `Runtime.Python` | `python` |
-| `Runtime.Golang` | `golang` |
-| `Runtime.Ruby`   | `ruby`   |
-| `Runtime.Rust`   | `rust`   |
+`Runtime` is a string union type: `"node" | "python" | "golang" | "ruby" | "rust"`
 
 ## Examples
 

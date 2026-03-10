@@ -9,7 +9,7 @@
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/webhook.ts
  */
 import { createServer } from "node:http";
-import { Box, ClaudeCode, Runtime } from "@upstash/box";
+import { Box, ClaudeCode } from "@upstash/box";
 import type { WebhookPayload } from "@upstash/box";
 
 const WEBHOOK_PORT = 4567;
@@ -65,7 +65,7 @@ server.listen(WEBHOOK_PORT, () => {
 async function main() {
   const box = await Box.create({
     apiKey: process.env.UPSTASH_BOX_API_KEY!,
-    runtime: Runtime.Node,
+    runtime: "node",
     agent: {
       model: ClaudeCode.Sonnet_4_5,
       apiKey: process.env.CLAUDE_KEY!,

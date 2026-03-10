@@ -1,11 +1,11 @@
-import { Box, Runtime, ClaudeCode } from "@upstash/box";
+import { Box, ClaudeCode } from "@upstash/box";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
-  runtime: Runtime.Python,
+  runtime: "python",
   agent: {
     model: ClaudeCode.Opus_4_5,
     apiKey: process.env.CLAUDE_KEY!,

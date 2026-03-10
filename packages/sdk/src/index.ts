@@ -6,10 +6,10 @@ export {
   OpenRouterModel,
   Agent,
   BoxApiKey,
-  Runtime,
 } from "./types.js";
 
 export type {
+  Runtime,
   AgentConfig,
   BoxConfig,
   BoxGetOptions,
