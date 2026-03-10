@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Sonnet_4_5 },
+      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
   }, 120000);
 

@@ -23,7 +23,6 @@ describe("Box.fromSnapshot", () => {
     const body = JSON.parse(init?.body as string);
     expect(body.snapshot_id).toBe("snap-1");
     expect(body.model).toBe("claude/sonnet_4_5");
-    expect(body.agent).toBe("claude-code");
   });
 
   it("sends explicit runner when provided", async () => {

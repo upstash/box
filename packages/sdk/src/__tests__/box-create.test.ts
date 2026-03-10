@@ -23,7 +23,6 @@ describe("Box.create", () => {
     expect(init?.method).toBe("POST");
     const body = JSON.parse(init?.body as string);
     expect(body.model).toBe("claude/sonnet_4_5");
-    expect(body.agent).toBe("claude-code");
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
@@ -41,18 +40,6 @@ describe("Box.create", () => {
     expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
   });
 
-  it("infers codex runner for openai/ model prefix", async () => {
-    const data = { ...TEST_BOX_DATA, status: "running" };
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
-
-    await Box.create({
-      ...TEST_CONFIG,
-      agent: { model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
-    });
-
-    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
-    expect(body.agent).toBe(Agent.Codex);
-  });
 
   it("polls until box is ready", async () => {
     const creating = { ...TEST_BOX_DATA, status: "creating" };
