@@ -23,7 +23,7 @@ describe("Box.fromSnapshot", () => {
     const body = JSON.parse(init?.body as string);
     expect(body.snapshot_id).toBe("snap-1");
     expect(body.model).toBe("claude/sonnet_4_5");
-    expect(body.runner).toBe("claude-code");
+    expect(body.agent).toBe("claude-code");
   });
 
   it("sends explicit runner when provided", async () => {
@@ -36,7 +36,7 @@ describe("Box.fromSnapshot", () => {
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
-    expect(body.runner).toBe(Agent.Codex);
+    expect(body.agent).toBe(Agent.Codex);
     expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
   });
 

@@ -35,7 +35,7 @@ describe("createWizard", () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("python") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
-      .mockResolvedValueOnce("claude") // provider
+      .mockResolvedValueOnce("claude-code") // provider
       .mockResolvedValueOnce("claude/sonnet_4_5") // model
       .mockResolvedValueOnce("upstash") // API key option
       .mockResolvedValueOnce("create"); // action: create
@@ -45,6 +45,7 @@ describe("createWizard", () => {
     expect(result).toEqual({
       runtime: "python",
       agentModel: "claude/sonnet_4_5",
+      agentRunner: "claude-code",
     });
   });
 
@@ -66,7 +67,7 @@ describe("createWizard", () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("node") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
-      .mockResolvedValueOnce("openai") // provider
+      .mockResolvedValueOnce("codex") // provider
       .mockResolvedValueOnce("openai/gpt-5.3-codex") // model
       .mockResolvedValueOnce("custom") // API key option
       .mockResolvedValueOnce("create"); // action: create
@@ -76,6 +77,7 @@ describe("createWizard", () => {
     expect(result).toEqual({
       runtime: "node",
       agentModel: "openai/gpt-5.3-codex",
+      agentRunner: "codex",
       agentApiKey: "sk-my-openai-key",
     });
   });
@@ -84,7 +86,7 @@ describe("createWizard", () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("node") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
-      .mockResolvedValueOnce("claude") // provider
+      .mockResolvedValueOnce("claude-code") // provider
       .mockResolvedValueOnce("claude/opus_4_5") // model
       .mockResolvedValueOnce("stored") // API key option
       .mockResolvedValueOnce("create"); // action: create
@@ -155,7 +157,7 @@ describe("createWizard", () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("node") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
-      .mockResolvedValueOnce("claude") // provider
+      .mockResolvedValueOnce("claude-code") // provider
       .mockResolvedValueOnce("claude/sonnet_4_5") // model
       .mockResolvedValueOnce("custom") // API key option
       .mockResolvedValueOnce("create"); // action: create

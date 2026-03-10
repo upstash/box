@@ -23,7 +23,7 @@ describe("Box.create", () => {
     expect(init?.method).toBe("POST");
     const body = JSON.parse(init?.body as string);
     expect(body.model).toBe("claude/sonnet_4_5");
-    expect(body.runner).toBe("claude-code");
+    expect(body.agent).toBe("claude-code");
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
@@ -37,7 +37,7 @@ describe("Box.create", () => {
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
-    expect(body.runner).toBe(Agent.Codex);
+    expect(body.agent).toBe(Agent.Codex);
     expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
   });
 
@@ -51,7 +51,7 @@ describe("Box.create", () => {
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
-    expect(body.runner).toBe(Agent.Codex);
+    expect(body.agent).toBe(Agent.Codex);
   });
 
   it("polls until box is ready", async () => {
