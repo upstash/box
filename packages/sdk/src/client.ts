@@ -413,7 +413,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.runner ?? inferDefaultRunner(config.agent.model);
+      body.agent = config.agent.runner;
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
@@ -1492,7 +1492,7 @@ export class Box {
     };
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.runner ?? inferDefaultRunner(config.agent.model);
+      body.agent = config.agent.runner;
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
