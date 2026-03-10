@@ -6,6 +6,15 @@ import type { ZodType } from "zod/v3";
 export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
 
 /**
+ * Agent SDKs available for boxes
+ */
+export enum Agent {
+  ClaudeCode = "claude-code",
+  Codex = "codex",
+  OpenCode = "opencode",
+}
+
+/**
  * Claude Code model identifiers
  */
 export enum ClaudeCode {
@@ -24,6 +33,51 @@ export enum OpenAICodex {
   GPT_5_3_Codex_Spark = "openai/gpt-5.3-codex-spark",
   GPT_5_2_Codex = "openai/gpt-5.2-codex",
   GPT_5_1_Codex_Max = "openai/gpt-5.1-codex-max",
+  GPT_5_1_Codex_Mini = "openai/gpt-5.1-codex-mini",
+}
+
+/**
+ * OpenRouter model identifiers — shared across agents that support OpenRouter
+ */
+export enum OpenRouterModel {
+  Claude_Sonnet_4 = "openrouter/anthropic/claude-sonnet-4",
+  Claude_Opus_4_5 = "openrouter/anthropic/claude-opus-4-5",
+  Claude_Haiku_4_5 = "openrouter/anthropic/claude-haiku-4-5",
+  DeepSeek_R1 = "openrouter/deepseek/deepseek-r1",
+  Gemini_2_5_Pro = "openrouter/google/gemini-2.5-pro",
+  Gemini_2_5_Flash = "openrouter/google/gemini-2.5-flash",
+  GPT_4_1 = "openrouter/openai/gpt-4.1",
+  O3 = "openrouter/openai/o3",
+  O4_Mini = "openrouter/openai/o4-mini",
+}
+
+/**
+ * OpenCode model identifiers — supports models from multiple providers
+ */
+export enum OpenCodeModel {
+  // Anthropic models (direct provider key)
+  Claude_Sonnet_4_5 = "claude/sonnet_4_5",
+  Claude_Haiku_4_5 = "claude/haiku_4_5",
+  // OpenAI models (direct provider key)
+  GPT_4_1 = "openai/gpt-4.1",
+  O3 = "openai/o3",
+  O4_Mini = "openai/o4-mini",
+  // OpenCode zen models (routed through OpenCode infrastructure)
+  Zen_GPT_5_Nano = "opencode/gpt-5-nano",
+  Zen_MiniMax_M2_5_Free = "opencode/minimax-m2.5-free",
+  Zen_Big_Pickle = "opencode/big-pickle",
+  Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
+  Zen_Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
+  Zen_Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
+  Zen_Claude_Opus_4_6 = "opencode/claude-opus-4-6",
+  Zen_Claude_Opus_4_5 = "opencode/claude-opus-4-5",
+  Zen_GPT_5_4 = "opencode/gpt-5.4",
+  Zen_GPT_5_3_Codex = "opencode/gpt-5.3-codex",
+  Zen_GPT_5_2_Codex = "opencode/gpt-5.2-codex",
+  Zen_Gemini_3_1_Pro = "opencode/gemini-3.1-pro",
+  Zen_Gemini_3_Flash = "opencode/gemini-3-flash",
+  Zen_DeepSeek_V3_2 = "opencode/deepseek-v3.2",
+  Zen_Qwen3_Coder = "opencode/qwen3-coder",
 }
 
 export enum BoxApiKey {
@@ -41,7 +95,7 @@ export interface BoxConfig {
   apiKey?: string;
   runtime?: Runtime;
   agent?: {
-    model: ClaudeCode | OpenAICodex | string;
+    model: ClaudeCode | OpenAICodex | OpenRouterModel | OpenCodeModel | string;
     /**
      * API key for the agent model.
      *
@@ -312,6 +366,7 @@ export type BoxData = {
   customer_id?: string;
   name?: string;
   model?: string;
+  agent?: Agent;
   runtime?: string;
   status: BoxStatus;
   clone_repo?: string;
