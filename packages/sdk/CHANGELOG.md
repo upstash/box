@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.18
+
+### Patch Changes
+
+- 0d496b6: rerelease
+
 ## 0.1.17
 
 ### Patch Changes
