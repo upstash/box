@@ -22,6 +22,7 @@ export enum ClaudeCode {
   Opus_4_6 = "claude/opus_4_6",
   Sonnet_4 = "claude/sonnet_4",
   Sonnet_4_5 = "claude/sonnet_4_5",
+  Sonnet_4_6 = "claude/sonnet_4_6",
   Haiku_4_5 = "claude/haiku_4_5",
 }
 
