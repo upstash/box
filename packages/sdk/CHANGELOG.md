@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.20
+
+### Patch Changes
+
+- 4012522: remove deepseek model
+
 ## 0.1.19
 
 ### Patch Changes
