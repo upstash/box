@@ -35,13 +35,16 @@ import type { ZodType } from "zod/v3";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
-/** Infer the runner agent from a model string prefix. */
-export function inferDefaultRunner(model: string): Agent {
+/** Infer the provider agent from a model string prefix. */
+export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
   if (model.startsWith("openai/")) return Agent.Codex;
   return Agent.ClaudeCode;
 }
+
+/** @deprecated Use `inferDefaultProvider` instead. */
+export const inferDefaultRunner = inferDefaultProvider;
 
 /**
  * Error thrown by the Box SDK
@@ -281,9 +284,14 @@ export class Box {
     return this._cwd;
   }
 
-  /** Current runner and model configured for this box. */
-  get modelConfig(): { runner: Agent | undefined; model: string | undefined } {
-    return { runner: this._agent, model: this._model };
+  /** Current provider and model configured for this box. */
+  get modelConfig(): {
+    provider: Agent | undefined;
+    /** @deprecated Use `provider`. */
+    runner: Agent | undefined;
+    model: string | undefined;
+  } {
+    return { provider: this._agent, runner: this._agent, model: this._model };
   }
 
   private _cwd: string;
@@ -413,7 +421,7 @@ export class Box {
     const body: Record<string, unknown> = {};
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.runner;
+      body.agent = config.agent.provider ?? config.agent.runner;
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
@@ -1492,7 +1500,7 @@ export class Box {
     };
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.runner;
+      body.agent = config.agent.provider ?? config.agent.runner;
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;

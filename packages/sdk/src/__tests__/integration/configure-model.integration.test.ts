@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
   }, 120000);
 
@@ -23,6 +23,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
   it("starts with the initial model config", () => {
     const config = box.modelConfig;
     expect(config.model).toBe(ClaudeCode.Sonnet_4_5);
+    expect(config.provider).toBe(Agent.ClaudeCode);
     expect(config.runner).toBe(Agent.ClaudeCode);
   });
 
@@ -52,6 +53,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
 
     const reconnected = await Box.get(box.id, { apiKey: UPSTASH_BOX_API_KEY! });
     expect(reconnected.modelConfig.model).toBe(ClaudeCode.Haiku_4_5);
+    expect(reconnected.modelConfig.provider).toBe(Agent.ClaudeCode);
     expect(reconnected.modelConfig.runner).toBe(Agent.ClaudeCode);
   });
 });

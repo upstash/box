@@ -9,7 +9,7 @@ vi.mock("@upstash/box", () => ({
     UpstashKey: "UPSTASH_KEY",
     StoredKey: "STORED_KEY",
   },
-  inferDefaultRunner: (model: string) => {
+  inferDefaultProvider: (model: string) => {
     if (model.startsWith("openrouter/")) return "claude-code";
     if (model.startsWith("opencode/")) return "opencode";
     if (model.startsWith("openai/")) return "codex";
@@ -60,7 +60,7 @@ describe("createCommand", () => {
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: "my-key",
-        agent: { runner: "claude-code", model: "claude/sonnet_4_5", apiKey: "agent-key" },
+        agent: { provider: "claude-code", model: "claude/sonnet_4_5", apiKey: "agent-key" },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -74,7 +74,7 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { runner: "claude-code", model: "model", apiKey: undefined },
+        agent: { provider: "claude-code", model: "model", apiKey: undefined },
       }),
     );
   });
@@ -87,7 +87,38 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { runner: "claude-code", model: "model", apiKey: "STORED_KEY" },
+        agent: { provider: "claude-code", model: "model", apiKey: "STORED_KEY" },
+      }),
+    );
+  });
+
+  it("supports deprecated agentRunner flag", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+    await createCommand({ token: "key", agentModel: "model", agentRunner: "codex" });
+
+    expect(Box.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: { provider: "codex", model: "model", apiKey: undefined },
+      }),
+    );
+  });
+
+  it("prioritizes agentProvider over agentRunner", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+    await createCommand({
+      token: "key",
+      agentModel: "model",
+      agentProvider: "claude-code",
+      agentRunner: "codex",
+    });
+
+    expect(Box.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: { provider: "claude-code", model: "model", apiKey: undefined },
       }),
     );
   });

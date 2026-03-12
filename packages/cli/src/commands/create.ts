@@ -1,4 +1,4 @@
-import { Box, inferDefaultRunner } from "@upstash/box";
+import { Box, inferDefaultProvider } from "@upstash/box";
 import type { Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
@@ -10,6 +10,8 @@ export interface CreateFlags {
   token?: string;
   runtime?: string;
   agentModel?: string;
+  agentProvider?: string;
+  /** @deprecated Use `agentProvider` instead. */
   agentRunner?: string;
   agentApiKey?: string | true;
   gitToken?: string;
@@ -53,7 +55,8 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? {
-          runner: flags.agentRunner ?? inferDefaultRunner(flags.agentModel),
+          provider:
+            flags.agentProvider ?? flags.agentRunner ?? inferDefaultProvider(flags.agentModel),
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
         }

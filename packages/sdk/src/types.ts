@@ -114,10 +114,26 @@ export type AgentConfig = {
    */
   apiKey?: BoxApiKey | string;
 } & (
-  | { runner: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel }
-  | { runner: Agent.Codex; model: OpenAICodex | OpenRouterModel }
-  | { runner: Agent.OpenCode; model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel }
-  | { runner: string; model: string }
+  | { provider: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel; runner?: never }
+  | { provider: Agent.Codex; model: OpenAICodex | OpenRouterModel; runner?: never }
+  | {
+      provider: Agent.OpenCode;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      runner?: never;
+    }
+  | { provider: string; model: string; runner?: never }
+  | {
+      /** @deprecated Use `provider` instead. */
+      runner: Agent;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      provider?: never;
+    }
+  | {
+      /** @deprecated Use `provider` instead. */
+      runner: string;
+      model: string;
+      provider?: never;
+    }
 );
 
 export interface BoxConfig {

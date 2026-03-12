@@ -45,7 +45,7 @@ describe("createWizard", () => {
     expect(result).toEqual({
       runtime: "python",
       agentModel: "claude/sonnet_4_5",
-      agentRunner: "claude-code",
+      agentProvider: "claude-code",
     });
   });
 
@@ -77,7 +77,7 @@ describe("createWizard", () => {
     expect(result).toEqual({
       runtime: "node",
       agentModel: "openai/gpt-5.3-codex",
-      agentRunner: "codex",
+      agentProvider: "codex",
       agentApiKey: "sk-my-openai-key",
     });
   });

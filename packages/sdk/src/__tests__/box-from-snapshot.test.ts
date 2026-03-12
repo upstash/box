@@ -25,13 +25,13 @@ describe("Box.fromSnapshot", () => {
     expect(body.model).toBe("claude/sonnet_4_5");
   });
 
-  it("sends explicit runner when provided", async () => {
+  it("sends explicit provider when provided", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
 
     await Box.fromSnapshot("snap-1", {
       ...TEST_CONFIG,
-      agent: { runner: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);

@@ -38,7 +38,7 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   const client = new BoxREPLClient(box, {
     ...options,
     onModelConfiguration: async () => {
-      const agent = box.modelConfig.runner;
+      const agent = box.modelConfig.provider;
       const groups =
         MODEL_OPTIONS_BY_AGENT[(agent as Agent) ?? ("claude-code" as Agent)] ??
         Object.values(MODEL_OPTIONS_BY_AGENT)[0]!;

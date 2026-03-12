@@ -2,7 +2,7 @@ import type { Box } from "@upstash/box";
 import type { BoxREPLEvent } from "../types.js";
 
 /**
- * /model [runner] [model]
+ * /model [provider] [model]
  *
  * With args:  directly set the model via the config API.
  * Without args: yield a model-picker event for the terminal/UI to handle.
@@ -13,7 +13,7 @@ export async function* handleModel(box: Box, args: string): AsyncGenerator<BoxRE
   if (parts.length < 2) {
     yield {
       type: "error",
-      message: "Usage: /model <runner> <model>  (e.g. /model claude-code claude/opus_4_5)",
+      message: "Usage: /model <provider> <model>  (e.g. /model claude-code claude/opus_4_5)",
     };
     return;
   }

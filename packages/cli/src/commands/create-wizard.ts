@@ -114,7 +114,7 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
   });
   if (model === undefined) return false;
   result.agentModel = model;
-  result.agentRunner = provider;
+  result.agentProvider = provider;
 
   const keyOption = await interactiveSelect({
     prompt: cyan("Agent API key:"),

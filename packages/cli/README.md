@@ -46,15 +46,15 @@ box create \
   --env DEBUG=true
 ```
 
-| Flag              | Description                                                                                 | Default  |
-| ----------------- | ------------------------------------------------------------------------------------------- | -------- |
-| `--token`         | Upstash Box API token                                                                       |          |
-| `--runtime`       | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |          |
-| `--agent-model`   | Agent model identifier                                                                      |          |
-| `--agent-runner`  | Agent runner (`claude-code`, `codex`, `opencode`) — inferred from model prefix if omitted   | inferred |
-| `--agent-api-key` | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash  |
-| `--git-token`     | GitHub personal access token                                                                |          |
-| `--env KEY=VAL`   | Environment variable (repeatable)                                                           |          |
+| Flag               | Description                                                                                 | Default  |
+| ------------------ | ------------------------------------------------------------------------------------------- | -------- |
+| `--token`          | Upstash Box API token                                                                       |          |
+| `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |          |
+| `--agent-model`    | Agent model identifier                                                                      |          |
+| `--agent-provider` | Agent provider (`claude-code`, `codex`, `opencode`) — inferred from model prefix if omitted | inferred |
+| `--agent-api-key`  | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash  |
+| `--git-token`      | GitHub personal access token                                                                |          |
+| `--env KEY=VAL`    | Environment variable (repeatable)                                                           |          |
 
 ### `box connect [box-id]`
 
@@ -71,7 +71,7 @@ Create a new box from a snapshot and enter the REPL. Accepts the same flags as `
 
 ```bash
 box from-snapshot snap_abc123 --agent-model claude/sonnet_4_5
-box from-snapshot snap_abc123 --agent-model claude/sonnet_4_5 --agent-runner codex --agent-api-key $CLAUDE_KEY
+box from-snapshot snap_abc123 --agent-model claude/sonnet_4_5 --agent-provider codex --agent-api-key $CLAUDE_KEY
 ```
 
 ### `box list`
@@ -147,7 +147,7 @@ Any text entered is sent to the agent by default. You can also use explicit comm
 | `git create-pr <title>`        | Create a pull request                          |
 | `snapshot [name]`              | Save a snapshot of the current state           |
 | `model`                        | Change the agent model (interactive picker)    |
-| `model <runner> <model>`       | Change the agent model directly                |
+| `model <provider> <model>`     | Change the agent model directly                |
 | `pause`                        | Pause the box and exit                         |
 | `delete`                       | Delete the box and exit                        |
 | `exit`                         | Exit the REPL (box keeps running)              |

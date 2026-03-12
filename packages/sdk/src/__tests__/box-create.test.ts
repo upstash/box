@@ -26,18 +26,49 @@ describe("Box.create", () => {
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
-  it("sends explicit runner when provided", async () => {
+  it("sends explicit provider when provided", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { runner: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
     expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
+  });
+
+  it("supports deprecated runner field", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: {
+        provider: Agent.Codex,
+        runner: "ignored",
+        model: OpenAICodex.GPT_5_3_Codex,
+        apiKey: "k",
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.agent).toBe(Agent.Codex);
+  });
+
+  it("falls back to runner when provider is absent", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: { runner: "codex", model: "openai/gpt-5.3-codex", apiKey: "k" } as any,
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.agent).toBe("codex");
   });
 
   it("polls until box is ready", async () => {
@@ -84,7 +115,7 @@ describe("Box.create", () => {
   });
 
   it("throws when agent.model is missing", async () => {
-    const config = { ...TEST_CONFIG, agent: { runner: "claude-code", model: "", apiKey: "key" } };
+    const config = { ...TEST_CONFIG, agent: { provider: "claude-code", model: "", apiKey: "key" } };
     await expect(Box.create(config)).rejects.toThrow("agent.model is required");
   });
 
