@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.26
+
+### Patch Changes
+
+- 1f0d9c2: Rename agent.runner to agent.provider with backwards compatibility
+- Updated dependencies [1f0d9c2]
+  - @upstash/box@0.1.22
+
 ## 0.1.25
 
 ### Patch Changes
