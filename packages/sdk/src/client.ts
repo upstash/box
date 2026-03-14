@@ -1473,6 +1473,55 @@ export class Box {
   }
 
   /**
+   * Fork this box by creating a new box with the same workspace state.
+   * The original box is unaffected.
+   */
+  async fork(): Promise<Box> {
+    const response = await fetch(`${this._baseUrl}/v2/box/${this.id}/fork`, {
+      method: "POST",
+      headers: { ...this._headers, "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    let data = (await response.json()) as BoxData;
+
+    // Poll until ready
+    const pollInterval = 2000;
+    const maxWait = 300000;
+    const start = Date.now();
+
+    while (data.status === "creating" && Date.now() - start < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      const pollResponse = await fetch(`${this._baseUrl}/v2/box/${data.id}`, {
+        headers: this._headers,
+      });
+      if (pollResponse.ok) {
+        data = (await pollResponse.json()) as BoxData;
+      }
+    }
+
+    if (data.status === "creating") {
+      throw new BoxError("Box fork timed out");
+    }
+    if (data.status === "error") {
+      throw new BoxError("Box fork failed");
+    }
+
+    return new Box(data, {
+      baseUrl: this._baseUrl,
+      headers: this._headers,
+      timeout: this._timeout,
+      debug: this._debug,
+      gitToken: this._gitToken,
+      isAgentConfigured: this._isAgentConfigured,
+    });
+  }
+
+  /**
    * Create a new box from a saved snapshot.
    */
   static async fromSnapshot(snapshotId: string, config?: BoxConfig): Promise<Box> {
