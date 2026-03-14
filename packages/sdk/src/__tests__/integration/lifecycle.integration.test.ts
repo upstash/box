@@ -150,4 +150,25 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
     const reconnected = await Box.get(box.id, { apiKey: UPSTASH_BOX_API_KEY! });
     expect(reconnected.id).toBe(box.id);
   });
+
+  it("box.fork: forks a box preserving workspace state", async () => {
+    // Create a directory so we have something to verify after forking
+    await box.exec.command("mkdir -p fork-test-dir");
+    const lsResult = await box.exec.command("ls");
+    expect(lsResult.result).toContain("fork-test-dir");
+
+    // Fork the box
+    const forkedBox = await box.fork();
+
+    try {
+      // IDs must be different
+      expect(forkedBox.id).not.toBe(box.id);
+
+      // Forked box should have the same directory
+      const forkedLs = await forkedBox.exec.command("ls");
+      expect(forkedLs.result).toContain("fork-test-dir");
+    } finally {
+      await forkedBox.delete().catch(() => {});
+    }
+  }, 120000);
 });
