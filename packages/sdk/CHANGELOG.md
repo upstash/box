@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.23
+
+### Patch Changes
+
+- 3ec02ee: Add fork method
+
 ## 0.1.22
 
 ### Patch Changes
