@@ -2,18 +2,17 @@
  * Webhook example — fire-and-forget runs that POST results to a URL on completion.
  *
  * This example starts a local HTTP server to receive the webhook, then fires
- * a box run with a webhook config. The run returns immediately and the server
- * receives the result when the agent is done.
+ * a box run with a webhook config. The run returns immediately and the backend
+ * POSTs the result to your webhook URL when the agent is done.
  *
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/webhook.ts
  */
 import { createServer } from "node:http";
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 import type { WebhookPayload } from "@upstash/box";
 
 const WEBHOOK_PORT = 4567;
-const WEBHOOK_SECRET = "whsec_test_secret_123";
 
 // ── 1. Start a local webhook receiver ────────────────────────────────────────
 
@@ -24,21 +23,19 @@ const server = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => { body += chunk; });
     req.on("end", () => {
-      const signature = req.headers["x-box-signature"];
       console.log("\n========================================");
       console.log("Webhook received!");
-      console.log(`  Signature: ${signature}`);
 
       const payload = JSON.parse(body) as WebhookPayload;
       received.push(payload);
 
-      console.log(`  Run ID:    ${payload.runId}`);
-      console.log(`  Box ID:    ${payload.boxId}`);
+      console.log(`  Box ID:    ${payload.box_id}`);
       console.log(`  Status:    ${payload.status}`);
-      console.log(`  Tokens:    ${payload.cost.inputTokens + payload.cost.outputTokens}`);
-      console.log(`  Cost:      $${payload.cost.totalUsd.toFixed(4)}`);
-      console.log(`  Completed: ${payload.completedAt}`);
-      console.log(`  Result:    ${String(payload.result).slice(0, 200)}...`);
+      console.log(`  Run ID:    ${payload.run_id}`);
+      console.log(`  Output:    ${String(payload.output).slice(0, 200)}...`);
+      if (payload.error) {
+        console.log(`  Error:     ${payload.error}`);
+      }
       console.log("========================================\n");
 
       res.writeHead(200);
@@ -67,6 +64,7 @@ async function main() {
     apiKey: process.env.UPSTASH_BOX_API_KEY!,
     runtime: "node",
     agent: {
+      provider: Agent.ClaudeCode,
       model: ClaudeCode.Sonnet_4_5,
       apiKey: process.env.CLAUDE_KEY!,
     },
@@ -77,25 +75,17 @@ async function main() {
   console.log("Firing webhook run #1...");
   const run1 = await box.agent.run({
     prompt: "Create a file /workspace/home/greeting.ts that exports a greet(name: string) function",
-    webhook: {
-      url: `http://localhost:${WEBHOOK_PORT}/hook`,
-      secret: WEBHOOK_SECRET,
-      headers: { "X-Run-Label": "greeting" },
-    },
+    webhook: { url: `http://localhost:${WEBHOOK_PORT}/hook` },
   });
-  console.log(`  Run #1 returned immediately (id: ${run1.id})`);
+  console.log(`  Run #1 accepted (id: ${run1.id})`);
 
   // Fire-and-forget run #2
   console.log("Firing webhook run #2...");
   const run2 = await box.agent.run({
     prompt: "Create a file /workspace/home/counter.ts that exports an increment() and decrement() function with a shared counter",
-    webhook: {
-      url: `http://localhost:${WEBHOOK_PORT}/hook`,
-      secret: WEBHOOK_SECRET,
-      headers: { "X-Run-Label": "counter" },
-    },
+    webhook: { url: `http://localhost:${WEBHOOK_PORT}/hook` },
   });
-  console.log(`  Run #2 returned immediately (id: ${run2.id})`);
+  console.log(`  Run #2 accepted (id: ${run2.id})`);
 
   console.log("\nWaiting for webhooks to arrive...");
 

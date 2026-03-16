@@ -4,7 +4,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/load-test.ts
  */
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 const BOX_COUNT = 100;
 const CONCURRENCY = 10; // create in batches to avoid overwhelming the API
@@ -16,6 +16,7 @@ async function createAndRun(index: number): Promise<{ id: string; status: string
       apiKey: process.env.UPSTASH_BOX_API_KEY!,
       runtime: "node",
       agent: {
+        provider: Agent.ClaudeCode,
         model: ClaudeCode.Sonnet_4_5,
         apiKey: process.env.CLAUDE_KEY!,
       },

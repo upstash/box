@@ -1,10 +1,11 @@
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 const config = {
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
   runtime: "node",
   agent: {
+    provider: Agent.ClaudeCode,
     model: ClaudeCode.Sonnet_4_5,
     apiKey: process.env.CLAUDE_KEY!,
   },

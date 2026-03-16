@@ -1,4 +1,4 @@
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 // Clone a repo, run a code review, and get a structured report.
 
@@ -7,6 +7,7 @@ const box = await Box.create({
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
   runtime: "node",
   agent: {
+    provider: Agent.ClaudeCode,
     model: ClaudeCode.Sonnet_4_5,
     apiKey: process.env.CLAUDE_KEY!,
   },
