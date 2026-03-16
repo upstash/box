@@ -235,7 +235,7 @@ export class Box {
   /** File operations namespace */
   readonly files: {
     read: (path: string) => Promise<string>;
-    write: (options: { path: string; content: string }) => Promise<void>;
+    write: (options: { path: string; content: string; encoding?: "base64" }) => Promise<void>;
     list: (path?: string) => Promise<FileEntry[]>;
     upload: (files: UploadFileEntry[]) => Promise<void>;
     /**
@@ -372,7 +372,7 @@ export class Box {
 
     this.files = {
       read: (path) => this._readFile(path),
-      write: (opts) => this._writeFile(opts.path, opts.content),
+      write: (opts) => this._writeFile(opts.path, opts.content, opts.encoding),
       list: (path) => this._listFiles(path),
       upload: (files) => this._uploadFiles(files),
       download: (opts) => this._downloadFiles(opts?.folder),
@@ -1320,10 +1320,10 @@ export class Box {
     return data.content;
   }
 
-  private async _writeFile(path: string, content: string): Promise<void> {
+  private async _writeFile(path: string, content: string, encoding?: "base64"): Promise<void> {
     const resolved = this._resolvePath(path);
     await this._request("POST", `/v2/box/${this.id}/files/write`, {
-      body: { path: resolved, content },
+      body: { path: resolved, content, ...(encoding && { encoding }) },
     });
   }
 
