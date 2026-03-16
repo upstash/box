@@ -11,8 +11,6 @@ import {
   type RunStatus,
   type RunCost,
   type RunLog,
-  type WebhookConfig,
-  type WebhookPayload,
   type ExecResult,
   type CodeExecutionOptions,
   type CodeExecutionResult,
@@ -550,44 +548,51 @@ export class Box {
   private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
     if (!options.prompt) throw new BoxError("prompt is required");
 
-    // Webhook mode: fire-and-forget — run in background, POST result to webhook URL
+    // Webhook mode: pass webhook to backend, which returns immediately
     if (options.webhook) {
-      const run = new Run<T | string>(this, "agent");
-      const webhook = options.webhook;
-      const boxId = this.id;
-
-      // Run in background, don't await
-      this._runWithRetries(options).then(
-        async (completedRun) => {
-          const cost = completedRun.cost;
-          const payload: WebhookPayload = {
-            runId: completedRun.id,
-            boxId,
-            status: "completed",
-            result: completedRun.result as string | null,
-            cost,
-            completedAt: new Date().toISOString(),
-          };
-          await sendWebhook(webhook, payload);
-        },
-        async (err) => {
-          const payload: WebhookPayload = {
-            runId: run.id,
-            boxId,
-            status: "failed",
-            result: null,
-            cost: { inputTokens: 0, outputTokens: 0, computeMs: 0, totalUsd: 0 },
-            completedAt: new Date().toISOString(),
-            error: err instanceof Error ? err.message : String(err),
-          };
-          await sendWebhook(webhook, payload);
-        },
-      );
-
-      return run;
+      return this._executeWebhookRun(options);
     }
 
     return this._runWithRetries(options);
+  }
+
+  /** @internal — Webhook run: sends webhook config to backend, returns immediately with accepted response. */
+  private async _executeWebhookRun<T>(options: RunOptions<T>): Promise<Run<T | string>> {
+    if (!options.webhook) {
+      throw new BoxError("webhook is required for webhook runs");
+    }
+
+    const run = new Run<T | string>(this, "agent");
+
+    const requestBody: Record<string, unknown> = { prompt: options.prompt };
+    const folder = this._getFolder();
+    if (folder) requestBody.folder = folder;
+    if (options.responseSchema) {
+      const jsonSchema = toJsonSchema(options.responseSchema);
+      if (jsonSchema) {
+        requestBody.json_schema = jsonSchema;
+      }
+    }
+    requestBody.webhook = options.webhook.headers
+      ? { url: options.webhook.url, headers: options.webhook.headers }
+      : options.webhook.url;
+
+    const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...this._headers, "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    const data = (await response.json()) as { status: string; box_id: string };
+    Run._update(run, { id: data.box_id, status: "running" });
+
+    return run;
   }
 
   private async _runWithRetries<T>(options: RunOptions<T>): Promise<Run<T | string>> {
@@ -1768,35 +1773,5 @@ export async function parseErrorResponse(response: Response): Promise<string> {
     return data.error ?? `Request failed with status ${response.status}`;
   } catch {
     return `Request failed with status ${response.status}`;
-  }
-}
-
-async function sendWebhook(config: WebhookConfig, payload: WebhookPayload): Promise<void> {
-  try {
-    const body = JSON.stringify(payload);
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...config.headers,
-    };
-
-    if (config.secret) {
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        "raw",
-        encoder.encode(config.secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      );
-      const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-      const signature = Array.from(new Uint8Array(sig))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      headers["X-Box-Signature"] = signature;
-    }
-
-    await fetch(config.url, { method: "POST", headers, body });
-  } catch {
-    // Webhook delivery is best-effort
   }
 }

@@ -203,9 +203,7 @@ export type McpServerConfig = {
 export interface WebhookConfig {
   /** Endpoint to receive the POST on completion */
   url: string;
-  /** HMAC-SHA256 signing key (sent as X-Box-Signature header) */
-  secret?: string;
-  /** Custom headers sent with the webhook POST */
+  /** Optional custom headers to include in the webhook POST request */
   headers?: Record<string, string>;
 }
 
@@ -281,15 +279,14 @@ export interface RunLog {
 }
 
 /**
- * POST body sent to your webhook URL on run completion
+ * POST body sent by the backend to your webhook URL on run completion
  */
-export interface WebhookPayload<T = string> {
-  runId: string;
-  boxId: string;
-  status: RunStatus;
-  result: T | null;
-  cost: RunCost;
-  completedAt: string;
+export interface WebhookPayload {
+  box_id: string;
+  status: "completed" | "failed";
+  run_id?: string;
+  output?: string;
+  metadata?: Record<string, unknown>;
   /** Error message when status is "failed" */
   error?: string;
 }

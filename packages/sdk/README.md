@@ -45,7 +45,7 @@ const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
   agent: {
-    runner: Agent.ClaudeCode, // optional — inferred from model prefix
+    provider: Agent.ClaudeCode, // optional — inferred from model prefix
     model: ClaudeCode.Sonnet_4_5,
     apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
     // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
@@ -171,8 +171,8 @@ await box.cd(".."); // back to /workspace/home
 ### Model configuration
 
 ```ts
-// Read the current runner and model
-const { runner, model } = box.modelConfig;
+// Read the current provider and model
+const { provider, model } = box.modelConfig;
 
 // Change the model
 await box.configureModel(ClaudeCode.Opus_4_5);
@@ -223,7 +223,7 @@ stream.result; // final output
 
 ## Agents
 
-The `runner` field in agent config is optional — the SDK infers it from the model prefix. You can set it explicitly to use a specific runner.
+The `provider` field in agent config is optional — the SDK infers it from the model prefix. You can set it explicitly to use a specific provider.
 
 | Enum               | Value         |
 | ------------------ | ------------- |
