@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.24
+
+### Patch Changes
+
+- df176e3: Update files.upload and add encoding option to files.write
+
 ## 0.1.23
 
 ### Patch Changes
