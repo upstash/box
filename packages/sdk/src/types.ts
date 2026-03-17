@@ -162,6 +162,36 @@ export interface BoxConfig {
 }
 
 /**
+ * Configuration for creating an ephemeral box.
+ *
+ * Ephemeral boxes are lightweight, short-lived boxes that support only
+ * exec and file operations. They are created synchronously (no polling)
+ * and auto-delete after the configured TTL.
+ */
+export interface EphemeralBoxConfig {
+  /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
+  apiKey?: string;
+  /** Runtime environment for the box. */
+  runtime?: Runtime;
+  /** Time-to-live in seconds. Max 259200 (3 days). Defaults to 259200 if omitted. */
+  ttl?: number;
+  /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
+  baseUrl?: string;
+  /** Request timeout in milliseconds (defaults to 600000) */
+  timeout?: number;
+  /** Enable debug logging */
+  debug?: boolean;
+}
+
+/**
+ * Response data for an ephemeral box, extending BoxData with ephemeral-specific fields.
+ */
+export interface EphemeralBoxData extends BoxData {
+  ephemeral: boolean;
+  expires_at: number;
+}
+
+/**
  * MCP server configuration — either a local package or a remote URL.
  *
  * @example Package-based server

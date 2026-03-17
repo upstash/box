@@ -29,6 +29,8 @@ import {
   type Snapshot,
   type Preview,
   type PreviewCreateOptions,
+  type EphemeralBoxConfig,
+  type EphemeralBoxData,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -1794,6 +1796,195 @@ export class Box {
 
   private async _previewDelete(port: number): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
+  }
+}
+
+// ==================== Ephemeral Box ====================
+
+/**
+ * A lightweight, short-lived box that supports only exec and file operations.
+ *
+ * Ephemeral boxes are created synchronously (no polling) and auto-delete after
+ * the configured TTL. They do not support agent, git, snapshot, or fork
+ * operations.
+ *
+ * @example
+ * ```ts
+ * const box = await EphemeralBox.create({ runtime: "node", ttl: 3600 });
+ * const run = await box.exec.command("echo hello");
+ * console.log(run.result); // "hello"
+ * await box.delete();
+ * ```
+ */
+export class EphemeralBox {
+  readonly id: string;
+
+  /** Unix timestamp (seconds) when this box will be auto-deleted. */
+  readonly expiresAt: number;
+
+  /** File operations namespace */
+  readonly files: {
+    /**
+     * Read a file from the box.
+     *
+     * @example
+     * ```ts
+     * const content = await box.files.read("index.js");
+     * ```
+     */
+    read: (path: string) => Promise<string>;
+    /**
+     * Write a file to the box.
+     *
+     * @example
+     * ```ts
+     * await box.files.write({ path: "hello.txt", content: "Hello!" });
+     * ```
+     */
+    write: (options: { path: string; content: string; encoding?: "base64" }) => Promise<void>;
+    /**
+     * List files in a directory.
+     *
+     * @example
+     * ```ts
+     * const files = await box.files.list("src");
+     * ```
+     */
+    list: (path?: string) => Promise<FileEntry[]>;
+    /**
+     * Upload local files to the box.
+     *
+     * @example
+     * ```ts
+     * await box.files.upload([{ path: "./local.txt", destination: "remote.txt" }]);
+     * ```
+     */
+    upload: (files: UploadFileEntry[]) => Promise<void>;
+    /**
+     * Download files from the box to the local filesystem.
+     *
+     * @example
+     * ```ts
+     * await box.files.download({ folder: "src" });
+     * ```
+     */
+    download: (options?: { folder?: string }) => Promise<void>;
+  };
+
+  /** Execution namespace — shell commands and inline code */
+  readonly exec: {
+    command: (command: string) => Promise<Run<string>>;
+    code: (options: CodeExecutionOptions) => Promise<Run<string>>;
+    stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
+    streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
+  };
+
+  private _box: Box;
+
+  /** @internal */
+  constructor(box: Box, expiresAt: number) {
+    this._box = box;
+    this.id = box.id;
+    this.expiresAt = expiresAt;
+    this.exec = box.exec;
+    this.files = box.files;
+  }
+
+  /**
+   * The current working directory tracked in the SDK.
+   * Every new session starts at `/workspace/home`.
+   */
+  get cwd(): string {
+    return this._box.cwd;
+  }
+
+  /**
+   * Change the in-memory working directory.
+   *
+   * The cwd is tracked in the SDK, not in the box itself.
+   * Verifies the target directory exists by running `ls` on the box.
+   * Throws if the path does not exist.
+   */
+  async cd(path: string): Promise<void> {
+    return this._box.cd(path);
+  }
+
+  /**
+   * Get the current box status.
+   */
+  async getStatus(): Promise<{ status: string }> {
+    return this._box.getStatus();
+  }
+
+  /**
+   * Delete this ephemeral box before its TTL expires.
+   */
+  async delete(): Promise<void> {
+    return this._box.delete();
+  }
+
+  /**
+   * Create a new ephemeral box.
+   *
+   * Ephemeral boxes are ready immediately — no polling required.
+   * They auto-delete after the configured TTL (default: 3 days).
+   *
+   * @example
+   * ```ts
+   * // Node.js runtime with 1 hour TTL
+   * const box = await EphemeralBox.create({ runtime: "node", ttl: 3600 });
+   *
+   * // Python runtime with 30 min TTL
+   * const box = await EphemeralBox.create({ runtime: "python", ttl: 1800 });
+   *
+   * // Default runtime and max TTL
+   * const box = await EphemeralBox.create();
+   * ```
+   */
+  static async create(config?: EphemeralBoxConfig): Promise<EphemeralBox> {
+    const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError(
+        "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
+      );
+    }
+
+    const baseUrl = (
+      config?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers: Record<string, string> = {
+      "X-Box-Api-Key": apiKey,
+    };
+    const timeout = config?.timeout ?? 600000;
+    const debug = config?.debug ?? false;
+
+    const body: Record<string, unknown> = { ephemeral: true };
+    if (config?.ttl !== undefined) body.ttl = config.ttl;
+    if (config?.runtime) body.runtime = config.runtime;
+
+    const response = await fetch(`${baseUrl}/v2/box`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+
+    const data = (await response.json()) as EphemeralBoxData;
+
+    const box = new Box(data, {
+      baseUrl,
+      headers,
+      timeout,
+      debug,
+    });
+
+    return new EphemeralBox(box, data.expires_at);
   }
 }
 

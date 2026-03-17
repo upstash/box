@@ -1,5 +1,6 @@
 export {
   Box,
+  EphemeralBox,
   BoxError,
   Run,
   StreamRun,
@@ -52,4 +53,6 @@ export type {
   BoxRunData,
   Preview,
   PreviewCreateOptions,
+  EphemeralBoxConfig,
+  EphemeralBoxData,
 } from "./types.js";
