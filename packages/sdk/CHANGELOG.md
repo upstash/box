@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.26
+
+### Patch Changes
+
+- 38e14a5: Add preview APIs to Box SDK
+- b78402d: add EphemeralBox class and related tests for lightweight, short-lived boxes
+
 ## 0.1.25
 
 ### Patch Changes
