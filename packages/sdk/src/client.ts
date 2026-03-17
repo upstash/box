@@ -277,7 +277,6 @@ export class Box {
     checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
-
   /**
    * The current working directory tracked in the SDK (not in the box).
    * Every new session starts at /workspace/home.
@@ -390,7 +389,6 @@ export class Box {
       exec: (options) => this._gitExec(options),
       checkout: (options) => this._gitCheckout(options),
     };
-
   }
 
   /**
