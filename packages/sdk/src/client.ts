@@ -29,6 +29,9 @@ import {
   type LogEntry,
   type UploadFileEntry,
   type Snapshot,
+  type CreatePreviewOptions,
+  type PreviewData,
+  type BoxPreviewData,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -276,6 +279,13 @@ export class Box {
     checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
+  /** Preview URL operations namespace */
+  readonly preview: {
+    create: (options: CreatePreviewOptions) => Promise<PreviewData>;
+    list: () => Promise<BoxPreviewData[]>;
+    delete: (port: number) => Promise<void>;
+  };
+
   /**
    * The current working directory tracked in the SDK (not in the box).
    * Every new session starts at /workspace/home.
@@ -388,6 +398,12 @@ export class Box {
       exec: (options) => this._gitExec(options),
       checkout: (options) => this._gitCheckout(options),
     };
+
+    this.preview = {
+      create: (options) => this._createPreview(options),
+      list: () => this._listPreviews(),
+      delete: (port) => this._deletePreview(port),
+    };
   }
 
   /**
@@ -436,6 +452,8 @@ export class Box {
           : { source: "url", package_or_url: s.url, headers: s.headers }),
       }));
     }
+    if (config?.ephemeral !== undefined) body.ephemeral = config.ephemeral;
+    if (config?.ttl !== undefined) body.ttl = config.ttl;
 
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "POST",
@@ -1754,6 +1772,30 @@ export class Box {
     await this._request("POST", `/v2/box/${this.id}/git/checkout`, {
       body: { branch: options.branch, ...(folder ? { folder } : {}) },
     });
+  }
+
+  // ==================== Preview URL Operations ====================
+
+  private async _createPreview(options: CreatePreviewOptions): Promise<PreviewData> {
+    return this._request<PreviewData>("POST", `/v2/box/${this.id}/preview`, {
+      body: {
+        port: options.port,
+        basic_auth: options.basicAuth,
+        bearer_token: options.bearerToken,
+      },
+    });
+  }
+
+  private async _listPreviews(): Promise<BoxPreviewData[]> {
+    const response = await this._request<{ previews: BoxPreviewData[] }>(
+      "GET",
+      `/v2/box/${this.id}/preview`,
+    );
+    return response.previews;
+  }
+
+  private async _deletePreview(port: number): Promise<void> {
+    await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
   }
 }
 

@@ -156,6 +156,18 @@ export interface BoxConfig {
    */
   skills?: string[];
   mcpServers?: McpServerConfig[];
+  /**
+   * Create an ephemeral box that auto-expires after a TTL.
+   * Ephemeral boxes are temporary and will be automatically deleted after the TTL expires.
+   */
+  ephemeral?: boolean;
+  /**
+   * Time-to-live for ephemeral boxes in seconds.
+   * Maximum: 3 days (259200 seconds)
+   * Default: 3 days for ephemeral boxes
+   * Only applies when ephemeral is true.
+   */
+  ttl?: number;
   baseUrl?: string;
   timeout?: number;
   debug?: boolean;
@@ -411,6 +423,8 @@ export type BoxData = {
   total_compute_cost_usd?: number;
   total_token_cost_usd?: number;
   use_managed_key?: boolean;
+  ephemeral?: boolean;
+  expires_at?: number;
   last_activity_at?: number;
   created_at: number;
   updated_at: number;
@@ -502,4 +516,48 @@ export interface BoxRunData {
   session_id?: string;
   created_at: number;
   completed_at?: number;
+}
+
+// ==================== Preview URLs ====================
+
+/**
+ * Options for creating a preview URL for a box port
+ */
+export interface CreatePreviewOptions {
+  /** Port number to expose (1-65535) */
+  port: number;
+  /** Enable HTTP Basic Auth protection */
+  basicAuth?: boolean;
+  /** Enable Bearer token authentication */
+  bearerToken?: boolean;
+}
+
+/**
+ * Preview URL data returned when creating a preview
+ */
+export interface PreviewData {
+  /** Preview URL (e.g., https://box-id-3000.preview.upstash.com) */
+  url: string;
+  /** Port number exposed */
+  port: number;
+  /** Username for Basic Auth (if basicAuth was enabled) */
+  username?: string;
+  /** Password for Basic Auth (if basicAuth was enabled) */
+  password?: string;
+  /** Bearer token (if bearerToken was enabled) */
+  token?: string;
+}
+
+/**
+ * Preview record — returned by box.preview.list()
+ */
+export interface BoxPreviewData {
+  id: string;
+  box_id: string;
+  customer_id: string;
+  port: number;
+  username?: string;
+  password?: string;
+  token?: string;
+  created_at: number;
 }
