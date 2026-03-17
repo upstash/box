@@ -245,7 +245,7 @@ describe("box.agent.run", () => {
     const [, runCall] = fetchMock.mock.calls;
     const body = JSON.parse(runCall[1].body as string);
     expect(body.prompt).toBe("analyze this");
-    expect(body.webhook).toBe("https://example.com/hook");
+    expect(body.webhook).toEqual({ url: "https://example.com/hook" });
     expect(body.json_schema).toEqual({
       type: "object",
       properties: {
