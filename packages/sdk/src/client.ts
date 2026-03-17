@@ -575,7 +575,7 @@ export class Box {
     }
     requestBody.webhook = options.webhook.headers
       ? { url: options.webhook.url, headers: options.webhook.headers }
-      : options.webhook.url;
+      : { url: options.webhook.url };
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run`;
     const response = await fetch(url, {
