@@ -503,3 +503,33 @@ export interface BoxRunData {
   created_at: number;
   completed_at?: number;
 }
+
+// ==================== Preview ====================
+
+/**
+ * Options for creating a preview URL
+ */
+export interface PreviewCreateOptions {
+  /** Port number to expose */
+  port: number;
+  /** Enable bearer token authentication */
+  bearer_token?: boolean;
+  /** Enable basic authentication */
+  basic_auth?: boolean;
+}
+
+/**
+ * Preview URL created for a box
+ */
+export interface Preview {
+  /** Public URL to access the preview */
+  url: string;
+  /** Port number exposed */
+  port: number;
+  /** Bearer token (only returned when bearer_token is true) */
+  token?: string;
+  /** Basic auth username (only returned when basic_auth is true) */
+  username?: string;
+  /** Basic auth password (only returned when basic_auth is true) */
+  password?: string;
+}

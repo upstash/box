@@ -50,4 +50,6 @@ export type {
   ExecStreamChunk,
   ErrorResponse,
   BoxRunData,
+  Preview,
+  PreviewCreateOptions,
 } from "./types.js";
