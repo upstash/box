@@ -171,9 +171,7 @@ describe("EphemeralBox instance", () => {
   it("delegates exec.command to the internal box", async () => {
     const box = await createBox();
 
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ exit_code: 0, output: "hello\n" }),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "hello\n" }));
 
     const run = await box.exec.command("echo hello");
     expect(run.result).toBe("hello\n");
@@ -183,9 +181,7 @@ describe("EphemeralBox instance", () => {
   it("delegates files.read to the internal box", async () => {
     const box = await createBox();
 
-    vi.mocked(fetch).mockResolvedValueOnce(
-      mockResponse({ content: "file content" }),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ content: "file content" }));
 
     const content = await box.files.read("test.txt");
     expect(content).toBe("file content");
