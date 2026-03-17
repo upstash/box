@@ -45,7 +45,7 @@ const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
   agent: {
-    runner: Agent.ClaudeCode, // optional — inferred from model prefix
+    runner: Agent.ClaudeCode,
     model: ClaudeCode.Sonnet_4_5,
     apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
     // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
