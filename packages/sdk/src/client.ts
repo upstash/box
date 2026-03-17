@@ -202,7 +202,7 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  *
  * const box = await Box.create({
  *   runtime: "node",
- *   agent: { model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
+ *   agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
  * });
  *
  * // Non-streaming
@@ -346,7 +346,7 @@ export class Box {
       run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
-            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.run().\n\nExample:\n  await Box.create({ agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
+            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.run().\n\nExample:\n  await Box.create({ agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
           );
         }
         return self._run(options);
@@ -354,7 +354,7 @@ export class Box {
       stream(options: StreamOptions): Promise<StreamRun<string, Chunk>> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
-            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
+            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
           );
         }
         return self._stream(options);
@@ -545,7 +545,7 @@ export class Box {
   // ==================== Run ====================
 
   /** @internal */
-  private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
+  private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {    
     if (!options.prompt) throw new BoxError("prompt is required");
 
     // Webhook mode: pass webhook to backend, which returns immediately
@@ -577,7 +577,7 @@ export class Box {
       ? { url: options.webhook.url, headers: options.webhook.headers }
       : options.webhook.url;
 
-    const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
+    const url = `${this._baseUrl}/v2/box/${this.id}/run`;
     const response = await fetch(url, {
       method: "POST",
       headers: { ...this._headers, "Content-Type": "application/json" },

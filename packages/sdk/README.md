@@ -11,11 +11,11 @@ npm install @upstash/box
 ## Quick start
 
 ```ts
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
   runtime: "node",
-  agent: { model: ClaudeCode.Sonnet_4_5 },
+  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
 });
 
 const run = await box.agent.run({
@@ -80,7 +80,7 @@ Create a new box from a saved snapshot.
 
 ```ts
 const box = await Box.fromSnapshot("snap_abc123", {
-  agent: { model: ClaudeCode.Sonnet_4_5 },
+  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
 });
 ```
 

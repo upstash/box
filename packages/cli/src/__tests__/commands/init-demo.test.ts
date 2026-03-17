@@ -170,7 +170,7 @@ describe("generateMainTs", () => {
     const content = generateMainTs("box-demo");
 
     expect(content).toContain('import "dotenv/config"');
-    expect(content).toContain('import { Box } from "@upstash/box"');
+    expect(content).toContain('import { Box, inferDefaultProvider } from "@upstash/box"');
     expect(content).toContain("Box.create(config)");
     expect(content).toContain('box.files.write({ path: "hello.txt"');
     expect(content).toContain('box.files.read("hello.txt")');
