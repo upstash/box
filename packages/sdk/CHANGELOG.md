@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.25
+
+### Patch Changes
+
+- 8b75feb: move sending webhook to backend
+
 ## 0.1.24
 
 ### Patch Changes

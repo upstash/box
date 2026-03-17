@@ -1,4 +1,4 @@
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 import { readdir } from "node:fs/promises";
 import { z } from "zod";
 
@@ -30,6 +30,7 @@ const results = await Promise.all(
       baseUrl: process.env.UPSTASH_BOX_BASE_URL,
       runtime: "node",
       agent: {
+        provider: Agent.ClaudeCode,
         model: ClaudeCode.Sonnet_4_5,
         apiKey: process.env.CLAUDE_KEY!,
       },

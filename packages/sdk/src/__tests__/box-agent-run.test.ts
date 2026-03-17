@@ -199,6 +199,92 @@ describe("box.agent.run", () => {
 
     await expect(box.agent.run({ prompt: "test" })).rejects.toThrow("server error");
   });
+
+  it("sends webhook in request body and returns accepted response", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: "accepted", box_id: "box-123" }));
+
+    const run = await box.agent.run({
+      prompt: "do something",
+      webhook: {
+        url: "https://example.com/hook",
+        headers: { "X-Custom": "value" },
+      },
+    });
+
+    expect(run.id).toBe("box-123");
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.prompt).toBe("do something");
+    expect(body.webhook).toEqual({
+      url: "https://example.com/hook",
+      headers: { "X-Custom": "value" },
+    });
+  });
+
+  it("sends webhook with json_schema when both responseSchema and webhook are provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: "accepted", box_id: "box-123" }));
+
+    const schema = z.object({
+      name: z.string(),
+      count: z.number(),
+    });
+
+    const run = await box.agent.run({
+      prompt: "analyze this",
+      responseSchema: schema,
+      webhook: { url: "https://example.com/hook" },
+    });
+
+    expect(run.id).toBe("box-123");
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.prompt).toBe("analyze this");
+    expect(body.webhook).toBe("https://example.com/hook");
+    expect(body.json_schema).toEqual({
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        count: { type: "number" },
+      },
+      required: ["name", "count"],
+      additionalProperties: false,
+    });
+  });
+
+  it("does not send webhook in request body when no webhook provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "hello" } },
+      ]),
+    );
+
+    await box.agent.run({ prompt: "say hello" });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.webhook).toBeUndefined();
+  });
+
+  it("throws on non-OK webhook response", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ error: "bad request" }, 400));
+
+    await expect(
+      box.agent.run({
+        prompt: "test",
+        webhook: { url: "https://example.com/hook" },
+      }),
+    ).rejects.toThrow("bad request");
+  });
 });
 
 describe("box.agent.stream", () => {

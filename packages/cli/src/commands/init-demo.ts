@@ -29,7 +29,7 @@ function generateEnvFile(flags: InitDemoFlags, token: string): string {
 
 function generateMainTs(dir: string): string {
   return `import "dotenv/config";
-import { Box } from "@upstash/box";
+import { Box, inferDefaultProvider } from "@upstash/box";
 
 async function main() {
   const config: Parameters<typeof Box.create>[0] = {
@@ -42,6 +42,7 @@ async function main() {
 
   if (process.env.AGENT_MODEL) {
     config.agent = {
+      provider: inferDefaultProvider(process.env.AGENT_MODEL),
       model: process.env.AGENT_MODEL,
       ...(process.env.AGENT_API_KEY && { apiKey: process.env.AGENT_API_KEY }),
     };

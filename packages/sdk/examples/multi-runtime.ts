@@ -4,7 +4,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/multi-runtime.ts
  */
-import { Box, ClaudeCode } from "@upstash/box";
+import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 const runtimes = ["node", "python", "golang"] as const;
 const prompt = "Write a program that generates the first 20 Fibonacci numbers and prints them. Use only the standard library.";
@@ -17,6 +17,7 @@ const boxes = await Promise.all(
       apiKey: process.env.UPSTASH_BOX_API_KEY,
       runtime,
       agent: {
+        provider: Agent.ClaudeCode,
         model: ClaudeCode.Sonnet_4_5,
         apiKey: process.env.ANTHROPIC_API_KEY,
       },

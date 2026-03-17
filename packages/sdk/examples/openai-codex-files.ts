@@ -1,10 +1,11 @@
-import { Box, OpenAICodex } from "@upstash/box";
+import { Box, Agent, OpenAICodex } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
   runtime: "node",
   agent: {
+    provider: Agent.Codex,
     model: OpenAICodex.GPT_5_2_Codex,
     apiKey: process.env.OPENAI_API_KEY!,
   },
