@@ -36,7 +36,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 3000, bearer_token: true });
+      const preview = await box.preview.create({ port: 3000, bearerToken: true });
       expect(preview.url).toBe("https://box-123-3000.preview.box.upstash.com");
       expect(preview.port).toBe(3000);
       expect(preview.token).toBe("63d8b153abc");
@@ -56,7 +56,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 8080, basic_auth: true });
+      const preview = await box.preview.create({ port: 8080, basicAuth: true });
       expect(preview.url).toBe("https://box-123-8080.preview.box.upstash.com");
       expect(preview.port).toBe(8080);
       expect(preview.username).toBe("user");
@@ -78,7 +78,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 8080, bearer_token: true, basic_auth: true });
+      const preview = await box.preview.create({ port: 8080, bearerToken: true, basicAuth: true });
       expect(preview.url).toBe("https://box-123-8080.preview.box.upstash.com");
       expect(preview.port).toBe(8080);
       expect(preview.username).toBe("user");
@@ -107,12 +107,12 @@ describe("Box preview operations", () => {
           password: "secret",
         },
       ];
-      fetchMock.mockResolvedValueOnce(mockResponse(mockPreviews));
+      fetchMock.mockResolvedValueOnce(mockResponse({ previews: mockPreviews }));
 
-      const previews = await box.preview.list();
-      expect(previews).toHaveLength(2);
-      expect(previews[0]!.port).toBe(3000);
-      expect(previews[1]!.port).toBe(8080);
+      const res = await box.preview.list();
+      expect(res.previews).toHaveLength(2);
+      expect(res.previews[0]!.port).toBe(3000);
+      expect(res.previews[1]!.port).toBe(8080);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/preview");
@@ -121,10 +121,10 @@ describe("Box preview operations", () => {
 
     it("returns empty array when no previews", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse([]));
+      fetchMock.mockResolvedValueOnce(mockResponse({ previews: [] }));
 
-      const previews = await box.preview.list();
-      expect(previews).toEqual([]);
+      const res = await box.preview.list();
+      expect(res.previews).toEqual([]);
     });
   });
 

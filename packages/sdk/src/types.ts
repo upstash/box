@@ -513,9 +513,9 @@ export interface PreviewCreateOptions {
   /** Port number to expose */
   port: number;
   /** Enable bearer token authentication */
-  bearer_token?: boolean;
+  bearerToken?: boolean;
   /** Enable basic authentication */
-  basic_auth?: boolean;
+  basicAuth?: boolean;
 }
 
 /**
@@ -526,10 +526,10 @@ export interface Preview {
   url: string;
   /** Port number exposed */
   port: number;
-  /** Bearer token (only returned when bearer_token is true) */
+  /** Bearer token (only returned when bearerToken is true) */
   token?: string;
-  /** Basic auth username (only returned when basic_auth is true) */
+  /** Basic auth username (only returned when basicAuth is true) */
   username?: string;
-  /** Basic auth password (only returned when basic_auth is true) */
+  /** Basic auth password (only returned when basicAuth is true) */
   password?: string;
 }

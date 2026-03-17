@@ -281,7 +281,7 @@ export class Box {
   /** Preview operations namespace */
   readonly preview: {
     create: (options: PreviewCreateOptions) => Promise<Preview>;
-    list: () => Promise<Preview[]>;
+    list: () => Promise<{ previews: Preview[] }>;
     delete: (port: number) => Promise<void>;
   };
 
@@ -1777,14 +1777,14 @@ export class Box {
     return this._request<Preview>("POST", `/v2/box/${this.id}/preview`, {
       body: {
         port: options.port,
-        ...(options.bearer_token !== undefined && { bearer_token: options.bearer_token }),
-        ...(options.basic_auth !== undefined && { basic_auth: options.basic_auth }),
+        ...(options.bearerToken !== undefined && { bearer_token: options.bearerToken }),
+        ...(options.basicAuth !== undefined && { basic_auth: options.basicAuth }),
       },
     });
   }
 
-  private async _previewList(): Promise<Preview[]> {
-    return this._request<Preview[]>("GET", `/v2/box/${this.id}/preview`);
+  private async _previewList(): Promise<{ previews: Preview[] }> {
+    return this._request<{ previews: Preview[] }>("GET", `/v2/box/${this.id}/preview`);
   }
 
   private async _previewDelete(port: number): Promise<void> {
