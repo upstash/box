@@ -545,7 +545,7 @@ export class Box {
   // ==================== Run ====================
 
   /** @internal */
-  private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {    
+  private async _run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
     if (!options.prompt) throw new BoxError("prompt is required");
 
     // Webhook mode: pass webhook to backend, which returns immediately
