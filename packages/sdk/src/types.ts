@@ -534,18 +534,6 @@ export interface BoxRunData {
 // ==================== Preview ====================
 
 /**
- * Options for creating a preview URL
- */
-export interface PreviewCreateOptions {
-  /** Port number to expose */
-  port: number;
-  /** Enable bearer token authentication */
-  bearerToken?: boolean;
-  /** Enable basic authentication */
-  basicAuth?: boolean;
-}
-
-/**
  * Preview URL created for a box
  */
 export interface Preview {

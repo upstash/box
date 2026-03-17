@@ -29,8 +29,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("preview", () => {
     }
   }, 30000);
 
-  it("preview.create: creates a public preview URL", async () => {
-    const preview = await box.preview.create({ port: 3000 });
+  it("getPreviewUrl: creates a public preview URL", async () => {
+    const preview = await box.getPreviewUrl(3000);
 
     expect(preview.url).toBeTruthy();
     expect(preview.port).toBe(3000);
@@ -39,11 +39,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("preview", () => {
     expect(preview.password).toBeUndefined();
 
     // Cleanup
-    await box.preview.delete(3000);
+    await box.deletePreview(3000);
   });
 
-  it("preview.create: creates a preview URL with bearer token and serves traffic", async () => {
-    const preview = await box.preview.create({ port: 3000, bearerToken: true });
+  it("getPreviewUrl: creates a preview URL with bearer token and serves traffic", async () => {
+    const preview = await box.getPreviewUrl(3000, { bearerToken: true });
 
     expect(preview.url).toBeTruthy();
     expect(preview.port).toBe(3000);
@@ -62,11 +62,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("preview", () => {
     expect(body).toBe(SERVER_SECRET);
 
     // Cleanup
-    await box.preview.delete(3000);
+    await box.deletePreview(3000);
   });
 
-  it("preview.create: creates a preview URL with basic auth", async () => {
-    const preview = await box.preview.create({ port: 3000, basicAuth: true });
+  it("getPreviewUrl: creates a preview URL with basic auth", async () => {
+    const preview = await box.getPreviewUrl(3000, { basicAuth: true });
 
     expect(preview.url).toBeTruthy();
     expect(preview.port).toBe(3000);
@@ -74,26 +74,26 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("preview", () => {
     expect(preview.password).toBeTruthy();
 
     // Cleanup
-    await box.preview.delete(3000);
+    await box.deletePreview(3000);
   });
 
-  it("preview.list: lists all preview URLs", async () => {
-    await box.preview.create({ port: 3000 });
+  it("listPreviews: lists all preview URLs", async () => {
+    await box.getPreviewUrl(3000);
 
-    const res = await box.preview.list();
+    const res = await box.listPreviews();
 
     expect(res.previews.length).toBeGreaterThanOrEqual(1);
     expect(res.previews.some((p) => p.port === 3000)).toBe(true);
 
     // Cleanup
-    await box.preview.delete(3000);
+    await box.deletePreview(3000);
   });
 
-  it("preview.delete: removes a preview URL", async () => {
-    await box.preview.create({ port: 3000 });
-    await box.preview.delete(3000);
+  it("deletePreview: removes a preview URL", async () => {
+    await box.getPreviewUrl(3000);
+    await box.deletePreview(3000);
 
-    const res = await box.preview.list();
+    const res = await box.listPreviews();
     expect(res.previews.every((p) => p.port !== 3000)).toBe(true);
   });
 });

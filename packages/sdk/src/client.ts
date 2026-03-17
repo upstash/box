@@ -28,7 +28,6 @@ import {
   type UploadFileEntry,
   type Snapshot,
   type Preview,
-  type PreviewCreateOptions,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
   Agent,
@@ -278,12 +277,6 @@ export class Box {
     checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
-  /** Preview operations namespace */
-  readonly preview: {
-    create: (options: PreviewCreateOptions) => Promise<Preview>;
-    list: () => Promise<{ previews: Preview[] }>;
-    delete: (port: number) => Promise<void>;
-  };
 
   /**
    * The current working directory tracked in the SDK (not in the box).
@@ -398,11 +391,6 @@ export class Box {
       checkout: (options) => this._gitCheckout(options),
     };
 
-    this.preview = {
-      create: (options) => this._previewCreate(options),
-      list: () => this._previewList(),
-      delete: (port) => this._previewDelete(port),
-    };
   }
 
   /**
@@ -1778,23 +1766,26 @@ export class Box {
     });
   }
 
-  // ==================== Preview (private, exposed via this.preview) ====================
+  // ==================== Preview ====================
 
-  private async _previewCreate(options: PreviewCreateOptions): Promise<Preview> {
+  async getPreviewUrl(
+    port: number,
+    options?: { bearerToken?: boolean; basicAuth?: boolean },
+  ): Promise<Preview> {
     return this._request<Preview>("POST", `/v2/box/${this.id}/preview`, {
       body: {
-        port: options.port,
-        ...(options.bearerToken !== undefined && { bearer_token: options.bearerToken }),
-        ...(options.basicAuth !== undefined && { basic_auth: options.basicAuth }),
+        port,
+        ...(options?.bearerToken !== undefined && { bearer_token: options.bearerToken }),
+        ...(options?.basicAuth !== undefined && { basic_auth: options.basicAuth }),
       },
     });
   }
 
-  private async _previewList(): Promise<{ previews: Preview[] }> {
+  async listPreviews(): Promise<{ previews: Preview[] }> {
     return this._request<{ previews: Preview[] }>("GET", `/v2/box/${this.id}/preview`);
   }
 
-  private async _previewDelete(port: number): Promise<void> {
+  async deletePreview(port: number): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
   }
 }

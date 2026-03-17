@@ -52,7 +52,6 @@ export type {
   ErrorResponse,
   BoxRunData,
   Preview,
-  PreviewCreateOptions,
   EphemeralBoxConfig,
   EphemeralBoxData,
 } from "./types.js";

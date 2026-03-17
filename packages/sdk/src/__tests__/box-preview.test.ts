@@ -4,7 +4,7 @@ import { mockResponse, createTestBox } from "./helpers.js";
 describe("Box preview operations", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  describe("preview.create", () => {
+  describe("getPreviewUrl", () => {
     it("creates a public preview URL", async () => {
       const { box, fetchMock } = await createTestBox();
       const mockPreview = {
@@ -13,7 +13,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 3000 });
+      const preview = await box.getPreviewUrl(3000);
       expect(preview.url).toBe("https://box-123-3000.preview.box.upstash.com");
       expect(preview.port).toBe(3000);
       expect(preview.token).toBeUndefined();
@@ -36,7 +36,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 3000, bearerToken: true });
+      const preview = await box.getPreviewUrl(3000, { bearerToken: true });
       expect(preview.url).toBe("https://box-123-3000.preview.box.upstash.com");
       expect(preview.port).toBe(3000);
       expect(preview.token).toBe("63d8b153abc");
@@ -56,7 +56,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 8080, basicAuth: true });
+      const preview = await box.getPreviewUrl(8080, { basicAuth: true });
       expect(preview.url).toBe("https://box-123-8080.preview.box.upstash.com");
       expect(preview.port).toBe(8080);
       expect(preview.username).toBe("user");
@@ -78,7 +78,7 @@ describe("Box preview operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPreview));
 
-      const preview = await box.preview.create({ port: 8080, bearerToken: true, basicAuth: true });
+      const preview = await box.getPreviewUrl(8080, { bearerToken: true, basicAuth: true });
       expect(preview.url).toBe("https://box-123-8080.preview.box.upstash.com");
       expect(preview.port).toBe(8080);
       expect(preview.username).toBe("user");
@@ -92,7 +92,7 @@ describe("Box preview operations", () => {
     });
   });
 
-  describe("preview.list", () => {
+  describe("listPreviews", () => {
     it("lists all preview URLs", async () => {
       const { box, fetchMock } = await createTestBox();
       const mockPreviews = [
@@ -109,7 +109,7 @@ describe("Box preview operations", () => {
       ];
       fetchMock.mockResolvedValueOnce(mockResponse({ previews: mockPreviews }));
 
-      const res = await box.preview.list();
+      const res = await box.listPreviews();
       expect(res.previews).toHaveLength(2);
       expect(res.previews[0]!.port).toBe(3000);
       expect(res.previews[1]!.port).toBe(8080);
@@ -123,17 +123,17 @@ describe("Box preview operations", () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({ previews: [] }));
 
-      const res = await box.preview.list();
+      const res = await box.listPreviews();
       expect(res.previews).toEqual([]);
     });
   });
 
-  describe("preview.delete", () => {
+  describe("deletePreview", () => {
     it("deletes a preview URL by port", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-      await box.preview.delete(3000);
+      await box.deletePreview(3000);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/preview/3000");
