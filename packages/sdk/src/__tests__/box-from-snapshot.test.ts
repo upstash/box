@@ -92,6 +92,19 @@ describe("Box.fromSnapshot", () => {
     expect(body.github_token).toBe("gh-tok");
   });
 
+  it("sends env_vars in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.fromSnapshot("snap-1", {
+      ...TEST_CONFIG,
+      env: { MY_VAR: "hello", SECRET: "s3cret" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.env_vars).toEqual({ MY_VAR: "hello", SECRET: "s3cret" });
+  });
+
   it("throws on API error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "snapshot not found" }, 404));
 

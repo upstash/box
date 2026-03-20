@@ -1574,6 +1574,7 @@ export class Box {
     }
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.git?.token) body.github_token = config.git.token;
+    if (config?.env) body.env_vars = config.env;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",

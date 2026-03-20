@@ -85,15 +85,20 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — Box.fromSnapshot", () => {
     snapshotId = snap.id;
   }, 120000);
 
-  it("env vars from the original box persist in the restored box", async () => {
+  it("restores from snapshot with new env vars", async () => {
     restoredBox = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
+      env: { NEW_VAR: "from-restore" },
     });
 
-    const run = await restoredBox.exec.command("echo $SOURCE_VAR");
-    expect(run.exitCode).toBe(0);
-    expect(run.result).toContain("from-source");
+    const sourceVar = await restoredBox.exec.command("echo $SOURCE_VAR");
+    expect(sourceVar.exitCode).toBe(0);
+    expect(sourceVar.result).toContain("from-source");
+
+    const newVar = await restoredBox.exec.command("echo $NEW_VAR");
+    expect(newVar.exitCode).toBe(0);
+    expect(newVar.result).toContain("from-restore");
   }, 120000);
 });
 
