@@ -85,14 +85,15 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — Box.fromSnapshot", () => {
     snapshotId = snap.id;
   }, 120000);
 
-  it("restores with env and checks env vars", async () => {
+  it("env vars from the original box persist in the restored box", async () => {
     restoredBox = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
     });
 
-    const sourceVar = await restoredBox.exec.command("echo SOURCE_VAR=$SOURCE_VAR");
-    console.log("Box.fromSnapshot SOURCE_VAR:", JSON.stringify(sourceVar.result));
+    const run = await restoredBox.exec.command("echo $SOURCE_VAR");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("from-source");
   }, 120000);
 });
 
@@ -168,7 +169,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — EphemeralBox.fromSnapshot", 
     snapshotId = snap.id;
   }, 120000);
 
-  it("restores with new env vars and logs behavior", async () => {
+  it("restores from snapshot with new env vars", async () => {
     restoredBox = await EphemeralBox.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
       ttl: 300,
@@ -176,13 +177,23 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — EphemeralBox.fromSnapshot", 
     });
 
     expect(restoredBox.id).not.toBe(sourceBox.id);
-
-    const originalVar = await restoredBox.exec.command("echo ORIGINAL_VAR=$ORIGINAL_VAR");
-    const newVar = await restoredBox.exec.command("echo NEW_VAR=$NEW_VAR");
-    const sharedVar = await restoredBox.exec.command("echo SHARED_VAR=$SHARED_VAR");
-
-    console.log("EphemeralBox.fromSnapshot ORIGINAL_VAR:", JSON.stringify(originalVar.result));
-    console.log("EphemeralBox.fromSnapshot NEW_VAR:", JSON.stringify(newVar.result));
-    console.log("EphemeralBox.fromSnapshot SHARED_VAR:", JSON.stringify(sharedVar.result));
   }, 120000);
+
+  it("original env vars from snapshot persist", async () => {
+    const run = await restoredBox.exec.command("echo $ORIGINAL_VAR");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("from-create");
+  });
+
+  it("shared env var is overridden by fromSnapshot value", async () => {
+    const run = await restoredBox.exec.command("echo $SHARED_VAR");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("overridden-value");
+  });
+
+  it("new env vars passed to fromSnapshot are available", async () => {
+    const run = await restoredBox.exec.command("echo $NEW_VAR");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("from-restore");
+  });
 });
