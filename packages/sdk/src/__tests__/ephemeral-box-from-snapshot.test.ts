@@ -94,6 +94,27 @@ describe("EphemeralBox.fromSnapshot", () => {
     );
   });
 
+  it("sends env_vars in body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.fromSnapshot("snap-1", {
+      ...EPHEMERAL_CONFIG,
+      env: { DB_URL: "postgres://localhost", NODE_ENV: "test" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.env_vars).toEqual({ DB_URL: "postgres://localhost", NODE_ENV: "test" });
+  });
+
+  it("does not send env_vars when env is not set", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.fromSnapshot("snap-1", EPHEMERAL_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.env_vars).toBeUndefined();
+  });
+
   it("does not send agent or git fields", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 

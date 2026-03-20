@@ -177,6 +177,8 @@ export interface EphemeralBoxConfig {
   runtime?: Runtime;
   /** Time-to-live in seconds. Max 259200 (3 days). Defaults to 259200 if omitted. */
   ttl?: number;
+  /** Environment variables to inject into the box. */
+  env?: Record<string, string>;
   /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
   baseUrl?: string;
   /** Request timeout in milliseconds (defaults to 600000) */

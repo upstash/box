@@ -1991,6 +1991,7 @@ export class EphemeralBox {
     const body: Record<string, unknown> = { ephemeral: true };
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
+    if (config?.env) body.env_vars = config.env;
 
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "POST",
@@ -2054,6 +2055,7 @@ export class EphemeralBox {
     };
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
+    if (config?.env) body.env_vars = config.env;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",

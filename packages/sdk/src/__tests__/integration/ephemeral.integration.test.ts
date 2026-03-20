@@ -118,6 +118,49 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — node runtime", () => {
   });
 });
 
+describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — env vars", () => {
+  let box: EphemeralBox;
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+
+  it("creates an ephemeral box with env vars", async () => {
+    box = await EphemeralBox.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      ttl: 300,
+      env: { MY_SECRET: "ephemeral-secret", APP_MODE: "staging" },
+    });
+
+    expect(box.id).toBeTruthy();
+  }, 30000);
+
+  it("env vars are available in shell commands", async () => {
+    const run = await box.exec.command("echo $MY_SECRET");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("ephemeral-secret");
+  });
+
+  it("multiple env vars are set", async () => {
+    const run = await box.exec.command("echo $APP_MODE");
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("staging");
+  });
+
+  it("env vars are available in inline code", async () => {
+    const run = await box.exec.code({
+      code: "console.log(process.env.MY_SECRET)",
+      lang: "js",
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.result).toContain("ephemeral-secret");
+  });
+});
+
 describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — python runtime", () => {
   let box: EphemeralBox;
 

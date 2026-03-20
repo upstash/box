@@ -63,6 +63,27 @@ describe("EphemeralBox.create", () => {
     expect(body.ttl).toBe(1800);
   });
 
+  it("sends env_vars in body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create({
+      ...EPHEMERAL_CONFIG,
+      env: { MY_VAR: "hello", SECRET: "s3cret" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.env_vars).toEqual({ MY_VAR: "hello", SECRET: "s3cret" });
+  });
+
+  it("does not send env_vars when env is not set", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create(EPHEMERAL_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.env_vars).toBeUndefined();
+  });
+
   it("sends ttl: 0 when explicitly set", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 
