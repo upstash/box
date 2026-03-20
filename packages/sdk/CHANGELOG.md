@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.1.28
+
+### Patch Changes
+
+- c213352: add base64 encoding option to files.read
+- 206e3cb: add env option to EphemeralBox.create and fromSnapshot
+
 ## 0.1.27
 
 ### Patch Changes
