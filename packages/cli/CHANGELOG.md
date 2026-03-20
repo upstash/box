@@ -1,5 +1,15 @@
 # @upstash/box-cli
 
+## 0.1.31
+
+### Patch Changes
+
+- 59f7e3d: add git config params and update endpoint
+- Updated dependencies [59f7e3d]
+- Updated dependencies [0479627]
+- Updated dependencies [e9d0cf5]
+  - @upstash/box@0.1.27
+
 ## 0.1.30
 
 ### Patch Changes

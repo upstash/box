@@ -1,5 +1,13 @@
 # @upstash/box
 
+## 0.1.27
+
+### Patch Changes
+
+- 59f7e3d: add git config params and update endpoint
+- 0479627: move preview methods to top-level instead of namespace
+- e9d0cf5: add fromSnapshot and snapshot methods to EphemeralBox
+
 ## 0.1.26
 
 ### Patch Changes
