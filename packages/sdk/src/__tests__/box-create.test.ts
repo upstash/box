@@ -188,6 +188,35 @@ describe("Box.create", () => {
     ]);
   });
 
+  it("sends attach_headers in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      attachHeaders: {
+        "api.stripe.com": { Authorization: "Bearer sk_live_123" },
+        "*.example.com": { "X-Custom-Token": "secret123" },
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toEqual({
+      "api.stripe.com": { Authorization: "Bearer sk_live_123" },
+      "*.example.com": { "X-Custom-Token": "secret123" },
+    });
+  });
+
+  it("does not send attach_headers when not set", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create(TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toBeUndefined();
+  });
+
   it("throws on API error response", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "rate limited" }, 429));
 

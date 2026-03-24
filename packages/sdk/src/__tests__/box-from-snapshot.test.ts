@@ -105,6 +105,33 @@ describe("Box.fromSnapshot", () => {
     expect(body.env_vars).toEqual({ MY_VAR: "hello", SECRET: "s3cret" });
   });
 
+  it("sends attach_headers in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.fromSnapshot("snap-1", {
+      ...TEST_CONFIG,
+      attachHeaders: {
+        "api.openai.com": { Authorization: "Bearer sk-proj-abc" },
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toEqual({
+      "api.openai.com": { Authorization: "Bearer sk-proj-abc" },
+    });
+  });
+
+  it("does not send attach_headers when not set", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.fromSnapshot("snap-1", TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toBeUndefined();
+  });
+
   it("throws on API error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "snapshot not found" }, 404));
 

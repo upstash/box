@@ -431,6 +431,7 @@ export class Box {
     if (config?.git?.userName) body.git_user_name = config.git.userName;
     if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
     if (config?.env) body.env_vars = config.env;
+    if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
     if (config?.skills?.length) body.skills = config.skills;
     if (config?.mcpServers?.length) {
       body.mcp_servers = config.mcpServers.map((s) => ({
@@ -1567,6 +1568,7 @@ export class Box {
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.env) body.env_vars = config.env;
+    if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",
@@ -1986,6 +1988,7 @@ export class EphemeralBox {
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;
+    if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
 
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "POST",
@@ -2050,6 +2053,7 @@ export class EphemeralBox {
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;
+    if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",

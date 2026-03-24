@@ -115,6 +115,31 @@ describe("EphemeralBox.fromSnapshot", () => {
     expect(body.env_vars).toBeUndefined();
   });
 
+  it("sends attach_headers in body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.fromSnapshot("snap-1", {
+      ...EPHEMERAL_CONFIG,
+      attachHeaders: {
+        "api.example.com": { "X-Secret": "hidden" },
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toEqual({
+      "api.example.com": { "X-Secret": "hidden" },
+    });
+  });
+
+  it("does not send attach_headers when not set", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.fromSnapshot("snap-1", EPHEMERAL_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toBeUndefined();
+  });
+
   it("does not send agent or git fields", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 

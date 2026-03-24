@@ -114,6 +114,33 @@ describe("EphemeralBox.create", () => {
     await expect(EphemeralBox.create(EPHEMERAL_CONFIG)).rejects.toThrow("rate limited");
   });
 
+  it("sends attach_headers in body", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create({
+      ...EPHEMERAL_CONFIG,
+      attachHeaders: {
+        "api.stripe.com": { Authorization: "Bearer sk_live_123" },
+        "*.internal.io": { "X-Api-Key": "key456" },
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toEqual({
+      "api.stripe.com": { Authorization: "Bearer sk_live_123" },
+      "*.internal.io": { "X-Api-Key": "key456" },
+    });
+  });
+
+  it("does not send attach_headers when not set", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create(EPHEMERAL_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.attach_headers).toBeUndefined();
+  });
+
   it("does not send agent, git, or snapshot fields", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 

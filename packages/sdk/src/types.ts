@@ -147,6 +147,27 @@ export interface BoxConfig {
   };
   env?: Record<string, string>;
   /**
+   * Attach secret HTTP headers to outbound HTTPS requests from the box.
+   *
+   * Keys are host patterns (e.g. `"api.stripe.com"` or `"*.example.com"`),
+   * values are objects mapping header names to header values.
+   * A transparent proxy on the box agent injects these headers into
+   * matching outbound requests.
+   *
+   * This field is **write-only** — it is never returned by GET endpoints.
+   *
+   * @example
+   * ```ts
+   * {
+   *   attachHeaders: {
+   *     "api.stripe.com": { Authorization: "Bearer sk_live_..." },
+   *     "*.example.com": { "X-Custom-Token": "secret123" },
+   *   }
+   * }
+   * ```
+   */
+  attachHeaders?: Record<string, Record<string, string>>;
+  /**
    * GitHub repositories to install as skills on the box.
    *
    * Each entry is an `owner/repo` path (e.g. `"upstash/qstash-js"`).
@@ -179,6 +200,14 @@ export interface EphemeralBoxConfig {
   ttl?: number;
   /** Environment variables to inject into the box. */
   env?: Record<string, string>;
+  /**
+   * Attach secret HTTP headers to outbound HTTPS requests from the box.
+   *
+   * Keys are host patterns (e.g. `"api.stripe.com"` or `"*.example.com"`),
+   * values are objects mapping header names to header values.
+   * This field is **write-only** — it is never returned by GET endpoints.
+   */
+  attachHeaders?: Record<string, Record<string, string>>;
   /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
   baseUrl?: string;
   /** Request timeout in milliseconds (defaults to 600000) */
