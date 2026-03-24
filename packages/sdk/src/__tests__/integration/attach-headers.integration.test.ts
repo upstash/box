@@ -51,19 +51,14 @@ function waitForRequest(marker: string, timeout = 30_000): Promise<CaughtRequest
  * Sends a curl from inside the box to request catcher and verifies
  * that the expected headers were injected by the proxy.
  */
-async function assertHeaders(
-  box: Box | EphemeralBox,
-  expected: Record<string, string>,
-) {
+async function assertHeaders(box: Box | EphemeralBox, expected: Record<string, string>) {
   const marker = `marker-${randomId()}-${Date.now()}`;
   const listener = waitForRequest(marker);
 
   // sleep a bit to ensure the WebSocket connection is established before sending the request
   await new Promise((res) => setTimeout(res, 1000));
 
-  const run = await box.exec.command(
-    `curl -s -X POST -d '${marker}' ${REQUEST_CATCHER_URL}`,
-  );
+  const run = await box.exec.command(`curl -s -X POST -d '${marker}' ${REQUEST_CATCHER_URL}`);
   expect(run.exitCode).toBe(0);
 
   const caught = await listener;
@@ -101,9 +96,9 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
 
   const fromSnapConfig = {
     [REQUEST_CATCHER_HOST]: {
-      Authorization: overriddenAuthValue,   // override
-      "X-Custom-Tag": srcTagValue,          // retained (same value)
-      "X-New-Header": newHeaderValue,       // new
+      Authorization: overriddenAuthValue, // override
+      "X-Custom-Tag": srcTagValue, // retained (same value)
+      "X-New-Header": newHeaderValue, // new
     },
   };
 
