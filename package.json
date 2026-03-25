@@ -18,5 +18,10 @@
     "@changesets/cli": "^2.29.4",
     "dotenv": "^17.3.1",
     "vitest": "^4.0.18"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "4.59.0"
+    }
   }
 }
