@@ -1,5 +1,14 @@
 # @upstash/box
 
+## 0.1.29
+
+### Patch Changes
+
+- 31ecc2b: Add `box.schedule` namespace with `exec`, `agent`, `list`, `get`, and `delete` methods for creating and managing recurring cron-based tasks on a box.
+- f6ace16: Add networkPolicy options to boxes
+- 9a92f6d: Add name option to box create and fromSnapshot
+- 637455e: remove onChunk from agent.stream
+
 ## 0.1.28
 
 ### Patch Changes
