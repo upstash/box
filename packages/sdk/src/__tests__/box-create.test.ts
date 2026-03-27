@@ -217,6 +217,99 @@ describe("Box.create", () => {
     expect(body.attach_headers).toBeUndefined();
   });
 
+  it("sends name in body when provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({ ...TEST_CONFIG, name: "my-box" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.name).toBe("my-box");
+  });
+
+  it("omits name from body when not provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create(TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.name).toBeUndefined();
+  });
+
+  it("sends network_policy with allow-all mode", async () => {
+    const data = {
+      ...TEST_BOX_DATA,
+      status: "running",
+      network_policy: { mode: "allow-all" as const },
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create({ ...TEST_CONFIG, networkPolicy: { mode: "allow-all" } });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.network_policy).toEqual({ mode: "allow-all" });
+    expect(box.networkPolicy).toEqual({ mode: "allow-all" });
+  });
+
+  it("sends network_policy with deny-all mode", async () => {
+    const data = {
+      ...TEST_BOX_DATA,
+      status: "running",
+      network_policy: { mode: "deny-all" as const },
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create({ ...TEST_CONFIG, networkPolicy: { mode: "deny-all" } });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.network_policy).toEqual({ mode: "deny-all" });
+    expect(box.networkPolicy).toEqual({ mode: "deny-all" });
+  });
+
+  it("sends network_policy with custom mode", async () => {
+    const data = {
+      ...TEST_BOX_DATA,
+      status: "running",
+      network_policy: {
+        mode: "custom" as const,
+        allowed_domains: ["api.example.com"],
+        allowed_cidrs: ["10.0.0.0/8"],
+        denied_cidrs: ["192.168.0.0/16"],
+      },
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      networkPolicy: {
+        mode: "custom",
+        allowedDomains: ["api.example.com"],
+        allowedCidrs: ["10.0.0.0/8"],
+        deniedCidrs: ["192.168.0.0/16"],
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.network_policy).toEqual({
+      mode: "custom",
+      allowed_domains: ["api.example.com"],
+      allowed_cidrs: ["10.0.0.0/8"],
+      denied_cidrs: ["192.168.0.0/16"],
+    });
+  });
+
+  it("networkPolicy defaults to allow-all when not in response", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create(TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.network_policy).toBeUndefined();
+    expect(box.networkPolicy).toEqual({ mode: "allow-all" });
+  });
+
   it("throws on API error response", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "rate limited" }, 429));
 

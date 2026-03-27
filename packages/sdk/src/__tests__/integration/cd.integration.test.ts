@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { Box, ClaudeCode } from "../../index.js";
+import { Agent, Box, ClaudeCode } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
@@ -13,7 +13,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeAll(async () => {
     const setupBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
 
     tmpDir = join(tmpdir(), `box-cd-test-${Date.now()}`);
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeEach(async () => {
     box = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
   }, 120000);
 

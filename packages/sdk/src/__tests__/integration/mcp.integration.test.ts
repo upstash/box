@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
-import { Box, ClaudeCode } from "../../index.js";
+import { Agent, Box, ClaudeCode } from "../../index.js";
 import { CONTEXT7_API_KEY, UPSTASH_BOX_API_KEY } from "./setup.js";
 
 const mcpResultSchema = z.object({
@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)"
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
       mcpServers: [
         {
           name: "context7",
@@ -55,7 +55,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (url-based)", ()
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
       mcpServers: [
         {
           name: "context7",

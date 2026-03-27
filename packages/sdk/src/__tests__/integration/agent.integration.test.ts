@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
-import { Box, ClaudeCode } from "../../index.js";
+import { Agent, Box, ClaudeCode } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
@@ -9,7 +9,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
   }, 120000);
 
@@ -73,7 +73,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI)", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { model: ClaudeCode.Opus_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
     });
   }, 120000);
 

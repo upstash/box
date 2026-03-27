@@ -136,8 +136,36 @@ export type AgentConfig = {
     }
 );
 
+/**
+ * Network access policy for a box.
+ *
+ * Controls which outbound destinations the box is allowed to reach.
+ *
+ * @example
+ * ```ts
+ * // Allow all outbound traffic (default)
+ * { mode: "allow-all" }
+ *
+ * // Block all outbound traffic
+ * { mode: "deny-all" }
+ *
+ * // Custom rules
+ * { mode: "custom", allowedDomains: ["api.example.com"], deniedCidrs: ["10.0.0.0/8"] }
+ * ```
+ */
+export type NetworkPolicy =
+  | { mode: "allow-all" | "deny-all" }
+  | {
+      mode: "custom";
+      allowedDomains?: string[];
+      allowedCidrs?: string[];
+      deniedCidrs?: string[];
+    };
+
 export interface BoxConfig {
   apiKey?: string;
+  /** Human-readable name for the box */
+  name?: string;
   runtime?: Runtime;
   agent?: AgentConfig;
   git?: {
@@ -167,6 +195,8 @@ export interface BoxConfig {
    * ```
    */
   attachHeaders?: Record<string, Record<string, string>>;
+  /** Network access policy — controls outbound connectivity */
+  networkPolicy?: NetworkPolicy;
   /**
    * GitHub repositories to install as skills on the box.
    *
@@ -194,6 +224,8 @@ export interface BoxConfig {
 export interface EphemeralBoxConfig {
   /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
   apiKey?: string;
+  /** Human-readable name for the box */
+  name?: string;
   /** Runtime environment for the box. */
   runtime?: Runtime;
   /** Time-to-live in seconds. Max 259200 (3 days). Defaults to 259200 if omitted. */
@@ -208,6 +240,8 @@ export interface EphemeralBoxConfig {
    * This field is **write-only** — it is never returned by GET endpoints.
    */
   attachHeaders?: Record<string, Record<string, string>>;
+  /** Network access policy — controls outbound connectivity */
+  networkPolicy?: NetworkPolicy;
   /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
   baseUrl?: string;
   /** Request timeout in milliseconds (defaults to 600000) */
@@ -459,6 +493,15 @@ export type BoxData = {
   agent?: Agent;
   runtime?: string;
   status: BoxStatus;
+  /**
+   * Network access policy for this box. If omitted, defaults to allow-all
+   */
+  network_policy?: {
+    mode: "allow-all" | "deny-all" | "custom";
+    allowed_domains?: string[];
+    allowed_cidrs?: string[];
+    denied_cidrs?: string[];
+  };
   clone_repo?: string;
   total_input_tokens?: number;
   total_output_tokens?: number;
@@ -556,12 +599,11 @@ export interface ErrorResponse {
 /**
  * Backend run record — returned by Box.listRuns()
  */
-export interface BoxRunData {
+export type BoxRunData = {
   id: string;
   box_id: string;
   customer_id: string;
   type: "agent" | "shell";
-  status: "running" | "completed" | "failed" | "cancelled";
   prompt?: string;
   model?: string;
   output?: string;
@@ -576,6 +618,73 @@ export interface BoxRunData {
   session_id?: string;
   created_at: number;
   completed_at?: number;
+} & (
+  | { schedule_id?: never; status: "running" | "completed" | "failed" | "cancelled" }
+  | { schedule_id: string; status: "completed" | "failed" | "skipped" }
+);
+
+// ==================== Schedule ====================
+
+export type ScheduleStatus = "active" | "paused" | "deleted";
+
+/**
+ * Options for creating an exec schedule
+ */
+export interface ExecScheduleOptions {
+  /** Cron expression (e.g. "* * * * *"). UTC. */
+  cron: string;
+  /** Command and arguments to execute */
+  command: string[];
+  /** Working directory override */
+  folder?: string;
+  /** URL to POST results to after each run */
+  webhookUrl?: string;
+  /** Custom headers sent with webhook */
+  webhookHeaders?: Record<string, string>;
+}
+
+/**
+ * Options for creating a prompt schedule
+ */
+export interface AgentScheduleOptions {
+  /** Cron expression (e.g. "0 9 * * *"). UTC. */
+  cron: string;
+  /** The prompt/task for the AI agent */
+  prompt: string;
+  /** Working directory override */
+  folder?: string;
+  /** Model override. Defaults to the box's configured model. */
+  model?: string;
+  /** URL to POST results to after each run */
+  webhookUrl?: string;
+  /** Custom headers sent with webhook */
+  webhookHeaders?: Record<string, string>;
+}
+
+/**
+ * A scheduled task on a box
+ */
+export interface Schedule {
+  id: string;
+  box_id: string;
+  customer_id?: string;
+  type: "exec" | "prompt";
+  cron: string;
+  command?: string[];
+  prompt?: string;
+  folder?: string;
+  model?: string;
+  status: ScheduleStatus;
+  qstash_schedule_id?: string;
+  webhook_url?: string;
+  webhook_headers?: Record<string, string>;
+  last_run_at?: number;
+  last_run_status?: "completed" | "failed" | "skipped";
+  last_run_id?: string;
+  total_runs: number;
+  total_failures: number;
+  created_at: number;
+  updated_at: number;
 }
 
 // ==================== Preview ====================

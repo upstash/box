@@ -55,6 +55,11 @@ export type {
   ErrorResponse,
   BoxRunData,
   Preview,
+  NetworkPolicy,
   EphemeralBoxConfig,
   EphemeralBoxData,
+  ExecScheduleOptions,
+  AgentScheduleOptions,
+  Schedule,
+  ScheduleStatus,
 } from "./types.js";

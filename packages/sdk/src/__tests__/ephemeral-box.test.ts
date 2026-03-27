@@ -93,6 +93,30 @@ describe("EphemeralBox.create", () => {
     expect(body.ttl).toBe(0);
   });
 
+  it("sends name in body when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create({ ...EPHEMERAL_CONFIG, name: "my-ephemeral" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.name).toBe("my-ephemeral");
+  });
+
+  it("sends network_policy in body when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create({
+      ...EPHEMERAL_CONFIG,
+      networkPolicy: { mode: "custom", allowedDomains: ["example.com"] },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.network_policy).toEqual({
+      mode: "custom",
+      allowed_domains: ["example.com"],
+    });
+  });
+
   it("throws when apiKey is missing", async () => {
     await expect(EphemeralBox.create()).rejects.toThrow("apiKey is required");
   });
@@ -184,6 +208,18 @@ describe("EphemeralBox instance", () => {
     expect(typeof box.files.list).toBe("function");
     expect(typeof box.files.upload).toBe("function");
     expect(typeof box.files.download).toBe("function");
+  });
+
+  it("exposes schedule namespace", async () => {
+    const box = await createBox();
+    expect(box.schedule).toBeDefined();
+    expect(typeof box.schedule.exec).toBe("function");
+    expect(typeof box.schedule.agent).toBe("function");
+    expect(typeof box.schedule.list).toBe("function");
+    expect(typeof box.schedule.get).toBe("function");
+    expect(typeof box.schedule.pause).toBe("function");
+    expect(typeof box.schedule.resume).toBe("function");
+    expect(typeof box.schedule.delete).toBe("function");
   });
 
   it("does not expose agent, git, or preview namespaces", async () => {

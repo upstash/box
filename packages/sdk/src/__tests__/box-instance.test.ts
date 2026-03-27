@@ -246,6 +246,55 @@ describe("Box instance methods", () => {
     });
   });
 
+  describe("updateNetworkPolicy", () => {
+    it("sends PUT with allow-all mode and updates local field", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.updateNetworkPolicy({ mode: "allow-all" });
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/config/network-policy");
+      expect(init?.method).toBe("PUT");
+      const body = JSON.parse(init?.body as string);
+      expect(body).toEqual({ mode: "allow-all" });
+      expect(box.networkPolicy).toEqual({ mode: "allow-all" });
+    });
+
+    it("sends PUT with deny-all mode and updates local field", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.updateNetworkPolicy({ mode: "deny-all" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body).toEqual({ mode: "deny-all" });
+      expect(box.networkPolicy).toEqual({ mode: "deny-all" });
+    });
+
+    it("sends PUT with custom mode, serializes fields, and updates local field", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      const policy = {
+        mode: "custom" as const,
+        allowedDomains: ["api.example.com"],
+        allowedCidrs: ["10.0.0.0/8"],
+        deniedCidrs: ["192.168.0.0/16"],
+      };
+      await box.updateNetworkPolicy(policy);
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body).toEqual({
+        mode: "custom",
+        allowed_domains: ["api.example.com"],
+        allowed_cidrs: ["10.0.0.0/8"],
+        denied_cidrs: ["192.168.0.0/16"],
+      });
+      expect(box.networkPolicy).toEqual(policy);
+    });
+  });
+
   describe("delete", () => {
     it("sends delete request", async () => {
       const { box, fetchMock } = await createTestBox();

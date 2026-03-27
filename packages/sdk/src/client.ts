@@ -33,6 +33,10 @@ import {
   type Preview,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
+  type NetworkPolicy,
+  type ExecScheduleOptions,
+  type AgentScheduleOptions,
+  type Schedule,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -227,6 +231,11 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
 export class Box {
   readonly id: string;
 
+  /** Current network access policy for this box. */
+  get networkPolicy(): NetworkPolicy {
+    return this._networkPolicy;
+  }
+
   /** Agent operations namespace */
   readonly agent: {
     run<T>(
@@ -268,6 +277,17 @@ export class Box {
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
   };
 
+  /** Schedule operations namespace */
+  readonly schedule: {
+    exec: (options: ExecScheduleOptions) => Promise<Schedule>;
+    agent: (options: AgentScheduleOptions) => Promise<Schedule>;
+    list: () => Promise<Schedule[]>;
+    get: (id: string) => Promise<Schedule>;
+    pause: (id: string) => Promise<void>;
+    resume: (id: string) => Promise<void>;
+    delete: (id: string) => Promise<void>;
+  };
+
   /** Git operations namespace */
   readonly git: {
     clone: (options: GitCloneOptions) => Promise<void>;
@@ -300,6 +320,7 @@ export class Box {
   }
 
   private _cwd: string;
+  private _networkPolicy: NetworkPolicy;
   private _model: string | undefined;
   private _agent: Agent | undefined;
   private _baseUrl: string;
@@ -339,6 +360,7 @@ export class Box {
   ) {
     this.id = data.id;
     this._cwd = Box.WORKSPACE;
+    this._networkPolicy = deserializeNetworkPolicy(data.network_policy);
     this._model = data.model;
     this._agent = data.agent;
     this._baseUrl = config.baseUrl;
@@ -383,6 +405,16 @@ export class Box {
       download: (opts) => this._downloadFiles(opts?.folder),
     };
 
+    this.schedule = {
+      exec: (options) => this._scheduleExec(options),
+      agent: (options) => this._scheduleAgent(options),
+      list: () => this._scheduleList(),
+      get: (id) => this._scheduleGet(id),
+      pause: (id) => this._schedulePause(id),
+      resume: (id) => this._scheduleResume(id),
+      delete: (id) => this._scheduleDelete(id),
+    };
+
     this.git = {
       clone: (options) => this._gitClone(options),
       diff: () => this._gitDiff(),
@@ -421,6 +453,7 @@ export class Box {
     const debug = config?.debug ?? false;
 
     const body: Record<string, unknown> = {};
+    if (config?.name) body.name = config.name;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = config.agent.provider ?? config.agent.runner;
@@ -432,6 +465,7 @@ export class Box {
     if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
     if (config?.env) body.env_vars = config.env;
     if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
+    if (config?.networkPolicy) body.network_policy = serializeNetworkPolicy(config.networkPolicy);
     if (config?.skills?.length) body.skills = config.skills;
     if (config?.mcpServers?.length) {
       body.mcp_servers = config.mcpServers.map((s) => ({
@@ -513,7 +547,7 @@ export class Box {
   }
 
   /**
-   * Get an existing box by ID.
+   * Get an existing box by ID
    */
   static async get(boxId: string, options?: BoxGetOptions): Promise<Box> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
@@ -548,6 +582,11 @@ export class Box {
       isAgentConfigured: Boolean(data.model),
     });
   }
+
+  /**
+   * Get an existing box by name
+   */
+  static getByName = Box.get;
 
   // ==================== Run ====================
 
@@ -1419,6 +1458,16 @@ export class Box {
   }
 
   /**
+   * Update the network access policy for this box.
+   */
+  async updateNetworkPolicy(policy: NetworkPolicy): Promise<void> {
+    await this._request("PUT", `/v2/box/${this.id}/config/network-policy`, {
+      body: serializeNetworkPolicy(policy),
+    });
+    this._networkPolicy = policy;
+  }
+
+  /**
    * Pause the box (release compute, preserve state).
    */
   async pause(): Promise<void> {
@@ -1560,6 +1609,7 @@ export class Box {
     const body: Record<string, unknown> = {
       snapshot_id: snapshotId,
     };
+    if (config?.name) body.name = config.name;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = config.agent.provider ?? config.agent.runner;
@@ -1569,6 +1619,7 @@ export class Box {
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.env) body.env_vars = config.env;
     if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
+    if (config?.networkPolicy) body.network_policy = serializeNetworkPolicy(config.networkPolicy);
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",
@@ -1685,6 +1736,53 @@ export class Box {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  // ==================== Schedule (private, exposed via this.schedule) ====================
+
+  private async _scheduleExec(options: ExecScheduleOptions): Promise<Schedule> {
+    const body: Record<string, unknown> = {
+      type: "exec",
+      cron: options.cron,
+      command: options.command,
+      folder: options.folder ? this._resolvePath(options.folder) : this._cwd,
+    };
+    if (options.webhookUrl) body.webhook_url = options.webhookUrl;
+    if (options.webhookHeaders) body.webhook_headers = options.webhookHeaders;
+    return this._request<Schedule>("POST", `/v2/box/${this.id}/schedules`, { body });
+  }
+
+  private async _scheduleAgent(options: AgentScheduleOptions): Promise<Schedule> {
+    const body: Record<string, unknown> = {
+      type: "prompt",
+      cron: options.cron,
+      prompt: options.prompt,
+      folder: options.folder ? this._resolvePath(options.folder) : this._cwd,
+    };
+    if (options.model) body.model = options.model;
+    if (options.webhookUrl) body.webhook_url = options.webhookUrl;
+    if (options.webhookHeaders) body.webhook_headers = options.webhookHeaders;
+    return this._request<Schedule>("POST", `/v2/box/${this.id}/schedules`, { body });
+  }
+
+  private async _scheduleList(): Promise<Schedule[]> {
+    return this._request<Schedule[]>("GET", `/v2/box/${this.id}/schedules`);
+  }
+
+  private async _scheduleGet(id: string): Promise<Schedule> {
+    return this._request<Schedule>("GET", `/v2/box/${this.id}/schedules/${id}`);
+  }
+
+  private async _schedulePause(id: string): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/schedules/${id}/pause`);
+  }
+
+  private async _scheduleResume(id: string): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/schedules/${id}/resume`);
+  }
+
+  private async _scheduleDelete(id: string): Promise<void> {
+    await this._request("DELETE", `/v2/box/${this.id}/schedules/${id}`);
   }
 
   // ==================== Git (private, exposed via this.git) ====================
@@ -1881,6 +1979,9 @@ export class EphemeralBox {
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
   };
 
+  /** Schedule operations namespace */
+  readonly schedule: Box["schedule"];
+
   private _box: Box;
 
   /** @internal */
@@ -1890,12 +1991,18 @@ export class EphemeralBox {
     this.expiresAt = expiresAt;
     this.exec = box.exec;
     this.files = box.files;
+    this.schedule = box.schedule;
   }
 
   /**
    * The current working directory tracked in the SDK.
    * Every new session starts at `/workspace/home`.
    */
+  /** Current network access policy for this box. */
+  get networkPolicy(): NetworkPolicy {
+    return this._box.networkPolicy;
+  }
+
   get cwd(): string {
     return this._box.cwd;
   }
@@ -1985,10 +2092,12 @@ export class EphemeralBox {
     const debug = config?.debug ?? false;
 
     const body: Record<string, unknown> = { ephemeral: true };
+    if (config?.name) body.name = config.name;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;
     if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
+    if (config?.networkPolicy) body.network_policy = serializeNetworkPolicy(config.networkPolicy);
 
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "POST",
@@ -2050,10 +2159,12 @@ export class EphemeralBox {
       snapshot_id: snapshotId,
       ephemeral: true,
     };
+    if (config?.name) body.name = config.name;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;
     if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
+    if (config?.networkPolicy) body.network_policy = serializeNetworkPolicy(config.networkPolicy);
 
     const response = await fetch(`${baseUrl}/v2/box/from-snapshot`, {
       method: "POST",
@@ -2077,6 +2188,11 @@ export class EphemeralBox {
 
     return new EphemeralBox(box, data.expires_at);
   }
+
+  /**
+   * Get an existing ephemeral box by name
+   */
+  static getByName = Box.get;
 }
 
 // ==================== Helpers ====================
@@ -2094,6 +2210,35 @@ export function toJsonSchema(schema: ZodType<any>): Record<string, unknown> | nu
     // Not a Zod schema or conversion failed
   }
   return null;
+}
+
+/** Serialize a NetworkPolicy into the API wire format. */
+function serializeNetworkPolicy(policy: NetworkPolicy): Record<string, unknown> {
+  if (policy.mode === "custom") {
+    return {
+      mode: policy.mode,
+      allowed_domains: policy.allowedDomains,
+      allowed_cidrs: policy.allowedCidrs,
+      denied_cidrs: policy.deniedCidrs,
+    };
+  }
+  return { mode: policy.mode };
+}
+
+/** Deserialize the API wire format into a NetworkPolicy. */
+function deserializeNetworkPolicy(raw: BoxData["network_policy"]): NetworkPolicy {
+  if (!raw) {
+    return { mode: "allow-all" };
+  }
+  if (raw.mode === "custom") {
+    return {
+      mode: "custom",
+      allowedDomains: raw.allowed_domains,
+      allowedCidrs: raw.allowed_cidrs,
+      deniedCidrs: raw.denied_cidrs,
+    };
+  }
+  return { mode: raw.mode };
 }
 
 /** @internal */

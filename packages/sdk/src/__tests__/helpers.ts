@@ -1,21 +1,24 @@
 import { vi } from "vitest";
 import { Box } from "../client.js";
-import { ClaudeCode } from "../types.js";
+import { Agent, ClaudeCode } from "../types.js";
 import type { BoxData, BoxConfig } from "../types.js";
 
 export const TEST_CONFIG: BoxConfig = {
   apiKey: "test-api-key",
   baseUrl: "https://test.api.example.com",
-  agent: { model: ClaudeCode.Sonnet_4_5, apiKey: "test-agent-key" },
+  agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "test-agent-key" },
 };
 
-export const TEST_BOX_DATA = {
+export const TEST_BOX_DATA: Partial<BoxData> = {
   id: "box-123",
   model: "claude/sonnet_4_5",
   runtime: "node",
   status: "running",
-  created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2025-01-01T00:00:00Z",
+  created_at: 1672531200,
+  updated_at: 1672531200,
+  network_policy: {
+    mode: "allow-all",
+  },
 };
 
 export function mockResponse(body: unknown, status = 200): Response {
@@ -121,7 +124,7 @@ export async function createTestBox(
   const data = { ...TEST_BOX_DATA, ...overrides };
   const fetchMock = vi.fn().mockResolvedValueOnce(mockResponse(data));
   vi.stubGlobal("fetch", fetchMock);
-  const box = await Box.get(data.id, {
+  const box = await Box.get(data.id!, {
     apiKey: TEST_CONFIG.apiKey,
     baseUrl: TEST_CONFIG.baseUrl,
   });

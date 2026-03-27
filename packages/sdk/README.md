@@ -72,6 +72,14 @@ Reconnect to an existing box by ID.
 const box = await Box.get("box_abc123");
 ```
 
+#### `Box.getByName(name: string, options?: BoxGetOptions): Promise<Box>`
+
+Get an existing box by name.
+
+```ts
+const box = await Box.getByName("my-box");
+```
+
 #### `Box.list(options?: ListOptions): Promise<BoxData[]>`
 
 List all boxes for the authenticated user.
@@ -167,6 +175,39 @@ console.log(result.output);
 
 // Switch branches
 await box.git.checkout({ branch: "feature-branch" });
+```
+
+### Schedules
+
+Create recurring tasks that run on a cron schedule — either shell commands (`exec`) or AI agent prompts (`agent`). Schedules can be paused, resumed, and deleted. Available on both `Box` and `EphemeralBox`.
+
+```ts
+// Schedule a shell command to run every minute
+const execSchedule = await box.schedule.exec({
+  cron: "* * * * *",
+  command: ["bash", "-c", "date >> /workspace/home/cron.log && echo scheduled-ok"],
+});
+
+// Schedule an agent prompt to run daily at 9am
+const agentSchedule = await box.schedule.agent({
+  cron: "0 9 * * *",
+  prompt: "Run the test suite and fix any failures",
+});
+
+// List all active and paused schedules.
+const schedules = await box.schedule.list();
+
+// Get a specific schedule by ID.
+const schedule = await box.schedule.get("sched-abc123");
+
+// Pause a schedule. It won't fire until resumed.
+await box.schedule.pause(schedule.id);
+
+// Resume a paused schedule.
+await box.schedule.resume(schedule.id);
+
+// Delete a schedule permanently.
+await box.schedule.delete(schedule.id);
 ```
 
 ### Working directory
