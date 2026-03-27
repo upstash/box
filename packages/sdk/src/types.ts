@@ -147,6 +147,74 @@ export type AgentConfig = {
     }
 );
 
+// ==================== Agent Options ====================
+
+/**
+ * SDK-specific options forwarded to the Claude Code agent.
+ */
+export interface ClaudeCodeAgentOptions {
+  /** Max conversation turns */
+  maxTurns?: number;
+  /** Max budget in USD */
+  maxBudgetUsd?: number;
+  /** Thinking depth */
+  effort?: "low" | "medium" | "high" | "max";
+  /** Thinking configuration */
+  thinking?:
+    | { type: "adaptive" }
+    | { type: "enabled"; budgetTokens: number }
+    | { type: "disabled" };
+  /** Tools to deny */
+  disallowedTools?: string[];
+  /** Custom subagent definitions */
+  agents?: Record<string, unknown>;
+  /** Enable prompt suggestions */
+  promptSuggestions?: boolean;
+  /** Fallback model */
+  fallbackModel?: string;
+  /** Custom system prompt */
+  systemPrompt?: string | Record<string, unknown>;
+}
+
+/**
+ * SDK-specific options forwarded to the Codex agent.
+ */
+export interface CodexAgentOptions {
+  /** Reasoning effort */
+  model_reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  /** Summary style */
+  model_reasoning_summary?: "auto" | "concise" | "detailed" | "none";
+  /** Agent personality */
+  personality?: "friendly" | "pragmatic" | "none";
+  /** Web search */
+  web_search?: "live" | boolean;
+}
+
+/**
+ * SDK-specific options forwarded to the OpenCode agent.
+ */
+export interface OpenCodeAgentOptions {
+  /** Reasoning effort */
+  reasoningEffort?: "low" | "medium" | "high";
+  /** Output verbosity */
+  textVerbosity?: "low" | "medium" | "high";
+  /** Summary mode */
+  reasoningSummary?: "auto" | "concise" | "detailed" | "none";
+  /** Thinking configuration for Anthropic models */
+  thinking?: { type: "enabled"; budgetTokens: number };
+}
+
+/**
+ * Resolves the correct agent options type based on the provider.
+ */
+export type AgentOptions<TProvider = unknown> = TProvider extends Agent.ClaudeCode
+  ? ClaudeCodeAgentOptions
+  : TProvider extends Agent.Codex
+    ? CodexAgentOptions
+    : TProvider extends Agent.OpenCode
+      ? OpenCodeAgentOptions
+      : Record<string, unknown>;
+
 /**
  * Network access policy for a box.
  *
@@ -331,9 +399,11 @@ export type Chunk =
 /**
  * Options for streaming agent output
  */
-export interface StreamOptions {
+export interface StreamOptions<TProvider = unknown> {
   /** The prompt/task for the AI agent */
   prompt: string;
+  /** SDK-specific options forwarded to the underlying agent */
+  agentOptions?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
@@ -343,11 +413,13 @@ export interface StreamOptions {
 /**
  * Options for running a prompt
  */
-export interface RunOptions<T = undefined> {
+export interface RunOptions<T = undefined, TProvider = unknown> {
   /** The prompt/task for the AI agent */
   prompt: string;
   /** Zod schema for structured output — typed, validated results */
   responseSchema?: ZodType<T>;
+  /** SDK-specific options forwarded to the underlying agent */
+  agentOptions?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Retries with exponential backoff on transient failures */

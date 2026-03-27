@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod/v3";
+import { Agent } from "../types.js";
 import type { Chunk } from "../types.js";
 import { mockSSEResponse, mockResponse, createTestBox, mockSSEResponseChunked } from "./helpers.js";
 
@@ -285,6 +286,123 @@ describe("box.agent.run", () => {
       }),
     ).rejects.toThrow("bad request");
   });
+
+  it("sends ClaudeCode agent_options in request body", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.ClaudeCode>();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    await box.agent.run({
+      prompt: "test",
+      agentOptions: {
+        maxTurns: 5,
+        effort: "max",
+        thinking: { type: "enabled", budgetTokens: 16000 },
+      },
+    });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({
+      maxTurns: 5,
+      effort: "max",
+      thinking: { type: "enabled", budgetTokens: 16000 },
+    });
+  });
+
+  it("sends Codex agent_options in request body", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.Codex>();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    await box.agent.run({
+      prompt: "test",
+      agentOptions: {
+        model_reasoning_effort: "high",
+        personality: "pragmatic",
+        web_search: true,
+      },
+    });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({
+      model_reasoning_effort: "high",
+      personality: "pragmatic",
+      web_search: true,
+    });
+  });
+
+  it("sends OpenCode agent_options in request body", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.OpenCode>();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    await box.agent.run({
+      prompt: "test",
+      agentOptions: {
+        reasoningEffort: "high",
+        textVerbosity: "low",
+        reasoningSummary: "concise",
+      },
+    });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({
+      reasoningEffort: "high",
+      textVerbosity: "low",
+      reasoningSummary: "concise",
+    });
+  });
+
+  it("does not send agent_options when not provided", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    await box.agent.run({ prompt: "test" });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toBeUndefined();
+  });
+
+  it("sends agent_options in webhook run", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.ClaudeCode>();
+
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: "accepted", box_id: "box-123" }));
+
+    await box.agent.run({
+      prompt: "test",
+      agentOptions: { maxTurns: 3 },
+      webhook: { url: "https://example.com/hook" },
+    });
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({ maxTurns: 3 });
+  });
 });
 
 describe("box.agent.stream", () => {
@@ -460,5 +578,51 @@ describe("box.agent.stream", () => {
     expect(run.status).toBe("failed");
     expect(run.result).toBe("partial");
     expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("sends agent_options in stream request body (OpenCode)", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.OpenCode>();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    const run = await box.agent.stream({
+      prompt: "test",
+      agentOptions: { reasoningEffort: "high", textVerbosity: "low" },
+    });
+    for await (const _ of run) {
+      // consume
+    }
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({ reasoningEffort: "high", textVerbosity: "low" });
+  });
+
+  it("sends agent_options in stream request body (Codex)", async () => {
+    const { box, fetchMock } = await createTestBox<Agent.Codex>();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { output: "ok" } },
+      ]),
+    );
+
+    const run = await box.agent.stream({
+      prompt: "test",
+      agentOptions: { model_reasoning_effort: "medium", personality: "friendly" },
+    });
+    for await (const _ of run) {
+      // consume
+    }
+
+    const [, runCall] = fetchMock.mock.calls;
+    const body = JSON.parse(runCall[1].body as string);
+    expect(body.agent_options).toEqual({ model_reasoning_effort: "medium", personality: "friendly" });
   });
 });

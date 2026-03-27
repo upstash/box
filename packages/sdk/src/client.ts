@@ -230,7 +230,7 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  * await box.delete();
  * ```
  */
-export class Box {
+export class Box<TProvider = unknown> {
   readonly id: string;
 
   /** Resource size of this box (`"small"`, `"medium"`, or `"large"`). */
@@ -244,10 +244,10 @@ export class Box {
   /** Agent operations namespace */
   readonly agent: {
     run<T>(
-      options: RunOptions<T> & { responseSchema: RunOptions<T>["responseSchema"] },
+      options: RunOptions<T, TProvider> & { responseSchema: RunOptions<T, TProvider>["responseSchema"] },
     ): Promise<Run<T>>;
-    run(options: RunOptions): Promise<Run<string>>;
-    stream(options: StreamOptions): Promise<StreamRun<string, Chunk>>;
+    run(options: RunOptions<undefined, TProvider>): Promise<Run<string>>;
+    stream(options: StreamOptions<TProvider>): Promise<StreamRun<string, Chunk>>;
   };
 
   /** File operations namespace */
@@ -437,7 +437,7 @@ export class Box {
   /**
    * Create a new sandboxed box.
    */
-  static async create(config?: BoxConfig): Promise<Box> {
+  static async create<TProvider = unknown>(config?: BoxConfig): Promise<Box<TProvider>> {
     const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
@@ -619,7 +619,7 @@ export class Box {
   /**
    * Get an existing box by ID
    */
-  static async get(boxId: string, options?: BoxGetOptions): Promise<Box> {
+  static async get<TProvider = unknown>(boxId: string, options?: BoxGetOptions): Promise<Box<TProvider>> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
@@ -689,6 +689,7 @@ export class Box {
         requestBody.json_schema = jsonSchema;
       }
     }
+    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
     requestBody.webhook = options.webhook.headers
       ? { url: options.webhook.url, headers: options.webhook.headers }
       : { url: options.webhook.url };
@@ -749,6 +750,7 @@ export class Box {
         requestBody.json_schema = jsonSchema;
       }
     }
+    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const response = await fetch(url, {
@@ -883,11 +885,15 @@ export class Box {
     }
 
     const folder = this._getFolder();
+    const requestBody: Record<string, unknown> = { prompt: options.prompt };
+    if (folder) requestBody.folder = folder;
+    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
+
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const response = await fetch(url, {
       method: "POST",
       headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: options.prompt, ...(folder ? { folder } : {}) }),
+      body: JSON.stringify(requestBody),
       signal: abortController.signal,
     });
 
@@ -1611,7 +1617,7 @@ export class Box {
   /**
    * Create a new box from a saved snapshot.
    */
-  static async fromSnapshot(snapshotId: string, config?: BoxConfig): Promise<Box> {
+  static async fromSnapshot<TProvider = unknown>(snapshotId: string, config?: BoxConfig): Promise<Box<TProvider>> {
     const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(

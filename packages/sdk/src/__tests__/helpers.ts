@@ -118,13 +118,13 @@ export function mockSSEResponseChunked(events: Array<{ event: string; data: unkn
 /**
  * Creates a real Box instance by mocking the fetch for Box.get().
  */
-export async function createTestBox(
+export async function createTestBox<TProvider = unknown>(
   overrides?: Partial<BoxData>,
-): Promise<{ box: Box; fetchMock: ReturnType<typeof vi.fn> }> {
+): Promise<{ box: Box<TProvider>; fetchMock: ReturnType<typeof vi.fn> }> {
   const data = { ...TEST_BOX_DATA, ...overrides };
   const fetchMock = vi.fn().mockResolvedValueOnce(mockResponse(data));
   vi.stubGlobal("fetch", fetchMock);
-  const box = await Box.get(data.id!, {
+  const box = await Box.get<TProvider>(data.id!, {
     apiKey: TEST_CONFIG.apiKey,
     baseUrl: TEST_CONFIG.baseUrl,
   });
