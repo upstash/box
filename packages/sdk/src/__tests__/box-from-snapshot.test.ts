@@ -132,6 +132,27 @@ describe("Box.fromSnapshot", () => {
     expect(body.attach_headers).toBeUndefined();
   });
 
+  it("sends size in body when provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running", size: "medium" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.fromSnapshot("snap-1", { ...TEST_CONFIG, size: "medium" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBe("medium");
+    expect(box.size).toBe("medium");
+  });
+
+  it("omits size from body when not provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.fromSnapshot("snap-1", TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBeUndefined();
+  });
+
   it("throws on API error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "snapshot not found" }, 404));
 

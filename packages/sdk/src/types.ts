@@ -6,6 +6,17 @@ import type { ZodType } from "zod/v3";
 export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
 
 /**
+ * Resource size presets for boxes.
+ *
+ * | Size     | CPU      | Memory |
+ * |----------|----------|--------|
+ * | `small`  | 2 cores  | 2 GB   |
+ * | `medium` | 4 cores  | 8 GB   |
+ * | `large`  | 8 cores  | 16 GB  |
+ */
+export type BoxSize = "small" | "medium" | "large";
+
+/**
  * Agent SDKs available for boxes
  */
 export enum Agent {
@@ -167,6 +178,8 @@ export interface BoxConfig {
   /** Human-readable name for the box */
   name?: string;
   runtime?: Runtime;
+  /** Resource size for the box. Defaults to `"small"`. */
+  size?: BoxSize;
   agent?: AgentConfig;
   git?: {
     token?: string;
@@ -414,13 +427,11 @@ export interface Snapshot {
   name: string;
   box_id: string;
   size_bytes: number;
-  image_url?: string;
-  s3_key?: string;
   status: "creating" | "ready" | "error" | "deleted";
   created_at: number;
 }
 
-/**
+/**ListOptions
  * Options for listing boxes
  */
 export interface ListOptions {
@@ -489,6 +500,7 @@ export type BoxData = {
   id: string;
   customer_id?: string;
   name?: string;
+  size?: BoxSize;
   model?: string;
   agent?: Agent;
   runtime?: string;

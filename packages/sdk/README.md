@@ -324,6 +324,31 @@ The `provider` field in agent config is optional — the SDK infers it from the 
 | `OpenRouterModel.O3`               | `openrouter/openai/o3`                  |
 | `OpenRouterModel.O4_Mini`          | `openrouter/openai/o4-mini`             |
 
+## Box Sizes
+
+Boxes have configurable resource sizes, set at creation time via the `size` option. Defaults to `"small"`.
+
+| Size     | CPU     | Memory |
+| -------- | ------- | ------ |
+| `small`  | 2 cores | 2 GB   |
+| `medium` | 4 cores | 8 GB   |
+| `large`  | 8 cores | 16 GB  |
+
+```ts
+const box = await Box.create({
+  size: "large",
+  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+});
+
+console.log(box.size); // "large"
+```
+
+Also supported in `Box.fromSnapshot()`:
+
+```ts
+const box = await Box.fromSnapshot("snap_abc123", { size: "medium" });
+```
+
 ## Runtimes
 
 `Runtime` is a string union type: `"node" | "python" | "golang" | "ruby" | "rust"`

@@ -18,6 +18,7 @@ export {
 
 export type {
   Runtime,
+  BoxSize,
   AgentConfig,
   BoxConfig,
   BoxGetOptions,

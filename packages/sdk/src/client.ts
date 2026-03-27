@@ -4,6 +4,7 @@ import {
   type BoxData,
   type BoxGetOptions,
   type BoxRunData,
+  type BoxSize,
   type ListOptions,
   type RunOptions,
   type StreamOptions,
@@ -231,6 +232,9 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
 export class Box {
   readonly id: string;
 
+  /** Resource size of this box (`"small"`, `"medium"`, or `"large"`). */
+  readonly size: BoxSize;
+
   /** Current network access policy for this box. */
   get networkPolicy(): NetworkPolicy {
     return this._networkPolicy;
@@ -359,6 +363,7 @@ export class Box {
     },
   ) {
     this.id = data.id;
+    this.size = data.size ?? "small";
     this._cwd = Box.WORKSPACE;
     this._networkPolicy = deserializeNetworkPolicy(data.network_policy);
     this._model = data.model;
@@ -454,6 +459,7 @@ export class Box {
 
     const body: Record<string, unknown> = {};
     if (config?.name) body.name = config.name;
+    if (config?.size) body.size = config.size;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = config.agent.provider ?? config.agent.runner;
@@ -1561,6 +1567,7 @@ export class Box {
       snapshot_id: snapshotId,
     };
     if (config?.name) body.name = config.name;
+    if (config?.size) body.size = config.size;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = config.agent.provider ?? config.agent.runner;

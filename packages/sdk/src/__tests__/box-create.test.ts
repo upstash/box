@@ -310,6 +310,35 @@ describe("Box.create", () => {
     expect(box.networkPolicy).toEqual({ mode: "allow-all" });
   });
 
+  it("sends size in body when provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running", size: "large" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create({ ...TEST_CONFIG, size: "large" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBe("large");
+    expect(box.size).toBe("large");
+  });
+
+  it("omits size from body when not provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create(TEST_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBeUndefined();
+  });
+
+  it("defaults size to small when not in response", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create(TEST_CONFIG);
+    expect(box.size).toBe("small");
+  });
+
   it("throws on API error response", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "rate limited" }, 429));
 
