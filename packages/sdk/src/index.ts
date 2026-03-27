@@ -21,6 +21,7 @@ export type {
   BoxSize,
   AgentConfig,
   BoxConfig,
+  BoxConnectionOptions,
   BoxGetOptions,
   ListOptions,
   RunOptions,

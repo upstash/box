@@ -1,6 +1,7 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
 import {
   type BoxConfig,
+  type BoxConnectionOptions,
   type BoxData,
   type BoxGetOptions,
   type BoxRunData,
@@ -550,6 +551,69 @@ export class Box {
     }
 
     return (await response.json()) as BoxData[];
+  }
+
+  /**
+   * Delete specific boxes by ID.
+   */
+  static async delete(
+    options: BoxConnectionOptions & { boxIds: string | string[] },
+  ): Promise<void> {
+    const apiKey = options.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    }
+
+    const baseUrl = (
+      options.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers: Record<string, string> = {
+      "X-Box-Api-Key": apiKey,
+      "Content-Type": "application/json",
+    };
+
+    const ids = Array.isArray(options.boxIds) ? options.boxIds : [options.boxIds];
+    const response = await fetch(`${baseUrl}/v2/box`, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+  }
+
+  /**
+   * Delete all boxes for the authenticated user.
+   */
+  static async deleteAll(options?: BoxConnectionOptions): Promise<void> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    }
+
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
+
+    const response = await fetch(`${baseUrl}/v2/box`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
   }
 
   /**
@@ -2151,6 +2215,16 @@ export class EphemeralBox {
    * Get an existing ephemeral box by name
    */
   static getByName = Box.get;
+
+  /**
+   * Delete specific boxes by ID.
+   */
+  static delete = Box.delete;
+
+  /**
+   * Delete all boxes for the authenticated user.
+   */
+  static deleteAll = Box.deleteAll;
 }
 
 // ==================== Helpers ====================

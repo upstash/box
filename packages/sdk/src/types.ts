@@ -173,8 +173,7 @@ export type NetworkPolicy =
       deniedCidrs?: string[];
     };
 
-export interface BoxConfig {
-  apiKey?: string;
+export interface BoxConfig extends BoxConnectionOptions {
   /** Human-readable name for the box */
   name?: string;
   runtime?: Runtime;
@@ -222,7 +221,6 @@ export interface BoxConfig {
    */
   skills?: string[];
   mcpServers?: McpServerConfig[];
-  baseUrl?: string;
   timeout?: number;
   debug?: boolean;
 }
@@ -234,9 +232,7 @@ export interface BoxConfig {
  * exec and file operations. They are created synchronously (no polling)
  * and auto-delete after the configured TTL.
  */
-export interface EphemeralBoxConfig {
-  /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
-  apiKey?: string;
+export interface EphemeralBoxConfig extends BoxConnectionOptions {
   /** Human-readable name for the box */
   name?: string;
   /** Runtime environment for the box. */
@@ -255,8 +251,6 @@ export interface EphemeralBoxConfig {
   attachHeaders?: Record<string, Record<string, string>>;
   /** Network access policy — controls outbound connectivity */
   networkPolicy?: NetworkPolicy;
-  /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
-  baseUrl?: string;
   /** Request timeout in milliseconds (defaults to 600000) */
   timeout?: number;
   /** Enable debug logging */
@@ -431,24 +425,25 @@ export interface Snapshot {
   created_at: number;
 }
 
-/**ListOptions
- * Options for listing boxes
+/**
+ * Shared connection options for static Box methods.
  */
-export interface ListOptions {
+export interface BoxConnectionOptions {
   /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
   apiKey?: string;
-  /** Base URL of the Box API (defaults to https://box.api.upstashdev.com) */
+  /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
   baseUrl?: string;
 }
 
 /**
+ * Options for listing boxes
+ */
+export interface ListOptions extends BoxConnectionOptions {}
+
+/**
  * Options for getting/reconnecting to an existing box
  */
-export interface BoxGetOptions {
-  /** Upstash Box API key. Falls back to UPSTASH_BOX_API_KEY env var. */
-  apiKey?: string;
-  /** Base URL of the Box API (defaults to https://box.api.upstashdev.com) */
-  baseUrl?: string;
+export interface BoxGetOptions extends BoxConnectionOptions {
   /** GitHub personal access token */
   gitToken?: string;
   /** Request timeout in milliseconds (defaults to 600000) */
