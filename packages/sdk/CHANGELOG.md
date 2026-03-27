@@ -1,5 +1,13 @@
 # @upstash/box
 
+## 0.1.30
+
+### Patch Changes
+
+- e987ada: Remove fork method
+- 4223fe9: add attachHeaders option for secret header injection on outbound requests
+- f246fd2: Fix the issue with agent not working after restoring from snapshot
+
 ## 0.1.29
 
 ### Patch Changes
