@@ -202,11 +202,6 @@ describe("EphemeralBox instance", () => {
     expect((box as any).preview).toBeUndefined();
   });
 
-  it("does not expose fork", async () => {
-    const box = await createBox();
-    expect((box as any).fork).toBeUndefined();
-  });
-
   it("exposes snapshot, listSnapshots, and deleteSnapshot", async () => {
     const box = await createBox();
     expect(typeof box.snapshot).toBe("function");

@@ -166,7 +166,7 @@ const pr = await box.git.createPR({ title: "Fix bug", body: "...", base: "main" 
 const { output } = await box.git.exec({ args: ["log", "--oneline", "-5"] })
 ```
 
-## Snapshots & Fork
+## Snapshots
 
 ```ts
 // Snapshot — checkpoint workspace state
@@ -177,13 +177,11 @@ const restored = await Box.fromSnapshot(snap.id)
 const snaps = await box.listSnapshots()
 await box.deleteSnapshot(snap.id)
 
-// Fork — clone live state into a new box
-const forked = await box.fork()
 ```
 
 ## EphemeralBox
 
-Lightweight, short-lived boxes (max 3 days). No agent, git, snapshot, or fork. Supports exec, files, cd, and snapshots only.
+Lightweight, short-lived boxes (max 3 days). No agent or git. Supports exec, files, cd, and snapshots only.
 
 ```ts
 import { EphemeralBox } from "@upstash/box"
@@ -241,7 +239,7 @@ const box = await Box.create({
 
 - Default working directory is `/workspace/home`, not `/home` or `/`
 - `box.cd()` is client-side tracking — it validates the path exists but doesn't change the box's shell cwd. All SDK methods use it automatically.
-- `EphemeralBox` does NOT support `agent`, `git`, `fork`, or `preview` — use full `Box` for those
+- `EphemeralBox` does NOT support `agent`, `git`, or `preview` — use full `Box` for those
 - `run.exitCode` is `null` for agent runs, only available for exec commands
 - `box.delete()` is irreversible — snapshot first if you need the state
 - Git operations require `git.token` in `BoxConfig` for private repos and PRs
