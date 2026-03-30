@@ -26,7 +26,7 @@ jobs:
 
       - run: pnpm build
 
-      - run: pnpm test:integration
+      - run: pnpm -r test:integration
         env:
           UPSTASH_BOX_API_KEY: ${{ secrets.UPSTASH_BOX_API_KEY }}
           AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}

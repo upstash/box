@@ -1,1 +1,0 @@
-- [API design preferences](feedback_api_design.md) — Separate methods over overloads; single merged param object
