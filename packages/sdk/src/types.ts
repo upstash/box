@@ -397,11 +397,33 @@ export type Chunk =
   | { type: "unknown"; event: string; data: unknown };
 
 /**
+ * Files to attach to a prompt. Two formats:
+ *
+ * - **Local file paths** (`string[]`) — read from disk and sent as multipart form data
+ * - **Base64 data** — sent inline as JSON
+ *
+ * Max 10 files, 10 MB each.
+ *
+ * @example Local files (multipart)
+ * ```ts
+ * { files: ["./screenshot.png", "./report.pdf"] }
+ * ```
+ *
+ * @example Base64 (JSON)
+ * ```ts
+ * { files: [{ data: "iVBORw0KGgo...", mediaType: "image/png", filename: "screenshot.png" }] }
+ * ```
+ */
+export type PromptFiles = string[] | { data: string; mediaType: string; filename?: string }[];
+
+/**
  * Options for streaming agent output
  */
 export interface StreamOptions<TProvider = unknown> {
   /** The prompt/task for the AI agent */
   prompt: string;
+  /** Files to attach to the prompt (images, PDFs, etc.) */
+  files?: PromptFiles;
   /** SDK-specific options forwarded to the underlying agent */
   agentOptions?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */
@@ -418,6 +440,8 @@ export interface RunOptions<T = undefined, TProvider = unknown> {
   prompt: string;
   /** Zod schema for structured output — typed, validated results */
   responseSchema?: ZodType<T>;
+  /** Files to attach to the prompt (images, PDFs, etc.) */
+  files?: PromptFiles;
   /** SDK-specific options forwarded to the underlying agent */
   agentOptions?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */

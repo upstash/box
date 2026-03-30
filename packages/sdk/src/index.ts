@@ -28,6 +28,7 @@ export type {
   BoxConnectionOptions,
   BoxGetOptions,
   ListOptions,
+  PromptFiles,
   RunOptions,
   StreamOptions,
   Chunk,

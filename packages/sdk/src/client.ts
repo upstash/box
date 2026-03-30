@@ -7,6 +7,7 @@ import {
   type BoxRunData,
   type BoxSize,
   type ListOptions,
+  type PromptFiles,
   type RunOptions,
   type StreamOptions,
   type Chunk,
@@ -716,10 +717,16 @@ export class Box<TProvider = unknown> {
       : { url: options.webhook.url };
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run`;
+    const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
+      this._headers,
+      requestBody,
+      options.files,
+    );
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      headers: fetchHeaders,
+      body: fetchBody,
     });
 
     if (!response.ok) {
@@ -774,10 +781,16 @@ export class Box<TProvider = unknown> {
     if (options.agentOptions) requestBody.agent_options = options.agentOptions;
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
+    const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
+      this._headers,
+      requestBody,
+      options.files,
+    );
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      headers: fetchHeaders,
+      body: fetchBody,
       signal: abortController.signal,
     });
 
@@ -911,10 +924,16 @@ export class Box<TProvider = unknown> {
     if (options.agentOptions) requestBody.agent_options = options.agentOptions;
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
+    const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
+      this._headers,
+      requestBody,
+      options.files,
+    );
+
     const response = await fetch(url, {
       method: "POST",
-      headers: { ...this._headers, "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      headers: fetchHeaders,
+      body: fetchBody,
       signal: abortController.signal,
     });
 
@@ -2319,6 +2338,73 @@ function deserializeNetworkPolicy(raw: BoxData["network_policy"]): NetworkPolicy
     };
   }
   return { mode: raw.mode };
+}
+
+/** Check whether PromptFiles are local file paths (string[]) or base64 data objects. */
+function isFilePaths(files: PromptFiles): files is string[] {
+  return typeof files[0] === "string";
+}
+
+/**
+ * Build a multipart FormData body from run options + local file paths.
+ * All options are sent as form fields; files as binary parts.
+ */
+async function buildMultipartBody(
+  requestBody: Record<string, unknown>,
+  filePaths: string[],
+): Promise<FormData> {
+  const [fs, path] = await Promise.all([import("node:fs/promises"), import("node:path")]);
+
+  const formData = new FormData();
+
+  // Add all scalar fields
+  for (const [key, value] of Object.entries(requestBody)) {
+    if (value === undefined) continue;
+    if (typeof value === "string") {
+      formData.append(key, value);
+    } else {
+      formData.append(key, JSON.stringify(value));
+    }
+  }
+
+  // Add files as binary parts
+  for (const filePath of filePaths) {
+    const buffer = await fs.readFile(filePath);
+    const filename = path.basename(filePath);
+    formData.append("files", new Blob([buffer]), filename);
+  }
+
+  return formData;
+}
+
+/**
+ * Build the fetch body + headers for a run request.
+ * - file paths → multipart FormData
+ * - base64 objects → JSON with `files` array
+ * - no files → plain JSON
+ */
+async function buildRunRequest(
+  baseHeaders: Record<string, string>,
+  requestBody: Record<string, unknown>,
+  files?: PromptFiles,
+): Promise<{ body: string | FormData; headers: Record<string, string> }> {
+  if (files?.length) {
+    if (isFilePaths(files)) {
+      return {
+        body: await buildMultipartBody(requestBody, files),
+        headers: { ...baseHeaders },
+      };
+    }
+    requestBody.files = files.map((f) => ({
+      data: f.data,
+      media_type: f.mediaType,
+      filename: f.filename,
+    }));
+  }
+  return {
+    body: JSON.stringify(requestBody),
+    headers: { ...baseHeaders, "Content-Type": "application/json" },
+  };
 }
 
 /** @internal */
