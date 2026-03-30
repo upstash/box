@@ -623,6 +623,9 @@ describe("box.agent.stream", () => {
 
     const [, runCall] = fetchMock.mock.calls;
     const body = JSON.parse(runCall[1].body as string);
-    expect(body.agent_options).toEqual({ model_reasoning_effort: "medium", personality: "friendly" });
+    expect(body.agent_options).toEqual({
+      model_reasoning_effort: "medium",
+      personality: "friendly",
+    });
   });
 });

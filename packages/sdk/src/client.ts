@@ -244,7 +244,9 @@ export class Box<TProvider = unknown> {
   /** Agent operations namespace */
   readonly agent: {
     run<T>(
-      options: RunOptions<T, TProvider> & { responseSchema: RunOptions<T, TProvider>["responseSchema"] },
+      options: RunOptions<T, TProvider> & {
+        responseSchema: RunOptions<T, TProvider>["responseSchema"];
+      },
     ): Promise<Run<T>>;
     run(options: RunOptions<undefined, TProvider>): Promise<Run<string>>;
     stream(options: StreamOptions<TProvider>): Promise<StreamRun<string, Chunk>>;
@@ -304,6 +306,16 @@ export class Box<TProvider = unknown> {
     createPR: (options: GitPROptions) => Promise<PullRequest>;
     exec: (options: GitExecOptions) => Promise<GitExecResult>;
     checkout: (options: GitCheckoutOptions) => Promise<void>;
+  };
+
+  /** Skills namespace — manage platform skills from the Context7 registry */
+  readonly skills: {
+    /** Add a skill. Format: `owner/repo/skill-name`. */
+    add: (skillId: string) => Promise<void>;
+    /** Remove a skill. Format: `owner/repo/skill-name`. */
+    remove: (skillId: string) => Promise<void>;
+    /** List enabled skills for this box. */
+    list: () => Promise<string[]>;
   };
 
   /**
@@ -431,6 +443,12 @@ export class Box<TProvider = unknown> {
       createPR: (options) => this._gitCreatePR(options),
       exec: (options) => this._gitExec(options),
       checkout: (options) => this._gitCheckout(options),
+    };
+
+    this.skills = {
+      add: (skillId) => this._skillAdd(skillId),
+      remove: (skillId) => this._skillRemove(skillId),
+      list: () => this._skillList(),
     };
   }
 
@@ -619,7 +637,10 @@ export class Box<TProvider = unknown> {
   /**
    * Get an existing box by ID
    */
-  static async get<TProvider = unknown>(boxId: string, options?: BoxGetOptions): Promise<Box<TProvider>> {
+  static async get<TProvider = unknown>(
+    boxId: string,
+    options?: BoxGetOptions,
+  ): Promise<Box<TProvider>> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
@@ -1617,7 +1638,10 @@ export class Box<TProvider = unknown> {
   /**
    * Create a new box from a saved snapshot.
    */
-  static async fromSnapshot<TProvider = unknown>(snapshotId: string, config?: BoxConfig): Promise<Box<TProvider>> {
+  static async fromSnapshot<TProvider = unknown>(
+    snapshotId: string,
+    config?: BoxConfig,
+  ): Promise<Box<TProvider>> {
     const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
     if (!apiKey) {
       throw new BoxError(
@@ -1900,6 +1924,24 @@ export class Box<TProvider = unknown> {
     await this._request("POST", `/v2/box/${this.id}/git/checkout`, {
       body: { branch: options.branch, ...(folder ? { folder } : {}) },
     });
+  }
+
+  // ==================== Skills ====================
+
+  private async _skillAdd(skillId: string): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/config/skills`, {
+      body: { skill_id: skillId },
+    });
+  }
+
+  private async _skillRemove(skillId: string): Promise<void> {
+    // skill_id format: owner/repo/skill-name
+    await this._request("DELETE", `/v2/box/${this.id}/config/skills/${skillId}`);
+  }
+
+  private async _skillList(): Promise<string[]> {
+    const data = await this._request<BoxData>("GET", `/v2/box/${this.id}`);
+    return data.enabled_skills ?? [];
   }
 
   // ==================== Preview ====================

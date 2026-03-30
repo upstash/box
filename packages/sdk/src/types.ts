@@ -570,6 +570,7 @@ export type BoxData = {
   size?: BoxSize;
   model?: string;
   agent?: Agent;
+  enabled_skills?: string[];
   runtime?: string;
   status: BoxStatus;
   /**
