@@ -2182,6 +2182,7 @@ export class EphemeralBox {
 
     const body: Record<string, unknown> = { ephemeral: true };
     if (config?.name) body.name = config.name;
+    if (config?.size) body.size = config.size;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;
@@ -2249,6 +2250,7 @@ export class EphemeralBox {
       ephemeral: true,
     };
     if (config?.name) body.name = config.name;
+    if (config?.size) body.size = config.size;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.env) body.env_vars = config.env;

@@ -305,6 +305,8 @@ export interface EphemeralBoxConfig extends BoxConnectionOptions {
   name?: string;
   /** Runtime environment for the box. */
   runtime?: Runtime;
+  /** Resource size for the box. Defaults to `"small"`. */
+  size?: BoxSize;
   /** Time-to-live in seconds. Max 259200 (3 days). Defaults to 259200 if omitted. */
   ttl?: number;
   /** Environment variables to inject into the box. */

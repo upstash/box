@@ -102,6 +102,24 @@ describe("EphemeralBox.create", () => {
     expect(body.name).toBe("my-ephemeral");
   });
 
+  it("sends size in body when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...EPHEMERAL_BOX_DATA, size: "large" }));
+
+    const box = await EphemeralBox.create({ ...EPHEMERAL_CONFIG, size: "large" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBe("large");
+  });
+
+  it("omits size from body when not provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.create(EPHEMERAL_CONFIG);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.size).toBeUndefined();
+  });
+
   it("sends network_policy in body when provided", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 
