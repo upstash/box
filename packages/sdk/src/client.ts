@@ -2347,6 +2347,25 @@ function isFilePaths(files: PromptFiles): files is string[] {
   return typeof files[0] === "string";
 }
 
+const MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+  ".csv": "text/csv",
+  ".txt": "text/plain",
+  ".json": "application/json",
+  ".xml": "application/xml",
+  ".html": "text/html",
+  ".md": "text/markdown",
+  ".ts": "text/plain",
+  ".js": "text/plain",
+  ".py": "text/plain",
+};
+
 /**
  * Build a multipart FormData body from run options + local file paths.
  * All options are sent as form fields; files as binary parts.
@@ -2373,7 +2392,9 @@ async function buildMultipartBody(
   for (const filePath of filePaths) {
     const buffer = await fs.readFile(filePath);
     const filename = path.basename(filePath);
-    formData.append("files", new Blob([buffer]), filename);
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeType = MIME_TYPES[ext] ?? "application/octet-stream";
+    formData.append("files", new Blob([buffer], { type: mimeType }), filename);
   }
 
   return formData;

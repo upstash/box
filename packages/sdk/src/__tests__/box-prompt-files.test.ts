@@ -153,6 +153,8 @@ describe("box.agent.run — files (multipart file paths)", () => {
     const formData = runCall[1].body as FormData;
     expect(formData.get("prompt")).toBe("How many rows?");
     expect(formData.getAll("files")).toHaveLength(1);
+    const file = formData.get("files") as File;
+    expect(file.type).toBe("text/csv");
   });
 
   it("includes agent_options as JSON string in multipart form", async () => {
