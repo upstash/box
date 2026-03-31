@@ -34,7 +34,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — base64 JSON", () => {
     const run = await box.agent.run({
       prompt: "Describe this image in one word. Reply with ONLY that word.",
       files: [{ data: tinyPng, mediaType: "image/png", filename: "red.png" }],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     expect(run.status).toBe("completed");
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — base64 JSON", () => {
     const run = await box.agent.stream({
       prompt: "What color is this image? Reply with ONLY the color name.",
       files: [{ data: tinyPng, mediaType: "image/png" }],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     let output = "";
@@ -84,7 +84,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (multipart)",
       prompt:
         "How many rows of data are in this CSV (excluding the header)? Reply with ONLY the number.",
       files: [SAMPLE_CSV_PATH],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     expect(run.status).toBe("completed");
@@ -95,7 +95,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (multipart)",
     const run = await box.agent.stream({
       prompt: "What is the oldest person's name in this CSV? Reply with ONLY the name.",
       files: [SAMPLE_CSV_PATH],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     let output = "";
@@ -131,7 +131,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (txt)", () =>
       prompt:
         "How many rows of data are in this file (excluding the header)? Reply with ONLY the number.",
       files: [SAMPLE_TXT_PATH],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     expect(run.status).toBe("completed");
@@ -142,7 +142,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (txt)", () =>
     const run = await box.agent.stream({
       prompt: "What is the oldest person's name in this file? Reply with ONLY the name.",
       files: [SAMPLE_TXT_PATH],
-      agentOptions: { maxTurns: 1 },
+      options: { maxTurns: 1 },
     });
 
     let output = "";

@@ -427,7 +427,7 @@ export interface StreamOptions<TProvider = unknown> {
   /** Files to attach to the prompt (images, PDFs, etc.) */
   files?: PromptFiles;
   /** SDK-specific options forwarded to the underlying agent */
-  agentOptions?: AgentOptions<TProvider>;
+  options?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
@@ -445,7 +445,7 @@ export interface RunOptions<T = undefined, TProvider = unknown> {
   /** Files to attach to the prompt (images, PDFs, etc.) */
   files?: PromptFiles;
   /** SDK-specific options forwarded to the underlying agent */
-  agentOptions?: AgentOptions<TProvider>;
+  options?: AgentOptions<TProvider>;
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Retries with exponential backoff on transient failures */

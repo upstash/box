@@ -329,29 +329,3 @@ describe("EphemeralBox.delete (static)", () => {
     await expect(EphemeralBox.delete({ boxIds: "box-1" })).rejects.toThrow("apiKey is required");
   });
 });
-
-describe("EphemeralBox.deleteAll", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    delete process.env.UPSTASH_BOX_API_KEY;
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it("sends DELETE without body", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({}));
-
-    await EphemeralBox.deleteAll({
-      apiKey: EPHEMERAL_CONFIG.apiKey,
-      baseUrl: EPHEMERAL_CONFIG.baseUrl,
-    });
-
-    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
-    expect(url).toBe(`${EPHEMERAL_CONFIG.baseUrl}/v2/box`);
-    expect(init?.method).toBe("DELETE");
-    expect(init?.body).toBeUndefined();
-  });
-
-  it("throws when apiKey is missing", async () => {
-    await expect(EphemeralBox.deleteAll()).rejects.toThrow("apiKey is required");
-  });
-});

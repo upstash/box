@@ -170,7 +170,7 @@ describe("box.agent.run — files (multipart file paths)", () => {
     await box.agent.run({
       prompt: "Analyze",
       files: [FIXTURE_CSV],
-      agentOptions: { maxTurns: 3 },
+      options: { maxTurns: 3 },
     });
 
     const formData = fetchMock.mock.calls[1]![1].body as FormData;

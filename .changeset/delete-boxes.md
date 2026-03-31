@@ -2,4 +2,4 @@
 "@upstash/box": patch
 ---
 
-Add Box.delete() and Box.deleteAll() static methods for bulk box deletion
+Add Box.delete() static method for bulk box deletion

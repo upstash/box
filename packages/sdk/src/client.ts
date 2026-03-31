@@ -608,34 +608,6 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Delete all boxes for the authenticated user.
-   */
-  static async deleteAll(options?: BoxConnectionOptions): Promise<void> {
-    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
-    if (!apiKey) {
-      throw new BoxError(
-        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
-      );
-    }
-
-    const baseUrl = (
-      options?.baseUrl ??
-      process.env.UPSTASH_BOX_BASE_URL ??
-      DEFAULT_BASE_URL
-    ).replace(/\/$/, "");
-    const headers: Record<string, string> = { "X-Box-Api-Key": apiKey };
-
-    const response = await fetch(`${baseUrl}/v2/box`, {
-      method: "DELETE",
-      headers,
-    });
-    if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
-    }
-  }
-
-  /**
    * Get an existing box by ID
    */
   static async get<TProvider = unknown>(
@@ -711,7 +683,7 @@ export class Box<TProvider = unknown> {
         requestBody.json_schema = jsonSchema;
       }
     }
-    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
+    if (options.options) requestBody.agent_options = options.options;
     requestBody.webhook = options.webhook.headers
       ? { url: options.webhook.url, headers: options.webhook.headers }
       : { url: options.webhook.url };
@@ -778,7 +750,7 @@ export class Box<TProvider = unknown> {
         requestBody.json_schema = jsonSchema;
       }
     }
-    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
+    if (options.options) requestBody.agent_options = options.options;
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
@@ -921,7 +893,7 @@ export class Box<TProvider = unknown> {
     const folder = this._getFolder();
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
     if (folder) requestBody.folder = folder;
-    if (options.agentOptions) requestBody.agent_options = options.agentOptions;
+    if (options.options) requestBody.agent_options = options.options;
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
@@ -2289,11 +2261,6 @@ export class EphemeralBox {
    * Delete specific boxes by ID.
    */
   static delete = Box.delete;
-
-  /**
-   * Delete all boxes for the authenticated user.
-   */
-  static deleteAll = Box.deleteAll;
 }
 
 // ==================== Helpers ====================

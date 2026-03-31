@@ -299,7 +299,7 @@ describe("box.agent.run", () => {
 
     await box.agent.run({
       prompt: "test",
-      agentOptions: {
+      options: {
         maxTurns: 5,
         effort: "max",
         thinking: { type: "enabled", budgetTokens: 16000 },
@@ -327,7 +327,7 @@ describe("box.agent.run", () => {
 
     await box.agent.run({
       prompt: "test",
-      agentOptions: {
+      options: {
         model_reasoning_effort: "high",
         personality: "pragmatic",
         web_search: true,
@@ -355,7 +355,7 @@ describe("box.agent.run", () => {
 
     await box.agent.run({
       prompt: "test",
-      agentOptions: {
+      options: {
         reasoningEffort: "high",
         textVerbosity: "low",
         reasoningSummary: "concise",
@@ -395,7 +395,7 @@ describe("box.agent.run", () => {
 
     await box.agent.run({
       prompt: "test",
-      agentOptions: { maxTurns: 3 },
+      options: { maxTurns: 3 },
       webhook: { url: "https://example.com/hook" },
     });
 
@@ -592,7 +592,7 @@ describe("box.agent.stream", () => {
 
     const run = await box.agent.stream({
       prompt: "test",
-      agentOptions: { reasoningEffort: "high", textVerbosity: "low" },
+      options: { reasoningEffort: "high", textVerbosity: "low" },
     });
     for await (const _ of run) {
       // consume
@@ -615,7 +615,7 @@ describe("box.agent.stream", () => {
 
     const run = await box.agent.stream({
       prompt: "test",
-      agentOptions: { model_reasoning_effort: "medium", personality: "friendly" },
+      options: { model_reasoning_effort: "medium", personality: "friendly" },
     });
     for await (const _ of run) {
       // consume

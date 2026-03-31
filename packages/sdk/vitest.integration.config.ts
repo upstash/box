@@ -7,7 +7,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     include: [resolve(__dirname, "src/**/*.integration.test.ts")],
-    exclude: [resolve(__dirname, "src/**/delete-all.integration.test.ts")],
     testTimeout: 120000,
   },
 });

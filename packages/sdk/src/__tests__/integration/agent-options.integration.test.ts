@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Agent, Box, ClaudeCode } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("agentOptions", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("options", () => {
   let box: Box<Agent.ClaudeCode>;
 
   beforeAll(async () => {
@@ -20,10 +20,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agentOptions", () => {
     }
   }, 30000);
 
-  it("passes agentOptions to a run", async () => {
+  it("passes options to a run", async () => {
     const run = await box.agent.run({
       prompt: "Reply with exactly: AGENT_OPTIONS_TEST",
-      agentOptions: {
+      options: {
         maxTurns: 2,
         effort: "low",
       },
@@ -33,10 +33,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agentOptions", () => {
     expect(run.result).toContain("AGENT_OPTIONS_TEST");
   }, 120000);
 
-  it("passes agentOptions to a stream", async () => {
+  it("passes options to a stream", async () => {
     const run = await box.agent.stream({
       prompt: "Reply with exactly: STREAM_OPTIONS_TEST",
-      agentOptions: {
+      options: {
         maxTurns: 2,
         effort: "low",
       },
