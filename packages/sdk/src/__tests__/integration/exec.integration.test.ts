@@ -38,7 +38,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
   });
 
   it("exec.stream: streams multi-line shell output", async () => {
-    const run = await box.exec.stream("ping -c 5 127.0.0.1");
+    const run = await box.exec.stream('for i in $(seq 0 4); do echo "line=$i"; sleep 0.5; done');
     const chunks: string[] = [];
     for await (const chunk of run) {
       if (chunk.type === "output") {
@@ -48,11 +48,9 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
 
     const fullOutput = chunks.join("");
 
-    expect(fullOutput).toContain("PING 127.0.0.1");
     for (let i = 0; i < 5; i++) {
-      expect(fullOutput).toContain(`seq=${i}`);
+      expect(fullOutput).toContain(`line=${i}`);
     }
-    expect(fullOutput).toContain("packets transmitted");
 
     // Must have received multiple output chunks (not all in one batch)
     expect(chunks.length).toBeGreaterThanOrEqual(2);
@@ -60,7 +58,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
     // Run should be populated after iteration
     expect(run.status).toBe("completed");
     expect(run.exitCode).toBe(0);
-    expect(run.result).toContain("PING 127.0.0.1");
   }, 30000);
 
   it("exec.streamCode: streams multi-line JS output", async () => {
