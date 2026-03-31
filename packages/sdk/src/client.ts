@@ -40,6 +40,9 @@ import {
   type ExecScheduleOptions,
   type AgentScheduleOptions,
   type Schedule,
+  type ClaudeCodeAgentOptions,
+  type CodexAgentOptions,
+  type OpenCodeAgentOptions,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -56,6 +59,31 @@ export function inferDefaultProvider(model: string): Agent {
 
 /** @deprecated Use `inferDefaultProvider` instead. */
 export const inferDefaultRunner = inferDefaultProvider;
+
+/** Map of camelCase Codex option keys to their snake_case backend equivalents. */
+const CODEX_KEY_MAP: Record<keyof CodexAgentOptions, string> = {
+  modelReasoningEffort: "model_reasoning_effort",
+  modelReasoningSummary: "model_reasoning_summary",
+  personality: "personality",
+  webSearch: "web_search",
+};
+
+/** Convert camelCase Codex agent options to the snake_case keys the backend expects. */
+function toBackendAgentOptions(
+  agent: Agent | undefined,
+  options:
+    | ClaudeCodeAgentOptions
+    | CodexAgentOptions
+    | OpenCodeAgentOptions
+    | Record<string, unknown>,
+): Record<string, unknown> {
+  if (agent !== Agent.Codex) return options as Record<string, unknown>;
+  const mapped: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(options)) {
+    mapped[CODEX_KEY_MAP[key as keyof CodexAgentOptions] ?? key] = value;
+  }
+  return mapped;
+}
 
 /**
  * Error thrown by the Box SDK
@@ -683,7 +711,8 @@ export class Box<TProvider = unknown> {
         requestBody.json_schema = jsonSchema;
       }
     }
-    if (options.options) requestBody.agent_options = options.options;
+    if (options.options)
+      requestBody.agent_options = toBackendAgentOptions(this._agent, options.options);
     requestBody.webhook = options.webhook.headers
       ? { url: options.webhook.url, headers: options.webhook.headers }
       : { url: options.webhook.url };
@@ -750,7 +779,8 @@ export class Box<TProvider = unknown> {
         requestBody.json_schema = jsonSchema;
       }
     }
-    if (options.options) requestBody.agent_options = options.options;
+    if (options.options)
+      requestBody.agent_options = toBackendAgentOptions(this._agent, options.options);
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
@@ -893,7 +923,8 @@ export class Box<TProvider = unknown> {
     const folder = this._getFolder();
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
     if (folder) requestBody.folder = folder;
-    if (options.options) requestBody.agent_options = options.options;
+    if (options.options)
+      requestBody.agent_options = toBackendAgentOptions(this._agent, options.options);
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
     const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(

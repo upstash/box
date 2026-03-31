@@ -316,7 +316,7 @@ describe("box.agent.run", () => {
   });
 
   it("sends Codex agent_options in request body", async () => {
-    const { box, fetchMock } = await createTestBox<Agent.Codex>();
+    const { box, fetchMock } = await createTestBox<Agent.Codex>({ agent: Agent.Codex });
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -328,9 +328,9 @@ describe("box.agent.run", () => {
     await box.agent.run({
       prompt: "test",
       options: {
-        model_reasoning_effort: "high",
+        modelReasoningEffort: "high",
         personality: "pragmatic",
-        web_search: true,
+        webSearch: true,
       },
     });
 
@@ -604,7 +604,7 @@ describe("box.agent.stream", () => {
   });
 
   it("sends agent_options in stream request body (Codex)", async () => {
-    const { box, fetchMock } = await createTestBox<Agent.Codex>();
+    const { box, fetchMock } = await createTestBox<Agent.Codex>({ agent: Agent.Codex });
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -615,7 +615,7 @@ describe("box.agent.stream", () => {
 
     const run = await box.agent.stream({
       prompt: "test",
-      options: { model_reasoning_effort: "medium", personality: "friendly" },
+      options: { modelReasoningEffort: "medium", personality: "friendly" },
     });
     for await (const _ of run) {
       // consume

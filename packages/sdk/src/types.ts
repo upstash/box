@@ -181,13 +181,13 @@ export interface ClaudeCodeAgentOptions {
  */
 export interface CodexAgentOptions {
   /** Reasoning effort */
-  model_reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  modelReasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
   /** Summary style */
-  model_reasoning_summary?: "auto" | "concise" | "detailed" | "none";
+  modelReasoningSummary?: "auto" | "concise" | "detailed" | "none";
   /** Agent personality */
   personality?: "friendly" | "pragmatic" | "none";
   /** Web search */
-  web_search?: "live" | boolean;
+  webSearch?: "live" | boolean;
 }
 
 /**
