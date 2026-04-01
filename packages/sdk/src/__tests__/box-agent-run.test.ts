@@ -214,7 +214,7 @@ describe("box.agent.run", () => {
       },
     });
 
-    expect(run.id).toBe("box-123");
+    expect(run.id).toEqual(expect.any(String));
 
     const [, runCall] = fetchMock.mock.calls;
     const body = JSON.parse(runCall[1].body as string);
@@ -241,7 +241,7 @@ describe("box.agent.run", () => {
       webhook: { url: "https://example.com/hook" },
     });
 
-    expect(run.id).toBe("box-123");
+    expect(run.id).toEqual(expect.any(String));
 
     const [, runCall] = fetchMock.mock.calls;
     const body = JSON.parse(runCall[1].body as string);

@@ -185,7 +185,7 @@ describe("box.agent.run — files (multipart file paths)", () => {
     await box.agent.run({
       prompt: "Analyze",
       files: [FIXTURE_CSV],
-      webhook: { url: "https://example.com/hook" },
+      webhook: { url: "https://example.com/hook", headers: { "X-Test": "value" } },
     });
 
     const [, runCall] = fetchMock.mock.calls;
@@ -194,7 +194,9 @@ describe("box.agent.run — files (multipart file paths)", () => {
     const formData = runCall[1].body as FormData;
     expect(formData.get("prompt")).toBe("Analyze");
     expect(formData.getAll("files")).toHaveLength(1);
-    expect(formData.get("webhook")).toBe(JSON.stringify({ url: "https://example.com/hook" }));
+    expect(formData.get("webhook")).toBe(
+      JSON.stringify({ url: "https://example.com/hook", headers: { "X-Test": "value" } }),
+    );
   });
 
   it("sends multiple file paths", async () => {
