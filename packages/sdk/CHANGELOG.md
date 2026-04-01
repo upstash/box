@@ -1,5 +1,15 @@
 # @upstash/box
 
+## 0.1.31
+
+### Patch Changes
+
+- 7442dff: Add type-safe options to RunOptions and StreamOptions for passing SDK-specific options to Claude Code, Codex, and OpenCode agents
+- 7442dff: Add configurable box sizes (small, medium, large) to Box.create() and Box.fromSnapshot()
+- 7442dff: Add Box.delete() static method for bulk box deletion
+- 7442dff: Add multi-modal prompt files support for run and stream (file paths as multipart, base64 as JSON)
+- 7442dff: Add box.skills namespace for managing platform skills (add, remove, list)
+
 ## 0.1.30
 
 ### Patch Changes
