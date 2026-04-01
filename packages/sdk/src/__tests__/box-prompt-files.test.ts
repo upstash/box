@@ -177,6 +177,26 @@ describe("box.agent.run — files (multipart file paths)", () => {
     expect(formData.get("agent_options")).toBe(JSON.stringify({ maxTurns: 3 }));
   });
 
+  it("sends multipart FormData with webhook fields", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(mockResponse({ status: "accepted", box_id: "box-123" }));
+
+    await box.agent.run({
+      prompt: "Analyze",
+      files: [FIXTURE_CSV],
+      webhook: { url: "https://example.com/hook" },
+    });
+
+    const [, runCall] = fetchMock.mock.calls;
+    expect(runCall[1].headers["Content-Type"]).toBeUndefined();
+    expect(runCall[1].body).toBeInstanceOf(FormData);
+    const formData = runCall[1].body as FormData;
+    expect(formData.get("prompt")).toBe("Analyze");
+    expect(formData.getAll("files")).toHaveLength(1);
+    expect(formData.get("webhook")).toBe(JSON.stringify({ url: "https://example.com/hook" }));
+  });
+
   it("sends multiple file paths", async () => {
     const { box, fetchMock } = await createTestBox();
 

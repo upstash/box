@@ -2,8 +2,13 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
 import { Box, Agent, ClaudeCode } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const WEBHOOK_URL = "https://mock.httpstatus.io/200";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SAMPLE_CSV_PATH = resolve(__dirname, "fixtures/sample.csv");
+
+const WEBHOOK_URL = "https://testing-ma-feat.requestcatcher.com";
 
 /**
  * Polls box.listRuns() until a run with the given ID reaches a terminal status.
@@ -11,8 +16,8 @@ const WEBHOOK_URL = "https://mock.httpstatus.io/200";
 async function waitForRun(
   box: Box,
   runId: string,
-  timeoutMs = 120_000,
-  intervalMs = 3_000,
+  timeoutMs = 20_000,
+  intervalMs = 1_000,
 ): Promise<{ status: string; output?: string }> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -81,6 +86,22 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
 
     expect(run.id).toBeTruthy();
     expect(run.status).toBe("running");
+  }, 30_000);
+
+  it("sends multipart file paths with webhook", async () => {
+    const run = await box.agent.run({
+      prompt:
+        "How many rows of data are in this CSV (excluding the header)? Reply with ONLY the number.",
+      files: [SAMPLE_CSV_PATH],
+      webhook: { url: WEBHOOK_URL, headers: { "X-Test-Header": "file-upload" } },
+    });
+
+    expect(run.id).toBeTruthy();
+    expect(run.status).toBe("running");
+
+    const completed = await waitForRun(box, run.id);
+    expect(completed.status).toBe("completed");
+    expect(completed.output).toContain("3");
   }, 30_000);
 
   it("webhook run eventually completes and appears in listRuns", async () => {

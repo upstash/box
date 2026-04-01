@@ -735,8 +735,8 @@ export class Box<TProvider = unknown> {
       throw new BoxError(msg, response.status);
     }
 
-    const data = (await response.json()) as { status: string; box_id: string };
-    Run._update(run, { id: data.box_id, status: "running" });
+    const data = (await response.json()) as { status: string; run_id: string };
+    Run._update(run, { id: data.run_id, status: "running" });
 
     return run;
   }
