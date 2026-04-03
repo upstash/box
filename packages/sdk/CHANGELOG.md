@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.32
+
+### Patch Changes
+
+- b7ccab9: add timeout and agent options to schedule API
+
 ## 0.1.31
 
 ### Patch Changes
