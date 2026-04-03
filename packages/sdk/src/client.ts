@@ -1834,8 +1834,7 @@ export class Box<TProvider = unknown> {
       folder: options.folder ? this._resolvePath(options.folder) : this._cwd,
     };
     if (options.model) body.model = options.model;
-    if (options.options)
-      body.agent_options = toBackendAgentOptions(this._agent, options.options);
+    if (options.options) body.agent_options = toBackendAgentOptions(this._agent, options.options);
     if (options.timeout) body.timeout = options.timeout;
     if (options.webhookUrl) body.webhook_url = options.webhookUrl;
     if (options.webhookHeaders) body.webhook_headers = options.webhookHeaders;
