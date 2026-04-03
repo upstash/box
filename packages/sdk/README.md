@@ -192,6 +192,8 @@ const execSchedule = await box.schedule.exec({
 const agentSchedule = await box.schedule.agent({
   cron: "0 9 * * *",
   prompt: "Run the test suite and fix any failures",
+  timeout: 300_000, // 5 minute timeout per run
+  options: { maxBudgetUsd: 1.0, effort: "high" }, // agent options (provider-specific)
 });
 
 // List all active and paused schedules.

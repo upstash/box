@@ -752,7 +752,7 @@ export interface ExecScheduleOptions {
 /**
  * Options for creating a prompt schedule
  */
-export interface AgentScheduleOptions {
+export interface AgentScheduleOptions<TProvider = unknown> {
   /** Cron expression (e.g. "0 9 * * *"). UTC. */
   cron: string;
   /** The prompt/task for the AI agent */
@@ -761,6 +761,10 @@ export interface AgentScheduleOptions {
   folder?: string;
   /** Model override. Defaults to the box's configured model. */
   model?: string;
+  /** SDK-specific options forwarded to the underlying agent */
+  options?: AgentOptions<TProvider>;
+  /** Timeout in milliseconds — kills the run if exceeded */
+  timeout?: number;
   /** URL to POST results to after each run */
   webhookUrl?: string;
   /** Custom headers sent with webhook */
@@ -780,6 +784,8 @@ export interface Schedule {
   prompt?: string;
   folder?: string;
   model?: string;
+  agent_options?: Record<string, unknown>;
+  timeout?: number;
   status: ScheduleStatus;
   qstash_schedule_id?: string;
   webhook_url?: string;

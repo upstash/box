@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { mockResponse, createTestBox } from "./helpers.js";
+import { Agent } from "../types.js";
 
 describe("Box schedule operations", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -137,6 +138,98 @@ describe("Box schedule operations", () => {
       expect(body.folder).toBe("/workspace/app");
       expect(body.webhook_url).toBe("https://example.com/hook");
       expect(body.webhook_headers).toEqual({ "x-key": "val" });
+    });
+
+    it("sends timeout when provided", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          timeout: 300000,
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000000,
+        }),
+      );
+
+      await box.schedule.agent({
+        cron: "0 9 * * *",
+        prompt: "Run tests",
+        timeout: 300000,
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.timeout).toBe(300000);
+    });
+
+    it("sends agent_options when provided", async () => {
+      const { box, fetchMock } = await createTestBox<Agent.ClaudeCode>();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000000,
+        }),
+      );
+
+      await box.schedule.agent({
+        cron: "0 9 * * *",
+        prompt: "Run tests",
+        options: {
+          maxTurns: 5,
+          maxBudgetUsd: 1.0,
+          effort: "high",
+          systemPrompt: "You are a test runner",
+        },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.agent_options).toEqual({
+        maxTurns: 5,
+        maxBudgetUsd: 1.0,
+        effort: "high",
+        systemPrompt: "You are a test runner",
+      });
+    });
+
+    it("does not send timeout or agent_options when omitted", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000000,
+        }),
+      );
+
+      await box.schedule.agent({
+        cron: "0 9 * * *",
+        prompt: "Run tests",
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.timeout).toBeUndefined();
+      expect(body.agent_options).toBeUndefined();
     });
   });
 

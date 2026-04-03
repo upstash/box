@@ -316,7 +316,7 @@ export class Box<TProvider = unknown> {
   /** Schedule operations namespace */
   readonly schedule: {
     exec: (options: ExecScheduleOptions) => Promise<Schedule>;
-    agent: (options: AgentScheduleOptions) => Promise<Schedule>;
+    agent: (options: AgentScheduleOptions<TProvider>) => Promise<Schedule>;
     list: () => Promise<Schedule[]>;
     get: (id: string) => Promise<Schedule>;
     pause: (id: string) => Promise<void>;
@@ -1826,7 +1826,7 @@ export class Box<TProvider = unknown> {
     return this._request<Schedule>("POST", `/v2/box/${this.id}/schedules`, { body });
   }
 
-  private async _scheduleAgent(options: AgentScheduleOptions): Promise<Schedule> {
+  private async _scheduleAgent(options: AgentScheduleOptions<TProvider>): Promise<Schedule> {
     const body: Record<string, unknown> = {
       type: "prompt",
       cron: options.cron,
@@ -1834,6 +1834,9 @@ export class Box<TProvider = unknown> {
       folder: options.folder ? this._resolvePath(options.folder) : this._cwd,
     };
     if (options.model) body.model = options.model;
+    if (options.options)
+      body.agent_options = toBackendAgentOptions(this._agent, options.options);
+    if (options.timeout) body.timeout = options.timeout;
     if (options.webhookUrl) body.webhook_url = options.webhookUrl;
     if (options.webhookHeaders) body.webhook_headers = options.webhookHeaders;
     return this._request<Schedule>("POST", `/v2/box/${this.id}/schedules`, { body });
