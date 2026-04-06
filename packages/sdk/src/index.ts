@@ -31,6 +31,8 @@ export type {
   PromptFiles,
   RunOptions,
   StreamOptions,
+  ToolUseEvent,
+  ToolResultEvent,
   Chunk,
   RunStatus,
   RunCost,

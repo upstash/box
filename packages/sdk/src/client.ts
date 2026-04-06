@@ -49,6 +49,18 @@ import type { ZodType } from "zod/v3";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- parsed JSON has no static type
+function extractToolCallId(parsed: any): string {
+  return (parsed.tool_use_id ?? parsed.id ?? "") as string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- parsed JSON has no static type
+function coerceToolOutput(parsed: any): string {
+  if (typeof parsed.output === "string") return parsed.output;
+  if (parsed.output == null) return "";
+  return JSON.stringify(parsed.output);
+}
+
 /** Infer the provider agent from a model string prefix. */
 export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
@@ -826,7 +838,12 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "tool": {
-            options.onToolUse?.({ name: parsed.name, input: parsed.input });
+            const toolCallId = extractToolCallId(parsed);
+            options.onToolUse?.({ id: toolCallId, name: parsed.name, input: parsed.input });
+            break;
+          }
+          case "tool_result": {
+            options.onToolResult?.({ id: extractToolCallId(parsed), output: coerceToolOutput(parsed) });
             break;
           }
           case "done": {
@@ -978,12 +995,25 @@ export class Box<TProvider = unknown> {
             return null;
           }
           case "tool": {
+            const toolCallId = extractToolCallId(parsed);
             const chunk: Chunk = {
               type: "tool-call",
+              toolCallId,
               toolName: parsed.name ?? "",
               input: parsed.input ?? {},
             };
-            options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {} });
+            options.onToolUse?.({ id: toolCallId, name: parsed.name ?? "", input: parsed.input ?? {} });
+            return chunk;
+          }
+          case "tool_result": {
+            const toolCallId = extractToolCallId(parsed);
+            const output = coerceToolOutput(parsed);
+            const chunk: Chunk = {
+              type: "tool-result",
+              toolCallId,
+              output,
+            };
+            options.onToolResult?.({ id: toolCallId, output });
             return chunk;
           }
           case "done": {
