@@ -400,7 +400,12 @@ export type Chunk =
     }
   | {
       type: "tool-result";
-      /** Identifier of the `tool-call` chunk this result corresponds to. */
+      /**
+       * Identifier of the `tool-call` chunk this result corresponds to.
+       *
+       * May be an empty string when the backend does not provide an ID
+       * (e.g. older agents or the OpenCode provider).
+       */
       toolCallId: string;
       /** Name of the tool that produced this result, when known. */
       toolName?: string;
@@ -454,7 +459,7 @@ export interface StreamOptions<TProvider = unknown> {
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { name: string; input: Record<string, unknown>; toolCallId?: string }) => void;
 }
 
 /**
@@ -474,7 +479,7 @@ export interface RunOptions<T = undefined, TProvider = unknown> {
   /** Retries with exponential backoff on transient failures */
   maxRetries?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { name: string; input: Record<string, unknown>; toolCallId?: string }) => void;
   /** Webhook — fire-and-forget, POST to URL on completion */
   webhook?: WebhookConfig;
 }

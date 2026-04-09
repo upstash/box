@@ -826,7 +826,7 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "tool": {
-            options.onToolUse?.({ name: parsed.name, input: parsed.input });
+            options.onToolUse?.({ name: parsed.name, input: parsed.input, toolCallId: parsed.id ?? "" });
             break;
           }
           case "done": {
@@ -984,7 +984,7 @@ export class Box<TProvider = unknown> {
               toolName: parsed.name ?? "",
               input: parsed.input ?? {},
             };
-            options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {} });
+            options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {}, toolCallId: parsed.id ?? "" });
             return chunk;
           }
           case "tool_result": {

@@ -514,6 +514,37 @@ describe("box.agent.stream", () => {
     expect(resultsById.get("toolu_b")).toBe("B contents");
   });
 
+  it("parses tool-result with fallback fields (id instead of tool_use_id, content instead of output)", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool", data: { id: "t1", name: "Bash", input: { command: "ls" } } },
+        // Backend uses `id` instead of `tool_use_id`, and `content` instead of `output`
+        {
+          event: "tool_result",
+          data: { id: "t1", content: "file.txt", is_error: true },
+        },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+
+    const results = chunks.filter(
+      (c): c is Extract<Chunk, { type: "tool-result" }> => c.type === "tool-result",
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.toolCallId).toBe("t1");
+    expect(results[0]!.output).toBe("file.txt");
+    expect(results[0]!.isError).toBe(true);
+  });
+
   it("yields all chunk types in order", async () => {
     const { box, fetchMock } = await createTestBox();
 
