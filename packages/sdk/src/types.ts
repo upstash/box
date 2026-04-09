@@ -385,7 +385,30 @@ export type Chunk =
   | { type: "start"; runId: string }
   | { type: "text-delta"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
+  | {
+      type: "tool-call";
+      /**
+       * Stable identifier for this tool invocation. Use this to match a
+       * `tool-result` chunk back to its originating call when multiple tool
+       * calls are in flight in the same turn.
+       *
+       * May be an empty string for older agents that don't surface an ID.
+       */
+      toolCallId: string;
+      toolName: string;
+      input: Record<string, unknown>;
+    }
+  | {
+      type: "tool-result";
+      /** Identifier of the `tool-call` chunk this result corresponds to. */
+      toolCallId: string;
+      /** Name of the tool that produced this result, when known. */
+      toolName?: string;
+      /** Tool output payload. Shape is tool-specific. */
+      output: unknown;
+      /** True when the tool reported an error. */
+      isError?: boolean;
+    }
   | {
       type: "finish";
       output: string;
