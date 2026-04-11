@@ -353,7 +353,17 @@ const box = await Box.fromSnapshot("snap_abc123", { size: "medium" });
 
 ## Runtimes
 
-`Runtime` is a string union type: `"node" | "python" | "golang" | "ruby" | "rust"`
+Each runtime defaults to **Debian** (glibc, wider binary compatibility). Append `-alpine` for smaller images using musl.
+
+| Runtime     | Default (Debian)  | Alpine variant     |
+|-------------|-------------------|--------------------|
+| Node.js     | `"node"`          | `"node-alpine"`    |
+| Python      | `"python"`        | `"python-alpine"`  |
+| Go          | `"golang"`        | `"golang-alpine"`  |
+| Ruby        | `"ruby"`          | `"ruby-alpine"`    |
+| Rust        | `"rust"`          | `"rust-alpine"`    |
+
+You can also use explicit `-debian` suffixes (e.g. `"node-debian"`), which are equivalent to the base names.
 
 ## Examples
 
