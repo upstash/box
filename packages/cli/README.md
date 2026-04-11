@@ -51,7 +51,7 @@ box create \
 | Flag               | Description                                                                                 | Default           |
 | ------------------ | ------------------------------------------------------------------------------------------- | ----------------- |
 | `--token`          | Upstash Box API token                                                                       |                   |
-| `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |                   |
+| `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`). Append `-alpine` for Alpine variants or `-debian` to be explicit (default). |                   |
 | `--agent-model`    | Agent model identifier                                                                      |                   |
 | `--agent-provider` | Agent provider (`claude-code`, `codex`, `opencode`) — inferred from model prefix if omitted | inferred          |
 | `--agent-api-key`  | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash           |

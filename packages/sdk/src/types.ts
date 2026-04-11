@@ -3,7 +3,12 @@ import type { ZodType } from "zod/v3";
 /**
  * Runtime environments available for boxes
  */
-export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
+export type Runtime =
+  | "node" | "node-alpine" | "node-debian"
+  | "python" | "python-alpine" | "python-debian"
+  | "golang" | "golang-alpine" | "golang-debian"
+  | "ruby" | "ruby-alpine" | "ruby-debian"
+  | "rust" | "rust-alpine" | "rust-debian";
 
 /**
  * Resource size presets for boxes.
