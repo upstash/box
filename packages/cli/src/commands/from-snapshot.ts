@@ -50,7 +50,7 @@ export async function fromSnapshotCommand(
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? {
-          harness: agentHarness,
+          harness: agentHarness!,
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
         }

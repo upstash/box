@@ -69,7 +69,7 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? {
-          harness: agentHarness,
+          harness: agentHarness!,
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
         }
