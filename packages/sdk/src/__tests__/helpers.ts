@@ -11,7 +11,7 @@ export const TEST_CONFIG: BoxConfig = {
 
 export const TEST_BOX_DATA: Partial<BoxData> = {
   id: "box-123",
-  model: "claude/sonnet_4_5",
+  model: "anthropic/claude-sonnet-4-5",
   runtime: "node",
   status: "running",
   created_at: 1672531200,

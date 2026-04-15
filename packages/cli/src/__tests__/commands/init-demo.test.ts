@@ -133,7 +133,7 @@ describe("generateEnvFile", () => {
     const env = generateEnvFile(
       {
         token: "tok",
-        agentModel: "claude/sonnet_4_5",
+        agentModel: "anthropic/claude-sonnet-4-5",
         agentApiKey: "ak",
         runtime: "python",
         gitToken: "gh-tok",
@@ -142,14 +142,14 @@ describe("generateEnvFile", () => {
     );
 
     expect(env).toContain("UPSTASH_BOX_API_KEY=my-token");
-    expect(env).toContain("AGENT_MODEL=claude/sonnet_4_5");
+    expect(env).toContain("AGENT_MODEL=anthropic/claude-sonnet-4-5");
     expect(env).toContain("AGENT_API_KEY=ak");
     expect(env).toContain("RUNTIME=python");
     expect(env).toContain("GIT_TOKEN=gh-tok");
   });
 
   it("leaves AGENT_API_KEY empty when model set without key", () => {
-    const env = generateEnvFile({ agentModel: "claude/sonnet_4_5" }, "my-token");
+    const env = generateEnvFile({ agentModel: "anthropic/claude-sonnet-4-5" }, "my-token");
 
     expect(env).toContain("AGENT_API_KEY=");
   });

@@ -22,7 +22,7 @@ describe("Box.create", () => {
     expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box`);
     expect(init?.method).toBe("POST");
     const body = JSON.parse(init?.body as string);
-    expect(body.model).toBe("claude/sonnet_4_5");
+    expect(body.model).toBe("anthropic/claude-sonnet-4-5");
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 

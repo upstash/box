@@ -13,7 +13,7 @@ export async function* handleModel(box: Box, args: string): AsyncGenerator<BoxRE
   if (parts.length < 2) {
     yield {
       type: "error",
-      message: "Usage: /model <provider> <model>  (e.g. /model claude-code claude/opus_4_5)",
+      message: "Usage: /model <provider> <model>  (e.g. /model claude-code anthropic/claude-opus-4-5)",
     };
     return;
   }

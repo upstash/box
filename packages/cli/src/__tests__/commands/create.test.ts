@@ -9,12 +9,6 @@ vi.mock("@upstash/box", () => ({
     UpstashKey: "UPSTASH_KEY",
     StoredKey: "STORED_KEY",
   },
-  inferDefaultProvider: (model: string) => {
-    if (model.startsWith("openrouter/")) return "claude-code";
-    if (model.startsWith("opencode/")) return "opencode";
-    if (model.startsWith("openai/")) return "codex";
-    return "claude-code";
-  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -53,14 +47,15 @@ describe("createCommand", () => {
 
     await createCommand({
       token: "my-key",
-      agentModel: "claude/sonnet_4_5",
+      agentModel: "anthropic/claude-sonnet-4-5",
+      agentHarness: "claude-code",
       agentApiKey: "agent-key",
     });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: "my-key",
-        agent: { provider: "claude-code", model: "claude/sonnet_4_5", apiKey: "agent-key" },
+        agent: { harness: "claude-code", model: "anthropic/claude-sonnet-4-5", apiKey: "agent-key" },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -70,11 +65,11 @@ describe("createCommand", () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-    await createCommand({ token: "key", agentModel: "model" });
+    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { provider: "claude-code", model: "model", apiKey: undefined },
+        agent: { harness: "claude-code", model: "model", apiKey: undefined },
       }),
     );
   });
@@ -83,11 +78,11 @@ describe("createCommand", () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-    await createCommand({ token: "key", agentModel: "model", agentApiKey: "stored" });
+    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code", agentApiKey: "stored" });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { provider: "claude-code", model: "model", apiKey: "STORED_KEY" },
+        agent: { harness: "claude-code", model: "model", apiKey: "STORED_KEY" },
       }),
     );
   });
@@ -100,27 +95,36 @@ describe("createCommand", () => {
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { provider: "codex", model: "model", apiKey: undefined },
+        agent: { harness: "codex", model: "model", apiKey: undefined },
       }),
     );
   });
 
-  it("prioritizes agentProvider over agentRunner", async () => {
+  it("prioritizes agentHarness over deprecated aliases", async () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
     await createCommand({
       token: "key",
       agentModel: "model",
+      agentHarness: "opencode",
       agentProvider: "claude-code",
       agentRunner: "codex",
     });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agent: { provider: "claude-code", model: "model", apiKey: undefined },
+        agent: { harness: "opencode", model: "model", apiKey: undefined },
       }),
     );
+  });
+
+  it("errors when agentModel is set without a harness flag", async () => {
+    await createCommand({ token: "key", agentModel: "model" });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
   it("passes runtime, git token, and env vars", async () => {
@@ -179,7 +183,7 @@ describe("createCommand", () => {
       vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
       vi.mocked(createWizard).mockResolvedValueOnce({
         runtime: "python",
-        agentModel: "claude/sonnet_4_5",
+        agentModel: "anthropic/claude-sonnet-4-5",
       });
 
       await createCommand({ token: "key" });
@@ -193,7 +197,7 @@ describe("createCommand", () => {
       const mockBox = { id: "box-1" };
       vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-      await createCommand({ token: "key", agentModel: "claude/sonnet_4_5" });
+      await createCommand({ token: "key", agentModel: "anthropic/claude-sonnet-4-5" });
 
       expect(createWizard).not.toHaveBeenCalled();
     });

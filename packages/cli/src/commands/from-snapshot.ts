@@ -1,4 +1,4 @@
-import { Box, inferDefaultProvider } from "@upstash/box";
+import { Box } from "@upstash/box";
 import type { Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
@@ -8,6 +8,8 @@ interface FromSnapshotFlags {
   token?: string;
   runtime?: string;
   agentModel?: string;
+  agentHarness?: string;
+  /** @deprecated Use `agentHarness` instead. */
   agentProvider?: string;
   /** @deprecated Use `agentProvider` instead. */
   agentRunner?: string;
@@ -21,6 +23,7 @@ export async function fromSnapshotCommand(
   flags: FromSnapshotFlags,
 ): Promise<void> {
   const apiKey = resolveToken(flags.token);
+  const agentHarness = flags.agentHarness ?? flags.agentProvider ?? flags.agentRunner;
 
   const env: Record<string, string> = {};
   if (flags.env) {
@@ -34,14 +37,20 @@ export async function fromSnapshotCommand(
     }
   }
 
+  if (flags.agentModel && !agentHarness) {
+    console.error(
+      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
+    );
+    process.exit(1);
+  }
+
   console.log("Creating box from snapshot...");
   const box = await Box.fromSnapshot(snapshotId, {
     apiKey,
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? {
-          provider:
-            flags.agentProvider ?? flags.agentRunner ?? inferDefaultProvider(flags.agentModel),
+          harness: agentHarness,
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
         }

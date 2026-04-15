@@ -127,14 +127,14 @@ describe("Box schedule operations", () => {
       await box.schedule.agent({
         cron: "0 9 * * *",
         prompt: "Run tests",
-        model: "claude/sonnet_4_6",
+        model: "anthropic/claude-sonnet-4-6",
         folder: "/workspace/app",
         webhookUrl: "https://example.com/hook",
         webhookHeaders: { "x-key": "val" },
       });
 
       const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
-      expect(body.model).toBe("claude/sonnet_4_6");
+      expect(body.model).toBe("anthropic/claude-sonnet-4-6");
       expect(body.folder).toBe("/workspace/app");
       expect(body.webhook_url).toBe("https://example.com/hook");
       expect(body.webhook_headers).toEqual({ "x-key": "val" });

@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
     const schedule = await box.schedule.agent({
       cron: "0 9 * * *",
       prompt: "Run the test suite",
-      model: "claude/sonnet_4_6",
+      model: "anthropic/claude-sonnet-4-6",
       webhookUrl: "https://example.com/hook",
       webhookHeaders: { "x-key": "val" },
     });
@@ -57,7 +57,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
     expect(schedule.type).toBe("prompt");
     expect(schedule.status).toBe("active");
     expect(schedule.prompt).toBe("Run the test suite");
-    expect(schedule.model).toBe("claude/sonnet_4_6");
+    expect(schedule.model).toBe("anthropic/claude-sonnet-4-6");
 
     const list = await box.schedule.list();
     const found = list.find((s) => s.id === schedule.id)!;

@@ -9,12 +9,6 @@ vi.mock("@upstash/box", () => ({
     UpstashKey: "UPSTASH_KEY",
     StoredKey: "STORED_KEY",
   },
-  inferDefaultProvider: (model: string) => {
-    if (model.startsWith("openrouter/")) return "claude-code";
-    if (model.startsWith("opencode/")) return "opencode";
-    if (model.startsWith("openai/")) return "codex";
-    return "claude-code";
-  },
 }));
 
 vi.mock("../../repl/terminal.js", () => ({
@@ -49,6 +43,7 @@ describe("fromSnapshotCommand", () => {
     await fromSnapshotCommand("snap-1", {
       token: "key",
       agentModel: "model",
+      agentHarness: "claude-code",
       agentApiKey: "agent-key",
     });
 
@@ -56,7 +51,7 @@ describe("fromSnapshotCommand", () => {
       "snap-1",
       expect.objectContaining({
         apiKey: "key",
-        agent: { provider: "claude-code", model: "model", apiKey: "agent-key" },
+        agent: { harness: "claude-code", model: "model", apiKey: "agent-key" },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -66,14 +61,26 @@ describe("fromSnapshotCommand", () => {
     const mockBox = { id: "box-2" };
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);
 
-    await fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" });
+    await fromSnapshotCommand("snap-1", {
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+    });
 
     expect(Box.fromSnapshot).toHaveBeenCalledWith(
       "snap-1",
       expect.objectContaining({
-        agent: { provider: "claude-code", model: "model", apiKey: undefined },
+        agent: { harness: "claude-code", model: "model", apiKey: undefined },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
+  });
+
+  it("errors when agentModel is set without a harness flag", async () => {
+    await fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" });
+    expect(errorSpy).toHaveBeenCalledWith(
+      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });

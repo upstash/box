@@ -11,11 +11,11 @@ npm install @upstash/box
 ## Quick start
 
 ```ts
-import { Box, Agent, ClaudeCode } from "@upstash/box";
+import { Box, Agent } from "@upstash/box";
 
 const box = await Box.create({
   runtime: "node",
-  agent: { harness: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
 });
 
 const run = await box.agent.run({
@@ -39,14 +39,14 @@ Pass `apiKey` in the config or set the `UPSTASH_BOX_API_KEY` environment variabl
 Create a new sandboxed box.
 
 ```ts
-import { Box, Agent, ClaudeCode, BoxApiKey } from "@upstash/box";
+import { Box, Agent, BoxApiKey } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
   agent: {
-    provider: Agent.ClaudeCode,
-    model: ClaudeCode.Sonnet_4_5,
+    harness: Agent.ClaudeCode,
+    model: "anthropic/claude-sonnet-4-5",
     apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
     // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
     // apiKey: process.env.CLAUDE_KEY!, // or pass a direct API key
@@ -94,7 +94,7 @@ Create a new box from a saved snapshot.
 
 ```ts
 const box = await Box.fromSnapshot("snap_abc123", {
-  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
 });
 ```
 
@@ -232,13 +232,13 @@ await box.cd(".."); // back to /workspace/home
 
 ```ts
 // Read the current provider and model
-const { provider, model } = box.modelConfig;
+const { harness, model } = box.modelConfig;
 
 // Change the model
-await box.configureModel(ClaudeCode.Opus_4_5);
+await box.configureModel("anthropic/claude-opus-4-5");
 
 // modelConfig reflects the change immediately
-box.modelConfig.model; // "claude/opus_4_5"
+box.modelConfig.model; // "anthropic/claude-opus-4-5"
 ```
 
 ### Lifecycle
@@ -297,11 +297,12 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                    | Value               |
 | ----------------------- | ------------------- |
-| `ClaudeCode.Opus_4_5`   | `claude/opus_4_5`   |
-| `ClaudeCode.Opus_4_6`   | `claude/opus_4_6`   |
-| `ClaudeCode.Sonnet_4`   | `claude/sonnet_4`   |
-| `ClaudeCode.Sonnet_4_5` | `claude/sonnet_4_5` |
-| `ClaudeCode.Haiku_4_5`  | `claude/haiku_4_5`  |
+| `ClaudeCode.Opus_4_5`   | `anthropic/claude-opus-4-5` |
+| `ClaudeCode.Opus_4_6`   | `anthropic/claude-opus-4-6` |
+| `ClaudeCode.Sonnet_4`   | `anthropic/claude-sonnet-4` |
+| `ClaudeCode.Sonnet_4_5` | `anthropic/claude-sonnet-4-5` |
+| `ClaudeCode.Sonnet_4_6` | `anthropic/claude-sonnet-4-6` |
+| `ClaudeCode.Haiku_4_5`  | `anthropic/claude-haiku-4-5` |
 
 ### OpenAI Codex
 
@@ -339,7 +340,7 @@ Boxes have configurable resource sizes, set at creation time via the `size` opti
 ```ts
 const box = await Box.create({
   size: "large",
-  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
 });
 
 console.log(box.size); // "large"

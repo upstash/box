@@ -36,7 +36,7 @@ describe("createWizard", () => {
       .mockResolvedValueOnce("python") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
       .mockResolvedValueOnce("claude-code") // provider
-      .mockResolvedValueOnce("claude/sonnet_4_5") // model
+      .mockResolvedValueOnce("anthropic/claude-sonnet-4-5") // model
       .mockResolvedValueOnce("upstash") // API key option
       .mockResolvedValueOnce("create"); // action: create
 
@@ -44,7 +44,7 @@ describe("createWizard", () => {
 
     expect(result).toEqual({
       runtime: "python",
-      agentModel: "claude/sonnet_4_5",
+      agentModel: "anthropic/claude-sonnet-4-5",
       agentProvider: "claude-code",
     });
   });
@@ -87,7 +87,7 @@ describe("createWizard", () => {
       .mockResolvedValueOnce("node") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
       .mockResolvedValueOnce("claude-code") // provider
-      .mockResolvedValueOnce("claude/opus_4_5") // model
+      .mockResolvedValueOnce("anthropic/claude-opus-4-5") // model
       .mockResolvedValueOnce("stored") // API key option
       .mockResolvedValueOnce("create"); // action: create
 
@@ -158,7 +158,7 @@ describe("createWizard", () => {
       .mockResolvedValueOnce("node") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
       .mockResolvedValueOnce("claude-code") // provider
-      .mockResolvedValueOnce("claude/sonnet_4_5") // model
+      .mockResolvedValueOnce("anthropic/claude-sonnet-4-5") // model
       .mockResolvedValueOnce("custom") // API key option
       .mockResolvedValueOnce("create"); // action: create
 

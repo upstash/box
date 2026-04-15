@@ -28,12 +28,12 @@ describe("handleModel", () => {
       configureModel: vi.fn().mockResolvedValue(undefined),
     };
 
-    const events = await collectEvents(handleModel(mockBox as any, "claude-code claude/opus_4_5"));
+    const events = await collectEvents(handleModel(mockBox as any, "claude-code anthropic/claude-opus-4-5"));
 
-    expect(mockBox.configureModel).toHaveBeenCalledWith("claude/opus_4_5");
+    expect(mockBox.configureModel).toHaveBeenCalledWith("anthropic/claude-opus-4-5");
     expect(events).toContainEqual({
       type: "log",
-      message: "Model changed to claude/opus_4_5",
+      message: "Model changed to anthropic/claude-opus-4-5",
     });
   });
 

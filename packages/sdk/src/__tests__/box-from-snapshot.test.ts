@@ -22,7 +22,7 @@ describe("Box.fromSnapshot", () => {
     expect(init?.method).toBe("POST");
     const body = JSON.parse(init?.body as string);
     expect(body.snapshot_id).toBe("snap-1");
-    expect(body.model).toBe("claude/sonnet_4_5");
+    expect(body.model).toBe("anthropic/claude-sonnet-4-5");
   });
 
   it("sends explicit provider when provided", async () => {

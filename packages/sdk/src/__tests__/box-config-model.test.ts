@@ -8,13 +8,13 @@ describe("Box.configureModel", () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-    await box.configureModel("claude/opus_4_5");
+    await box.configureModel("anthropic/claude-opus-4-5");
 
     const [url, init] = fetchMock.mock.calls[1]!;
     expect(url).toContain("/v2/box/box-123/config/model");
     expect(init?.method).toBe("PUT");
     const body = JSON.parse(init?.body as string);
-    expect(body.model).toBe("claude/opus_4_5");
+    expect(body.model).toBe("anthropic/claude-opus-4-5");
   });
 
   it("sends the correct model string", async () => {
@@ -31,8 +31,8 @@ describe("Box.configureModel", () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-    await box.configureModel("claude/opus_4_5");
+    await box.configureModel("anthropic/claude-opus-4-5");
 
-    expect(box.modelConfig.model).toBe("claude/opus_4_5");
+    expect(box.modelConfig.model).toBe("anthropic/claude-opus-4-5");
   });
 });

@@ -5,7 +5,7 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... CLAUDE_KEY=sk-... npx tsx examples/history-test.ts
  */
-import { Box, Agent, ClaudeCode } from "@upstash/box";
+import { Box, Agent } from "@upstash/box";
 
 const PROMPTS = [
   "Create a file called /workspace/home/hello.ts with a function that returns 'Hello, World!'",
@@ -24,8 +24,8 @@ async function main() {
     apiKey: process.env.UPSTASH_BOX_API_KEY!,
     runtime: "node",
     agent: {
-      provider: Agent.ClaudeCode,
-      model: ClaudeCode.Sonnet_4_5,
+      harness: Agent.ClaudeCode,
+      model: "anthropic/claude-sonnet-4-5",
       apiKey: process.env.CLAUDE_KEY!,
     },
   });
@@ -75,8 +75,8 @@ async function main() {
     apiKey: process.env.UPSTASH_BOX_API_KEY!,
     runtime: "node", // todo remove
     agent: {
-      provider: Agent.ClaudeCode,
-      model: ClaudeCode.Sonnet_4_5,
+      harness: Agent.ClaudeCode,
+      model: "anthropic/claude-sonnet-4-5",
       apiKey: process.env.CLAUDE_KEY!,
     },
   });

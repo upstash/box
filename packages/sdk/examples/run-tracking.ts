@@ -1,12 +1,12 @@
-import { Box, Agent, ClaudeCode } from "@upstash/box";
+import { Box, Agent } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY!,
   baseUrl: process.env.UPSTASH_BOX_BASE_URL,
   runtime: "node",
   agent: {
-    provider: Agent.ClaudeCode,
-    model: ClaudeCode.Sonnet_4_5,
+    harness: Agent.ClaudeCode,
+    model: "anthropic/claude-sonnet-4-5",
     apiKey: process.env.CLAUDE_KEY!,
   },
 });

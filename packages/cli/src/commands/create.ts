@@ -1,4 +1,4 @@
-import { Box, inferDefaultProvider } from "@upstash/box";
+import { Box } from "@upstash/box";
 import type { Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
@@ -10,6 +10,8 @@ export interface CreateFlags {
   token?: string;
   runtime?: string;
   agentModel?: string;
+  agentHarness?: string;
+  /** @deprecated Use `agentHarness` instead. */
   agentProvider?: string;
   /** @deprecated Use `agentProvider` instead. */
   agentRunner?: string;
@@ -22,6 +24,7 @@ export interface CreateFlags {
 
 export async function createCommand(flags: CreateFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
+  const agentHarness = flags.agentHarness ?? flags.agentProvider ?? flags.agentRunner;
 
   const hasConfigFlags =
     flags.agentModel !== undefined ||
@@ -53,14 +56,20 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     }
   }
 
+  if (flags.agentModel && !agentHarness) {
+    console.error(
+      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
+    );
+    process.exit(1);
+  }
+
   console.log("\nCreating box...");
   const box = await Box.create({
     apiKey,
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
       ? {
-          provider:
-            flags.agentProvider ?? flags.agentRunner ?? inferDefaultProvider(flags.agentModel),
+          harness: agentHarness,
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
         }

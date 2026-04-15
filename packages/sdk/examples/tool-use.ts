@@ -5,14 +5,14 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/tool-use.ts
  */
-import { Box, Agent, ClaudeCode } from "@upstash/box";
+import { Box, Agent } from "@upstash/box";
 
 const box = await Box.create({
   apiKey: process.env.UPSTASH_BOX_API_KEY,
   runtime: "node",
   agent: {
-    provider: Agent.ClaudeCode,
-    model: ClaudeCode.Sonnet_4_5,
+    harness: Agent.ClaudeCode,
+    model: "anthropic/claude-sonnet-4-5",
     apiKey: process.env.ANTHROPIC_API_KEY,
   },
 });

@@ -5,11 +5,11 @@
  * Usage:
  *   UPSTASH_BOX_API_KEY=abx_... ANTHROPIC_API_KEY=sk-... npx tsx examples/snapshot-restore.ts
  */
-import { Box, Agent, ClaudeCode } from "@upstash/box";
+import { Box, Agent } from "@upstash/box";
 
 const agentConfig = {
-  provider: Agent.ClaudeCode as const,
-  model: ClaudeCode.Sonnet_4_5 as const,
+  harness: Agent.ClaudeCode as const,
+  model: "anthropic/claude-sonnet-4-5" as const,
   apiKey: process.env.ANTHROPIC_API_KEY!,
 };
 

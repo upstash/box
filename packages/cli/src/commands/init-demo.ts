@@ -122,7 +122,7 @@ Configure these in the \`.env\` file:
 | Variable               | Description                                      | Required |
 | ---------------------- | ------------------------------------------------ | -------- |
 | \`UPSTASH_BOX_API_KEY\`  | Your Upstash Box API token                       | Yes      |
-| \`AGENT_MODEL\`          | Agent model identifier (e.g. \`claude/sonnet_4_5\`)  | No       |
+| \`AGENT_MODEL\`          | Agent model identifier (e.g. \`anthropic/claude-sonnet-4-5\`)  | No       |
 | \`AGENT_API_KEY\`        | API key for the agent model                      | No       |
 | \`RUNTIME\`              | Runtime environment (default: \`node\`)             | No       |
 | \`GIT_TOKEN\`            | GitHub personal access token                     | No       |
