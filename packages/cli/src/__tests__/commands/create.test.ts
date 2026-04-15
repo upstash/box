@@ -55,7 +55,11 @@ describe("createCommand", () => {
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: "my-key",
-        agent: { harness: "claude-code", model: "anthropic/claude-sonnet-4-5", apiKey: "agent-key" },
+        agent: {
+          harness: "claude-code",
+          model: "anthropic/claude-sonnet-4-5",
+          apiKey: "agent-key",
+        },
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
@@ -78,7 +82,12 @@ describe("createCommand", () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code", agentApiKey: "stored" });
+    await createCommand({
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+      agentApiKey: "stored",
+    });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({

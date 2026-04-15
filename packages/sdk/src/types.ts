@@ -125,7 +125,12 @@ export type AgentConfig = {
    */
   apiKey?: BoxApiKey | string;
 } & (
-  | { harness: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel; provider?: never; runner?: never }
+  | {
+      harness: Agent.ClaudeCode;
+      model: ClaudeCode | OpenRouterModel;
+      provider?: never;
+      runner?: never;
+    }
   | { harness: Agent.Codex; model: OpenAICodex | OpenRouterModel; provider?: never; runner?: never }
   | {
       harness: Agent.OpenCode;

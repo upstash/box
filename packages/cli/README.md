@@ -49,19 +49,19 @@ box create \
   --env DEBUG=true
 ```
 
-| Flag               | Description                                                                                 | Default           |
-| ------------------ | ------------------------------------------------------------------------------------------- | ----------------- |
-| `--token`          | Upstash Box API token                                                                       |                   |
-| `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |                   |
-| `--agent-model`    | Agent model identifier                                                                      |                   |
+| Flag               | Description                                                                                 | Default                       |
+| ------------------ | ------------------------------------------------------------------------------------------- | ----------------------------- |
+| `--token`          | Upstash Box API token                                                                       |                               |
+| `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |                               |
+| `--agent-model`    | Agent model identifier                                                                      |                               |
 | `--agent-harness`  | Agent harness (`claude-code`, `codex`, `opencode`)                                          | required with `--agent-model` |
-| `--agent-provider` | Deprecated alias for `--agent-harness`                                                      |                   |
-| `--agent-runner`   | Deprecated alias for `--agent-harness`                                                      |                   |
-| `--agent-api-key`  | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash           |
-| `--git-token`      | GitHub personal access token                                                                |                   |
-| `--git-user-name`  | Git `user.name` set globally in the box container                                           | `Upstash Box`     |
-| `--git-user-email` | Git `user.email` set globally in the box container                                          | `box@upstash.com` |
-| `--env KEY=VAL`    | Environment variable (repeatable)                                                           |                   |
+| `--agent-provider` | Deprecated alias for `--agent-harness`                                                      |                               |
+| `--agent-runner`   | Deprecated alias for `--agent-harness`                                                      |                               |
+| `--agent-api-key`  | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash                       |
+| `--git-token`      | GitHub personal access token                                                                |                               |
+| `--git-user-name`  | Git `user.name` set globally in the box container                                           | `Upstash Box`                 |
+| `--git-user-email` | Git `user.email` set globally in the box container                                          | `box@upstash.com`             |
+| `--env KEY=VAL`    | Environment variable (repeatable)                                                           |                               |
 
 ### `box connect [box-id]`
 
@@ -111,15 +111,15 @@ box init-demo \
   --directory my-demo
 ```
 
-| Flag              | Description                                                                                 | Default    |
-| ----------------- | ------------------------------------------------------------------------------------------- | ---------- |
-| `--token`         | Upstash Box API token                                                                       |            |
+| Flag              | Description                                                                                 | Default                       |
+| ----------------- | ------------------------------------------------------------------------------------------- | ----------------------------- |
+| `--token`         | Upstash Box API token                                                                       |                               |
 | `--agent-harness` | Agent harness (`claude-code`, `codex`, `opencode`)                                          | required with `--agent-model` |
-| `--agent-model`   | Agent model identifier                                                                      |            |
-| `--agent-api-key` | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash    |
-| `--runtime`       | Runtime environment                                                                         | `node`     |
-| `--git-token`     | GitHub personal access token                                                                |            |
-| `--directory`     | Output directory                                                                            | `box-demo` |
+| `--agent-model`   | Agent model identifier                                                                      |                               |
+| `--agent-api-key` | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash                       |
+| `--runtime`       | Runtime environment                                                                         | `node`                        |
+| `--git-token`     | GitHub personal access token                                                                |                               |
+| `--directory`     | Output directory                                                                            | `box-demo`                    |
 
 After scaffolding, the command offers to run the demo immediately. The generated project includes:
 

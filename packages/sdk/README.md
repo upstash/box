@@ -295,14 +295,14 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 ### Claude Code
 
-| Enum                    | Value               |
-| ----------------------- | ------------------- |
-| `ClaudeCode.Opus_4_5`   | `anthropic/claude-opus-4-5` |
-| `ClaudeCode.Opus_4_6`   | `anthropic/claude-opus-4-6` |
-| `ClaudeCode.Sonnet_4`   | `anthropic/claude-sonnet-4` |
+| Enum                    | Value                         |
+| ----------------------- | ----------------------------- |
+| `ClaudeCode.Opus_4_5`   | `anthropic/claude-opus-4-5`   |
+| `ClaudeCode.Opus_4_6`   | `anthropic/claude-opus-4-6`   |
+| `ClaudeCode.Sonnet_4`   | `anthropic/claude-sonnet-4`   |
 | `ClaudeCode.Sonnet_4_5` | `anthropic/claude-sonnet-4-5` |
 | `ClaudeCode.Sonnet_4_6` | `anthropic/claude-sonnet-4-6` |
-| `ClaudeCode.Haiku_4_5`  | `anthropic/claude-haiku-4-5` |
+| `ClaudeCode.Haiku_4_5`  | `anthropic/claude-haiku-4-5`  |
 
 ### OpenAI Codex
 

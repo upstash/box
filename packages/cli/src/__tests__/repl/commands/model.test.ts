@@ -28,7 +28,9 @@ describe("handleModel", () => {
       configureModel: vi.fn().mockResolvedValue(undefined),
     };
 
-    const events = await collectEvents(handleModel(mockBox as any, "claude-code anthropic/claude-opus-4-5"));
+    const events = await collectEvents(
+      handleModel(mockBox as any, "claude-code anthropic/claude-opus-4-5"),
+    );
 
     expect(mockBox.configureModel).toHaveBeenCalledWith("anthropic/claude-opus-4-5");
     expect(events).toContainEqual({
