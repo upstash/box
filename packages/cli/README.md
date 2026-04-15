@@ -31,13 +31,14 @@ Create a new box and enter an interactive REPL.
 
 ```bash
 # Uses Upstash-managed key by default (no --agent-api-key needed)
-box create --agent-model anthropic/claude-sonnet-4-5
+box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-4-5
 
 # Use a key stored in the Upstash console
-box create --agent-model anthropic/claude-sonnet-4-5 --agent-api-key stored
+box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-4-5 --agent-api-key stored
 
 # Pass a direct API key
 box create \
+  --agent-harness claude-code \
   --agent-model anthropic/claude-sonnet-4-5 \
   --agent-api-key $CLAUDE_KEY \
   --runtime node \
@@ -53,9 +54,9 @@ box create \
 | `--token`          | Upstash Box API token                                                                       |                   |
 | `--runtime`        | Runtime environment (`node`, `python`, `golang`, `ruby`, `rust`)                            |                   |
 | `--agent-model`    | Agent model identifier                                                                      |                   |
-| `--agent-harness` | Agent harness (`claude-code`, `codex`, `opencode`)                                           | required with `--agent-model` |
-| `--agent-provider` | Deprecated alias for `--agent-harness`                                                        |                   |
-| `--agent-runner`  | Deprecated alias for `--agent-harness`                                                         |                   |
+| `--agent-harness`  | Agent harness (`claude-code`, `codex`, `opencode`)                                          | required with `--agent-model` |
+| `--agent-provider` | Deprecated alias for `--agent-harness`                                                      |                   |
+| `--agent-runner`   | Deprecated alias for `--agent-harness`                                                      |                   |
 | `--agent-api-key`  | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash           |
 | `--git-token`      | GitHub personal access token                                                                |                   |
 | `--git-user-name`  | Git `user.name` set globally in the box container                                           | `Upstash Box`     |
@@ -77,7 +78,7 @@ Create a new box from a snapshot and enter the REPL. Accepts the same flags as `
 
 ```bash
 box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-4-5 --agent-harness claude-code
-box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-4-5 --agent-harness codex --agent-api-key $CLAUDE_KEY
+box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-4-5 --agent-harness claude-code --agent-api-key $CLAUDE_KEY
 ```
 
 ### `box list`
@@ -103,6 +104,7 @@ Scaffold a standalone demo project that uses the `@upstash/box` SDK. Creates a d
 ```bash
 box init-demo \
   --token $UPSTASH_BOX_API_KEY \
+  --agent-harness claude-code \
   --agent-model anthropic/claude-sonnet-4-5 \
   --runtime node \
   --git-token $GITHUB_TOKEN \
@@ -112,6 +114,7 @@ box init-demo \
 | Flag              | Description                                                                                 | Default    |
 | ----------------- | ------------------------------------------------------------------------------------------- | ---------- |
 | `--token`         | Upstash Box API token                                                                       |            |
+| `--agent-harness` | Agent harness (`claude-code`, `codex`, `opencode`)                                          | required with `--agent-model` |
 | `--agent-model`   | Agent model identifier                                                                      |            |
 | `--agent-api-key` | Agent API key — omit for Upstash-managed key, `stored` for a saved key, or a direct API key | Upstash    |
 | `--runtime`       | Runtime environment                                                                         | `node`     |
