@@ -15,7 +15,7 @@ import { Box, Agent, ClaudeCode } from "@upstash/box";
 
 const box = await Box.create({
   runtime: "node",
-  agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+  agent: { harness: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
 });
 
 const run = await box.agent.run({
@@ -283,7 +283,7 @@ stream.result; // final output
 
 ## Agents
 
-The `provider` field in agent config is optional — the SDK infers it from the model prefix. You can set it explicitly to use a specific provider.
+The preferred field in agent config is `harness`, and it is required. Deprecated aliases `provider` and `runner` still work for backward compatibility.
 
 | Enum               | Value         |
 | ------------------ | ------------- |

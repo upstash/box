@@ -125,24 +125,55 @@ export type AgentConfig = {
    */
   apiKey?: BoxApiKey | string;
 } & (
-  | { provider: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel; runner?: never }
-  | { provider: Agent.Codex; model: OpenAICodex | OpenRouterModel; runner?: never }
+  | { harness: Agent.ClaudeCode; model: ClaudeCode | OpenRouterModel; provider?: never; runner?: never }
+  | { harness: Agent.Codex; model: OpenAICodex | OpenRouterModel; provider?: never; runner?: never }
   | {
-      provider: Agent.OpenCode;
+      harness: Agent.OpenCode;
       model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      provider?: never;
       runner?: never;
     }
-  | { provider: string; model: string; runner?: never }
+  | { harness: string; model: string; provider?: never; runner?: never }
   | {
-      /** @deprecated Use `provider` instead. */
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.ClaudeCode;
+      model: ClaudeCode | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.Codex;
+      model: OpenAICodex | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.OpenCode;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: string;
+      model: string;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
       runner: Agent;
       model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      harness?: never;
       provider?: never;
     }
   | {
-      /** @deprecated Use `provider` instead. */
+      /** @deprecated Use `harness` instead. */
       runner: string;
       model: string;
+      harness?: never;
       provider?: never;
     }
 );

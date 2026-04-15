@@ -26,7 +26,21 @@ describe("Box.create", () => {
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
-  it("sends explicit provider when provided", async () => {
+  it("sends explicit harness when provided", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.agent).toBe(Agent.Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
+  });
+
+  it("supports deprecated provider field", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
 
@@ -58,6 +72,25 @@ describe("Box.create", () => {
     expect(body.agent).toBe(Agent.Codex);
   });
 
+  it("prefers harness over deprecated aliases", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: {
+        harness: Agent.OpenCode,
+        provider: Agent.Codex,
+        runner: Agent.ClaudeCode,
+        model: "opencode/claude-sonnet-4-6",
+        apiKey: "k",
+      } as any,
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.agent).toBe(Agent.OpenCode);
+  });
+
   it("falls back to runner when provider is absent", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
@@ -69,6 +102,17 @@ describe("Box.create", () => {
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe("codex");
+  });
+
+  it("throws when harness and deprecated aliases are missing", async () => {
+    await expect(
+      Box.create({
+        ...TEST_CONFIG,
+        agent: { model: "openai/gpt-5.3-codex", apiKey: "k" } as any,
+      }),
+    ).rejects.toThrow(
+      "agent.harness is required. Deprecated aliases agent.provider and agent.runner are still accepted.",
+    );
   });
 
   it("polls until box is ready", async () => {

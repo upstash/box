@@ -49,7 +49,7 @@ import type { ZodType } from "zod/v3";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
-/** Infer the provider agent from a model string prefix. */
+/** Infer the default harness from a model string prefix. */
 export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
@@ -96,6 +96,26 @@ export class BoxError extends Error {
     super(message);
     this.name = "BoxError";
   }
+}
+
+function resolveAgentHarness(
+  agent:
+    | {
+        harness?: string;
+        provider?: string;
+        runner?: string;
+        model: string;
+      }
+    | undefined,
+): string | undefined {
+  if (!agent) return undefined;
+  const harness = agent.harness ?? agent.provider ?? agent.runner;
+  if (!harness) {
+    throw new BoxError(
+      "agent.harness is required. Deprecated aliases agent.provider and agent.runner are still accepted.",
+    );
+  }
+  return harness;
 }
 
 /**
@@ -243,7 +263,7 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  *
  * const box = await Box.create({
  *   runtime: "node",
- *   agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
+ *   agent: { harness: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: process.env.CLAUDE_KEY! },
  * });
  *
  * // Non-streaming
@@ -355,14 +375,16 @@ export class Box<TProvider = unknown> {
     return this._cwd;
   }
 
-  /** Current provider and model configured for this box. */
+  /** Current harness and model configured for this box. */
   get modelConfig(): {
+    harness: Agent | undefined;
+    /** @deprecated Use `harness`. */
     provider: Agent | undefined;
-    /** @deprecated Use `provider`. */
+    /** @deprecated Use `harness`. */
     runner: Agent | undefined;
     model: string | undefined;
   } {
-    return { provider: this._agent, runner: this._agent, model: this._model };
+    return { harness: this._agent, provider: this._agent, runner: this._agent, model: this._model };
   }
 
   private _cwd: string;
@@ -422,7 +444,7 @@ export class Box<TProvider = unknown> {
       run<T>(options: RunOptions<T>): Promise<Run<T | string>> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
-            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.run().\n\nExample:\n  await Box.create({ agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
+            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.run().\n\nExample:\n  await Box.create({ agent: { harness: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
           );
         }
         return self._run(options);
@@ -430,7 +452,7 @@ export class Box<TProvider = unknown> {
       stream(options: StreamOptions): Promise<StreamRun<string, Chunk>> {
         if (!self._isAgentConfigured) {
           throw new BoxError(
-            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
+            'No agent configured. Pass an `agent` option to Box.create() to use box.agent.stream().\n\nExample:\n  await Box.create({ agent: { harness: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5, apiKey: "sk-..." } })',
           );
         }
         return self._stream(options);
@@ -510,7 +532,7 @@ export class Box<TProvider = unknown> {
     if (config?.size) body.size = config.size;
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.provider ?? config.agent.runner;
+      body.agent = resolveAgentHarness(config.agent);
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
@@ -1686,7 +1708,7 @@ export class Box<TProvider = unknown> {
     if (config?.size) body.size = config.size;
     if (config?.agent) {
       body.model = config.agent.model;
-      body.agent = config.agent.provider ?? config.agent.runner;
+      body.agent = resolveAgentHarness(config.agent);
       body.agent_api_key = config.agent.apiKey;
     }
     if (config?.runtime) body.runtime = config.runtime;
