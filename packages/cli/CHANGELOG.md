@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.37
+
+### Patch Changes
+
+- 29b09cb: deprecate provider, use harness and prefer string for models
+- Updated dependencies [29b09cb]
+  - @upstash/box@0.1.33
+
 ## 0.1.36
 
 ### Patch Changes

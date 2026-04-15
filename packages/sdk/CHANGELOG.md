@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.33
+
+### Patch Changes
+
+- 29b09cb: deprecate provider, use harness and prefer string for models
+
 ## 0.1.32
 
 ### Patch Changes
