@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.34
+
+### Patch Changes
+
+- 2d6da63: adds keepAlive and initCommand
+
 ## 0.1.33
 
 ### Patch Changes
