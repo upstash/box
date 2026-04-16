@@ -175,6 +175,13 @@ describe("Box instance methods", () => {
       const { status } = await box.getStatus();
       expect(status).toBe("paused");
     });
+
+    it("throws for keep-alive boxes", async () => {
+      const { box, fetchMock } = await createTestBox({ keep_alive: true });
+
+      await expect(box.pause()).rejects.toThrow("Keep-alive boxes cannot be paused");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("resume", () => {
@@ -304,6 +311,63 @@ describe("Box instance methods", () => {
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/v2/box/box-123");
       expect(init?.method).toBe("DELETE");
+    });
+  });
+
+  describe("init command", () => {
+    it("reads init command for keep-alive boxes", async () => {
+      const { box, fetchMock } = await createTestBox({ keep_alive: true });
+      fetchMock.mockResolvedValueOnce(mockResponse({ init_command: "npm run dev" }));
+
+      await expect(box.getInitCommand()).resolves.toBe("npm run dev");
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("GET");
+    });
+
+    it("sets init command for keep-alive boxes", async () => {
+      const { box, fetchMock } = await createTestBox({ keep_alive: true });
+      fetchMock.mockResolvedValueOnce(mockResponse({ message: "startup script updated" }));
+
+      await box.setInitCommand("npm run dev");
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("PUT");
+      expect(JSON.parse(init?.body as string)).toEqual({ init_command: "npm run dev" });
+    });
+
+    it("deletes init command for keep-alive boxes", async () => {
+      const { box, fetchMock } = await createTestBox({ keep_alive: true });
+      fetchMock.mockResolvedValueOnce(mockResponse({ message: "startup script deleted" }));
+
+      await box.deleteInitCommand();
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("DELETE");
+    });
+
+    it("throws when setting an empty init command", async () => {
+      const { box } = await createTestBox({ keep_alive: true });
+      await expect(box.setInitCommand("")).rejects.toThrow("initCommand is required");
+    });
+
+    it("throws for non-keep-alive boxes", async () => {
+      const { box, fetchMock } = await createTestBox();
+
+      await expect(box.getInitCommand()).rejects.toThrow(
+        "Init command is only available for keep-alive boxes",
+      );
+      await expect(box.setInitCommand("echo hi")).rejects.toThrow(
+        "Init command is only available for keep-alive boxes",
+      );
+      await expect(box.deleteInitCommand()).rejects.toThrow(
+        "Init command is only available for keep-alive boxes",
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -193,6 +193,31 @@ describe("Box.create", () => {
     expect(body.git_user_email).toBe("john@example.com");
   });
 
+  it("sends keep_alive and init_command in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running", keep_alive: true };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    const box = await Box.create({
+      ...TEST_CONFIG,
+      keepAlive: true,
+      initCommand: "npm install && npm run dev",
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.keep_alive).toBe(true);
+    expect(body.init_command).toBe("npm install && npm run dev");
+    expect(box.keepAlive).toBe(true);
+  });
+
+  it("throws when initCommand is provided without keepAlive", async () => {
+    await expect(
+      Box.create({
+        ...TEST_CONFIG,
+        initCommand: "echo hi",
+      }),
+    ).rejects.toThrow("initCommand requires keepAlive: true");
+  });
+
   it("sends skills and mcpServers in body", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));

@@ -283,6 +283,10 @@ export interface BoxConfig extends BoxConnectionOptions {
   runtime?: Runtime;
   /** Resource size for the box. Defaults to `"small"`. */
   size?: BoxSize;
+  /** Keep the box alive instead of allowing pause-based idle lifecycle. */
+  keepAlive?: boolean;
+  /** Optional startup script for keep-alive boxes. */
+  initCommand?: string;
   agent?: AgentConfig;
   git?: {
     token?: string;
@@ -630,6 +634,7 @@ export type BoxData = {
   customer_id?: string;
   name?: string;
   size?: BoxSize;
+  keep_alive?: boolean;
   model?: string;
   agent?: Agent;
   enabled_skills?: string[];

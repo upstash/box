@@ -285,6 +285,9 @@ export class Box<TProvider = unknown> {
   /** Resource size of this box (`"small"`, `"medium"`, or `"large"`). */
   readonly size: BoxSize;
 
+  /** Whether this box is configured as keep-alive. */
+  readonly keepAlive: boolean;
+
   /** Current network access policy for this box. */
   get networkPolicy(): NetworkPolicy {
     return this._networkPolicy;
@@ -428,6 +431,7 @@ export class Box<TProvider = unknown> {
   ) {
     this.id = data.id;
     this.size = data.size ?? "small";
+    this.keepAlive = Boolean(data.keep_alive);
     this._cwd = Box.WORKSPACE;
     this._networkPolicy = deserializeNetworkPolicy(data.network_policy);
     this._model = data.model;
@@ -516,6 +520,9 @@ export class Box<TProvider = unknown> {
     if (config?.agent && !config.agent.model) {
       throw new BoxError("agent.model is required when agent is configured");
     }
+    if (config?.initCommand !== undefined && !config.keepAlive) {
+      throw new BoxError("initCommand requires keepAlive: true");
+    }
     const baseUrl = (
       config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
@@ -530,6 +537,8 @@ export class Box<TProvider = unknown> {
     const body: Record<string, unknown> = {};
     if (config?.name) body.name = config.name;
     if (config?.size) body.size = config.size;
+    if (config?.keepAlive) body.keep_alive = true;
+    if (config?.initCommand !== undefined) body.init_command = config.initCommand;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = resolveAgentHarness(config.agent);
@@ -1609,9 +1618,45 @@ export class Box<TProvider = unknown> {
   }
 
   /**
+   * Read the current init command for a keep-alive box.
+   */
+  async getInitCommand(): Promise<string> {
+    this._requireKeepAlive("Init command");
+    const data = await this._request<{ init_command?: string }>(
+      "GET",
+      `/v2/box/${this.id}/startup`,
+    );
+    return data.init_command ?? "";
+  }
+
+  /**
+   * Set or replace the init command for a keep-alive box.
+   */
+  async setInitCommand(initCommand: string): Promise<void> {
+    this._requireKeepAlive("Init command");
+    if (!initCommand) {
+      throw new BoxError("initCommand is required");
+    }
+    await this._request("PUT", `/v2/box/${this.id}/startup`, {
+      body: { init_command: initCommand },
+    });
+  }
+
+  /**
+   * Delete the init command for a keep-alive box.
+   */
+  async deleteInitCommand(): Promise<void> {
+    this._requireKeepAlive("Init command");
+    await this._request("DELETE", `/v2/box/${this.id}/startup`);
+  }
+
+  /**
    * Pause the box (release compute, preserve state).
    */
   async pause(): Promise<void> {
+    if (this.keepAlive) {
+      throw new BoxError("Keep-alive boxes cannot be paused");
+    }
     await this._request("POST", `/v2/box/${this.id}/pause`);
   }
 
@@ -1691,6 +1736,9 @@ export class Box<TProvider = unknown> {
       throw new BoxError(
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
+    }
+    if (config?.keepAlive || config?.initCommand !== undefined) {
+      throw new BoxError("Keep-alive boxes from snapshot are not supported yet");
     }
     const baseUrl = (
       config?.baseUrl ??
@@ -1784,6 +1832,12 @@ export class Box<TProvider = unknown> {
 
   private log(...args: unknown[]) {
     if (this._debug) console.log("[Box]", ...args);
+  }
+
+  private _requireKeepAlive(feature: string): void {
+    if (!this.keepAlive) {
+      throw new BoxError(`${feature} is only available for keep-alive boxes`);
+    }
   }
 
   /** @internal */

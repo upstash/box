@@ -44,6 +44,8 @@ import { Box, Agent, BoxApiKey } from "@upstash/box";
 const box = await Box.create({
   apiKey: "abx_...", // or set UPSTASH_BOX_API_KEY
   runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
+  keepAlive: true,
+  initCommand: "npm install && npm run dev",
   agent: {
     harness: Agent.ClaudeCode,
     model: "anthropic/claude-sonnet-4-5",
@@ -97,6 +99,8 @@ const box = await Box.fromSnapshot("snap_abc123", {
   agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
 });
 ```
+
+`keepAlive` and `initCommand` are currently supported only by `Box.create()`, not `Box.fromSnapshot()`.
 
 ### Agent
 
@@ -248,6 +252,15 @@ await box.pause(); // Pause (preserves state)
 await box.resume(); // Resume
 await box.delete(); // Permanent delete
 const { status } = await box.getStatus();
+```
+
+Keep-alive boxes also support init-command management:
+
+```ts
+const script = await box.getInitCommand();
+await box.setInitCommand("npm run dev");
+await box.deleteInitCommand();
+box.keepAlive; // boolean
 ```
 
 ### Snapshots

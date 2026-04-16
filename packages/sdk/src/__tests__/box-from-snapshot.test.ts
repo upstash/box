@@ -158,4 +158,22 @@ describe("Box.fromSnapshot", () => {
 
     await expect(Box.fromSnapshot("bad-snap", TEST_CONFIG)).rejects.toThrow("snapshot not found");
   });
+
+  it("throws when keepAlive is requested", async () => {
+    await expect(
+      Box.fromSnapshot("snap-1", {
+        ...TEST_CONFIG,
+        keepAlive: true,
+      }),
+    ).rejects.toThrow("Keep-alive boxes from snapshot are not supported yet");
+  });
+
+  it("throws when initCommand is provided", async () => {
+    await expect(
+      Box.fromSnapshot("snap-1", {
+        ...TEST_CONFIG,
+        initCommand: "echo hi",
+      }),
+    ).rejects.toThrow("Keep-alive boxes from snapshot are not supported yet");
+  });
 });
