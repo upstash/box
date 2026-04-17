@@ -54,6 +54,7 @@ export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
   if (model.startsWith("openai/")) return Agent.Codex;
+  if (model.startsWith("anthropic/")) return Agent.ClaudeCode;
   return Agent.ClaudeCode;
 }
 

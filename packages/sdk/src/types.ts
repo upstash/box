@@ -31,6 +31,7 @@ export enum Agent {
 export enum ClaudeCode {
   Opus_4_5 = "anthropic/claude-opus-4-5",
   Opus_4_6 = "anthropic/claude-opus-4-6",
+  Opus_4_7 = "anthropic/claude-opus-4-7",
   Sonnet_4 = "anthropic/claude-sonnet-4",
   Sonnet_4_5 = "anthropic/claude-sonnet-4-5",
   Sonnet_4_6 = "anthropic/claude-sonnet-4-6",

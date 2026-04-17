@@ -15,6 +15,10 @@ describe("inferDefaultProvider", () => {
     expect(inferDefaultProvider("openai/gpt-5.3-codex")).toBe(Agent.Codex);
   });
 
+  it("returns ClaudeCode for anthropic/ prefix", () => {
+    expect(inferDefaultProvider("anthropic/claude-opus-4-7")).toBe(Agent.ClaudeCode);
+  });
+
   it("returns ClaudeCode for claude/ prefix (default)", () => {
     expect(inferDefaultProvider("claude/sonnet_4_5")).toBe(Agent.ClaudeCode);
   });
