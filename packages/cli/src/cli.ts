@@ -9,6 +9,12 @@ import { getCommand } from "./commands/get.js";
 import { initDemoCommand } from "./commands/init-demo.js";
 import { snapshotCommand } from "./commands/snapshot.js";
 import { completionCommand } from "./commands/completion.js";
+import {
+  envSetCommand,
+  envListCommand,
+  envDeleteCommand,
+  envSetAllCommand,
+} from "./commands/env.js";
 
 const program = new Command();
 
@@ -101,6 +107,35 @@ program
   .option("--git-token <token>", "GitHub personal access token")
   .option("--directory <dir>", "Output directory", "box-demo")
   .action((opts) => initDemoCommand(opts));
+
+const envCmd = program
+  .command("env")
+  .description("Manage user-level env vars");
+
+envCmd
+  .command("set <key> <value>")
+  .description("Upsert a user-level env var")
+  .option("--token <token>", "Upstash Box API token")
+  .action((key, value, opts) => envSetCommand(key, value, opts));
+
+envCmd
+  .command("list")
+  .description("List user-level env vars (values are masked)")
+  .option("--token <token>", "Upstash Box API token")
+  .action((opts) => envListCommand(opts));
+
+envCmd
+  .command("delete <key>")
+  .description("Delete a user-level env var")
+  .option("--token <token>", "Upstash Box API token")
+  .action((key, opts) => envDeleteCommand(key, opts));
+
+envCmd
+  .command("set-all")
+  .description("Full-replace all user-level env vars (KEY=VALUE ...)")
+  .option("--token <token>", "Upstash Box API token")
+  .argument("<vars...>", "Key=value pairs")
+  .action((vars, opts) => envSetAllCommand(vars, opts));
 
 program
   .command("completion")

@@ -711,6 +711,90 @@ export class Box<TProvider = unknown> {
    */
   static getByName = Box.get;
 
+  /** Upsert a single user-level env var. */
+  static async setEnv(key: string, value: string, options?: BoxConnectionOptions): Promise<void> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey)
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers = { "X-Box-Api-Key": apiKey };
+    const response = await fetch(`${baseUrl}/v2/box/settings/env/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    });
+    if (!response.ok) throw new BoxError(await parseErrorResponse(response), response.status);
+  }
+
+  /** List all user-level env vars. Values are masked. */
+  static async listEnv(options?: BoxConnectionOptions): Promise<Record<string, string>> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey)
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers = { "X-Box-Api-Key": apiKey };
+    const response = await fetch(`${baseUrl}/v2/box/settings/env`, { headers });
+    if (!response.ok) throw new BoxError(await parseErrorResponse(response), response.status);
+    const data = (await response.json()) as { env_vars?: Record<string, string> };
+    return data.env_vars ?? (data as unknown as Record<string, string>);
+  }
+
+  /** Delete a single user-level env var. */
+  static async deleteEnv(key: string, options?: BoxConnectionOptions): Promise<void> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey)
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers = { "X-Box-Api-Key": apiKey };
+    const response = await fetch(`${baseUrl}/v2/box/settings/env/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!response.ok) throw new BoxError(await parseErrorResponse(response), response.status);
+  }
+
+  /** Full-replace all user-level env vars. Any key not listed will be removed. */
+  static async setAllEnv(
+    vars: Record<string, string>,
+    options?: BoxConnectionOptions,
+  ): Promise<void> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey)
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers = { "X-Box-Api-Key": apiKey };
+    const response = await fetch(`${baseUrl}/v2/box/settings/env`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ env_vars: vars }),
+    });
+    if (!response.ok) throw new BoxError(await parseErrorResponse(response), response.status);
+  }
+
   // ==================== Run ====================
 
   /** @internal */
