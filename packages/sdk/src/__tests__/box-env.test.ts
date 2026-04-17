@@ -12,7 +12,10 @@ describe("Box.setEnv", () => {
   it("sends PUT to /v2/box/settings/env/:key with value", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({}));
 
-    await Box.setEnv("MY_KEY", "my-value", { apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl });
+    await Box.setEnv("MY_KEY", "my-value", {
+      apiKey: TEST_CONFIG.apiKey,
+      baseUrl: TEST_CONFIG.baseUrl,
+    });
 
     const [url, init] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box/settings/env/MY_KEY`);
@@ -24,7 +27,10 @@ describe("Box.setEnv", () => {
   it("URL-encodes the key", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({}));
 
-    await Box.setEnv("MY KEY/SLASH", "v", { apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl });
+    await Box.setEnv("MY KEY/SLASH", "v", {
+      apiKey: TEST_CONFIG.apiKey,
+      baseUrl: TEST_CONFIG.baseUrl,
+    });
 
     const [url] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box/settings/env/MY%20KEY%2FSLASH`);

@@ -104,10 +104,7 @@ describe("envSetAllCommand", () => {
 
     await envSetAllCommand(["FOO=bar", "BAZ=qux"], { token: "test-key" });
 
-    expect(Box.setAllEnv).toHaveBeenCalledWith(
-      { FOO: "bar", BAZ: "qux" },
-      { apiKey: "test-key" },
-    );
+    expect(Box.setAllEnv).toHaveBeenCalledWith({ FOO: "bar", BAZ: "qux" }, { apiKey: "test-key" });
     expect(logSpy).toHaveBeenCalledWith("Set 2 env var(s)");
   });
 

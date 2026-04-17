@@ -108,9 +108,7 @@ program
   .option("--directory <dir>", "Output directory", "box-demo")
   .action((opts) => initDemoCommand(opts));
 
-const envCmd = program
-  .command("env")
-  .description("Manage user-level env vars");
+const envCmd = program.command("env").description("Manage user-level env vars");
 
 envCmd
   .command("set <key> <value>")
