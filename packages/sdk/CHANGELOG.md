@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.36
+
+### Patch Changes
+
+- 7b837a4: Add Claude Opus 4.7 model support to the SDK and CLI model lists.
+
 ## 0.1.35
 
 ### Patch Changes
