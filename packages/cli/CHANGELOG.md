@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.39
+
+### Patch Changes
+
+- ced40d1: adds env variable operations
+- Updated dependencies [ced40d1]
+  - @upstash/box@0.1.35
+
 ## 0.1.38
 
 ### Patch Changes

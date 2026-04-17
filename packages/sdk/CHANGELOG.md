@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.1.35
+
+### Patch Changes
+
+- ced40d1: adds env variable operations
+
 ## 0.1.34
 
 ### Patch Changes
