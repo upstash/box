@@ -1095,12 +1095,24 @@ export class Box<TProvider = unknown> {
             return null;
           }
           case "tool": {
+            const toolCallId =
+              parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "";
             const chunk: Chunk = {
               type: "tool-call",
+              toolCallId,
               toolName: parsed.name ?? "",
               input: parsed.input ?? {},
             };
             options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {} });
+            return chunk;
+          }
+          case "tool_result": {
+            const chunk: Chunk = {
+              type: "tool-result",
+              toolCallId:
+                parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "",
+              output: parsed.output,
+            };
             return chunk;
           }
           case "done": {
