@@ -426,7 +426,8 @@ export type Chunk =
   | { type: "start"; runId: string }
   | { type: "text-delta"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "tool-call"; toolName: string; input: Record<string, unknown> }
+  | { type: "tool-call"; toolCallId: string; toolName: string; input: Record<string, unknown> }
+  | { type: "tool-result"; toolCallId: string; output: unknown }
   | {
       type: "finish";
       output: string;
