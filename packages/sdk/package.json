@@ -1,6 +1,6 @@
 {
   "name": "@upstash/box",
-  "version": "0.1.36",
+  "version": "0.2.0",
   "description": "Upstash Box SDK - TypeScript client for async and parallel AI coding agents",
   "repository": {
     "type": "git",
