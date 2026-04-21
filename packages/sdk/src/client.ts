@@ -34,6 +34,7 @@ import {
   type UploadFileEntry,
   type Snapshot,
   type Preview,
+  type PublicUrl,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
   type NetworkPolicy,
@@ -1822,9 +1823,6 @@ export class Box<TProvider = unknown> {
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
     }
-    if (config?.keepAlive || config?.initCommand !== undefined) {
-      throw new BoxError("Keep-alive boxes from snapshot are not supported yet");
-    }
     const baseUrl = (
       config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
@@ -1839,6 +1837,8 @@ export class Box<TProvider = unknown> {
     };
     if (config?.name) body.name = config.name;
     if (config?.size) body.size = config.size;
+    if (config?.keepAlive) body.keep_alive = true;
+    if (config?.initCommand !== undefined) body.init_command = config.initCommand;
     if (config?.agent) {
       body.model = config.agent.model;
       body.agent = resolveAgentHarness(config.agent);
@@ -2129,13 +2129,13 @@ export class Box<TProvider = unknown> {
     return data.enabled_skills ?? [];
   }
 
-  // ==================== Preview ====================
+  // ==================== Public URLs ====================
 
-  async getPreviewUrl(
+  async getPublicUrl(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
-  ): Promise<Preview> {
-    return this._request<Preview>("POST", `/v2/box/${this.id}/preview`, {
+  ): Promise<PublicUrl> {
+    return this._request<PublicUrl>("POST", `/v2/box/${this.id}/preview`, {
       body: {
         port,
         ...(options?.bearerToken !== undefined && { bearer_token: options.bearerToken }),
@@ -2144,12 +2144,32 @@ export class Box<TProvider = unknown> {
     });
   }
 
-  async listPreviews(): Promise<{ previews: Preview[] }> {
-    return this._request<{ previews: Preview[] }>("GET", `/v2/box/${this.id}/preview`);
+  async listPublicUrls(): Promise<{ publicUrls: PublicUrl[] }> {
+    const data = await this._request<{ previews: PublicUrl[] }>("GET", `/v2/box/${this.id}/preview`);
+    return { publicUrls: data.previews };
   }
 
-  async deletePreview(port: number): Promise<void> {
+  async deletePublicUrl(port: number): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
+  }
+
+  /** @deprecated Use `getPublicUrl` instead. */
+  async getPreviewUrl(
+    port: number,
+    options?: { bearerToken?: boolean; basicAuth?: boolean },
+  ): Promise<Preview> {
+    return this.getPublicUrl(port, options);
+  }
+
+  /** @deprecated Use `listPublicUrls` instead. */
+  async listPreviews(): Promise<{ previews: Preview[] }> {
+    const data = await this.listPublicUrls();
+    return { previews: data.publicUrls };
+  }
+
+  /** @deprecated Use `deletePublicUrl` instead. */
+  async deletePreview(port: number): Promise<void> {
+    await this.deletePublicUrl(port);
   }
 }
 

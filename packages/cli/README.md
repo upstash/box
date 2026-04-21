@@ -20,8 +20,18 @@ node packages/cli/dist/index.js --help
 Provide your Upstash Box API token via the `--token` flag or the `UPSTASH_BOX_API_KEY` environment variable:
 
 ```bash
-export UPSTASH_BOX_API_KEY=abx_...
+export UPSTASH_BOX_API_KEY=box_...
 ```
+
+## Direct SSH
+
+Boxes can also be reached directly over SSH:
+
+```bash
+ssh <box-id>@us-east-1.box.upstash.com
+```
+
+Use your **Box API key** as the SSH password.
 
 ## Commands
 

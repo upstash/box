@@ -841,13 +841,13 @@ export interface Schedule {
   updated_at: number;
 }
 
-// ==================== Preview ====================
+// ==================== Public URLs ====================
 
 /**
- * Preview URL created for a box
+ * Public URL created for a box
  */
-export interface Preview {
-  /** Public URL to access the preview */
+export interface PublicUrl {
+  /** Public URL to access the exposed port */
   url: string;
   /** Port number exposed */
   port: number;
@@ -858,3 +858,6 @@ export interface Preview {
   /** Basic auth password (only returned when basicAuth is true) */
   password?: string;
 }
+
+/** @deprecated Use `PublicUrl` instead. */
+export type Preview = PublicUrl;

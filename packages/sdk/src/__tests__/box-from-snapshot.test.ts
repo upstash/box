@@ -159,21 +159,19 @@ describe("Box.fromSnapshot", () => {
     await expect(Box.fromSnapshot("bad-snap", TEST_CONFIG)).rejects.toThrow("snapshot not found");
   });
 
-  it("throws when keepAlive is requested", async () => {
-    await expect(
-      Box.fromSnapshot("snap-1", {
-        ...TEST_CONFIG,
-        keepAlive: true,
-      }),
-    ).rejects.toThrow("Keep-alive boxes from snapshot are not supported yet");
-  });
+  it("sends keep_alive and init_command in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running", keep_alive: true };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
 
-  it("throws when initCommand is provided", async () => {
-    await expect(
-      Box.fromSnapshot("snap-1", {
-        ...TEST_CONFIG,
-        initCommand: "echo hi",
-      }),
-    ).rejects.toThrow("Keep-alive boxes from snapshot are not supported yet");
+    const box = await Box.fromSnapshot("snap-1", {
+      ...TEST_CONFIG,
+      keepAlive: true,
+      initCommand: "echo hi",
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.keep_alive).toBe(true);
+    expect(body.init_command).toBe("echo hi");
+    expect(box.keepAlive).toBe(true);
   });
 });
