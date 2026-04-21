@@ -97,10 +97,10 @@ Create a new box from a saved snapshot.
 ```ts
 const box = await Box.fromSnapshot("snap_abc123", {
   agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
+  keepAlive: true,
+  initCommand: "npm install && npm run dev",
 });
 ```
-
-`keepAlive` and `initCommand` are currently supported only by `Box.create()`, not `Box.fromSnapshot()`.
 
 ### SSH
 
