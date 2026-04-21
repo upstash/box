@@ -2145,7 +2145,10 @@ export class Box<TProvider = unknown> {
   }
 
   async listPublicUrls(): Promise<{ publicUrls: PublicUrl[] }> {
-    const data = await this._request<{ previews: PublicUrl[] }>("GET", `/v2/box/${this.id}/preview`);
+    const data = await this._request<{ previews: PublicUrl[] }>(
+      "GET",
+      `/v2/box/${this.id}/preview`,
+    );
     return { publicUrls: data.previews };
   }
 

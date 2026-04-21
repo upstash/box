@@ -69,7 +69,12 @@ describe("Box public URL operations", () => {
       const { box, fetchMock } = await createTestBox();
       const mockPreviews = [
         { url: "https://box-123-3000.preview.box.upstash.com", port: 3000 },
-        { url: "https://box-123-8080.preview.box.upstash.com", port: 8080, username: "user", password: "secret" },
+        {
+          url: "https://box-123-8080.preview.box.upstash.com",
+          port: 8080,
+          username: "user",
+          password: "secret",
+        },
       ];
       fetchMock.mockResolvedValueOnce(mockResponse({ previews: mockPreviews }));
 
@@ -100,7 +105,9 @@ describe("Box public URL operations", () => {
   describe("deprecated preview aliases", () => {
     it("getPreviewUrl delegates to getPublicUrl", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }));
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }),
+      );
 
       const preview = await box.getPreviewUrl(3000);
       expect(preview.port).toBe(3000);
@@ -108,7 +115,11 @@ describe("Box public URL operations", () => {
 
     it("listPreviews delegates to listPublicUrls", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({ previews: [{ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }] }));
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          previews: [{ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }],
+        }),
+      );
 
       const res = await box.listPreviews();
       expect(res.previews).toHaveLength(1);
