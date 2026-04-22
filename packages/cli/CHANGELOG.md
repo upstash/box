@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.42
+
+### Patch Changes
+
+- fd85b64: adds GPT_5_4_Codex support
+- Updated dependencies [fd85b64]
+  - @upstash/box@0.2.1
+
 ## 0.1.41
 
 ### Patch Changes
