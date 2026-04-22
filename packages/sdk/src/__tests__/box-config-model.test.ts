@@ -21,10 +21,10 @@ describe("Box.configureModel", () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-    await box.configureModel("openai/gpt_5_3_codex");
+    await box.configureModel("openai/gpt_5_4_codex");
 
     const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
-    expect(body.model).toBe("openai/gpt_5_3_codex");
+    expect(body.model).toBe("openai/gpt_5_4_codex");
   });
 
   it("updates local modelConfig after success", async () => {

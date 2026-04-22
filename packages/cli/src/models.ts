@@ -37,6 +37,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenAICodex.GPT_5_4_Codex, label: "GPT-5.4 Codex" },
         { value: OpenAICodex.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
         { value: OpenAICodex.GPT_5_2_Codex, label: "GPT-5.2 Codex" },
         { value: OpenAICodex.GPT_5_1_Codex_Max, label: "GPT-5.1 Codex Max" },
@@ -96,6 +97,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenCodeModel.GPT_5_4_Codex, label: "GPT-5.4 Codex" },
         { value: OpenCodeModel.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
         { value: OpenCodeModel.GPT_5_2_Codex, label: "GPT-5.2 Codex" },
         { value: OpenCodeModel.GPT_5_1_Codex_Max, label: "GPT-5.1 Codex Max" },
