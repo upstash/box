@@ -29,8 +29,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     }
   }, 30000);
 
-  it("getPublicUrl: creates a public URL", async () => {
-    const publicUrl = await box.getPublicUrl(3000);
+  it("getPublicURL: creates a public URL", async () => {
+    const publicUrl = await box.getPublicURL(3000);
 
     expect(publicUrl.url).toBeTruthy();
     expect(publicUrl.port).toBe(3000);
@@ -39,11 +39,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     expect(publicUrl.password).toBeUndefined();
 
     // Cleanup
-    await box.deletePublicUrl(3000);
+    await box.deletePublicURL(3000);
   });
 
-  it("getPublicUrl: creates a public URL with bearer token and serves traffic", async () => {
-    const publicUrl = await box.getPublicUrl(3000, { bearerToken: true });
+  it("getPublicURL: creates a public URL with bearer token and serves traffic", async () => {
+    const publicUrl = await box.getPublicURL(3000, { bearerToken: true });
 
     expect(publicUrl.url).toBeTruthy();
     expect(publicUrl.port).toBe(3000);
@@ -62,11 +62,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     expect(body).toBe(SERVER_SECRET);
 
     // Cleanup
-    await box.deletePublicUrl(3000);
+    await box.deletePublicURL(3000);
   });
 
-  it("getPublicUrl: creates a public URL with basic auth", async () => {
-    const publicUrl = await box.getPublicUrl(3000, { basicAuth: true });
+  it("getPublicURL: creates a public URL with basic auth", async () => {
+    const publicUrl = await box.getPublicURL(3000, { basicAuth: true });
 
     expect(publicUrl.url).toBeTruthy();
     expect(publicUrl.port).toBe(3000);
@@ -74,26 +74,26 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     expect(publicUrl.password).toBeTruthy();
 
     // Cleanup
-    await box.deletePublicUrl(3000);
+    await box.deletePublicURL(3000);
   });
 
-  it("listPublicUrls: lists all public URLs", async () => {
-    await box.getPublicUrl(3000);
+  it("listPublicURLs: lists all public URLs", async () => {
+    await box.getPublicURL(3000);
 
-    const res = await box.listPublicUrls();
+    const res = await box.listPublicURLs();
 
     expect(res.publicUrls.length).toBeGreaterThanOrEqual(1);
     expect(res.publicUrls.some((p) => p.port === 3000)).toBe(true);
 
     // Cleanup
-    await box.deletePublicUrl(3000);
+    await box.deletePublicURL(3000);
   });
 
-  it("deletePublicUrl: removes a public URL", async () => {
-    await box.getPublicUrl(3000);
-    await box.deletePublicUrl(3000);
+  it("deletePublicURL: removes a public URL", async () => {
+    await box.getPublicURL(3000);
+    await box.deletePublicURL(3000);
 
-    const res = await box.listPublicUrls();
+    const res = await box.listPublicURLs();
     expect(res.publicUrls.every((p) => p.port !== 3000)).toBe(true);
   });
 });

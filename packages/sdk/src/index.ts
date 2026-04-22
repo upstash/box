@@ -61,7 +61,7 @@ export type {
   ExecStreamChunk,
   ErrorResponse,
   BoxRunData,
-  PublicUrl,
+  PublicURL,
   Preview,
   NetworkPolicy,
   EphemeralBoxConfig,

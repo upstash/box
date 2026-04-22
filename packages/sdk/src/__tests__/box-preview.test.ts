@@ -4,7 +4,7 @@ import { mockResponse, createTestBox } from "./helpers.js";
 describe("Box public URL operations", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  describe("getPublicUrl", () => {
+  describe("getPublicURL", () => {
     it("creates a public URL", async () => {
       const { box, fetchMock } = await createTestBox();
       const mockPublicUrl = {
@@ -13,7 +13,7 @@ describe("Box public URL operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPublicUrl));
 
-      const publicUrl = await box.getPublicUrl(3000);
+      const publicUrl = await box.getPublicURL(3000);
       expect(publicUrl.url).toBe("https://box-123-3000.preview.box.upstash.com");
       expect(publicUrl.port).toBe(3000);
       expect(publicUrl.token).toBeUndefined();
@@ -36,7 +36,7 @@ describe("Box public URL operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPublicUrl));
 
-      const publicUrl = await box.getPublicUrl(3000, { bearerToken: true });
+      const publicUrl = await box.getPublicURL(3000, { bearerToken: true });
       expect(publicUrl.token).toBe("63d8b153abc");
 
       const [, init] = fetchMock.mock.calls[1]!;
@@ -54,7 +54,7 @@ describe("Box public URL operations", () => {
       };
       fetchMock.mockResolvedValueOnce(mockResponse(mockPublicUrl));
 
-      const publicUrl = await box.getPublicUrl(8080, { basicAuth: true });
+      const publicUrl = await box.getPublicURL(8080, { basicAuth: true });
       expect(publicUrl.username).toBe("user");
       expect(publicUrl.password).toBe("f0f145f0secret");
 
@@ -64,7 +64,7 @@ describe("Box public URL operations", () => {
     });
   });
 
-  describe("listPublicUrls", () => {
+  describe("listPublicURLs", () => {
     it("lists all public URLs", async () => {
       const { box, fetchMock } = await createTestBox();
       const mockPreviews = [
@@ -78,7 +78,7 @@ describe("Box public URL operations", () => {
       ];
       fetchMock.mockResolvedValueOnce(mockResponse({ previews: mockPreviews }));
 
-      const res = await box.listPublicUrls();
+      const res = await box.listPublicURLs();
       expect(res.publicUrls).toHaveLength(2);
       expect(res.publicUrls[0]!.port).toBe(3000);
       expect(res.publicUrls[1]!.port).toBe(8080);
@@ -89,12 +89,12 @@ describe("Box public URL operations", () => {
     });
   });
 
-  describe("deletePublicUrl", () => {
+  describe("deletePublicURL", () => {
     it("deletes a public URL by port", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-      await box.deletePublicUrl(3000);
+      await box.deletePublicURL(3000);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/preview/3000");
@@ -103,7 +103,7 @@ describe("Box public URL operations", () => {
   });
 
   describe("deprecated preview aliases", () => {
-    it("getPreviewUrl delegates to getPublicUrl", async () => {
+    it("getPreviewUrl delegates to getPublicURL", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(
         mockResponse({ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }),
@@ -113,7 +113,7 @@ describe("Box public URL operations", () => {
       expect(preview.port).toBe(3000);
     });
 
-    it("listPreviews delegates to listPublicUrls", async () => {
+    it("listPreviews delegates to listPublicURLs", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(
         mockResponse({
@@ -126,7 +126,7 @@ describe("Box public URL operations", () => {
       expect(res.previews[0]!.port).toBe(3000);
     });
 
-    it("deletePreview delegates to deletePublicUrl", async () => {
+    it("deletePreview delegates to deletePublicURL", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
 

@@ -34,7 +34,7 @@ import {
   type UploadFileEntry,
   type Snapshot,
   type Preview,
-  type PublicUrl,
+  type PublicURL,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
   type NetworkPolicy,
@@ -2131,11 +2131,11 @@ export class Box<TProvider = unknown> {
 
   // ==================== Public URLs ====================
 
-  async getPublicUrl(
+  async getPublicURL(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
-  ): Promise<PublicUrl> {
-    return this._request<PublicUrl>("POST", `/v2/box/${this.id}/preview`, {
+  ): Promise<PublicURL> {
+    return this._request<PublicURL>("POST", `/v2/box/${this.id}/preview`, {
       body: {
         port,
         ...(options?.bearerToken !== undefined && { bearer_token: options.bearerToken }),
@@ -2144,35 +2144,35 @@ export class Box<TProvider = unknown> {
     });
   }
 
-  async listPublicUrls(): Promise<{ publicUrls: PublicUrl[] }> {
-    const data = await this._request<{ previews: PublicUrl[] }>(
+  async listPublicURLs(): Promise<{ publicUrls: PublicURL[] }> {
+    const data = await this._request<{ previews: PublicURL[] }>(
       "GET",
       `/v2/box/${this.id}/preview`,
     );
     return { publicUrls: data.previews };
   }
 
-  async deletePublicUrl(port: number): Promise<void> {
+  async deletePublicURL(port: number): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
   }
 
-  /** @deprecated Use `getPublicUrl` instead. */
+  /** @deprecated Use `getPublicURL` instead. */
   async getPreviewUrl(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
   ): Promise<Preview> {
-    return this.getPublicUrl(port, options);
+    return this.getPublicURL(port, options);
   }
 
-  /** @deprecated Use `listPublicUrls` instead. */
+  /** @deprecated Use `listPublicURLs` instead. */
   async listPreviews(): Promise<{ previews: Preview[] }> {
-    const data = await this.listPublicUrls();
+    const data = await this.listPublicURLs();
     return { previews: data.publicUrls };
   }
 
-  /** @deprecated Use `deletePublicUrl` instead. */
+  /** @deprecated Use `deletePublicURL` instead. */
   async deletePreview(port: number): Promise<void> {
-    await this.deletePublicUrl(port);
+    await this.deletePublicURL(port);
   }
 }
 
