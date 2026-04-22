@@ -42,6 +42,7 @@ export enum ClaudeCode {
  * OpenAI Codex model identifiers
  */
 export enum OpenAICodex {
+  GPT_5_4_Codex = "openai/gpt-5.4-codex",
   GPT_5_3_Codex = "openai/gpt-5.3-codex",
   GPT_5_2_Codex = "openai/gpt-5.2-codex",
   GPT_5_1_Codex_Max = "openai/gpt-5.1-codex-max",
@@ -75,6 +76,7 @@ export enum OpenCodeModel {
   Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
   Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   // OpenAI-backed OpenCode models
+  GPT_5_4_Codex = "opencode/gpt-5.4-codex",
   GPT_5_3_Codex = "opencode/gpt-5.3-codex",
   GPT_5_2_Codex = "opencode/gpt-5.2-codex",
   GPT_5_1_Codex_Max = "opencode/gpt-5.1-codex-max",

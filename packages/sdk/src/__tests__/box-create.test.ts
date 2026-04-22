@@ -32,12 +32,12 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4_Codex, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
-    expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_4_Codex);
   });
 
   it("supports deprecated provider field", async () => {
@@ -46,12 +46,12 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_3_Codex, apiKey: "k" },
+      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_4_Codex, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
-    expect(body.model).toBe(OpenAICodex.GPT_5_3_Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_4_Codex);
   });
 
   it("supports deprecated runner field", async () => {
@@ -63,7 +63,7 @@ describe("Box.create", () => {
       agent: {
         provider: Agent.Codex,
         runner: "ignored",
-        model: OpenAICodex.GPT_5_3_Codex,
+        model: OpenAICodex.GPT_5_4_Codex,
         apiKey: "k",
       },
     });
@@ -97,7 +97,7 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { runner: "codex", model: "openai/gpt-5.3-codex", apiKey: "k" } as any,
+      agent: { runner: "codex", model: "openai/gpt-5.4-codex", apiKey: "k" } as any,
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
@@ -108,7 +108,7 @@ describe("Box.create", () => {
     await expect(
       Box.create({
         ...TEST_CONFIG,
-        agent: { model: "openai/gpt-5.3-codex", apiKey: "k" } as any,
+        agent: { model: "openai/gpt-5.4-codex", apiKey: "k" } as any,
       }),
     ).rejects.toThrow(
       "agent.harness is required. Deprecated aliases agent.provider and agent.runner are still accepted.",

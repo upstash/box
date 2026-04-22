@@ -332,6 +332,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                              | Value                        |
 | --------------------------------- | ---------------------------- |
+| `OpenAICodex.GPT_5_4_Codex`       | `openai/gpt-5.4-codex`       |
 | `OpenAICodex.GPT_5_3_Codex`       | `openai/gpt-5.3-codex`       |
 | `OpenAICodex.GPT_5_3_Codex_Spark` | `openai/gpt-5.3-codex-spark` |
 | `OpenAICodex.GPT_5_2_Codex`       | `openai/gpt-5.2-codex`       |

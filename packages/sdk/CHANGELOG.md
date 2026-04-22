@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.2.1
+
+### Patch Changes
+
+- fd85b64: adds GPT_5_4_Codex support
+
 ## 0.2.0
 
 ### Minor Changes
