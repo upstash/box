@@ -2144,12 +2144,12 @@ export class Box<TProvider = unknown> {
     });
   }
 
-  async listPublicURLs(): Promise<{ publicUrls: PublicURL[] }> {
+  async listPublicURLs(): Promise<{ publicURLs: PublicURL[] }> {
     const data = await this._request<{ previews: PublicURL[] }>(
       "GET",
       `/v2/box/${this.id}/preview`,
     );
-    return { publicUrls: data.previews };
+    return { publicURLs: data.previews };
   }
 
   async deletePublicURL(port: number): Promise<void> {
@@ -2167,7 +2167,7 @@ export class Box<TProvider = unknown> {
   /** @deprecated Use `listPublicURLs` instead. */
   async listPreviews(): Promise<{ previews: Preview[] }> {
     const data = await this.listPublicURLs();
-    return { previews: data.publicUrls };
+    return { previews: data.publicURLs };
   }
 
   /** @deprecated Use `deletePublicURL` instead. */

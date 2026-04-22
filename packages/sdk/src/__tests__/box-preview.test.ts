@@ -79,9 +79,9 @@ describe("Box public URL operations", () => {
       fetchMock.mockResolvedValueOnce(mockResponse({ previews: mockPreviews }));
 
       const res = await box.listPublicURLs();
-      expect(res.publicUrls).toHaveLength(2);
-      expect(res.publicUrls[0]!.port).toBe(3000);
-      expect(res.publicUrls[1]!.port).toBe(8080);
+      expect(res.publicURLs).toHaveLength(2);
+      expect(res.publicURLs[0]!.port).toBe(3000);
+      expect(res.publicURLs[1]!.port).toBe(8080);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/preview");

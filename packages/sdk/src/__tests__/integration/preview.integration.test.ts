@@ -82,8 +82,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
 
     const res = await box.listPublicURLs();
 
-    expect(res.publicUrls.length).toBeGreaterThanOrEqual(1);
-    expect(res.publicUrls.some((p) => p.port === 3000)).toBe(true);
+    expect(res.publicURLs.length).toBeGreaterThanOrEqual(1);
+    expect(res.publicURLs.some((p) => p.port === 3000)).toBe(true);
 
     // Cleanup
     await box.deletePublicURL(3000);
@@ -94,6 +94,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     await box.deletePublicURL(3000);
 
     const res = await box.listPublicURLs();
-    expect(res.publicUrls.every((p) => p.port !== 3000)).toBe(true);
+    expect(res.publicURLs.every((p) => p.port !== 3000)).toBe(true);
   });
 });
