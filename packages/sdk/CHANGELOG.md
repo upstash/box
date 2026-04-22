@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.2.2
+
+### Patch Changes
+
+- 8d98540: replace publicUrl with publicURL
+
 ## 0.2.1
 
 ### Patch Changes
