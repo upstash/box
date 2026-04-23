@@ -442,7 +442,7 @@ describe("box.agent.stream", () => {
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
         { event: "run_start", data: { run_id: "r1" } },
-        { event: "tool", data: { name: "Write", input: { path: "/x" } } },
+        { event: "tool", data: { id: "toolu_1", name: "Write", input: { path: "/x" } } },
         { event: "text", data: { text: "done" } },
         { event: "done", data: {} },
       ]),
@@ -459,12 +459,90 @@ describe("box.agent.stream", () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0]!.name).toBe("Write");
-    const toolChunks = chunks.filter((c) => c.type === "tool-call");
+    const toolChunks = chunks.filter(
+      (c): c is Extract<Chunk, { type: "tool-call" }> => c.type === "tool-call",
+    );
     expect(toolChunks).toHaveLength(1);
+    expect(toolChunks[0]!.toolCallId).toBe("toolu_1");
+    expect(toolChunks[0]!.toolName).toBe("Write");
     const textChunks = chunks.filter(
       (c): c is Extract<Chunk, { type: "text-delta" }> => c.type === "text-delta",
     );
     expect(textChunks.map((c) => c.text)).toEqual(["done"]);
+  });
+
+  it("matches parallel tool-call and tool-result chunks by id", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool", data: { id: "toolu_a", name: "Read", input: { path: "/a" } } },
+        { event: "tool", data: { id: "toolu_b", name: "Read", input: { path: "/b" } } },
+        // Results arrive out of order — must still match by id.
+        {
+          event: "tool_result",
+          data: { tool_use_id: "toolu_b", output: "B contents", is_error: false },
+        },
+        {
+          event: "tool_result",
+          data: { tool_use_id: "toolu_a", output: "A contents", is_error: false },
+        },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "read both" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+
+    const calls = chunks.filter(
+      (c): c is Extract<Chunk, { type: "tool-call" }> => c.type === "tool-call",
+    );
+    const results = chunks.filter(
+      (c): c is Extract<Chunk, { type: "tool-result" }> => c.type === "tool-result",
+    );
+
+    expect(calls.map((c) => c.toolCallId)).toEqual(["toolu_a", "toolu_b"]);
+    // Out-of-order results must still be matchable by id.
+    expect(results.map((r) => r.toolCallId)).toEqual(["toolu_b", "toolu_a"]);
+
+    const resultsById = new Map(results.map((r) => [r.toolCallId, r.output]));
+    expect(resultsById.get("toolu_a")).toBe("A contents");
+    expect(resultsById.get("toolu_b")).toBe("B contents");
+  });
+
+  it("parses tool-result with fallback fields (id instead of tool_use_id, content instead of output)", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool", data: { id: "t1", name: "Bash", input: { command: "ls" } } },
+        // Backend uses `id` instead of `tool_use_id`, and `content` instead of `output`
+        {
+          event: "tool_result",
+          data: { id: "t1", content: "file.txt", is_error: true },
+        },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+
+    const results = chunks.filter(
+      (c): c is Extract<Chunk, { type: "tool-result" }> => c.type === "tool-result",
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.toolCallId).toBe("t1");
+    expect(results[0]!.output).toBe("file.txt");
+    expect(results[0]!.isError).toBe(true);
   });
 
   it("yields all chunk types in order", async () => {
