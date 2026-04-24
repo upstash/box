@@ -943,7 +943,22 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "tool": {
-            options.onToolUse?.({ name: parsed.name, input: parsed.input });
+            const toolCallId =
+              parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "";
+            options.onToolUse?.({
+              toolCallId,
+              name: parsed.name ?? "",
+              input: parsed.input ?? {},
+            });
+            break;
+          }
+          case "tool_result": {
+            const toolCallId =
+              parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "";
+            options.onToolResult?.({
+              toolCallId,
+              output: parsed.output,
+            });
             break;
           }
           case "done": {
@@ -1103,16 +1118,25 @@ export class Box<TProvider = unknown> {
               toolName: parsed.name ?? "",
               input: parsed.input ?? {},
             };
-            options.onToolUse?.({ name: parsed.name ?? "", input: parsed.input ?? {} });
+            options.onToolUse?.({
+              toolCallId,
+              name: parsed.name ?? "",
+              input: parsed.input ?? {},
+            });
             return chunk;
           }
           case "tool_result": {
+            const toolCallId =
+              parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "";
             const chunk: Chunk = {
               type: "tool-result",
-              toolCallId:
-                parsed.tool_call_id ?? parsed.id ?? parsed.tool_use_id ?? parsed.toolCallId ?? "",
+              toolCallId,
               output: parsed.output,
             };
+            options.onToolResult?.({
+              toolCallId,
+              output: parsed.output,
+            });
             return chunk;
           }
           case "done": {

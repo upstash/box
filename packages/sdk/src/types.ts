@@ -475,7 +475,9 @@ export interface StreamOptions<TProvider = unknown> {
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { toolCallId: string; name: string; input: Record<string, unknown> }) => void;
+  /** Tool result callback — called when a tool invocation completes */
+  onToolResult?: (result: { toolCallId: string; output: unknown }) => void;
 }
 
 /**
@@ -495,7 +497,9 @@ export interface RunOptions<T = undefined, TProvider = unknown> {
   /** Retries with exponential backoff on transient failures */
   maxRetries?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { toolCallId: string; name: string; input: Record<string, unknown> }) => void;
+  /** Tool result callback — called when a tool invocation completes */
+  onToolResult?: (result: { toolCallId: string; output: unknown }) => void;
   /** Webhook — fire-and-forget, POST to URL on completion */
   webhook?: WebhookConfig;
 }

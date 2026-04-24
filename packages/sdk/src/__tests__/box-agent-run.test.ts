@@ -29,12 +29,12 @@ describe("box.agent.run", () => {
 
   it("calls onToolUse callback", async () => {
     const { box, fetchMock } = await createTestBox();
-    const tools: Array<{ name: string; input: Record<string, unknown> }> = [];
+    const tools: Array<{ toolCallId: string; name: string; input: Record<string, unknown> }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
         { event: "run_start", data: { run_id: "r1" } },
-        { event: "tool", data: { name: "Read", input: { path: "/test" } } },
+        { event: "tool", data: { id: "tool-1", name: "Read", input: { path: "/test" } } },
         { event: "done", data: {} },
       ]),
     );
@@ -45,7 +45,28 @@ describe("box.agent.run", () => {
     });
 
     expect(tools).toHaveLength(1);
+    expect(tools[0]!.toolCallId).toBe("tool-1");
     expect(tools[0]!.name).toBe("Read");
+  });
+
+  it("calls onToolResult callback", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const results: Array<{ toolCallId: string; output: unknown }> = [];
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool_result", data: { toolCallId: "tool-1", output: { ok: true } } },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    await box.agent.run({
+      prompt: "test",
+      onToolResult: (result) => results.push(result),
+    });
+
+    expect(results).toEqual([{ toolCallId: "tool-1", output: { ok: true } }]);
   });
 
   it("parses structured output with responseSchema", async () => {
@@ -437,12 +458,12 @@ describe("box.agent.stream", () => {
 
   it("yields tool-call chunks and calls onToolUse", async () => {
     const { box, fetchMock } = await createTestBox();
-    const tools: Array<{ name: string; input: Record<string, unknown> }> = [];
+    const tools: Array<{ toolCallId: string; name: string; input: Record<string, unknown> }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
         { event: "run_start", data: { run_id: "r1" } },
-        { event: "tool", data: { name: "Write", input: { path: "/x" } } },
+        { event: "tool", data: { id: "tool-2", name: "Write", input: { path: "/x" } } },
         { event: "text", data: { text: "done" } },
         { event: "done", data: {} },
       ]),
@@ -458,13 +479,49 @@ describe("box.agent.stream", () => {
     }
 
     expect(tools).toHaveLength(1);
+    expect(tools[0]!.toolCallId).toBe("tool-2");
     expect(tools[0]!.name).toBe("Write");
     const toolChunks = chunks.filter((c) => c.type === "tool-call");
     expect(toolChunks).toHaveLength(1);
+    expect(toolChunks[0]).toEqual({
+      type: "tool-call",
+      toolCallId: "tool-2",
+      toolName: "Write",
+      input: { path: "/x" },
+    });
     const textChunks = chunks.filter(
       (c): c is Extract<Chunk, { type: "text-delta" }> => c.type === "text-delta",
     );
     expect(textChunks.map((c) => c.text)).toEqual(["done"]);
+  });
+
+  it("yields tool-result chunks and calls onToolResult", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const results: Array<{ toolCallId: string; output: unknown }> = [];
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "tool_result", data: { tool_use_id: "tool-3", output: "ok" } },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const run = await box.agent.stream({
+      prompt: "test",
+      onToolResult: (result) => results.push(result),
+    });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+
+    expect(results).toEqual([{ toolCallId: "tool-3", output: "ok" }]);
+    expect(chunks).toContainEqual({
+      type: "tool-result",
+      toolCallId: "tool-3",
+      output: "ok",
+    });
   });
 
   it("yields all chunk types in order", async () => {
@@ -475,7 +532,8 @@ describe("box.agent.stream", () => {
         { event: "run_start", data: { run_id: "r1" } },
         { event: "text", data: { text: "Hello " } },
         { event: "thinking", data: { text: "trace" } },
-        { event: "tool", data: { name: "Write", input: { path: "/x" } } },
+        { event: "tool", data: { toolCallId: "tool-4", name: "Write", input: { path: "/x" } } },
+        { event: "tool_result", data: { tool_use_id: "tool-4", output: "done" } },
         {
           event: "done",
           data: { output: "Hello world", input_tokens: 7, output_tokens: 9, session_id: "s1" },
@@ -495,6 +553,7 @@ describe("box.agent.stream", () => {
       "text-delta",
       "reasoning",
       "tool-call",
+      "tool-result",
       "finish",
       "stats",
     ]);
