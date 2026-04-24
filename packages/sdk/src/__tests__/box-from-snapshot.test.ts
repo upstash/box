@@ -31,12 +31,12 @@ describe("Box.fromSnapshot", () => {
 
     await Box.fromSnapshot("snap-1", {
       ...TEST_CONFIG,
-      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_4_Codex, apiKey: "k" },
+      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_4, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
-    expect(body.model).toBe(OpenAICodex.GPT_5_4_Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_4);
   });
 
   it("polls until box is ready", async () => {

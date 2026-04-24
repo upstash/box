@@ -32,12 +32,12 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4_Codex, apiKey: "k" },
+      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
-    expect(body.model).toBe(OpenAICodex.GPT_5_4_Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_4);
   });
 
   it("supports deprecated provider field", async () => {
@@ -46,12 +46,12 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_4_Codex, apiKey: "k" },
+      agent: { provider: Agent.Codex, model: OpenAICodex.GPT_5_4, apiKey: "k" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
-    expect(body.model).toBe(OpenAICodex.GPT_5_4_Codex);
+    expect(body.model).toBe(OpenAICodex.GPT_5_4);
   });
 
   it("supports deprecated runner field", async () => {
@@ -63,9 +63,9 @@ describe("Box.create", () => {
       agent: {
         provider: Agent.Codex,
         runner: "ignored",
-        model: OpenAICodex.GPT_5_4_Codex,
+        model: OpenAICodex.GPT_5_4,
         apiKey: "k",
-      },
+      } as any,
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
