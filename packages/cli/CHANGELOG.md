@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.1.44
+
+### Patch Changes
+
+- 0d2e01a: fixed gpt-5.4 support
+- Updated dependencies [0d2e01a]
+  - @upstash/box@0.2.3
+
 ## 0.1.43
 
 ### Patch Changes

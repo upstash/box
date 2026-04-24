@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.2.3
+
+### Patch Changes
+
+- 0d2e01a: fixed gpt-5.4 support
+
 ## 0.2.2
 
 ### Patch Changes
