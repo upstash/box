@@ -87,6 +87,11 @@ function toBackendAgentOptions(
   return mapped;
 }
 
+function resolveToolCallId(parsed: Record<string, unknown>): string | undefined {
+  const id = parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
+  return typeof id === "string" ? id : undefined;
+}
+
 /**
  * Error thrown by the Box SDK
  */
@@ -943,8 +948,7 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "tool": {
-            const toolCallId =
-              parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
+            const toolCallId = resolveToolCallId(parsed);
             options.onToolUse?.({
               toolCallId,
               name: parsed.name ?? "",
@@ -953,8 +957,7 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "tool_result": {
-            const toolCallId =
-              parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
+            const toolCallId = resolveToolCallId(parsed);
             options.onToolResult?.({
               toolCallId,
               output: parsed.output,
@@ -1110,8 +1113,7 @@ export class Box<TProvider = unknown> {
             return null;
           }
           case "tool": {
-            const toolCallId =
-              parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
+            const toolCallId = resolveToolCallId(parsed);
             const chunk: Chunk = {
               type: "tool-call",
               toolCallId,
@@ -1126,8 +1128,7 @@ export class Box<TProvider = unknown> {
             return chunk;
           }
           case "tool_result": {
-            const toolCallId =
-              parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
+            const toolCallId = resolveToolCallId(parsed);
             const chunk: Chunk = {
               type: "tool-result",
               toolCallId,
