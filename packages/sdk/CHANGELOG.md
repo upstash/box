@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.3.0
+
+### Minor Changes
+
+- af53beb: add toolCallId and first class tool result event to streaming chunks #122
+
 ## 0.2.3
 
 ### Patch Changes
