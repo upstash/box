@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
-import { Agent, Box, ClaudeCode } from "../../index.js";
+import { Agent, Box, ClaudeCode, OpenAICodex } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
@@ -67,13 +67,13 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
   }, 120000);
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI)", () => {
-  let box: Box;
+describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI GPT-5.4)", () => {
+  let box: Box<Agent.Codex>;
 
   beforeAll(async () => {
-    box = await Box.create({
+    box = await Box.create<Agent.Codex>({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
+      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4 },
     });
   }, 120000);
 
@@ -85,14 +85,16 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI)", () => {
     }
   }, 30000);
 
-  it("agent.run: returns result with OpenAI model", async () => {
+  it("agent.run: returns non-empty result", async () => {
     const run = await box.agent.run({
       prompt: "Reply with exactly: OPENAI_OK",
     });
     expect(run.result).toBeTruthy();
+    expect(run.result).toContain("OPENAI_OK");
+    expect(run.status).toBe("completed");
   }, 120000);
 
-  it("agent.stream: yields Chunk objects with OpenAI model", async () => {
+  it("agent.stream: yields text-delta chunks", async () => {
     let text = "";
     let chunkCount = 0;
     const run = await box.agent.stream({
@@ -106,5 +108,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI)", () => {
     }
     expect(chunkCount).toBeGreaterThan(0);
     expect(text).toBeTruthy();
+    expect(run.status).toBe("completed");
   }, 120000);
 });

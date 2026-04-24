@@ -97,7 +97,7 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { runner: "codex", model: "openai/gpt-5.4-codex", apiKey: "k" } as any,
+      agent: { runner: "codex", model: "openai/gpt-5.4", apiKey: "k" } as any,
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
@@ -108,7 +108,7 @@ describe("Box.create", () => {
     await expect(
       Box.create({
         ...TEST_CONFIG,
-        agent: { model: "openai/gpt-5.4-codex", apiKey: "k" } as any,
+        agent: { model: "openai/gpt-5.4", apiKey: "k" } as any,
       }),
     ).rejects.toThrow(
       "agent.harness is required. Deprecated aliases agent.provider and agent.runner are still accepted.",
