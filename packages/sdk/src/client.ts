@@ -88,8 +88,11 @@ function toBackendAgentOptions(
 }
 
 function resolveToolCallId(parsed: Record<string, unknown>): string | undefined {
-  const id = parsed.tool_call_id ?? parsed.tool_use_id ?? parsed.toolCallId ?? parsed.id;
-  return typeof id === "string" ? id : undefined;
+  if (typeof parsed.tool_call_id === "string") return parsed.tool_call_id;
+  if (typeof parsed.tool_use_id === "string") return parsed.tool_use_id;
+  if (typeof parsed.toolCallId === "string") return parsed.toolCallId;
+  if (typeof parsed.id === "string") return parsed.id;
+  return undefined;
 }
 
 /**
