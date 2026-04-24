@@ -428,8 +428,8 @@ export type Chunk =
   | { type: "start"; runId: string }
   | { type: "text-delta"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "tool-call"; toolCallId: string; toolName: string; input: Record<string, unknown> }
-  | { type: "tool-result"; toolCallId: string; output: unknown }
+  | { type: "tool-call"; toolCallId?: string; toolName: string; input: Record<string, unknown> }
+  | { type: "tool-result"; toolCallId?: string; output: unknown }
   | {
       type: "finish";
       output: string;
@@ -475,9 +475,9 @@ export interface StreamOptions<TProvider = unknown> {
   /** Timeout in milliseconds — aborts if exceeded */
   timeout?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { toolCallId: string; name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { toolCallId?: string; name: string; input: Record<string, unknown> }) => void;
   /** Tool result callback — called when a tool invocation completes */
-  onToolResult?: (result: { toolCallId: string; output: unknown }) => void;
+  onToolResult?: (result: { toolCallId?: string; output: unknown }) => void;
 }
 
 /**
@@ -497,9 +497,9 @@ export interface RunOptions<T = undefined, TProvider = unknown> {
   /** Retries with exponential backoff on transient failures */
   maxRetries?: number;
   /** Tool use callback — called when the agent invokes a tool (Read, Write, Bash, etc.) */
-  onToolUse?: (tool: { toolCallId: string; name: string; input: Record<string, unknown> }) => void;
+  onToolUse?: (tool: { toolCallId?: string; name: string; input: Record<string, unknown> }) => void;
   /** Tool result callback — called when a tool invocation completes */
-  onToolResult?: (result: { toolCallId: string; output: unknown }) => void;
+  onToolResult?: (result: { toolCallId?: string; output: unknown }) => void;
   /** Webhook — fire-and-forget, POST to URL on completion */
   webhook?: WebhookConfig;
 }

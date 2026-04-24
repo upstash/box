@@ -29,7 +29,7 @@ describe("box.agent.run", () => {
 
   it("calls onToolUse callback", async () => {
     const { box, fetchMock } = await createTestBox();
-    const tools: Array<{ toolCallId: string; name: string; input: Record<string, unknown> }> = [];
+    const tools: Array<{ toolCallId?: string; name: string; input: Record<string, unknown> }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -51,7 +51,7 @@ describe("box.agent.run", () => {
 
   it("calls onToolResult callback", async () => {
     const { box, fetchMock } = await createTestBox();
-    const results: Array<{ toolCallId: string; output: unknown }> = [];
+    const results: Array<{ toolCallId?: string; output: unknown }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -458,7 +458,7 @@ describe("box.agent.stream", () => {
 
   it("yields tool-call chunks and calls onToolUse", async () => {
     const { box, fetchMock } = await createTestBox();
-    const tools: Array<{ toolCallId: string; name: string; input: Record<string, unknown> }> = [];
+    const tools: Array<{ toolCallId?: string; name: string; input: Record<string, unknown> }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -497,7 +497,7 @@ describe("box.agent.stream", () => {
 
   it("yields tool-result chunks and calls onToolResult", async () => {
     const { box, fetchMock } = await createTestBox();
-    const results: Array<{ toolCallId: string; output: unknown }> = [];
+    const results: Array<{ toolCallId?: string; output: unknown }> = [];
 
     fetchMock.mockResolvedValueOnce(
       mockSSEResponse([
@@ -520,6 +520,52 @@ describe("box.agent.stream", () => {
     expect(chunks).toContainEqual({
       type: "tool-result",
       toolCallId: "tool-3",
+      output: "ok",
+    });
+  });
+
+  it("prefers explicit tool call identifiers over generic ids", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        {
+          event: "tool",
+          data: {
+            id: "event-id",
+            tool_use_id: "tool-use-id",
+            name: "Read",
+            input: { path: "/x" },
+          },
+        },
+        {
+          event: "tool_result",
+          data: {
+            id: "result-event-id",
+            toolCallId: "tool-call-id",
+            output: "ok",
+          },
+        },
+        { event: "done", data: {} },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toContainEqual({
+      type: "tool-call",
+      toolCallId: "tool-use-id",
+      toolName: "Read",
+      input: { path: "/x" },
+    });
+    expect(chunks).toContainEqual({
+      type: "tool-result",
+      toolCallId: "tool-call-id",
       output: "ok",
     });
   });
