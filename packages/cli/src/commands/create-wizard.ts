@@ -19,6 +19,7 @@ const PROVIDERS: SelectItem<Agent>[] = [
   { label: "Claude Code", value: Agent.ClaudeCode },
   { label: "OpenAI Codex", value: Agent.Codex },
   { label: "OpenCode", value: Agent.OpenCode },
+  { label: "Cursor", value: Agent.Cursor },
 ];
 
 type ApiKeyOption = "upstash" | "stored" | "custom";

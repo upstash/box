@@ -29,8 +29,8 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment (node, python, golang, ruby, rust)")
   .option("--agent-model <model>", "Agent model identifier")
-  .option("--agent-harness <harness>", "Agent harness (claude-code, codex, opencode)")
-  .option("--agent-provider <provider>", "Agent provider (claude-code, codex, opencode)")
+  .option("--agent-harness <harness>", "Agent harness (claude-code, codex, opencode, cursor)")
+  .option("--agent-provider <provider>", "Agent provider (claude-code, codex, opencode, cursor)")
   .option("--agent-runner <runner>")
   .option(
     "--agent-api-key [key]",
@@ -59,8 +59,8 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--runtime <runtime>", "Runtime environment")
   .option("--agent-model <model>", "Agent model identifier")
-  .option("--agent-harness <harness>", "Agent harness (claude-code, codex, opencode)")
-  .option("--agent-provider <provider>", "Agent provider (claude-code, codex, opencode)")
+  .option("--agent-harness <harness>", "Agent harness (claude-code, codex, opencode, cursor)")
+  .option("--agent-provider <provider>", "Agent provider (claude-code, codex, opencode, cursor)")
   .option("--agent-runner <runner>")
   .option(
     "--agent-api-key [key]",

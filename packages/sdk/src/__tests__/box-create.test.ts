@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Box, BoxError } from "../client.js";
-import { Agent, OpenAICodex } from "../types.js";
+import { Agent, CursorModel, OpenAICodex } from "../types.js";
 import { mockResponse, TEST_BOX_DATA, TEST_CONFIG } from "./helpers.js";
 
 describe("Box.create", () => {
@@ -38,6 +38,21 @@ describe("Box.create", () => {
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Codex);
     expect(body.model).toBe(OpenAICodex.GPT_5_4);
+  });
+
+  it("sends Cursor harness, model, and API key", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.create({
+      ...TEST_CONFIG,
+      agent: { harness: Agent.Cursor, model: CursorModel.Composer_2, apiKey: "crsr-key" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.agent).toBe(Agent.Cursor);
+    expect(body.model).toBe(CursorModel.Composer_2);
+    expect(body.agent_api_key).toBe("crsr-key");
   });
 
   it("supports deprecated provider field", async () => {

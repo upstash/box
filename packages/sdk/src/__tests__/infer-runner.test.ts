@@ -15,6 +15,10 @@ describe("inferDefaultProvider", () => {
     expect(inferDefaultProvider("openai/gpt-5.3-codex")).toBe(Agent.Codex);
   });
 
+  it("returns Cursor for cursor/ prefix", () => {
+    expect(inferDefaultProvider("cursor/composer-2")).toBe(Agent.Cursor);
+  });
+
   it("returns ClaudeCode for anthropic/ prefix", () => {
     expect(inferDefaultProvider("anthropic/claude-opus-4-7")).toBe(Agent.ClaudeCode);
   });

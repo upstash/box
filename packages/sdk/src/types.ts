@@ -23,6 +23,7 @@ export enum Agent {
   ClaudeCode = "claude-code",
   Codex = "codex",
   OpenCode = "opencode",
+  Cursor = "cursor",
 }
 
 /**
@@ -107,6 +108,39 @@ export enum OpenCodeModel {
   Zen_Gemini_3_Flash = "opencode/gemini-3-flash",
 }
 
+/**
+ * Cursor model identifiers
+ */
+export enum CursorModel {
+  Default = "cursor/default",
+  Composer_2 = "cursor/composer-2",
+  Composer_1_5 = "cursor/composer-1.5",
+  GPT_5_5 = "cursor/gpt-5.5",
+  GPT_5_4 = "cursor/gpt-5.4",
+  GPT_5_4_Mini = "cursor/gpt-5.4-mini",
+  GPT_5_4_Nano = "cursor/gpt-5.4-nano",
+  GPT_5_3_Codex = "cursor/gpt-5.3-codex",
+  GPT_5_3_Codex_Spark = "cursor/gpt-5.3-codex-spark",
+  GPT_5_2 = "cursor/gpt-5.2",
+  GPT_5_2_Codex = "cursor/gpt-5.2-codex",
+  GPT_5_1 = "cursor/gpt-5.1",
+  GPT_5_1_Codex_Max = "cursor/gpt-5.1-codex-max",
+  GPT_5_1_Codex_Mini = "cursor/gpt-5.1-codex-mini",
+  GPT_5_Mini = "cursor/gpt-5-mini",
+  Claude_Opus_4_7 = "cursor/claude-opus-4-7",
+  Claude_Opus_4_6 = "cursor/claude-opus-4-6",
+  Claude_Opus_4_5 = "cursor/claude-opus-4-5",
+  Claude_Sonnet_4_6 = "cursor/claude-sonnet-4-6",
+  Claude_Sonnet_4_5 = "cursor/claude-sonnet-4-5",
+  Claude_Sonnet_4 = "cursor/claude-sonnet-4",
+  Claude_Haiku_4_5 = "cursor/claude-haiku-4-5",
+  Gemini_3_1_Pro = "cursor/gemini-3.1-pro",
+  Gemini_3_Flash = "cursor/gemini-3-flash",
+  Gemini_2_5_Flash = "cursor/gemini-2.5-flash",
+  Grok_4_20 = "cursor/grok-4-20",
+  Kimi_K2_5 = "cursor/kimi-k2.5",
+}
+
 export enum BoxApiKey {
   /**
    * Use an LLM API key provided by Upstash
@@ -147,6 +181,7 @@ export type AgentConfig = {
       provider?: never;
       runner?: never;
     }
+  | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
   | { harness: string; model: string; provider?: never; runner?: never }
   | {
       /** @deprecated Use `harness` instead. */
@@ -171,6 +206,13 @@ export type AgentConfig = {
     }
   | {
       /** @deprecated Use `harness` instead. */
+      provider: Agent.Cursor;
+      model: CursorModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
       provider: string;
       model: string;
       harness?: never;
@@ -179,7 +221,7 @@ export type AgentConfig = {
   | {
       /** @deprecated Use `harness` instead. */
       runner: Agent;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
       harness?: never;
       provider?: never;
     }

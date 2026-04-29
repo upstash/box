@@ -9,6 +9,7 @@ export {
 } from "./client.js";
 export {
   ClaudeCode,
+  CursorModel,
   OpenAICodex,
   OpenCodeModel,
   OpenRouterModel,

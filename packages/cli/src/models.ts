@@ -1,4 +1,11 @@
-import { Agent, ClaudeCode, OpenAICodex, OpenCodeModel, OpenRouterModel } from "@upstash/box";
+import {
+  Agent,
+  ClaudeCode,
+  CursorModel,
+  OpenAICodex,
+  OpenCodeModel,
+  OpenRouterModel,
+} from "@upstash/box";
 
 /** Model options grouped by agent */
 export const MODEL_OPTIONS_BY_AGENT: Record<
@@ -125,6 +132,25 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
+      ],
+    },
+  ],
+  [Agent.Cursor]: [
+    {
+      label: "Cursor",
+      options: [
+        { value: CursorModel.Composer_2, label: "Composer 2" },
+        { value: CursorModel.Composer_1_5, label: "Composer 1.5" },
+        { value: CursorModel.Default, label: "Default" },
+        { value: CursorModel.GPT_5_5, label: "GPT-5.5" },
+        { value: CursorModel.GPT_5_4, label: "GPT-5.4" },
+        { value: CursorModel.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
+        { value: CursorModel.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
+        { value: CursorModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
+        { value: CursorModel.Claude_Opus_4_7, label: "Claude Opus 4.7" },
+        { value: CursorModel.Gemini_3_1_Pro, label: "Gemini 3.1 Pro" },
+        { value: CursorModel.Grok_4_20, label: "Grok 4.20" },
+        { value: CursorModel.Kimi_K2_5, label: "Kimi K2.5" },
       ],
     },
   ],

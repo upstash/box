@@ -52,6 +52,7 @@ const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
 /** Infer the default harness from a model string prefix. */
 export function inferDefaultProvider(model: string): Agent {
+  if (model.startsWith("cursor/")) return Agent.Cursor;
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
   if (model.startsWith("openai/")) return Agent.Codex;
