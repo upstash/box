@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.0
+
+### Minor Changes
+
+- 3128242: Add Cursor as a first-class agent harness with Cursor model constants and CLI model selection support.
+
 ## 0.3.0
 
 ### Minor Changes

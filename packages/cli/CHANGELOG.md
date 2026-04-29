@@ -1,5 +1,16 @@
 # @upstash/box-cli
 
+## 0.2.0
+
+### Minor Changes
+
+- 3128242: Add Cursor as a first-class agent harness with Cursor model constants and CLI model selection support.
+
+### Patch Changes
+
+- Updated dependencies [3128242]
+  - @upstash/box@0.4.0
+
 ## 0.1.45
 
 ### Patch Changes
