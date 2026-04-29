@@ -43,6 +43,7 @@ import {
   type Schedule,
   type ClaudeCodeAgentOptions,
   type CodexAgentOptions,
+  type CursorAgentOptions,
   type OpenCodeAgentOptions,
   Agent,
 } from "./types.js";
@@ -77,6 +78,7 @@ function toBackendAgentOptions(
   options:
     | ClaudeCodeAgentOptions
     | CodexAgentOptions
+    | CursorAgentOptions
     | OpenCodeAgentOptions
     | Record<string, unknown>,
 ): Record<string, unknown> {
@@ -94,6 +96,22 @@ function resolveToolCallId(parsed: Record<string, unknown>): string | undefined 
   if (typeof parsed.toolCallId === "string") return parsed.toolCallId;
   if (typeof parsed.id === "string") return parsed.id;
   return undefined;
+}
+
+const EXEC_STREAM_EVENT_PREFIXES = ["event: exit\n", "event: error\n"] as const;
+
+function safeExecOutputLength(buffer: string): number {
+  const maxPrefixLength = Math.max(...EXEC_STREAM_EVENT_PREFIXES.map((prefix) => prefix.length));
+  const maxSuffixLength = Math.min(buffer.length, maxPrefixLength - 1);
+
+  for (let length = maxSuffixLength; length > 0; length--) {
+    const suffix = buffer.slice(-length);
+    if (EXEC_STREAM_EVENT_PREFIXES.some((prefix) => prefix.startsWith(suffix))) {
+      return buffer.length - length;
+    }
+  }
+
+  return buffer.length;
 }
 
 /**
@@ -1484,10 +1502,12 @@ export class Box<TProvider = unknown> {
 
         const exitIndex = buffer.indexOf("event: exit\n");
         if (exitIndex === -1) {
-          // No exit event yet — yield everything in the buffer as output
-          if (buffer.length > 0) {
-            yield { type: "output", data: buffer };
-            buffer = "";
+          // No complete event yet. Keep a small suffix so markers split across
+          // network chunks (`event: ex` + `it\n...`) are not emitted as output.
+          const outputLength = safeExecOutputLength(buffer);
+          if (outputLength > 0) {
+            yield { type: "output", data: buffer.slice(0, outputLength) };
+            buffer = buffer.slice(outputLength);
           }
           continue;
         }

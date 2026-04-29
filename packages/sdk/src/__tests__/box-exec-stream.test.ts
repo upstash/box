@@ -107,6 +107,38 @@ function mockExecStreamResponseChunked(
   } as Response;
 }
 
+function mockExecStreamRawChunks(chunks: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      controller.close();
+    },
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(chunks.join("")),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockExecStreamRawChunks(chunks),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+
 async function collect(run: StreamRun<string, ExecStreamChunk>): Promise<ExecStreamChunk[]> {
   const chunks: ExecStreamChunk[] = [];
   for await (const chunk of run) {
@@ -179,6 +211,29 @@ describe("exec.stream", () => {
 
     expect(run.exitCode).toBe(127);
     expect(run.status).toBe("failed");
+  });
+
+  it("parses exit event split across stream chunks", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockExecStreamRawChunks([
+        "line=0\nline=1\n",
+        "line=2\n\nevent: ex",
+        'it\ndata: {"exit_code":0,"cpu_ns":123}\n\n',
+      ]),
+    );
+
+    const run = await box.exec.stream("echo lines");
+    const chunks = await collect(run);
+    const output = chunks
+      .filter((chunk) => chunk.type === "output")
+      .map((chunk) => chunk.data)
+      .join("");
+
+    expect(output).toContain("line=0");
+    expect(output).toContain("line=2");
+    expect(run.status).toBe("completed");
+    expect(run.exitCode).toBe(0);
   });
 
   it("throws on non-OK response", async () => {

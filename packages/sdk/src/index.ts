@@ -24,6 +24,7 @@ export type {
   AgentOptions,
   ClaudeCodeAgentOptions,
   CodexAgentOptions,
+  CursorAgentOptions,
   OpenCodeAgentOptions,
   BoxConfig,
   BoxConnectionOptions,

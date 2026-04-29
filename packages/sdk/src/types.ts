@@ -292,6 +292,11 @@ export interface OpenCodeAgentOptions {
 }
 
 /**
+ * SDK-specific options forwarded to the Cursor agent.
+ */
+export type CursorAgentOptions = Record<string, unknown>;
+
+/**
  * Resolves the correct agent options type based on the provider.
  */
 export type AgentOptions<TProvider = unknown> = TProvider extends Agent.ClaudeCode
@@ -300,7 +305,9 @@ export type AgentOptions<TProvider = unknown> = TProvider extends Agent.ClaudeCo
     ? CodexAgentOptions
     : TProvider extends Agent.OpenCode
       ? OpenCodeAgentOptions
-      : Record<string, unknown>;
+      : TProvider extends Agent.Cursor
+        ? CursorAgentOptions
+        : Record<string, unknown>;
 
 /**
  * Network access policy for a box.
