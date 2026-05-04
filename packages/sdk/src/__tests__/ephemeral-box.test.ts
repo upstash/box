@@ -283,6 +283,9 @@ describe("EphemeralBox instance", () => {
   it("delegates files.read to the internal box", async () => {
     const box = await createBox();
 
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({ exit_code: 0, output: "/workspace/home\n" }),
+    );
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ content: "file content" }));
 
     const content = await box.files.read("test.txt");

@@ -1652,7 +1652,12 @@ export class Box<TProvider = unknown> {
     return `${this._cwd}/${p}`;
   }
 
+  private async _ensureAwake(): Promise<void> {
+    await this._execCommand("pwd").catch(() => {});
+  }
+
   private async _readFile(path: string, encoding?: "base64"): Promise<string> {
+    await this._ensureAwake();
     const resolved = this._resolvePath(path);
     let url = `/v2/box/${this.id}/files/read?path=${encodeURIComponent(resolved)}`;
     if (encoding) url += `&encoding=${encodeURIComponent(encoding)}`;
@@ -1661,6 +1666,7 @@ export class Box<TProvider = unknown> {
   }
 
   private async _writeFile(path: string, content: string, encoding?: "base64"): Promise<void> {
+    await this._ensureAwake();
     const resolved = this._resolvePath(path);
     await this._request("POST", `/v2/box/${this.id}/files/write`, {
       body: { path: resolved, content, ...(encoding && { encoding }) },
@@ -1668,6 +1674,7 @@ export class Box<TProvider = unknown> {
   }
 
   private async _listFiles(path?: string): Promise<FileEntry[]> {
+    await this._ensureAwake();
     let qs = "";
     if (path) {
       const resolved = this._resolvePath(path);
@@ -1684,6 +1691,7 @@ export class Box<TProvider = unknown> {
   }
 
   private async _uploadFiles(files: UploadFileEntry[]): Promise<void> {
+    await this._ensureAwake();
     const fs = await this._getFs();
 
     const formData = new FormData();
@@ -1709,6 +1717,7 @@ export class Box<TProvider = unknown> {
   }
 
   private async _downloadFiles(remotePath?: string): Promise<void> {
+    await this._ensureAwake();
     const fs = await this._getFs();
     const path = await this._getPath();
 
