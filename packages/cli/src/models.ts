@@ -154,4 +154,10 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       ],
     },
   ],
+  [Agent.Custom]: [
+    {
+      label: "Custom",
+      options: [{ value: "custom", label: "Custom" }],
+    },
+  ],
 };
