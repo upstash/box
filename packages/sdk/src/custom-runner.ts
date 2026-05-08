@@ -62,7 +62,7 @@ function createEmitter(write: (chunk: string) => void): CustomRunnerEmitter {
 
   return {
     text: (text) => emit("text", { text }),
-    reasoning: (text) => emit("reasoning", { text }),
+    reasoning: (text) => emit("thinking", { text }),
     tool: (tool) =>
       emit("tool", {
         toolCallId: tool.toolCallId,

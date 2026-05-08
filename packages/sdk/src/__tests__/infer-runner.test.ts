@@ -19,6 +19,10 @@ describe("inferDefaultProvider", () => {
     expect(inferDefaultProvider("cursor/composer-2")).toBe(Agent.Cursor);
   });
 
+  it("returns Custom for custom/ prefix", () => {
+    expect(inferDefaultProvider("custom/my-runner-model")).toBe(Agent.Custom);
+  });
+
   it("returns ClaudeCode for anthropic/ prefix", () => {
     expect(inferDefaultProvider("anthropic/claude-opus-4-7")).toBe(Agent.ClaudeCode);
   });

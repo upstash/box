@@ -1,10 +1,29 @@
 import { Box } from "@upstash/box";
-import type { Runtime } from "@upstash/box";
+import type { AgentConfig, Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
 import { startRepl } from "../repl/terminal.js";
 import { createWizard } from "./create-wizard.js";
 import { dim } from "../utils/ansi.js";
+
+function resolveCliAgentHarness(harness: string | undefined): string | undefined {
+  if (!harness) return undefined;
+  switch (harness) {
+    case "claude-code":
+    case "codex":
+    case "opencode":
+    case "cursor":
+      return harness;
+    case "custom":
+      console.error(
+        "custom agent boxes require customRunner config and are not supported by this CLI command yet. Use the SDK or REST API.",
+      );
+      process.exit(1);
+    default:
+      console.error(`Unknown agent harness: ${harness}`);
+      process.exit(1);
+  }
+}
 
 export interface CreateFlags {
   token?: string;
@@ -24,7 +43,9 @@ export interface CreateFlags {
 
 export async function createCommand(flags: CreateFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
-  const agentHarness = flags.agentHarness ?? flags.agentProvider ?? flags.agentRunner;
+  const agentHarness = resolveCliAgentHarness(
+    flags.agentHarness ?? flags.agentProvider ?? flags.agentRunner,
+  );
 
   const hasConfigFlags =
     flags.agentModel !== undefined ||
@@ -68,11 +89,11 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     apiKey,
     runtime: flags.runtime as Runtime,
     agent: flags.agentModel
-      ? {
+      ? ({
           harness: agentHarness!,
           model: flags.agentModel,
           apiKey: resolveAgentApiKey(flags.agentApiKey),
-        }
+        } as AgentConfig)
       : undefined,
     git:
       flags.gitToken || flags.gitUserName || flags.gitUserEmail

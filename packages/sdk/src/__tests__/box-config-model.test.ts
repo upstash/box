@@ -61,4 +61,13 @@ describe("Box.configureCustomRunner", () => {
     });
     expect(box.modelConfig.harness).toBe("custom");
   });
+
+  it("throws for non-custom boxes", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    await expect(
+      box.configureCustomRunner({ command: "node", args: ["/workspace/home/custom-runner.mjs"] }),
+    ).rejects.toThrow("Custom runner can only be configured on custom agent boxes");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

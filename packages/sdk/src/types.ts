@@ -222,7 +222,6 @@ export type AgentConfig =
             runner?: never;
           }
         | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
-        | { harness: Exclude<string, "custom">; model: string; provider?: never; runner?: never }
         | {
             /** @deprecated Use `harness` instead. */
             provider: Agent.ClaudeCode;
@@ -253,22 +252,8 @@ export type AgentConfig =
           }
         | {
             /** @deprecated Use `harness` instead. */
-            provider: string;
-            model: string;
-            harness?: never;
-            runner?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
             runner: Exclude<Agent, Agent.Custom>;
             model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
-            harness?: never;
-            provider?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
-            runner: Exclude<string, "custom">;
-            model: string;
             harness?: never;
             provider?: never;
           }

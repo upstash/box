@@ -1788,10 +1788,12 @@ export class Box<TProvider = unknown> {
    * The box must have been created with `agent.harness: Agent.Custom`.
    */
   async configureCustomRunner(customRunner: CustomRunnerConfig): Promise<void> {
+    if (this._agent !== Agent.Custom) {
+      throw new BoxError("Custom runner can only be configured on custom agent boxes");
+    }
     await this._request("PUT", `/v2/box/${this.id}/config/custom-runner`, {
       body: { custom_runner: customRunner },
     });
-    this._agent = Agent.Custom;
     this._isAgentConfigured = true;
   }
 
