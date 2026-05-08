@@ -45,6 +45,8 @@ import {
   type CodexAgentOptions,
   type CursorAgentOptions,
   type OpenCodeAgentOptions,
+  type AgentConfig,
+  type CustomRunnerConfig,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -53,6 +55,7 @@ const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
 /** Infer the default harness from a model string prefix. */
 export function inferDefaultProvider(model: string): Agent {
+  if (model.startsWith("custom/")) return Agent.Custom;
   if (model.startsWith("cursor/")) return Agent.Cursor;
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
@@ -74,7 +77,7 @@ const CODEX_KEY_MAP: Record<keyof CodexAgentOptions, string> = {
 
 /** Convert camelCase Codex agent options to the snake_case keys the backend expects. */
 function toBackendAgentOptions(
-  agent: Agent | undefined,
+  agent: Agent | string | undefined,
   options:
     | ClaudeCodeAgentOptions
     | CodexAgentOptions
@@ -127,13 +130,44 @@ export class BoxError extends Error {
   }
 }
 
+function isCustomAgentHarness(agent: AgentConfig | undefined): boolean {
+  if (!agent) return false;
+  return (agent.harness ?? agent.provider ?? agent.runner) === Agent.Custom;
+}
+
+function isCustomAgentConfig(
+  agent: AgentConfig | undefined,
+): agent is AgentConfig & { customRunner: CustomRunnerConfig } {
+  return Boolean(
+    isCustomAgentHarness(agent) && agent && "customRunner" in agent && agent.customRunner,
+  );
+}
+
+function resolveAgentModel(agent: AgentConfig): string {
+  if (isCustomAgentHarness(agent)) return agent.model || "custom";
+  if (!agent.model) throw new BoxError("agent.model is required when agent is configured");
+  return agent.model;
+}
+
+function appendAgentConfigToBody(body: Record<string, unknown>, agent: AgentConfig): void {
+  body.model = resolveAgentModel(agent);
+  body.agent = resolveAgentHarness(agent);
+  if (isCustomAgentHarness(agent)) {
+    if (!isCustomAgentConfig(agent)) {
+      throw new BoxError("agent.customRunner is required when agent.harness is custom");
+    }
+    body.custom_runner = agent.customRunner;
+  } else {
+    body.agent_api_key = agent.apiKey;
+  }
+}
 function resolveAgentHarness(
   agent:
     | {
         harness?: string;
         provider?: string;
         runner?: string;
-        model: string;
+        model?: string;
       }
     | undefined,
 ): string | undefined {
@@ -409,11 +443,11 @@ export class Box<TProvider = unknown> {
 
   /** Current harness and model configured for this box. */
   get modelConfig(): {
-    harness: Agent | undefined;
+    harness: Agent | string | undefined;
     /** @deprecated Use `harness`. */
-    provider: Agent | undefined;
+    provider: Agent | string | undefined;
     /** @deprecated Use `harness`. */
-    runner: Agent | undefined;
+    runner: Agent | string | undefined;
     model: string | undefined;
   } {
     return { harness: this._agent, provider: this._agent, runner: this._agent, model: this._model };
@@ -422,7 +456,7 @@ export class Box<TProvider = unknown> {
   private _cwd: string;
   private _networkPolicy: NetworkPolicy;
   private _model: string | undefined;
-  private _agent: Agent | undefined;
+  private _agent: Agent | string | undefined;
   private _baseUrl: string;
   private _headers: Record<string, string>;
   private _timeout: number;
@@ -546,9 +580,7 @@ export class Box<TProvider = unknown> {
         "apiKey is required. Pass it in config or set UPSTASH_BOX_API_KEY env var.",
       );
     }
-    if (config?.agent && !config.agent.model) {
-      throw new BoxError("agent.model is required when agent is configured");
-    }
+    if (config?.agent) resolveAgentModel(config.agent);
     if (config?.initCommand !== undefined && !config.keepAlive) {
       throw new BoxError("initCommand requires keepAlive: true");
     }
@@ -568,11 +600,7 @@ export class Box<TProvider = unknown> {
     if (config?.size) body.size = config.size;
     if (config?.keepAlive) body.keep_alive = true;
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
-    if (config?.agent) {
-      body.model = config.agent.model;
-      body.agent = resolveAgentHarness(config.agent);
-      body.agent_api_key = config.agent.apiKey;
-    }
+    if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.git?.userName) body.git_user_name = config.git.userName;
@@ -1755,6 +1783,19 @@ export class Box<TProvider = unknown> {
   }
 
   /**
+   * Update the custom runner configured for this box.
+   *
+   * The box must have been created with `agent.harness: Agent.Custom`.
+   */
+  async configureCustomRunner(customRunner: CustomRunnerConfig): Promise<void> {
+    await this._request("PUT", `/v2/box/${this.id}/config/custom-runner`, {
+      body: { custom_runner: customRunner },
+    });
+    this._agent = Agent.Custom;
+    this._isAgentConfigured = true;
+  }
+
+  /**
    * Update the network access policy for this box.
    */
   async updateNetworkPolicy(policy: NetworkPolicy): Promise<void> {
@@ -1900,11 +1941,7 @@ export class Box<TProvider = unknown> {
     if (config?.size) body.size = config.size;
     if (config?.keepAlive) body.keep_alive = true;
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
-    if (config?.agent) {
-      body.model = config.agent.model;
-      body.agent = resolveAgentHarness(config.agent);
-      body.agent_api_key = config.agent.apiKey;
-    }
+    if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.env) body.env_vars = config.env;

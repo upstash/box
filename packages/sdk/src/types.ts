@@ -24,6 +24,7 @@ export enum Agent {
   Codex = "codex",
   OpenCode = "opencode",
   Cursor = "cursor",
+  Custom = "custom",
 }
 
 /**
@@ -153,9 +154,23 @@ export enum BoxApiKey {
 }
 
 /**
- * Agent configuration for a box.
+ * Custom runner process contract.
+ *
+ * The command is executed inside the box container for each `box.agent.run()` or
+ * `box.agent.stream()` call. The SDK/backend append `-p <prompt> --model <model> --stream`
+ * and, when available, `--session <sessionId>`. The process must write
+ * `box-sse-v1` events to stdout.
  */
-export type AgentConfig = {
+export interface CustomRunnerConfig {
+  /** Executable name from PATH, or an absolute path under /workspace/home or /home/boxuser. */
+  command: string;
+  /** Arguments passed before the SDK/backend prompt/model/session flags. */
+  args?: string[];
+  /** Streaming protocol emitted by the runner. Defaults to `box-sse-v1`. */
+  protocol?: "box-sse-v1";
+}
+
+type ManagedAgentApiKeyConfig = {
   /**
    * API key for the agent model.
    *
@@ -167,72 +182,97 @@ export type AgentConfig = {
    * When omitted, the server decides which key to use.
    */
   apiKey?: BoxApiKey | string;
-} & (
-  | {
-      harness: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel;
-      provider?: never;
-      runner?: never;
-    }
-  | { harness: Agent.Codex; model: OpenAICodex | OpenRouterModel; provider?: never; runner?: never }
-  | {
-      harness: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
-      provider?: never;
-      runner?: never;
-    }
-  | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
-  | { harness: string; model: string; provider?: never; runner?: never }
-  | {
-      /** @deprecated Use `harness` instead. */
-      provider: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel;
-      harness?: never;
-      runner?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      provider: Agent.Codex;
-      model: OpenAICodex | OpenRouterModel;
-      harness?: never;
-      runner?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      provider: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
-      harness?: never;
-      runner?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      provider: Agent.Cursor;
-      model: CursorModel;
-      harness?: never;
-      runner?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      provider: string;
-      model: string;
-      harness?: never;
-      runner?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      runner: Agent;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
-      harness?: never;
-      provider?: never;
-    }
-  | {
-      /** @deprecated Use `harness` instead. */
-      runner: string;
-      model: string;
-      harness?: never;
-      provider?: never;
-    }
-);
+};
+
+type CustomAgentConfig = {
+  harness: Agent.Custom | "custom";
+  /** Model label forwarded to the custom runner. Defaults to `custom`. */
+  model?: string;
+  /** Process to execute for custom agent runs. */
+  customRunner: CustomRunnerConfig;
+  /** Custom runners do not use managed provider keys; pass secrets through `env` if needed. */
+  apiKey?: never;
+  provider?: never;
+  runner?: never;
+};
+
+/**
+ * Agent configuration for a box.
+ */
+export type AgentConfig =
+  | CustomAgentConfig
+  | (ManagedAgentApiKeyConfig &
+      (
+        | {
+            harness: Agent.ClaudeCode;
+            model: ClaudeCode | OpenRouterModel;
+            provider?: never;
+            runner?: never;
+          }
+        | {
+            harness: Agent.Codex;
+            model: OpenAICodex | OpenRouterModel;
+            provider?: never;
+            runner?: never;
+          }
+        | {
+            harness: Agent.OpenCode;
+            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+            provider?: never;
+            runner?: never;
+          }
+        | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
+        | { harness: Exclude<string, "custom">; model: string; provider?: never; runner?: never }
+        | {
+            /** @deprecated Use `harness` instead. */
+            provider: Agent.ClaudeCode;
+            model: ClaudeCode | OpenRouterModel;
+            harness?: never;
+            runner?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            provider: Agent.Codex;
+            model: OpenAICodex | OpenRouterModel;
+            harness?: never;
+            runner?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            provider: Agent.OpenCode;
+            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+            harness?: never;
+            runner?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            provider: Agent.Cursor;
+            model: CursorModel;
+            harness?: never;
+            runner?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            provider: string;
+            model: string;
+            harness?: never;
+            runner?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            runner: Exclude<Agent, Agent.Custom>;
+            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
+            harness?: never;
+            provider?: never;
+          }
+        | {
+            /** @deprecated Use `harness` instead. */
+            runner: Exclude<string, "custom">;
+            model: string;
+            harness?: never;
+            provider?: never;
+          }
+      ));
 
 // ==================== Agent Options ====================
 
@@ -699,7 +739,7 @@ export type BoxData = {
   size?: BoxSize;
   keep_alive?: boolean;
   model?: string;
-  agent?: Agent;
+  agent?: Agent | string;
   enabled_skills?: string[];
   runtime?: string;
   status: BoxStatus;

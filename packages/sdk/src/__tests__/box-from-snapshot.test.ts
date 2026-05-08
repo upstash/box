@@ -4,6 +4,33 @@ import { Agent, OpenAICodex } from "../types.js";
 import { mockResponse, TEST_BOX_DATA, TEST_CONFIG } from "./helpers.js";
 
 describe("Box.fromSnapshot", () => {
+  it("sends custom runner config", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockResponse({
+        ...TEST_BOX_DATA,
+        id: "box-from-snap",
+        status: "running",
+        agent: Agent.Custom,
+      }),
+    );
+
+    await Box.fromSnapshot("snap-123", {
+      ...TEST_CONFIG,
+      agent: {
+        harness: Agent.Custom,
+        model: "custom/demo",
+        customRunner: { command: "node", args: ["/workspace/home/runner.mjs"] },
+      },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.snapshot_id).toBe("snap-123");
+    expect(body.agent).toBe(Agent.Custom);
+    expect(body.model).toBe("custom/demo");
+    expect(body.agent_api_key).toBeUndefined();
+    expect(body.custom_runner).toEqual({ command: "node", args: ["/workspace/home/runner.mjs"] });
+  });
+
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     delete process.env.UPSTASH_BOX_API_KEY;

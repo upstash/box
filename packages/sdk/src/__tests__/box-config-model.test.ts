@@ -36,3 +36,29 @@ describe("Box.configureModel", () => {
     expect(box.modelConfig.model).toBe("anthropic/claude-opus-4-5");
   });
 });
+
+describe("Box.configureCustomRunner", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("sends PUT to /v2/box/:id/config/custom-runner", async () => {
+    const { box, fetchMock } = await createTestBox({ agent: "custom", model: "custom/demo" });
+    fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+    await box.configureCustomRunner({
+      command: "node",
+      args: ["/workspace/home/custom-runner.mjs"],
+      protocol: "box-sse-v1",
+    });
+
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toContain("/v2/box/box-123/config/custom-runner");
+    expect(init?.method).toBe("PUT");
+    const body = JSON.parse(init?.body as string);
+    expect(body.custom_runner).toEqual({
+      command: "node",
+      args: ["/workspace/home/custom-runner.mjs"],
+      protocol: "box-sse-v1",
+    });
+    expect(box.modelConfig.harness).toBe("custom");
+  });
+});

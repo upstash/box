@@ -7,6 +7,7 @@ export {
   inferDefaultProvider,
   inferDefaultRunner,
 } from "./client.js";
+export { runCustomRunner } from "./custom-runner.js";
 export {
   ClaudeCode,
   CursorModel,
@@ -21,6 +22,7 @@ export type {
   Runtime,
   BoxSize,
   AgentConfig,
+  CustomRunnerConfig,
   AgentOptions,
   ClaudeCodeAgentOptions,
   CodexAgentOptions,
@@ -73,3 +75,10 @@ export type {
   Schedule,
   ScheduleStatus,
 } from "./types.js";
+export type {
+  CustomRunnerContext,
+  CustomRunnerDone,
+  CustomRunnerEmitter,
+  CustomRunnerHandler,
+  RunCustomRunnerOptions,
+} from "./custom-runner.js";
