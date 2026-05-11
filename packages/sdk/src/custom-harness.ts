@@ -1,17 +1,17 @@
-export interface CustomRunnerContext {
+export interface CustomHarnessContext {
   /** Prompt passed to box.agent.run() / box.agent.stream(). */
   prompt: string;
-  /** Model label configured for the custom runner. */
+  /** Model label configured for the custom harness. */
   model: string;
   /** Existing session ID when the backend resumes a previous custom run session. */
   sessionId?: string;
   /** Whether the run was requested in streaming mode. */
   stream: boolean;
-  /** Raw argv passed to the custom runner process, after the executable/script name. */
+  /** Raw argv passed to the custom harness process, after the executable/script name. */
   args: string[];
 }
 
-export interface CustomRunnerDone {
+export interface CustomHarnessDone {
   output: string;
   inputTokens?: number;
   outputTokens?: number;
@@ -20,25 +20,25 @@ export interface CustomRunnerDone {
   sessionId?: string;
 }
 
-export interface CustomRunnerEmitter {
+export interface CustomHarnessEmitter {
   text(text: string): void;
   reasoning(text: string): void;
   tool(tool: { toolCallId?: string; name: string; input?: Record<string, unknown> }): void;
   toolResult(result: { toolCallId?: string; output: unknown }): void;
-  done(result: CustomRunnerDone): void;
-  error(error: Error | string, metadata?: Partial<Omit<CustomRunnerDone, "output">>): void;
+  done(result: CustomHarnessDone): void;
+  error(error: Error | string, metadata?: Partial<Omit<CustomHarnessDone, "output">>): void;
   emit(event: string, data: unknown): void;
 }
 
-export type CustomRunnerHandler = (
-  context: CustomRunnerContext,
-  emit: CustomRunnerEmitter,
-) => Promise<CustomRunnerDone | string | void> | CustomRunnerDone | string | void;
+export type CustomHarnessHandler = (
+  context: CustomHarnessContext,
+  emit: CustomHarnessEmitter,
+) => Promise<CustomHarnessDone | string | void> | CustomHarnessDone | string | void;
 
-export interface RunCustomRunnerOptions {
-  /** Defaults to process.argv.slice(2). Exposed for tests and embedded runners. */
+export interface RunCustomHarnessOptions {
+  /** Defaults to process.argv.slice(2). Exposed for tests and embedded harnesses. */
   argv?: string[];
-  /** Defaults to process.stdout.write. Exposed for tests and embedded runners. */
+  /** Defaults to process.stdout.write. Exposed for tests and embedded harnesses. */
   write?: (chunk: string) => void;
 }
 
@@ -54,7 +54,7 @@ function hasFlag(args: string[], name: string): boolean {
   return args.includes(name);
 }
 
-function createEmitter(write: (chunk: string) => void): CustomRunnerEmitter {
+function createEmitter(write: (chunk: string) => void): CustomHarnessEmitter {
   const emit = (event: string, data: unknown) => {
     write(`event: ${event}\n`);
     write(`data: ${JSON.stringify(data)}\n\n`);
@@ -93,7 +93,7 @@ function createEmitter(write: (chunk: string) => void): CustomRunnerEmitter {
 }
 
 /**
- * Implement a Box custom runner process.
+ * Implement a Box custom harness process.
  *
  * The backend runs your command with `-p <prompt> --model <model> --stream` and
  * optionally `--session <sessionId>`. This helper parses those arguments and
@@ -101,24 +101,24 @@ function createEmitter(write: (chunk: string) => void): CustomRunnerEmitter {
  *
  * @example
  * ```ts
- * import { runCustomRunner } from "@upstash/box";
+ * import { runCustomHarness } from "@upstash/box";
  *
- * await runCustomRunner(async ({ prompt, model }, emit) => {
- *   emit.tool({ name: "custom_runner", input: { model } });
+ * await runCustomHarness(async ({ prompt, model }, emit) => {
+ *   emit.tool({ name: "custom_harness", input: { model } });
  *   const output = `received: ${prompt}`;
  *   emit.text(output);
  *   return { output, inputTokens: prompt.split(/\s+/).length, outputTokens: output.split(/\s+/).length };
  * });
  * ```
  */
-export async function runCustomRunner(
-  handler: CustomRunnerHandler,
-  options: RunCustomRunnerOptions = {},
+export async function runCustomHarness(
+  handler: CustomHarnessHandler,
+  options: RunCustomHarnessOptions = {},
 ): Promise<void> {
   const argv = options.argv ?? process.argv.slice(2);
   const write = options.write ?? ((chunk: string) => process.stdout.write(chunk));
   const emit = createEmitter(write);
-  const context: CustomRunnerContext = {
+  const context: CustomHarnessContext = {
     prompt: readArg(argv, ["-p", "--prompt"]),
     model: readArg(argv, ["--model"], "custom"),
     sessionId: readArg(argv, ["--session"]) || undefined,

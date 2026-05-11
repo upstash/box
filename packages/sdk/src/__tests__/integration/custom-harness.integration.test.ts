@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Agent, Box } from "../../index.js";
 import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
-const RUNNER_PATH = "/workspace/home/runner.mjs";
+const HARNESS_PATH = "/workspace/home/harness.mjs";
 
-// A minimal node-based custom runner script that emits the box-sse-v1 protocol
+// A minimal node-based custom harness script that emits the box-sse-v1 protocol
 // without depending on the SDK being installed inside the box. Echoes the prompt
 // back so tests can assert it was received intact.
-const RUNNER_SCRIPT = `
+const HARNESS_SCRIPT = `
 const args = process.argv.slice(2);
 function read(name) {
   const i = args.indexOf(name);
@@ -21,7 +21,7 @@ function emit(event, data) {
   process.stdout.write(\`event: \${event}\\ndata: \${JSON.stringify(data)}\\n\\n\`);
 }
 
-const output = \`CUSTOM_RUNNER_OK \${prompt}\`;
+const output = \`CUSTOM_HARNESS_OK \${prompt}\`;
 emit("text", { text: output });
 emit("done", {
   output,
@@ -33,7 +33,7 @@ emit("done", {
 });
 `;
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — Box.create", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — Box.create", () => {
   let box: Box;
 
   afterAll(async () => {
@@ -50,9 +50,9 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — Box.create", () => {
       runtime: "node",
       agent: {
         harness: Agent.Custom,
-        customRunner: {
+        customHarness: {
           command: "node",
-          args: [RUNNER_PATH],
+          args: [HARNESS_PATH],
         },
       },
     });
@@ -75,7 +75,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — Box.create", () => {
       agent: {
         harness: Agent.Custom,
         model: "custom/demo",
-        customRunner: { command: "node", args: [RUNNER_PATH] },
+        customHarness: { command: "node", args: [HARNESS_PATH] },
       },
     });
 
@@ -88,7 +88,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — Box.create", () => {
   }, 120000);
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — configureCustomRunner", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — configureCustomHarness", () => {
   let box: Box;
 
   beforeAll(async () => {
@@ -97,7 +97,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — configureCustomRunner",
       runtime: "node",
       agent: {
         harness: Agent.Custom,
-        customRunner: { command: "node", args: [RUNNER_PATH] },
+        customHarness: { command: "node", args: [HARNESS_PATH] },
       },
     });
   }, 120000);
@@ -110,11 +110,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — configureCustomRunner",
     }
   }, 30000);
 
-  it("updates the custom runner config on an existing box", async () => {
+  it("updates the custom harness config on an existing box", async () => {
     await expect(
-      box.configureCustomRunner({
+      box.configureCustomHarness({
         command: "node",
-        args: [RUNNER_PATH, "--updated"],
+        args: [HARNESS_PATH, "--updated"],
         protocol: "box-sse-v1",
       }),
     ).resolves.toBeUndefined();
@@ -122,19 +122,19 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — configureCustomRunner",
     expect(box.modelConfig.harness).toBe(Agent.Custom);
   });
 
-  it("rejects configureCustomRunner on a non-custom box", async () => {
+  it("rejects configureCustomHarness on a non-custom box", async () => {
     const plain = await Box.create({ apiKey: UPSTASH_BOX_API_KEY!, runtime: "node" });
     try {
       await expect(
-        plain.configureCustomRunner({ command: "node", args: [RUNNER_PATH] }),
-      ).rejects.toThrow("Custom runner can only be configured on custom agent boxes");
+        plain.configureCustomHarness({ command: "node", args: [HARNESS_PATH] }),
+      ).rejects.toThrow("Custom harness can only be configured on custom agent boxes");
     } finally {
       await plain.delete().catch(() => {});
     }
   }, 120000);
 });
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — agent.run end-to-end", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — agent.run end-to-end", () => {
   let box: Box;
 
   beforeAll(async () => {
@@ -143,11 +143,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — agent.run end-to-end", 
       runtime: "node",
       agent: {
         harness: Agent.Custom,
-        customRunner: { command: "node", args: [RUNNER_PATH] },
+        customHarness: { command: "node", args: [HARNESS_PATH] },
       },
     });
 
-    await box.files.write({ path: "runner.mjs", content: RUNNER_SCRIPT });
+    await box.files.write({ path: "harness.mjs", content: HARNESS_SCRIPT });
   }, 120000);
 
   afterAll(async () => {
@@ -158,13 +158,13 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — agent.run end-to-end", 
     }
   }, 30000);
 
-  it("agent.run executes the custom runner and round-trips the prompt", async () => {
+  it("agent.run executes the custom harness and round-trips the prompt", async () => {
     const run = await box.agent.run({ prompt: "hello-from-test" });
-    expect(run.result).toContain("CUSTOM_RUNNER_OK hello-from-test");
+    expect(run.result).toContain("CUSTOM_HARNESS_OK hello-from-test");
     expect(run.status).toBe("completed");
   }, 120000);
 
-  it("agent.stream yields text-delta chunks from the custom runner", async () => {
+  it("agent.stream yields text-delta chunks from the custom harness", async () => {
     let text = "";
     let chunkCount = 0;
     const run = await box.agent.stream({ prompt: "stream-from-test" });
@@ -175,7 +175,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom runner — agent.run end-to-end", 
       }
     }
     expect(chunkCount).toBeGreaterThan(0);
-    expect(text).toContain("CUSTOM_RUNNER_OK stream-from-test");
+    expect(text).toContain("CUSTOM_HARNESS_OK stream-from-test");
     expect(run.status).toBe("completed");
   }, 120000);
 });

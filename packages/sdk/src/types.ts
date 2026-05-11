@@ -154,19 +154,19 @@ export enum BoxApiKey {
 }
 
 /**
- * Custom runner process contract.
+ * Custom harness process contract.
  *
  * The command is executed inside the box container for each `box.agent.run()` or
  * `box.agent.stream()` call. The SDK/backend append `-p <prompt> --model <model> --stream`
  * and, when available, `--session <sessionId>`. The process must write
  * `box-sse-v1` events to stdout.
  */
-export interface CustomRunnerConfig {
+export interface CustomHarnessConfig {
   /** Executable name from PATH, or an absolute path under /workspace/home or /home/boxuser. */
   command: string;
   /** Arguments passed before the SDK/backend prompt/model/session flags. */
   args?: string[];
-  /** Streaming protocol emitted by the runner. Defaults to `box-sse-v1`. */
+  /** Streaming protocol emitted by the harness. Defaults to `box-sse-v1`. */
   protocol?: "box-sse-v1";
 }
 
@@ -257,11 +257,11 @@ type HarnessConfig =
 
 type CustomAgentConfig = {
   harness: Agent.Custom;
-  /** Model label forwarded to the custom runner. Defaults to `custom`. */
+  /** Model label forwarded to the custom harness. Defaults to `custom`. */
   model?: string;
   /** Process to execute for custom agent runs. */
-  customRunner: CustomRunnerConfig;
-  /** Custom runners do not use managed provider keys; pass secrets through `env` if needed. */
+  customHarness: CustomHarnessConfig;
+  /** Custom harnesses do not use managed provider keys; pass secrets through `env` if needed. */
   apiKey?: never;
   provider?: never;
   runner?: never;

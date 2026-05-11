@@ -4,7 +4,7 @@ import { Agent, OpenAICodex } from "../types.js";
 import { mockResponse, TEST_BOX_DATA, TEST_CONFIG } from "./helpers.js";
 
 describe("Box.fromSnapshot", () => {
-  it("sends custom runner config", async () => {
+  it("sends custom harness config", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       mockResponse({
         ...TEST_BOX_DATA,
@@ -19,7 +19,7 @@ describe("Box.fromSnapshot", () => {
       agent: {
         harness: Agent.Custom,
         model: "custom/demo",
-        customRunner: { command: "node", args: ["/workspace/home/runner.mjs"] },
+        customHarness: { command: "node", args: ["/workspace/home/harness.mjs"] },
       },
     });
 
@@ -28,7 +28,7 @@ describe("Box.fromSnapshot", () => {
     expect(body.agent).toBe(Agent.Custom);
     expect(body.model).toBe("custom/demo");
     expect(body.agent_api_key).toBeUndefined();
-    expect(body.custom_runner).toEqual({ command: "node", args: ["/workspace/home/runner.mjs"] });
+    expect(body.custom_runner).toEqual({ command: "node", args: ["/workspace/home/harness.mjs"] });
   });
 
   beforeEach(() => {

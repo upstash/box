@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { runCustomRunner } from "../custom-runner.js";
+import { runCustomHarness } from "../custom-harness.js";
 
-describe("runCustomRunner", () => {
+describe("runCustomHarness", () => {
   it("parses backend args and emits box-sse-v1 events", async () => {
     let output = "";
 
-    await runCustomRunner(
+    await runCustomHarness(
       async ({ prompt, model, sessionId, stream }, emit) => {
         emit.tool({ toolCallId: "tool-1", name: "custom", input: { model, sessionId, stream } });
         emit.toolResult({ toolCallId: "tool-1", output: "ok" });
@@ -34,7 +34,7 @@ describe("runCustomRunner", () => {
     let output = "";
 
     await expect(
-      runCustomRunner(
+      runCustomHarness(
         () => {
           throw new Error("boom");
         },

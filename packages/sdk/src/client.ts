@@ -46,7 +46,7 @@ import {
   type CursorAgentOptions,
   type OpenCodeAgentOptions,
   type AgentConfig,
-  type CustomRunnerConfig,
+  type CustomHarnessConfig,
   Agent,
 } from "./types.js";
 import type { ZodType } from "zod/v3";
@@ -137,9 +137,9 @@ function isCustomAgentHarness(agent: AgentConfig | undefined): boolean {
 
 function isCustomAgentConfig(
   agent: AgentConfig | undefined,
-): agent is AgentConfig & { customRunner: CustomRunnerConfig } {
+): agent is AgentConfig & { customHarness: CustomHarnessConfig } {
   return Boolean(
-    isCustomAgentHarness(agent) && agent && "customRunner" in agent && agent.customRunner,
+    isCustomAgentHarness(agent) && agent && "customHarness" in agent && agent.customHarness,
   );
 }
 
@@ -154,9 +154,9 @@ function appendAgentConfigToBody(body: Record<string, unknown>, agent: AgentConf
   body.agent = resolveAgentHarness(agent);
   if (isCustomAgentHarness(agent)) {
     if (!isCustomAgentConfig(agent)) {
-      throw new BoxError("agent.customRunner is required when agent.harness is custom");
+      throw new BoxError("agent.customHarness is required when agent.harness is custom");
     }
-    body.custom_runner = agent.customRunner;
+    body.custom_runner = agent.customHarness;
   } else {
     body.agent_api_key = agent.apiKey;
   }
@@ -1783,16 +1783,16 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Update the custom runner configured for this box.
+   * Update the custom harness configured for this box.
    *
    * The box must have been created with `agent.harness: Agent.Custom`.
    */
-  async configureCustomRunner(customRunner: CustomRunnerConfig): Promise<void> {
+  async configureCustomHarness(customHarness: CustomHarnessConfig): Promise<void> {
     if (this._agent !== Agent.Custom) {
-      throw new BoxError("Custom runner can only be configured on custom agent boxes");
+      throw new BoxError("Custom harness can only be configured on custom agent boxes");
     }
     await this._request("PUT", `/v2/box/${this.id}/config/custom-runner`, {
-      body: { custom_runner: customRunner },
+      body: { custom_runner: customHarness },
     });
     this._isAgentConfigured = true;
   }

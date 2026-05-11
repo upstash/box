@@ -16,7 +16,7 @@ function resolveCliAgentHarness(harness: string | undefined): string | undefined
       return harness;
     case "custom":
       console.error(
-        "custom agent boxes require customRunner config and are not supported by this CLI command yet. Use the SDK or REST API.",
+        "custom agent boxes require customHarness config and are not supported by this CLI command yet. Use the SDK or REST API.",
       );
       process.exit(1);
     default:

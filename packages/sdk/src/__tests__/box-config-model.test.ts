@@ -37,16 +37,16 @@ describe("Box.configureModel", () => {
   });
 });
 
-describe("Box.configureCustomRunner", () => {
+describe("Box.configureCustomHarness", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("sends PUT to /v2/box/:id/config/custom-runner", async () => {
     const { box, fetchMock } = await createTestBox({ agent: "custom", model: "custom/demo" });
     fetchMock.mockResolvedValueOnce(mockResponse({}));
 
-    await box.configureCustomRunner({
+    await box.configureCustomHarness({
       command: "node",
-      args: ["/workspace/home/custom-runner.mjs"],
+      args: ["/workspace/home/custom-harness.mjs"],
       protocol: "box-sse-v1",
     });
 
@@ -56,7 +56,7 @@ describe("Box.configureCustomRunner", () => {
     const body = JSON.parse(init?.body as string);
     expect(body.custom_runner).toEqual({
       command: "node",
-      args: ["/workspace/home/custom-runner.mjs"],
+      args: ["/workspace/home/custom-harness.mjs"],
       protocol: "box-sse-v1",
     });
     expect(box.modelConfig.harness).toBe("custom");
@@ -66,8 +66,8 @@ describe("Box.configureCustomRunner", () => {
     const { box, fetchMock } = await createTestBox();
 
     await expect(
-      box.configureCustomRunner({ command: "node", args: ["/workspace/home/custom-runner.mjs"] }),
-    ).rejects.toThrow("Custom runner can only be configured on custom agent boxes");
+      box.configureCustomHarness({ command: "node", args: ["/workspace/home/custom-harness.mjs"] }),
+    ).rejects.toThrow("Custom harness can only be configured on custom agent boxes");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
