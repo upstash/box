@@ -204,6 +204,7 @@ type HarnessConfig =
       runner?: never;
     }
   | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
+  | { harness: string; model: string; provider?: never; runner?: never }
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.ClaudeCode;
@@ -234,14 +235,28 @@ type HarnessConfig =
     }
   | {
       /** @deprecated Use `harness` instead. */
+      provider: string;
+      model: string;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
       runner: Exclude<Agent, Agent.Custom>;
       model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
       harness?: never;
       provider?: never;
     }
+  | {
+      /** @deprecated Use `harness` instead. */
+      runner: string;
+      model: string;
+      harness?: never;
+      provider?: never;
+    };
 
 type CustomAgentConfig = {
-  harness: Agent.Custom | "custom";
+  harness: Agent.Custom;
   /** Model label forwarded to the custom runner. Defaults to `custom`. */
   model?: string;
   /** Process to execute for custom agent runs. */
@@ -255,10 +270,7 @@ type CustomAgentConfig = {
 /**
  * Agent configuration for a box.
  */
-export type AgentConfig =
-  | CustomAgentConfig
-  | (ManagedAgentApiKeyConfig & HarnessConfig);
-        
+export type AgentConfig = CustomAgentConfig | (ManagedAgentApiKeyConfig & HarnessConfig);
 
 // ==================== Agent Options ====================
 
