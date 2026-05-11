@@ -184,6 +184,62 @@ type ManagedAgentApiKeyConfig = {
   apiKey?: BoxApiKey | string;
 };
 
+type HarnessConfig =
+  | {
+      harness: Agent.ClaudeCode;
+      model: ClaudeCode | OpenRouterModel;
+      provider?: never;
+      runner?: never;
+    }
+  | {
+      harness: Agent.Codex;
+      model: OpenAICodex | OpenRouterModel;
+      provider?: never;
+      runner?: never;
+    }
+  | {
+      harness: Agent.OpenCode;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      provider?: never;
+      runner?: never;
+    }
+  | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.ClaudeCode;
+      model: ClaudeCode | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.Codex;
+      model: OpenAICodex | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.OpenCode;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      provider: Agent.Cursor;
+      model: CursorModel;
+      harness?: never;
+      runner?: never;
+    }
+  | {
+      /** @deprecated Use `harness` instead. */
+      runner: Exclude<Agent, Agent.Custom>;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
+      harness?: never;
+      provider?: never;
+    }
+
 type CustomAgentConfig = {
   harness: Agent.Custom | "custom";
   /** Model label forwarded to the custom runner. Defaults to `custom`. */
@@ -201,63 +257,8 @@ type CustomAgentConfig = {
  */
 export type AgentConfig =
   | CustomAgentConfig
-  | (ManagedAgentApiKeyConfig &
-      (
-        | {
-            harness: Agent.ClaudeCode;
-            model: ClaudeCode | OpenRouterModel;
-            provider?: never;
-            runner?: never;
-          }
-        | {
-            harness: Agent.Codex;
-            model: OpenAICodex | OpenRouterModel;
-            provider?: never;
-            runner?: never;
-          }
-        | {
-            harness: Agent.OpenCode;
-            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
-            provider?: never;
-            runner?: never;
-          }
-        | { harness: Agent.Cursor; model: CursorModel; provider?: never; runner?: never }
-        | {
-            /** @deprecated Use `harness` instead. */
-            provider: Agent.ClaudeCode;
-            model: ClaudeCode | OpenRouterModel;
-            harness?: never;
-            runner?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
-            provider: Agent.Codex;
-            model: OpenAICodex | OpenRouterModel;
-            harness?: never;
-            runner?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
-            provider: Agent.OpenCode;
-            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
-            harness?: never;
-            runner?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
-            provider: Agent.Cursor;
-            model: CursorModel;
-            harness?: never;
-            runner?: never;
-          }
-        | {
-            /** @deprecated Use `harness` instead. */
-            runner: Exclude<Agent, Agent.Custom>;
-            model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
-            harness?: never;
-            provider?: never;
-          }
-      ));
+  | (ManagedAgentApiKeyConfig & HarnessConfig);
+        
 
 // ==================== Agent Options ====================
 
