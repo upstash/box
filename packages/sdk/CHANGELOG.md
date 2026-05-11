@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.1
+
+### Patch Changes
+
+- 065290a: Add SDK support for custom Box agent harnesses.
+
 ## 0.4.0
 
 ### Minor Changes
