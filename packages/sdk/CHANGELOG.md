@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.2
+
+### Patch Changes
+
+- 078b177: populates totalCost on prompt execution
+
 ## 0.4.1
 
 ### Patch Changes
