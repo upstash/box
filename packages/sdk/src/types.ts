@@ -69,6 +69,26 @@ export enum OpenRouterModel {
 }
 
 /**
+ * Vercel AI Gateway model identifiers — shared across agents that support Vercel AI Gateway
+ */
+export enum VercelModel {
+  Claude_Opus_4_7 = "vercel/anthropic/claude-opus-4.7",
+  Claude_Sonnet_4_6 = "vercel/anthropic/claude-sonnet-4.6",
+  Claude_Opus_4_6 = "vercel/anthropic/claude-opus-4.6",
+  Claude_Haiku_4_5 = "vercel/anthropic/claude-haiku-4.5",
+  GPT_5_5 = "vercel/openai/gpt-5.5",
+  GPT_5_5_Pro = "vercel/openai/gpt-5.5-pro",
+  GPT_5_4 = "vercel/openai/gpt-5.4",
+  GPT_5_4_Mini = "vercel/openai/gpt-5.4-mini",
+  Gemini_3_5_Flash = "vercel/google/gemini-3.5-flash",
+  Gemini_3_1_Flash_Lite = "vercel/google/gemini-3.1-flash-lite",
+  Gemini_3_1_Pro_Preview = "vercel/google/gemini-3.1-pro-preview",
+  Grok_Build_0_1 = "vercel/xai/grok-build-0.1",
+  Grok_4_3 = "vercel/xai/grok-4.3",
+  Grok_4_20_Reasoning = "vercel/xai/grok-4.20-reasoning",
+}
+
+/**
  * OpenCode model identifiers — supports models from multiple providers
  */
 export enum OpenCodeModel {
@@ -187,19 +207,19 @@ type ManagedAgentApiKeyConfig = {
 type HarnessConfig =
   | {
       harness: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel;
       provider?: never;
       runner?: never;
     }
   | {
       harness: Agent.Codex;
-      model: OpenAICodex | OpenRouterModel;
+      model: OpenAICodex | OpenRouterModel | VercelModel;
       provider?: never;
       runner?: never;
     }
   | {
       harness: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
       provider?: never;
       runner?: never;
     }
@@ -208,21 +228,21 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel;
       harness?: never;
       runner?: never;
     }
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.Codex;
-      model: OpenAICodex | OpenRouterModel;
+      model: OpenAICodex | OpenRouterModel | VercelModel;
       harness?: never;
       runner?: never;
     }
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
       harness?: never;
       runner?: never;
     }
@@ -243,7 +263,7 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       runner: Exclude<Agent, Agent.Custom>;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | CursorModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | CursorModel;
       harness?: never;
       provider?: never;
     }

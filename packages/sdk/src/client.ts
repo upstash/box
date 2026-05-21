@@ -57,6 +57,8 @@ const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("custom/")) return Agent.Custom;
   if (model.startsWith("cursor/")) return Agent.Cursor;
+  if (model.startsWith("vercel/openai/")) return Agent.Codex;
+  if (model.startsWith("vercel/")) return Agent.ClaudeCode;
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
   if (model.startsWith("openai/")) return Agent.Codex;

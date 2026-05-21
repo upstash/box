@@ -14,6 +14,7 @@ export {
   OpenAICodex,
   OpenCodeModel,
   OpenRouterModel,
+  VercelModel,
   Agent,
   BoxApiKey,
 } from "./types.js";

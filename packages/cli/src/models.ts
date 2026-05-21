@@ -5,6 +5,7 @@ import {
   OpenAICodex,
   OpenCodeModel,
   OpenRouterModel,
+  VercelModel,
 } from "@upstash/box";
 
 /** Model options grouped by agent */
@@ -39,6 +40,18 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
       ],
     },
+    {
+      label: "Vercel AI Gateway",
+      options: [
+        { value: VercelModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Vercel)" },
+        { value: VercelModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Vercel)" },
+        { value: VercelModel.Claude_Opus_4_6, label: "Claude Opus 4.6 (Vercel)" },
+        { value: VercelModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (Vercel)" },
+        { value: VercelModel.Gemini_3_5_Flash, label: "Gemini 3.5 Flash (Vercel)" },
+        { value: VercelModel.Grok_Build_0_1, label: "Grok Build 0.1 (Vercel)" },
+        { value: VercelModel.Grok_4_3, label: "Grok 4.3 (Vercel)" },
+      ],
+    },
   ],
   [Agent.Codex]: [
     {
@@ -65,6 +78,17 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
+      ],
+    },
+    {
+      label: "Vercel AI Gateway",
+      options: [
+        { value: VercelModel.GPT_5_5, label: "GPT-5.5 (Vercel)" },
+        { value: VercelModel.GPT_5_5_Pro, label: "GPT-5.5 Pro (Vercel)" },
+        { value: VercelModel.GPT_5_4, label: "GPT-5.4 (Vercel)" },
+        { value: VercelModel.GPT_5_4_Mini, label: "GPT-5.4 Mini (Vercel)" },
+        { value: VercelModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Vercel)" },
+        { value: VercelModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Vercel)" },
       ],
     },
   ],
@@ -132,6 +156,16 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
+      ],
+    },
+    {
+      label: "Vercel AI Gateway",
+      options: [
+        { value: VercelModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Vercel)" },
+        { value: VercelModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Vercel)" },
+        { value: VercelModel.GPT_5_5, label: "GPT-5.5 (Vercel)" },
+        { value: VercelModel.Gemini_3_5_Flash, label: "Gemini 3.5 Flash (Vercel)" },
+        { value: VercelModel.Grok_4_3, label: "Grok 4.3 (Vercel)" },
       ],
     },
   ],
