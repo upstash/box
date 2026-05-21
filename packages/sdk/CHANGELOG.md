@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.3
+
+### Patch Changes
+
+- 023857c: Add Vercel AI Gateway model types and CLI model options.
+
 ## 0.4.2
 
 ### Patch Changes
