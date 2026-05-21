@@ -123,7 +123,7 @@ try {
     ...agentOpts,
   });
 
-  emit("tool", { name: "gemini", toolCallId: sessionId, input: { model, turns: history.length / 2 } });
+  emit("tool", { name: "gemini", toolCallId: sessionId, input: { model, turns: Math.floor(history.length / 2) } });
 
   let output = "";
   let inputTokens = 0;

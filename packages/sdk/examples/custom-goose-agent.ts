@@ -1,6 +1,6 @@
 import { Agent, Box } from "@upstash/box";
 
-// Goose custom agent harness (github.com/block/goose)
+// Goose custom agent harness (github.com/aaif-goose/goose)
 //
 // Requires: ANTHROPIC_API_KEY (or set GOOSE_PROVIDER + GOOSE_MODEL for other providers)
 //
@@ -93,14 +93,14 @@ try {
         yaml += "  " + safeName + ":\n    name: " + safeName + "\n    type: stdio\n    cmd: npx\n    args: [" + argsYaml + "]\n    enabled: true\n";
         if (cfg.headers && Object.keys(cfg.headers).length) {
           yaml += "    envs:\n";
-          for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + k + ": \"" + v + "\"\n";
+          for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + JSON.stringify(k) + ": " + JSON.stringify(v) + "\n";
         }
       } else if (cfg.source === "url") {
         // Use streamable_http (sse is deprecated in Goose) — supports custom headers
         yaml += "  " + safeName + ":\n    name: " + safeName + "\n    type: streamable_http\n    uri: " + cfg.package_or_url + "\n    enabled: true\n";
         if (cfg.headers && Object.keys(cfg.headers).length) {
           yaml += "    headers:\n";
-          for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + k + ": \"" + v + "\"\n";
+          for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + JSON.stringify(k) + ": " + JSON.stringify(v) + "\n";
         }
       }
     }
@@ -264,7 +264,6 @@ const box = await Box.create({
   env: {
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY!,
     GOOSE_PROVIDER: "anthropic",
-    GOOSE_MODEL: "claude-sonnet-4-5-20250929",
     GOOSE_DISABLE_KEYRING: "1",
     PATH: "/home/boxuser/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
   },
