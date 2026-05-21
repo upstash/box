@@ -27,6 +27,37 @@ describe("box.agent.run", () => {
     expect(run.cost.outputTokens).toBe(20);
   });
 
+  it("populates run.cost.totalUsd from done event total_cost_usd", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "answer" } },
+        { event: "done", data: { input_tokens: 100, output_tokens: 50, total_cost_usd: 0.00123 } },
+      ]),
+    );
+
+    const run = await box.agent.run({ prompt: "test" });
+    expect(run.cost.totalUsd).toBe(0.00123);
+    expect(run.cost.inputTokens).toBe(100);
+    expect(run.cost.outputTokens).toBe(50);
+  });
+
+  it("defaults run.cost.totalUsd to 0 when total_cost_usd is absent from done event", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { input_tokens: 10, output_tokens: 5 } },
+      ]),
+    );
+
+    const run = await box.agent.run({ prompt: "test" });
+    expect(run.cost.totalUsd).toBe(0);
+  });
+
   it("calls onToolUse callback", async () => {
     const { box, fetchMock } = await createTestBox();
     const tools: Array<{ toolCallId?: string; name: string; input: Record<string, unknown> }> = [];
@@ -568,6 +599,43 @@ describe("box.agent.stream", () => {
       toolCallId: "tool-call-id",
       output: "ok",
     });
+  });
+
+  it("populates run.cost.totalUsd from done event total_cost_usd", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "answer" } },
+        { event: "done", data: { input_tokens: 80, output_tokens: 40, total_cost_usd: 0.0045 } },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    for await (const _ of run) {
+      // consume
+    }
+    expect(run.cost.totalUsd).toBe(0.0045);
+    expect(run.cost.inputTokens).toBe(80);
+    expect(run.cost.outputTokens).toBe(40);
+  });
+
+  it("defaults run.cost.totalUsd to 0 when total_cost_usd is absent from done event", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { input_tokens: 10, output_tokens: 5 } },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    for await (const _ of run) {
+      // consume
+    }
+    expect(run.cost.totalUsd).toBe(0);
   });
 
   it("yields all chunk types in order", async () => {
