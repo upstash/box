@@ -139,6 +139,7 @@ aider_cmd = [
     "--no-git",
     "--yes-always",
     "--no-auto-commits",
+    "--no-pretty",
     "--chat-history-file", chat_history_file,
     "--input-history-file", input_history_file,
     "--llm-history-file", llm_history_file,
@@ -150,7 +151,7 @@ proc = subprocess.Popen(
     aider_cmd + extra_args + context_files,
     cwd=WORK_DIR,
     stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
+    stderr=subprocess.STDOUT,  # merge stderr so all output reaches us
     text=True,
 )
 
@@ -170,8 +171,7 @@ for line in proc.stdout:
 proc.wait()
 
 if proc.returncode != 0:
-    err = strip_ansi(proc.stderr.read())
-    emit("error", {"error": "aider exited with code " + str(proc.returncode) + ": " + err, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": 0, "total_cost_usd": total_cost_usd, "session_id": session_id})
+    emit("error", {"error": "aider exited with code " + str(proc.returncode) + ": " + output, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": 0, "total_cost_usd": total_cost_usd, "session_id": session_id})
     sys.exit(1)
 
 emit("done", {"output": output.strip(), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": 0, "total_cost_usd": total_cost_usd, "session_id": session_id})
