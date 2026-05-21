@@ -96,7 +96,12 @@ try {
           for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + k + ": \"" + v + "\"\n";
         }
       } else if (cfg.source === "url") {
-        yaml += "  " + safeName + ":\n    name: " + safeName + "\n    type: sse\n    uri: " + cfg.package_or_url + "\n    enabled: true\n";
+        // Use streamable_http (sse is deprecated in Goose) — supports custom headers
+        yaml += "  " + safeName + ":\n    name: " + safeName + "\n    type: streamable_http\n    uri: " + cfg.package_or_url + "\n    enabled: true\n";
+        if (cfg.headers && Object.keys(cfg.headers).length) {
+          yaml += "    headers:\n";
+          for (const [k, v] of Object.entries(cfg.headers)) yaml += "      " + k + ": \"" + v + "\"\n";
+        }
       }
     }
     mkdirSync("/home/boxuser/.config/goose", { recursive: true });
@@ -129,6 +134,12 @@ emit("tool", { name: "goose", toolCallId: sessionId, input: { session: sessionId
 let output = "";
 let inputTokens = 0;
 let outputTokens = 0;
+// FIFO queue of synthetic tool-call IDs per tool name. Goose's stream-json
+// does not always include an id on tool_call / tool_result events; we
+// generate one on tool_call and pop it on the matching tool_result. A queue
+// (not a single slot) is required because the same tool can be invoked
+// multiple times before any results arrive.
+const pendingToolIds = new Map();
 
 try {
   await new Promise((resolve, reject) => {
@@ -171,14 +182,38 @@ try {
           }
           // Tool calls
           if (event.type === "tool_call" || event.type === "tool_use") {
-            emit("tool", { name: event.name ?? "tool", toolCallId: event.id ?? randomUUID(), input: event.parameters ?? event.input ?? {} });
+            const toolName = event.name ?? "tool";
+            let toolCallId = event.id;
+            if (!toolCallId) {
+              toolCallId = randomUUID();
+              const queue = pendingToolIds.get(toolName) ?? [];
+              queue.push(toolCallId);
+              pendingToolIds.set(toolName, queue);
+            }
+            emit("tool", { name: toolName, toolCallId, input: event.parameters ?? event.input ?? {} });
           }
           if (event.type === "tool_result") {
-            emit("tool_result", { toolCallId: event.id ?? "", output: String(event.output ?? "") });
+            let toolCallId = event.id ?? "";
+            if (!toolCallId && event.name) {
+              const queue = pendingToolIds.get(event.name);
+              toolCallId = queue?.shift() ?? "";
+            }
+            emit("tool_result", { toolCallId, output: String(event.output ?? "") });
           }
-          // Token usage: {"type":"complete","total_tokens":N}
+          // Token usage: only assign split counts when Goose provides them explicitly.
+          // Do not treat total_tokens as output-only because that makes cost accounting misleading.
           if (event.type === "complete") {
-            outputTokens = event.total_tokens ?? outputTokens;
+            const eventInputTokens =
+              typeof event.input_tokens === "number" ? event.input_tokens :
+              typeof event.prompt_tokens === "number" ? event.prompt_tokens :
+              undefined;
+            const eventOutputTokens =
+              typeof event.output_tokens === "number" ? event.output_tokens :
+              typeof event.completion_tokens === "number" ? event.completion_tokens :
+              undefined;
+
+            if (typeof eventInputTokens === "number") { inputTokens = eventInputTokens; }
+            if (typeof eventOutputTokens === "number") { outputTokens = eventOutputTokens; }
           }
         } catch {
           if (trimmed) { output += trimmed + "\n"; emit("text", { text: trimmed + "\n" }); }

@@ -33,6 +33,9 @@ function loadMcpServers() {
     for (const cfg of configs) {
       if (cfg.source === "url") {
         urls.push(cfg.package_or_url);
+        if (cfg.headers && Object.keys(cfg.headers).length) {
+          console.error("[pi] Warning: headers for MCP server '" + cfg.name + "' are not supported by extensionUrls — headers will be ignored");
+        }
       } else {
         console.error("[pi] Warning: npm MCP server '" + cfg.name + "' not supported; only HTTP MCP servers are applied");
         warned = true;
