@@ -10,7 +10,7 @@ export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
  *
  * | Size     | CPU      | Memory |
  * |----------|----------|--------|
- * | `small`  | 2 cores  | 2 GB   |
+ * | `small`  | 2 cores  | 4 GB   |
  * | `medium` | 4 cores  | 8 GB   |
  * | `large`  | 8 cores  | 16 GB  |
  */
@@ -34,6 +34,7 @@ export enum ClaudeCode {
   Opus_4_5 = "anthropic/claude-opus-4-5",
   Opus_4_6 = "anthropic/claude-opus-4-6",
   Opus_4_7 = "anthropic/claude-opus-4-7",
+  Opus_4_8 = "anthropic/claude-opus-4-8",
   Sonnet_4 = "anthropic/claude-sonnet-4",
   Sonnet_4_5 = "anthropic/claude-sonnet-4-5",
   Sonnet_4_6 = "anthropic/claude-sonnet-4-6",
@@ -44,6 +45,7 @@ export enum ClaudeCode {
  * OpenAI Codex model identifiers
  */
 export enum OpenAICodex {
+  GPT_5_5 = "openai/gpt-5.5",
   GPT_5_4 = "openai/gpt-5.4",
   GPT_5_4_Mini = "openai/gpt-5.4-mini",
   GPT_5_3_Codex = "openai/gpt-5.3-codex",
@@ -75,11 +77,14 @@ export enum OpenCodeModel {
   // Anthropic-backed OpenCode models
   Claude_Opus_4_5 = "opencode/claude-opus-4-5",
   Claude_Opus_4_6 = "opencode/claude-opus-4-6",
+  Claude_Opus_4_7 = "opencode/claude-opus-4-7",
+  Claude_Opus_4_8 = "opencode/claude-opus-4-8",
   Claude_Sonnet_4 = "opencode/claude-sonnet-4",
   Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
   Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
   Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   // OpenAI-backed OpenCode models
+  GPT_5_5 = "opencode/gpt-5.5",
   GPT_5_4 = "opencode/gpt-5.4",
   GPT_5_4_Pro = "opencode/gpt-5.4-pro",
   GPT_5_4_Mini = "opencode/gpt-5.4-mini",
@@ -101,6 +106,8 @@ export enum OpenCodeModel {
   Zen_Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
   Zen_Claude_Sonnet_4 = "opencode/claude-sonnet-4",
   Zen_Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
+  Zen_Claude_Opus_4_8 = "opencode/claude-opus-4-8",
+  Zen_Claude_Opus_4_7 = "opencode/claude-opus-4-7",
   Zen_Claude_Opus_4_6 = "opencode/claude-opus-4-6",
   Zen_Claude_Opus_4_5 = "opencode/claude-opus-4-5",
   Zen_Claude_Opus_4_1 = "opencode/claude-opus-4-1",
@@ -128,6 +135,7 @@ export enum CursorModel {
   GPT_5_1_Codex_Max = "cursor/gpt-5.1-codex-max",
   GPT_5_1_Codex_Mini = "cursor/gpt-5.1-codex-mini",
   GPT_5_Mini = "cursor/gpt-5-mini",
+  Claude_Opus_4_8 = "cursor/claude-opus-4-8",
   Claude_Opus_4_7 = "cursor/claude-opus-4-7",
   Claude_Opus_4_6 = "cursor/claude-opus-4-6",
   Claude_Opus_4_5 = "cursor/claude-opus-4-5",

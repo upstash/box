@@ -16,6 +16,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: ClaudeCode.Opus_4_8, label: "Claude Opus 4.8" },
         { value: ClaudeCode.Opus_4_7, label: "Claude Opus 4.7" },
         { value: ClaudeCode.Opus_4_6, label: "Claude Opus 4.6" },
         { value: ClaudeCode.Opus_4_5, label: "Claude Opus 4.5" },
@@ -44,6 +45,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenAICodex.GPT_5_5, label: "GPT-5.5" },
         { value: OpenAICodex.GPT_5_4, label: "GPT-5.4" },
         { value: OpenAICodex.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
         { value: OpenAICodex.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
@@ -84,6 +86,8 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenCodeModel.Zen_Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4, label: "Claude Sonnet 4" },
         { value: OpenCodeModel.Zen_Claude_Haiku_4_5, label: "Claude Haiku 4.5" },
+        { value: OpenCodeModel.Zen_Claude_Opus_4_8, label: "Claude Opus 4.8" },
+        { value: OpenCodeModel.Zen_Claude_Opus_4_7, label: "Claude Opus 4.7" },
         { value: OpenCodeModel.Zen_Claude_Opus_4_6, label: "Claude Opus 4.6" },
         { value: OpenCodeModel.Zen_Claude_Opus_4_5, label: "Claude Opus 4.5" },
         { value: OpenCodeModel.Zen_Claude_Opus_4_1, label: "Claude Opus 4.1" },
@@ -95,6 +99,8 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: OpenCodeModel.Claude_Opus_4_8, label: "Claude Opus 4.8" },
+        { value: OpenCodeModel.Claude_Opus_4_7, label: "Claude Opus 4.7" },
         { value: OpenCodeModel.Claude_Opus_4_6, label: "Claude Opus 4.6" },
         { value: OpenCodeModel.Claude_Opus_4_5, label: "Claude Opus 4.5" },
         { value: OpenCodeModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
@@ -106,6 +112,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenCodeModel.GPT_5_5, label: "GPT-5.5" },
         { value: OpenCodeModel.GPT_5_4_Pro, label: "GPT-5.4 Pro" },
         { value: OpenCodeModel.GPT_5_4, label: "GPT-5.4" },
         { value: OpenCodeModel.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
@@ -146,9 +153,12 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: CursorModel.GPT_5_4, label: "GPT-5.4" },
         { value: CursorModel.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
         { value: CursorModel.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
-        { value: CursorModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
+        { value: CursorModel.Claude_Opus_4_8, label: "Claude Opus 4.8" },
         { value: CursorModel.Claude_Opus_4_7, label: "Claude Opus 4.7" },
+        { value: CursorModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
+        { value: CursorModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: CursorModel.Gemini_3_1_Pro, label: "Gemini 3.1 Pro" },
+        { value: CursorModel.Gemini_3_Flash, label: "Gemini 3 Flash" },
         { value: CursorModel.Grok_4_20, label: "Grok 4.20" },
         { value: CursorModel.Kimi_K2_5, label: "Kimi K2.5" },
       ],
