@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.4
+
+### Patch Changes
+
+- 4b975d2: adds opus 4.7 and 4.8 and gpt 5.5
+
 ## 0.4.3
 
 ### Patch Changes

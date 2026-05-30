@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.2.4
+
+### Patch Changes
+
+- 4b975d2: adds opus 4.7 and 4.8 and gpt 5.5
+- Updated dependencies [4b975d2]
+  - @upstash/box@0.4.4
+
 ## 0.2.3
 
 ### Patch Changes
