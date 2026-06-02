@@ -6,4 +6,5 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, "../../../../../.env") });
 
 export const UPSTASH_BOX_API_KEY = process.env.UPSTASH_BOX_API_KEY;
+export const UPSTASH_BOX_BASE_URL = process.env.UPSTASH_BOX_BASE_URL;
 export const CONTEXT7_API_KEY = process.env.CONTEXT7_API_KEY;

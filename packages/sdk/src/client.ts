@@ -694,6 +694,49 @@ export class Box<TProvider = unknown> {
   }
 
   /**
+   * Delete snapshots for the authenticated user.
+   * Omit snapshotIds to delete all snapshots, or pass a single ID / array of IDs to delete specific ones.
+   */
+  static async deleteSnapshots(
+    options?: BoxConnectionOptions & { snapshotIds?: string | string[] },
+  ): Promise<{ deleted: number }> {
+    const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
+    if (!apiKey) {
+      throw new BoxError(
+        "apiKey is required. Pass it in options or set UPSTASH_BOX_API_KEY env var.",
+      );
+    }
+
+    const baseUrl = (
+      options?.baseUrl ??
+      process.env.UPSTASH_BOX_BASE_URL ??
+      DEFAULT_BASE_URL
+    ).replace(/\/$/, "");
+    const headers: Record<string, string> = {
+      "X-Box-Api-Key": apiKey,
+      "Content-Type": "application/json",
+    };
+
+    const body: { ids?: string[] } = {};
+    if (options?.snapshotIds !== undefined) {
+      body.ids = Array.isArray(options.snapshotIds)
+        ? options.snapshotIds
+        : [options.snapshotIds];
+    }
+
+    const response = await fetch(`${baseUrl}/v2/box/snapshots`, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const msg = await parseErrorResponse(response);
+      throw new BoxError(msg, response.status);
+    }
+    return response.json() as Promise<{ deleted: number }>;
+  }
+
+  /**
    * Delete specific boxes by ID.
    */
   static async delete(
@@ -2585,6 +2628,11 @@ export class EphemeralBox {
    * Delete specific boxes by ID.
    */
   static delete = Box.delete;
+
+  /**
+   * Delete snapshots for the authenticated user.
+   */
+  static deleteSnapshots = Box.deleteSnapshots;
 }
 
 // ==================== Helpers ====================
