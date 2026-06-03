@@ -53,7 +53,6 @@ describe("Box.deleteSnapshots (static)", () => {
     expect(result).toEqual({ deleted: 2 });
   });
 
-
   it("throws when apiKey is missing", async () => {
     await expect(Box.deleteSnapshots()).rejects.toThrow("apiKey is required");
   });

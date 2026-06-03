@@ -719,9 +719,7 @@ export class Box<TProvider = unknown> {
 
     const body: { ids?: string[] } = {};
     if (options?.snapshotIds !== undefined) {
-      body.ids = Array.isArray(options.snapshotIds)
-        ? options.snapshotIds
-        : [options.snapshotIds];
+      body.ids = Array.isArray(options.snapshotIds) ? options.snapshotIds : [options.snapshotIds];
     }
 
     const response = await fetch(`${baseUrl}/v2/box/snapshots`, {
