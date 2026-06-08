@@ -1,5 +1,14 @@
 # @upstash/box-cli
 
+## 0.2.5
+
+### Patch Changes
+
+- 68895fc: Add Cursor Composer 2.5 model support.
+- Updated dependencies [984fce8]
+- Updated dependencies [68895fc]
+  - @upstash/box@0.4.5
+
 ## 0.2.4
 
 ### Patch Changes

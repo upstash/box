@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.4.5
+
+### Patch Changes
+
+- 984fce8: adds multiple snapshot deletion
+- 68895fc: Add Cursor Composer 2.5 model support.
+
 ## 0.4.4
 
 ### Patch Changes
