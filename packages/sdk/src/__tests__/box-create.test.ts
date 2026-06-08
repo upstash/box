@@ -46,12 +46,12 @@ describe("Box.create", () => {
 
     await Box.create({
       ...TEST_CONFIG,
-      agent: { harness: Agent.Cursor, model: CursorModel.Composer_2, apiKey: "crsr-key" },
+      agent: { harness: Agent.Cursor, model: CursorModel.Composer_2_5, apiKey: "crsr-key" },
     });
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
     expect(body.agent).toBe(Agent.Cursor);
-    expect(body.model).toBe(CursorModel.Composer_2);
+    expect(body.model).toBe(CursorModel.Composer_2_5);
     expect(body.agent_api_key).toBe("crsr-key");
   });
 

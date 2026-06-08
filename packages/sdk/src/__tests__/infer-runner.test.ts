@@ -24,7 +24,7 @@ describe("inferDefaultProvider", () => {
   });
 
   it("returns Cursor for cursor/ prefix", () => {
-    expect(inferDefaultProvider("cursor/composer-2")).toBe(Agent.Cursor);
+    expect(inferDefaultProvider("cursor/composer-2.5")).toBe(Agent.Cursor);
   });
 
   it("returns Custom for custom/ prefix", () => {

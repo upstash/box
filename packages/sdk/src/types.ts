@@ -141,6 +141,7 @@ export enum OpenCodeModel {
  */
 export enum CursorModel {
   Default = "cursor/default",
+  Composer_2_5 = "cursor/composer-2.5",
   Composer_2 = "cursor/composer-2",
   Composer_1_5 = "cursor/composer-1.5",
   GPT_5_5 = "cursor/gpt-5.5",

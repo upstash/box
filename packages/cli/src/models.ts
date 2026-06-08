@@ -180,6 +180,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Cursor",
       options: [
+        { value: CursorModel.Composer_2_5, label: "Composer 2.5" },
         { value: CursorModel.Composer_2, label: "Composer 2" },
         { value: CursorModel.Composer_1_5, label: "Composer 1.5" },
         { value: CursorModel.Default, label: "Default" },

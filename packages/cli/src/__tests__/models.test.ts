@@ -7,8 +7,8 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
     const cursorModels = MODEL_OPTIONS_BY_AGENT[Agent.Cursor].flatMap((group) => group.options);
 
     expect(cursorModels).toContainEqual({
-      value: CursorModel.Composer_2,
-      label: "Composer 2",
+      value: CursorModel.Composer_2_5,
+      label: "Composer 2.5",
     });
   });
 });
