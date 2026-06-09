@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.2.7
+
+### Patch Changes
+
+- 327e68d: add minimax m2.7
+- Updated dependencies [c4df70f]
+  - @upstash/box@0.4.7
+
 ## 0.2.6
 
 ### Patch Changes

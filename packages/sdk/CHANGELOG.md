@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.7
+
+### Patch Changes
+
+- c4df70f: remove unsupported minimax model
+
 ## 0.4.6
 
 ### Patch Changes
