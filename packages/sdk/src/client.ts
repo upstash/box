@@ -1449,7 +1449,7 @@ export class Box<TProvider = unknown> {
         }
         finished = true;
         Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
-        if (run.status === "running") Run._update(run, { status: "completed", exitCode: 0 });
+        if (run.status === "running") Run._update(run, { status: "completed" });
       } catch (e) {
         Run._update(run, {
           result: fullOutput,
@@ -1518,7 +1518,7 @@ export class Box<TProvider = unknown> {
         }
         finished = true;
         Run._update(run, { result: fullOutput, computeMs: Date.now() - start });
-        if (run.status === "running") Run._update(run, { status: "completed", exitCode: 0 });
+        if (run.status === "running") Run._update(run, { status: "completed" });
       } catch (e) {
         Run._update(run, {
           result: fullOutput,
