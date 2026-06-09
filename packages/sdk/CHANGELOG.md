@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.6
+
+### Patch Changes
+
+- a277571: update outdated models
+
 ## 0.4.5
 
 ### Patch Changes
