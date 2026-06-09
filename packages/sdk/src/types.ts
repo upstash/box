@@ -119,7 +119,6 @@ export enum OpenCodeModel {
   O4_Mini = "opencode/o4-mini",
   // Free models
   Zen_GPT_5_Nano = "opencode/gpt-5-nano",
-  Zen_MiniMax_M3_Free = "opencode/minimax-m3-free",
   Zen_Big_Pickle = "opencode/big-pickle",
   // Paid models
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
