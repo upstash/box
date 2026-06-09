@@ -31,6 +31,7 @@ export enum Agent {
  * Claude Code model identifiers
  */
 export enum ClaudeCode {
+  Fable_5 = "anthropic/claude-fable-5",
   Opus_4_5 = "anthropic/claude-opus-4-5",
   Opus_4_6 = "anthropic/claude-opus-4-6",
   Opus_4_7 = "anthropic/claude-opus-4-7",

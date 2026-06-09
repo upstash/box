@@ -320,6 +320,8 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                    | Value                         |
 | ----------------------- | ----------------------------- |
+| `ClaudeCode.Fable_5`    | `anthropic/claude-fable-5`    |
+| `ClaudeCode.Opus_4_8`   | `anthropic/claude-opus-4-8`   |
 | `ClaudeCode.Opus_4_7`   | `anthropic/claude-opus-4-7`   |
 | `ClaudeCode.Opus_4_5`   | `anthropic/claude-opus-4-5`   |
 | `ClaudeCode.Opus_4_6`   | `anthropic/claude-opus-4-6`   |
