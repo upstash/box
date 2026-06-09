@@ -100,7 +100,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       options: [
         { value: OpenCodeModel.Zen_GPT_5_Nano, label: "GPT-5 Nano (Free)" },
         { value: OpenCodeModel.Zen_Big_Pickle, label: "Big Pickle (Free)" },
-        { value: OpenCodeModel.Zen_MiniMax_M2_5_Free, label: "MiniMax M2.5 (Free)" },
+        { value: OpenCodeModel.Zen_MiniMax_M3_Free, label: "MiniMax M3 (Free)" },
       ],
     },
     {
@@ -181,8 +181,6 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       label: "Cursor",
       options: [
         { value: CursorModel.Composer_2_5, label: "Composer 2.5" },
-        { value: CursorModel.Composer_2, label: "Composer 2" },
-        { value: CursorModel.Composer_1_5, label: "Composer 1.5" },
         { value: CursorModel.Default, label: "Default" },
         { value: CursorModel.GPT_5_5, label: "GPT-5.5" },
         { value: CursorModel.GPT_5_4, label: "GPT-5.4" },

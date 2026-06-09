@@ -119,7 +119,7 @@ export enum OpenCodeModel {
   O4_Mini = "opencode/o4-mini",
   // Free models
   Zen_GPT_5_Nano = "opencode/gpt-5-nano",
-  Zen_MiniMax_M2_5_Free = "opencode/minimax-m2.5-free",
+  Zen_MiniMax_M3_Free = "opencode/minimax-m3-free",
   Zen_Big_Pickle = "opencode/big-pickle",
   // Paid models
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
@@ -142,8 +142,6 @@ export enum OpenCodeModel {
 export enum CursorModel {
   Default = "cursor/default",
   Composer_2_5 = "cursor/composer-2.5",
-  Composer_2 = "cursor/composer-2",
-  Composer_1_5 = "cursor/composer-1.5",
   GPT_5_5 = "cursor/gpt-5.5",
   GPT_5_4 = "cursor/gpt-5.4",
   GPT_5_4_Mini = "cursor/gpt-5.4-mini",
