@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.4.8
+
+### Patch Changes
+
+- 7c8c287: Add Claude Fable 5 to Claude Code model options.
+
 ## 0.4.7
 
 ### Patch Changes
