@@ -100,12 +100,12 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       options: [
         { value: OpenCodeModel.Zen_GPT_5_Nano, label: "GPT-5 Nano (Free)" },
         { value: OpenCodeModel.Zen_Big_Pickle, label: "Big Pickle (Free)" },
-        { value: OpenCodeModel.Zen_MiniMax_M3_Free, label: "MiniMax M3 (Free)" },
       ],
     },
     {
       label: "OpenCode — Paid",
       options: [
+        { value: OpenCodeModel.Zen_MiniMax_M2_7, label: "MiniMax M2.7" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4, label: "Claude Sonnet 4" },
