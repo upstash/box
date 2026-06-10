@@ -58,6 +58,30 @@ describe("box.agent.run", () => {
     expect(run.cost.totalUsd).toBe(0);
   });
 
+  it("populates run.cost.cachedInputTokens from done event, defaulting to 0 when absent", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "done", data: { input_tokens: 100, output_tokens: 50, cached_input_tokens: 80 } },
+      ]),
+    );
+
+    const run = await box.agent.run({ prompt: "test" });
+    expect(run.cost.cachedInputTokens).toBe(80);
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r2" } },
+        { event: "done", data: { input_tokens: 10, output_tokens: 5 } },
+      ]),
+    );
+
+    const run2 = await box.agent.run({ prompt: "test" });
+    expect(run2.cost.cachedInputTokens).toBe(0);
+  });
+
   it("calls onToolUse callback", async () => {
     const { box, fetchMock } = await createTestBox();
     const tools: Array<{ toolCallId?: string; name: string; input: Record<string, unknown> }> = [];
@@ -485,6 +509,29 @@ describe("box.agent.stream", () => {
     expect(chunks[chunks.length - 1]!.type).toBe("finish");
     expect(run.status).toBe("completed");
     expect(run.result).toBe("Hello world");
+  });
+
+  it("includes cachedInputTokens in the finish chunk usage", async () => {
+    const { box, fetchMock } = await createTestBox();
+
+    fetchMock.mockResolvedValueOnce(
+      mockSSEResponse([
+        { event: "run_start", data: { run_id: "r1" } },
+        { event: "text", data: { text: "hi" } },
+        { event: "done", data: { input_tokens: 100, output_tokens: 50, cached_input_tokens: 80 } },
+      ]),
+    );
+
+    const run = await box.agent.stream({ prompt: "test" });
+    const chunks: Chunk[] = [];
+    for await (const chunk of run) {
+      chunks.push(chunk);
+    }
+    const finish = chunks.find(
+      (c): c is Extract<Chunk, { type: "finish" }> => c.type === "finish",
+    );
+    expect(finish?.usage).toEqual({ inputTokens: 100, outputTokens: 50, cachedInputTokens: 80 });
+    expect(run.cost.cachedInputTokens).toBe(80);
   });
 
   it("yields tool-call chunks and calls onToolUse", async () => {

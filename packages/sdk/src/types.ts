@@ -557,6 +557,7 @@ export type Chunk =
       usage: {
         inputTokens: number;
         outputTokens: number;
+        cachedInputTokens: number;
       };
       sessionId: string;
     }
@@ -634,6 +635,8 @@ export interface RunCost {
   inputTokens: number;
   /** Output tokens consumed */
   outputTokens: number;
+  /** Input tokens served from the provider's prompt cache (subset of inputTokens, billed at a discounted rate) */
+  cachedInputTokens: number;
   /** Wall-clock execution time in milliseconds */
   computeMs: number;
   /** Total cost in USD */
@@ -801,6 +804,7 @@ export interface RunResult {
 export interface RunMetadata {
   input_tokens?: number;
   output_tokens?: number;
+  cached_input_tokens?: number;
 }
 
 export interface ExecResult {
@@ -885,6 +889,7 @@ export type BoxRunData = {
   output?: string;
   input_tokens: number;
   output_tokens: number;
+  cached_input_tokens?: number;
   cost_usd: number;
   duration_ms: number;
   cpu_ns?: number;

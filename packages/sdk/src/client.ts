@@ -196,6 +196,7 @@ export class Run<T = string> {
   private _exitCode: number | null = null;
   private _inputTokens = 0;
   private _outputTokens = 0;
+  private _cachedInputTokens = 0;
   private _totalUsd = 0;
   private _computeMs = 0;
   private _box: Box;
@@ -246,6 +247,7 @@ export class Run<T = string> {
     return {
       inputTokens: this._inputTokens,
       outputTokens: this._outputTokens,
+      cachedInputTokens: this._cachedInputTokens,
       computeMs: this._computeMs || Date.now() - this._startTime,
       totalUsd: this._totalUsd,
     };
@@ -288,6 +290,7 @@ export class Run<T = string> {
       exitCode?: number;
       inputTokens?: number;
       outputTokens?: number;
+      cachedInputTokens?: number;
       totalUsd?: number;
       computeMs?: number;
       abortController?: AbortController;
@@ -299,6 +302,7 @@ export class Run<T = string> {
     if (data.exitCode !== undefined) run._exitCode = data.exitCode;
     if (data.inputTokens !== undefined) run._inputTokens = data.inputTokens;
     if (data.outputTokens !== undefined) run._outputTokens = data.outputTokens;
+    if (data.cachedInputTokens !== undefined) run._cachedInputTokens = data.cachedInputTokens;
     if (data.totalUsd !== undefined) run._totalUsd = data.totalUsd;
     if (data.computeMs !== undefined) run._computeMs = data.computeMs;
     if (data.abortController !== undefined) run._abortController = data.abortController;
@@ -1064,6 +1068,7 @@ export class Box<TProvider = unknown> {
             Run._update(run, {
               inputTokens: parsed.input_tokens ?? 0,
               outputTokens: parsed.output_tokens ?? 0,
+              cachedInputTokens: parsed.cached_input_tokens ?? 0,
               totalUsd: parsed.total_cost_usd ?? 0,
             });
             if (parsed.output) rawOutput = parsed.output;
@@ -1241,6 +1246,7 @@ export class Box<TProvider = unknown> {
             Run._update(run, {
               inputTokens: parsed.input_tokens ?? 0,
               outputTokens: parsed.output_tokens ?? 0,
+              cachedInputTokens: parsed.cached_input_tokens ?? 0,
               totalUsd: parsed.total_cost_usd ?? 0,
             });
             if (parsed.output) rawOutput = parsed.output;
@@ -1250,6 +1256,7 @@ export class Box<TProvider = unknown> {
               usage: {
                 inputTokens: parsed.input_tokens ?? 0,
                 outputTokens: parsed.output_tokens ?? 0,
+                cachedInputTokens: parsed.cached_input_tokens ?? 0,
               },
               sessionId: parsed.session_id ?? "",
             };
