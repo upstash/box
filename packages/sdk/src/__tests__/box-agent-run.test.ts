@@ -527,9 +527,7 @@ describe("box.agent.stream", () => {
     for await (const chunk of run) {
       chunks.push(chunk);
     }
-    const finish = chunks.find(
-      (c): c is Extract<Chunk, { type: "finish" }> => c.type === "finish",
-    );
+    const finish = chunks.find((c): c is Extract<Chunk, { type: "finish" }> => c.type === "finish");
     expect(finish?.usage).toEqual({ inputTokens: 100, outputTokens: 50, cachedInputTokens: 80 });
     expect(run.cost.cachedInputTokens).toBe(80);
   });

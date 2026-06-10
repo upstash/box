@@ -73,6 +73,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
     expect(cost).toEqual({
       inputTokens: expect.any(Number),
       outputTokens: expect.any(Number),
+      cachedInputTokens: expect.any(Number),
       computeMs: expect.any(Number),
       totalUsd: expect.any(Number),
     });
