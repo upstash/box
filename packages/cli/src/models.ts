@@ -17,7 +17,6 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
-        { value: ClaudeCode.Fable_5, label: "Claude Fable 5" },
         { value: ClaudeCode.Opus_4_8, label: "Claude Opus 4.8" },
         { value: ClaudeCode.Opus_4_7, label: "Claude Opus 4.7" },
         { value: ClaudeCode.Opus_4_6, label: "Claude Opus 4.6" },
