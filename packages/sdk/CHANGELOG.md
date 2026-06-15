@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.5.1
+
+### Patch Changes
+
+- 3809cc7: revert claude-fable addition
+
 ## 0.5.0
 
 ### Minor Changes

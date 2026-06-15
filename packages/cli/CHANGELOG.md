@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.2.10
+
+### Patch Changes
+
+- 3809cc7: revert claude-fable addition
+- Updated dependencies [3809cc7]
+  - @upstash/box@0.5.1
+
 ## 0.2.9
 
 ### Patch Changes
