@@ -17,8 +17,6 @@ import re
 import subprocess
 import sys
 
-import httpx
-
 import upstash_box
 from upstash_box import AsyncBox, AsyncEphemeralBox
 
@@ -70,12 +68,10 @@ def py_members(instance: object) -> set:
 
 
 def _dummy_async_box() -> AsyncBox:
+    # Introspection only (we read dir(box) — no requests), so we don't create a
+    # real httpx client; that would leak an unclosed connection pool in CI.
     data = {"id": "x", "status": "idle", "created_at": 0, "updated_at": 0}
-    config = {
-        "base_url": "https://example.com",
-        "headers": {},
-        "client": httpx.AsyncClient(),
-    }
+    config = {"base_url": "https://example.com", "headers": {}, "client": None}
     return AsyncBox(data, config)
 
 

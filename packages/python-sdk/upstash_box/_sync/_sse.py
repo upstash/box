@@ -1,12 +1,10 @@
 # DO NOT EDIT — generated from upstash_box/_async/ by scripts/generate_sync.py.
 # Edit the async source and re-run the generator. Hand-written sync code that
 # can't be generated cleanly belongs in upstash_box/_sync/_fallbacks.py.
-"""Async SSE parsers for the run-stream and exec/code-stream endpoints.
+"""Generated synchronous client — DO NOT EDIT.
 
-Generation-safe: this module is the source of truth and is transformed into
-``upstash_box/_sync/_sse.py`` by ``scripts/generate_sync.py`` (``aiter_bytes`` ->
-``iter_bytes``, ``async for`` -> ``for``, etc.). Keep substitutions mechanical.
-"""
+Produced from upstash_box/_async/ by scripts/generate_sync.py. Edit the async
+source and re-run the generator."""
 
 from __future__ import annotations
 

@@ -103,14 +103,14 @@ def to_backend_agent_options(agent: Optional[Any], options: Dict[str, Any]) -> D
 def is_custom_agent_harness(agent: Optional[Dict[str, Any]]) -> bool:
     if not agent:
         return False
-    harness = agent.get("harness") or agent.get("provider") or agent.get("runner")
-    return _agent_value(harness) == Agent.CUSTOM.value
+    return _agent_value(agent.get("harness")) == Agent.CUSTOM.value
 
 
 def resolve_agent_harness(agent: Optional[Dict[str, Any]]) -> Optional[str]:
+    # harness-only — the JS deprecated provider/runner aliases are not supported.
     if not agent:
         return None
-    harness = agent.get("harness") or agent.get("provider") or agent.get("runner")
+    harness = agent.get("harness")
     if not harness:
         raise BoxError("agent.harness is required.")
     return _agent_value(harness)

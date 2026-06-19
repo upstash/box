@@ -18,6 +18,7 @@ from .custom_harness import (
 from .errors import BoxError
 from .types import (
     Agent,
+    AgentConfig,
     AgentScheduleOptions,
     Base64FileInput,
     BoxApiKey,
@@ -38,6 +39,7 @@ from .types import (
     FinishChunk,
     FinishUsage,
     GitCommitResult,
+    GitConfigInput,
     GitConfigResult,
     LogEntry,
     McpServerConfig,
@@ -97,11 +99,13 @@ __all__ = [
     "OpenRouterModel",
     "VercelModel",
     # Config / option types
+    "AgentConfig",
     "AgentScheduleOptions",
     "Base64FileInput",
     "CodeLanguage",
     "CustomHarnessConfig",
     "ExecScheduleOptions",
+    "GitConfigInput",
     "McpServerConfig",
     "NetworkPolicy",
     "PromptFiles",

@@ -16,6 +16,7 @@ CI asserts the result is up to date with:
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
 
 import unasync
@@ -28,6 +29,16 @@ _BANNER = (
     "# DO NOT EDIT — generated from upstash_box/_async/ by scripts/generate_sync.py.\n"
     "# Edit the async source and re-run the generator. Hand-written sync code that\n"
     "# can't be generated cleanly belongs in upstash_box/_sync/_fallbacks.py.\n"
+)
+
+# The async source docstrings ("...SOURCE OF TRUTH", "use aiter_bytes...") are
+# misleading once copied into the generated sync files (and get mangled by token
+# substitution), so replace the leading module docstring with a neutral note.
+_MODULE_DOCSTRING_RE = re.compile(r'\A"""[\s\S]*?"""')
+_GENERATED_DOCSTRING = (
+    '"""Generated synchronous client — DO NOT EDIT.\n\n'
+    "Produced from upstash_box/_async/ by scripts/generate_sync.py. Edit the async\n"
+    'source and re-run the generator."""'
 )
 
 _RULES = [
@@ -71,7 +82,10 @@ def _dedupe_imports(text: str) -> str:
 
 
 def _postprocess(path: pathlib.Path) -> None:
-    text = _dedupe_imports(path.read_text())
+    text = path.read_text()
+    # Replace the leading (copied async) module docstring, if any.
+    text = _MODULE_DOCSTRING_RE.sub(lambda _: _GENERATED_DOCSTRING, text, count=1)
+    text = _dedupe_imports(text)
     if not text.startswith("# DO NOT EDIT"):
         text = _BANNER + text
     path.write_text(text)

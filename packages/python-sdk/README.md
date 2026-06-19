@@ -70,6 +70,8 @@ with box:
 ### Creating a box
 
 ```python
+from upstash_box import Agent, AsyncBox, BoxApiKey
+
 box = await AsyncBox.create(
     api_key="box_...",            # or set UPSTASH_BOX_API_KEY
     runtime="node",                # "node" | "python" | "golang" | "ruby" | "rust"

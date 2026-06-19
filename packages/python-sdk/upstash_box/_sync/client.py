@@ -1,13 +1,10 @@
 # DO NOT EDIT — generated from upstash_box/_async/ by scripts/generate_sync.py.
 # Edit the async source and re-run the generator. Hand-written sync code that
 # can't be generated cleanly belongs in upstash_box/_sync/_fallbacks.py.
-"""Async Box client — SOURCE OF TRUTH.
+"""Generated synchronous client — DO NOT EDIT.
 
-Transformed into ``upstash_box/_sync/client.py`` by ``scripts/generate_sync.py``.
-Follow the generation-safe style in CONTRIBUTING.md: keep ``await`` / ``async for``
-/ ``async with`` mechanical, use ``aiter_bytes``/``aclose`` spellings, and put any
-construct that can't be generated cleanly in ``_sync/_fallbacks.py`` instead.
-"""
+Produced from upstash_box/_async/ by scripts/generate_sync.py. Edit the async
+source and re-run the generator."""
 
 from __future__ import annotations
 

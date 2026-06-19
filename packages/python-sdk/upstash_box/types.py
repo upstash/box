@@ -197,7 +197,7 @@ class AgentConfig(TypedDict):
     """Agent configuration for a box. ``harness`` is required; ``model`` is
     required for managed harnesses (optional/defaulted for custom)."""
 
-    harness: NotRequired[Union[Agent, str]]
+    harness: Union[Agent, str]
     model: NotRequired[str]
     api_key: NotRequired[Union[BoxApiKey, str]]
     custom_harness: NotRequired[CustomHarnessConfig]
