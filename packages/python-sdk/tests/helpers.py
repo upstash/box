@@ -6,7 +6,7 @@ the async (`AsyncBox`) and sync (`Box`) clients from one place.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
 import respx
@@ -77,7 +77,9 @@ def raw_stream_response(chunks: List[bytes]) -> httpx.Response:
     )
 
 
-def mock_get_box(router: respx.Router, overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def mock_get_box(
+    router: respx.Router, overrides: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     data = {**TEST_BOX_DATA, **(overrides or {})}
     router.get(f"{TEST_BASE_URL}/v2/box/{data['id']}").mock(
         return_value=httpx.Response(200, json=data)
@@ -85,12 +87,14 @@ def mock_get_box(router: respx.Router, overrides: Dict[str, Any] | None = None) 
     return data
 
 
-async def make_async_box(router: respx.Router, overrides: Dict[str, Any] | None = None) -> AsyncBox:
+async def make_async_box(
+    router: respx.Router, overrides: Optional[Dict[str, Any]] = None
+) -> AsyncBox:
     data = mock_get_box(router, overrides)
     return await AsyncBox.get(data["id"], api_key=TEST_API_KEY, base_url=TEST_BASE_URL)
 
 
-def make_sync_box(router: respx.Router, overrides: Dict[str, Any] | None = None) -> Box:
+def make_sync_box(router: respx.Router, overrides: Optional[Dict[str, Any]] = None) -> Box:
     data = mock_get_box(router, overrides)
     return Box.get(data["id"], api_key=TEST_API_KEY, base_url=TEST_BASE_URL)
 
