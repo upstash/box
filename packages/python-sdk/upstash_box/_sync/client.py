@@ -910,7 +910,12 @@ class Box(Generic[T]):
             )
             if not response.is_success:
                 raise BoxError(f"Failed to download {f.path}", response.status_code)
-            with open(os.path.join(dest, f.name), "wb") as fh:
+            # Sanitize the remote-provided name: never let it escape `dest` via
+            # path separators or absolute paths (path-traversal hardening).
+            safe_name = os.path.basename(f.name)
+            if not safe_name or safe_name in (".", ".."):
+                raise BoxError(f"Unsafe download filename: {f.name!r}")
+            with open(os.path.join(dest, safe_name), "wb") as fh:
                 fh.write(response.content)
 
     # ==================== Lifecycle ====================

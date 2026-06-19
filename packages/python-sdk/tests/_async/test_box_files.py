@@ -1,6 +1,9 @@
 import httpx
+import pytest
 import respx
 from helpers import TEST_BASE_URL, last_json_body, make_async_box
+
+from upstash_box import BoxError
 
 BASE = f"{TEST_BASE_URL}/v2/box/box-123"
 
@@ -113,4 +116,49 @@ async def test_download_files(tmp_path, monkeypatch):
     await box.files.download(folder="sub")
     written = tmp_path / "sub" / "a.txt"
     assert written.read_bytes() == b"file-bytes"
+    await box.aclose()
+
+
+def _list_one(name: str):
+    return httpx.Response(
+        200,
+        json={
+            "files": [
+                {
+                    "name": name,
+                    "path": "/workspace/home/sub/x",
+                    "size": 1,
+                    "is_dir": False,
+                    "mod_time": "t",
+                }
+            ]
+        },
+    )
+
+
+@respx.mock
+async def test_download_neutralizes_traversal_name(tmp_path, monkeypatch):
+    box = await make_async_box(respx.mock)
+    monkeypatch.chdir(tmp_path)
+    # A name that tries to escape `dest` is reduced to its basename and kept inside.
+    respx.get(url__startswith=f"{BASE}/files/list").mock(return_value=_list_one("../../evil.txt"))
+    respx.get(url__startswith=f"{BASE}/files/download").mock(
+        return_value=httpx.Response(200, content=b"pwned")
+    )
+    await box.files.download(folder="sub")
+    assert (tmp_path / "sub" / "evil.txt").read_bytes() == b"pwned"  # contained in dest
+    assert not (tmp_path / "evil.txt").exists()  # did not escape
+    await box.aclose()
+
+
+@respx.mock
+async def test_download_rejects_dotdot_name(tmp_path, monkeypatch):
+    box = await make_async_box(respx.mock)
+    monkeypatch.chdir(tmp_path)
+    respx.get(url__startswith=f"{BASE}/files/list").mock(return_value=_list_one(".."))
+    respx.get(url__startswith=f"{BASE}/files/download").mock(
+        return_value=httpx.Response(200, content=b"x")
+    )
+    with pytest.raises(BoxError, match="Unsafe download filename"):
+        await box.files.download(folder="sub")
     await box.aclose()
