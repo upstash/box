@@ -34,12 +34,9 @@ JS_NOT_PORTED = {
     "deletePreview",  # deprecated -> deletePublicURL
 }
 
-# Python-only additions (no JS equivalent) — allowed extras.
-PY_ONLY = {
-    "close",  # httpx transport lifecycle (JS has fetch-per-call)
-    "aclose",
-    "delete_boxes",  # JS static `delete` (bulk) renamed to avoid clashing with instance delete
-}
+# (Python-only additions like close/aclose/delete_boxes need no entry here: the
+# check is one-directional JS->Python, so extra Python symbols don't fail it.
+# They're documented in PARITY.md's exceptions table.)
 
 # Explicit name mappings where mechanical snake_case conversion is wrong
 # (acronyms, etc.).
