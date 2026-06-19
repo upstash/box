@@ -1,0 +1,94 @@
+name: Python SDK Publish
+
+# Gated PyPI release for upstash-box.
+# Triggers:
+#   - pushing a tag `python-sdk-v<X.Y.Z>` (the convention in RELEASE.md), or
+#   - manual run via the Actions tab (workflow_dispatch).
+# Publishing runs in the `pypi` GitHub Environment — configure it with required
+# reviewers so a release needs explicit approval ("no publish without go-ahead").
+# Uses PyPI Trusted Publishing (OIDC) — no API token stored. Configure a trusted
+# publisher for `upstash-box` pointing at this workflow, or set PYPI_API_TOKEN.
+
+on:
+  push:
+    tags:
+      - "python-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and verify only; skip the upload step"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + dev deps
+        run: pip install -e "packages/python-sdk[dev]"
+
+      - name: Verify (generation, lint, types, tests, parity)
+        working-directory: packages/python-sdk
+        run: |
+          python scripts/generate_sync.py
+          git diff --exit-code -- upstash_box/_sync
+          ruff check .
+          ruff format --check .
+          mypy upstash_box
+          pytest tests/_async tests/_sync -q
+      - name: Parity (needs Node + TS)
+        run: |
+          (cd packages/sdk && npm install --no-save typescript)
+          python packages/python-sdk/scripts/check_parity.py
+
+      - name: Tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: packages/python-sdk
+        run: |
+          PKG_VERSION=$(python -c "import tomllib,sys; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          TAG_VERSION="${GITHUB_REF_NAME#python-sdk-v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::tag $TAG_VERSION != pyproject version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Build sdist + wheel
+        working-directory: packages/python-sdk
+        run: python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: packages/python-sdk/dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on a tag push, or a dispatch with dry_run=false.
+    if: >-
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false')
+    environment: pypi # configure required reviewers here for the gate
+    permissions:
+      id-token: write # PyPI Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # If not using Trusted Publishing, instead set:
+        # with:
+        #   password: ${{ secrets.PYPI_API_TOKEN }}

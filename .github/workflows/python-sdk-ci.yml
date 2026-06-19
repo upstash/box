@@ -1,0 +1,71 @@
+name: Python SDK CI
+
+on:
+  push:
+    paths:
+      - "packages/python-sdk/**"
+      - ".github/workflows/python-sdk-ci.yml"
+  pull_request:
+    paths:
+      - "packages/python-sdk/**"
+      - ".github/workflows/python-sdk-ci.yml"
+
+defaults:
+  run:
+    working-directory: . # workflow commands run from the repo root
+
+jobs:
+  lint-and-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e "packages/python-sdk[dev]"
+      - name: Ruff
+        run: |
+          ruff check packages/python-sdk
+          ruff format --check packages/python-sdk
+      - name: Sync client is up to date
+        run: |
+          python packages/python-sdk/scripts/generate_sync.py
+          git diff --exit-code -- packages/python-sdk/upstash_box/_sync
+      - name: Type check
+        working-directory: packages/python-sdk
+        run: mypy upstash_box
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: pip install -e "packages/python-sdk[dev]"
+      - name: Unit tests (async + sync)
+        working-directory: packages/python-sdk
+        run: pytest tests/_async tests/_sync -q
+
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Python package
+        run: pip install -e "packages/python-sdk[dev]"
+      - name: Install JS SDK deps (TypeScript extractor)
+        working-directory: packages/sdk
+        run: npm install --no-save typescript
+      - name: Check JS <-> Python parity
+        run: python packages/python-sdk/scripts/check_parity.py

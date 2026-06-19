@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "upstash-box"
+version = "0.1.0"
+description = "Upstash Box SDK - Python client for async and parallel AI coding agents"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Upstash" }]
+requires-python = ">=3.9"
+keywords = [
+    "upstash",
+    "box",
+    "ai-agent",
+    "coding-agent",
+    "claude",
+    "async",
+    "parallel",
+    "sdk",
+    "api",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2",
+    "typing-extensions>=4.7",
+]
+
+[project.urls]
+Homepage = "https://upstash.com/docs/box"
+Repository = "https://github.com/upstash/box"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "unasync>=0.6",
+    "python-dotenv>=1",
+    "mypy>=1.8",
+    "build>=1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["upstash_box"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Deselect integration tests by default (they hit the real API). Run them with
+# `pytest -m integration` (requires UPSTASH_BOX_API_KEY).
+addopts = "--import-mode=importlib -m 'not integration'"
+markers = [
+    "integration: real-API tests, require UPSTASH_BOX_API_KEY (deselect with '-m \"not integration\"')",
+]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = false
+
+# The generated sync client is not type-checked (the async source is).
+[[tool.mypy.overrides]]
+module = "upstash_box._sync.*"
+ignore_errors = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"upstash_box/_sync/*" = ["F401", "F811", "E501", "I001"]
+"tests/*" = ["E501"]
