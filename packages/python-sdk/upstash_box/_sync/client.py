@@ -424,7 +424,7 @@ class Box(Generic[T]):
                 url,
                 headers=headers,
                 content=content,
-                timeout=_ms_to_seconds(timeout or self._timeout_ms),
+                timeout=_ms_to_seconds(self._timeout_ms if timeout is None else timeout),
             )
         except httpx.TimeoutException as e:
             raise BoxError("Request timeout") from e
@@ -691,7 +691,8 @@ class Box(Generic[T]):
 
     def _build_stream_request(self, url, mode, prepared, file_paths, timeout) -> httpx.Request:
         headers = dict(self._headers)
-        kwargs: Dict[str, Any] = {"timeout": _ms_to_seconds(timeout or self._timeout_ms)}
+        resolved_timeout = _ms_to_seconds(self._timeout_ms if timeout is None else timeout)
+        kwargs: Dict[str, Any] = {"timeout": resolved_timeout}
         if mode == "multipart":
             kwargs["data"] = common.multipart_field_data(prepared)
             kwargs["files"] = _build_multipart_files(file_paths)
@@ -994,9 +995,9 @@ class Box(Generic[T]):
 
     def logs(self, *, offset: Optional[int] = None, limit: Optional[int] = None) -> List[LogEntry]:
         params = []
-        if offset:
+        if offset is not None:
             params.append(f"offset={offset}")
-        if limit:
+        if limit is not None:
             params.append(f"limit={limit}")
         qs = ("?" + "&".join(params)) if params else ""
         data = self._request("GET", f"/v2/box/{self.id}/logs{qs}")
