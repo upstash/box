@@ -91,8 +91,10 @@ box = await AsyncBox.create(
 Reconnect or list:
 
 ```python
-box = await AsyncBox.get("box_abc123")
-box = await AsyncBox.get_by_name("my-box")
+# Reconnecting takes git_token=... (not the git={...} shape used by create()).
+# Pass it if you'll use box.git.* (push / create_pr) on the reconnected box.
+box = await AsyncBox.get("box_abc123", git_token="ghp_...")
+box = await AsyncBox.get_by_name("my-box", git_token="ghp_...")
 boxes = await AsyncBox.list()
 box = await AsyncBox.from_snapshot("snap_abc123", size="medium")
 ```

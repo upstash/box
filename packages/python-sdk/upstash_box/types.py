@@ -246,7 +246,7 @@ ToolUseCallback = Callable[[Dict[str, Any]], None]
 ToolResultCallback = Callable[[Dict[str, Any]], None]
 
 # response_schema accepts a pydantic BaseModel subclass or a raw JSON-schema dict.
-ResponseSchema = Union[type, Dict[str, Any]]
+ResponseSchema = Union[type[BaseModel], Dict[str, Any]]
 
 
 class RunOptions(TypedDict):
