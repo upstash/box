@@ -600,76 +600,75 @@ class AsyncBox(Generic[T]):
             request = box._build_run_stream_request(request_body, files, timeout)
             response = await box._open_stream(request)
             try:
-                if True:
-                    async for event_type, data in iter_sse_events(response):
-                        parsed = _safe_json(data)
-                        if parsed is None:
-                            continue
-                        if event_type == "run_start":
-                            if parsed.get("run_id"):
-                                run._id = parsed["run_id"]
-                            yield StartChunk(run_id=parsed.get("run_id") or "")
-                        elif event_type == "text":
-                            text = parsed.get("text") or ""
-                            if text:
-                                raw_output += text
-                                yield TextDeltaChunk(text=text)
-                        elif event_type == "thinking":
-                            text = parsed.get("text") or ""
-                            if text:
-                                yield ReasoningChunk(text=text)
-                        elif event_type == "tool":
-                            tool_call_id = _resolve_tool_call_id(parsed)
-                            if on_tool_use:
-                                on_tool_use(
-                                    {
-                                        "tool_call_id": tool_call_id,
-                                        "name": parsed.get("name") or "",
-                                        "input": parsed.get("input") or {},
-                                    }
-                                )
-                            yield ToolCallChunk(
-                                tool_call_id=tool_call_id,
-                                tool_name=parsed.get("name") or "",
-                                input=parsed.get("input") or {},
+                async for event_type, data in iter_sse_events(response):
+                    parsed = _safe_json(data)
+                    if parsed is None:
+                        continue
+                    if event_type == "run_start":
+                        if parsed.get("run_id"):
+                            run._id = parsed["run_id"]
+                        yield StartChunk(run_id=parsed.get("run_id") or "")
+                    elif event_type == "text":
+                        text = parsed.get("text") or ""
+                        if text:
+                            raw_output += text
+                            yield TextDeltaChunk(text=text)
+                    elif event_type == "thinking":
+                        text = parsed.get("text") or ""
+                        if text:
+                            yield ReasoningChunk(text=text)
+                    elif event_type == "tool":
+                        tool_call_id = _resolve_tool_call_id(parsed)
+                        if on_tool_use:
+                            on_tool_use(
+                                {
+                                    "tool_call_id": tool_call_id,
+                                    "name": parsed.get("name") or "",
+                                    "input": parsed.get("input") or {},
+                                }
                             )
-                        elif event_type == "tool_result":
-                            tool_call_id = _resolve_tool_call_id(parsed)
-                            if on_tool_result:
-                                on_tool_result(
-                                    {
-                                        "tool_call_id": tool_call_id,
-                                        "output": parsed.get("output"),
-                                    }
-                                )
-                            yield ToolResultChunk(
-                                tool_call_id=tool_call_id, output=parsed.get("output")
+                        yield ToolCallChunk(
+                            tool_call_id=tool_call_id,
+                            tool_name=parsed.get("name") or "",
+                            input=parsed.get("input") or {},
+                        )
+                    elif event_type == "tool_result":
+                        tool_call_id = _resolve_tool_call_id(parsed)
+                        if on_tool_result:
+                            on_tool_result(
+                                {
+                                    "tool_call_id": tool_call_id,
+                                    "output": parsed.get("output"),
+                                }
                             )
-                        elif event_type == "done":
-                            run._input_tokens = parsed.get("input_tokens") or 0
-                            run._output_tokens = parsed.get("output_tokens") or 0
-                            run._cached_input_tokens = parsed.get("cached_input_tokens") or 0
-                            run._total_usd = parsed.get("total_cost_usd") or 0
-                            if parsed.get("output"):
-                                raw_output = parsed["output"]
-                            yield FinishChunk(
-                                output=parsed.get("output") or "",
-                                usage=FinishUsage(
-                                    input_tokens=parsed.get("input_tokens") or 0,
-                                    output_tokens=parsed.get("output_tokens") or 0,
-                                    cached_input_tokens=parsed.get("cached_input_tokens") or 0,
-                                ),
-                                session_id=parsed.get("session_id") or "",
-                            )
-                        elif event_type == "stats":
-                            yield StatsChunk(
-                                cpu_ns=parsed.get("cpu_ns") or 0,
-                                memory_peak_bytes=parsed.get("memory_peak_bytes") or 0,
-                            )
-                        elif event_type == "error":
-                            raise BoxError(parsed.get("error") or "Stream error")
-                        else:
-                            yield UnknownChunk(event=event_type, data=parsed)
+                        yield ToolResultChunk(
+                            tool_call_id=tool_call_id, output=parsed.get("output")
+                        )
+                    elif event_type == "done":
+                        run._input_tokens = parsed.get("input_tokens") or 0
+                        run._output_tokens = parsed.get("output_tokens") or 0
+                        run._cached_input_tokens = parsed.get("cached_input_tokens") or 0
+                        run._total_usd = parsed.get("total_cost_usd") or 0
+                        if parsed.get("output"):
+                            raw_output = parsed["output"]
+                        yield FinishChunk(
+                            output=parsed.get("output") or "",
+                            usage=FinishUsage(
+                                input_tokens=parsed.get("input_tokens") or 0,
+                                output_tokens=parsed.get("output_tokens") or 0,
+                                cached_input_tokens=parsed.get("cached_input_tokens") or 0,
+                            ),
+                            session_id=parsed.get("session_id") or "",
+                        )
+                    elif event_type == "stats":
+                        yield StatsChunk(
+                            cpu_ns=parsed.get("cpu_ns") or 0,
+                            memory_peak_bytes=parsed.get("memory_peak_bytes") or 0,
+                        )
+                    elif event_type == "error":
+                        raise BoxError(parsed.get("error") or "Stream error")
+                    else:
+                        yield UnknownChunk(event=event_type, data=parsed)
 
                 finished = True
                 run._result = raw_output.strip()

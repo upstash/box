@@ -189,7 +189,7 @@ def serialize_mcp_servers(servers: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     "args": s.get("args"),
                 }
             )
-        else:
+        elif s.get("url"):
             out.append(
                 {
                     "name": s["name"],
@@ -197,6 +197,10 @@ def serialize_mcp_servers(servers: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                     "package_or_url": s["url"],
                     "headers": s.get("headers"),
                 }
+            )
+        else:
+            raise BoxError(
+                f"mcp_servers entry {s.get('name')!r} must include either 'package' or 'url'"
             )
     return out
 
