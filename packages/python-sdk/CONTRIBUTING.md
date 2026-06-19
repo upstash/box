@@ -71,6 +71,19 @@ Tests are **handwritten, not generated** (generating pytest tests fights with
   the SSE golden-file equality test.
 - `tests/integration/` — real-API, gated on `UPSTASH_BOX_API_KEY`.
 
+## Pre-commit hooks (optional)
+
+A package-scoped pre-commit config lives at the repo root. It runs ruff
+(check + format) and regenerates `_sync/` on changes to `_async/`, using the
+tools from this package's dev env. Enable it once:
+
+```bash
+pip install -e "packages/python-sdk[dev]"   # provides ruff + unasync
+pip install pre-commit && pre-commit install
+```
+
+The hooks only touch `packages/python-sdk/**` — JS commits are unaffected.
+
 ## Checks before committing
 
 ```bash

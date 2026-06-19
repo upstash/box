@@ -85,6 +85,13 @@ ignore_errors = true
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
 
+[tool.ruff.lint.isort]
+# Pin first-party so import grouping is identical whether ruff runs from the repo
+# root (CI / pre-commit) or from inside packages/python-sdk.
+known-first-party = ["upstash_box"]
+
 [tool.ruff.lint.per-file-ignores]
-"upstash_box/_sync/*" = ["F401", "F811", "E501", "I001"]
-"tests/*" = ["E501"]
+# Anchored with **/ so the globs match whether ruff runs from the repo root
+# (CI / pre-commit) or from inside packages/python-sdk.
+"**/upstash_box/_sync/*" = ["F401", "F811", "E501", "I001"]
+"**/tests/*" = ["E501"]

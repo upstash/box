@@ -1,0 +1,35 @@
+# Pre-commit hooks for the Python SDK (packages/python-sdk).
+#
+# Opt-in. From the repo root:
+#   pip install -e "packages/python-sdk[dev]"   # provides ruff + unasync
+#   pip install pre-commit && pre-commit install
+#
+# Hooks use the tools from that dev env (language: system), so versions match CI
+# and there's no second ruff to drift. All hooks are scoped to packages/python-sdk
+# — JS packages are untouched.
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      # Regenerate the sync client when the async source OR the generator itself
+      # changes, so you can't commit a stale _sync/ (CI checks this too, but later).
+      - id: py-sdk-generate-sync
+        name: regenerate sync client (python-sdk)
+        entry: python3 packages/python-sdk/scripts/generate_sync.py
+        language: system
+        pass_filenames: false
+        files: ^packages/python-sdk/(upstash_box/_async/.*\.py|scripts/generate_sync\.py)$
+
+      - id: py-sdk-ruff
+        name: ruff (python-sdk)
+        entry: ruff check --fix --config packages/python-sdk/pyproject.toml
+        language: system
+        types: [python]
+        files: ^packages/python-sdk/.*\.py$
+
+      - id: py-sdk-ruff-format
+        name: ruff format (python-sdk)
+        entry: ruff format --config packages/python-sdk/pyproject.toml
+        language: system
+        types: [python]
+        files: ^packages/python-sdk/.*\.py$
