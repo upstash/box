@@ -130,6 +130,7 @@ async def run_custom_harness(
 
     def _default_write(chunk: str) -> None:
         sys.stdout.write(chunk)
+        sys.stdout.flush()  # stream promptly to the backend (no buffering wait)
 
     out_write: Callable[[str], None] = write or _default_write
     emit = CustomHarnessEmitter(out_write)

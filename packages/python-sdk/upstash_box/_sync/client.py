@@ -140,12 +140,13 @@ class Run(Generic[T]):
 
 
 class StreamRun(Run[T]):
-    """A streaming run — async-iterable, yields typed chunks in real time.
+    """A streaming run that yields typed chunks in real time.
 
-    Note: unlike JS's ``for await`` (which calls ``return()`` on ``break``),
-    Python does not run a generator's ``finally`` when you ``break`` out of a
-    loop. To finalize status (e.g. ``detached``) after early termination, call
-    ``await run.aclose()`` or use ``async with run:``.
+    Iterable: the async client is async-iterable; the generated sync ``StreamRun``
+    is a plain iterable. Python does not run a generator's ``finally`` when you
+    ``break`` out of a loop (unlike JS ``for await``), so to finalize status
+    (e.g. ``detached``) after early termination, close the run
+    (``aclose()`` async / ``close()`` sync) or use it as a context manager.
     """
 
     def __init__(self, box: "Box", type_: str, id: Optional[str] = None) -> None:
