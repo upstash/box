@@ -235,7 +235,24 @@ def test_exec_command_and_files():
 
 
 @respx.mock
-def test_codex_agent_options_camel_to_snake():
+def test_claude_code_agent_options_snake_to_camel():
+    box = make_sync_box(respx.mock, {"agent": "claude-code"})
+    route = respx.post(RUN_URL).mock(
+        return_value=sse_response(
+            [
+                {"event": "run_start", "data": {"run_id": "r1"}},
+                {"event": "done", "data": {"output": "ok"}},
+            ]
+        )
+    )
+    # Public snake_case options -> camelCase on the wire for Claude Code.
+    box.agent.run(prompt="x", options={"max_turns": 5})
+    assert last_json_body(route)["agent_options"] == {"maxTurns": 5}
+    box.close()
+
+
+@respx.mock
+def test_codex_agent_options_snake_passthrough():
     box = make_sync_box(respx.mock, {"agent": "codex"})
     route = respx.post(RUN_URL).mock(
         return_value=sse_response(
@@ -245,6 +262,7 @@ def test_codex_agent_options_camel_to_snake():
             ]
         )
     )
-    box.agent.run(prompt="x", options={"modelReasoningEffort": "high"})
+    # Codex backend uses snake_case (pass-through).
+    box.agent.run(prompt="x", options={"model_reasoning_effort": "high"})
     assert last_json_body(route)["agent_options"] == {"model_reasoning_effort": "high"}
     box.close()

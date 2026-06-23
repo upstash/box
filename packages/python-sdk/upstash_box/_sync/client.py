@@ -187,7 +187,7 @@ class StreamRun(Run[T]):
         self.close()
 
 
-class _AgentNS:
+class AgentNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -236,7 +236,7 @@ class _AgentNS:
         return self._box._stream(prompt, files, options, timeout, on_tool_use, on_tool_result)
 
 
-class _ExecNS:
+class ExecNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -255,7 +255,7 @@ class _ExecNS:
         return self._box._exec_stream_code(code, lang, timeout)
 
 
-class _FilesNS:
+class FilesNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -275,7 +275,7 @@ class _FilesNS:
         self._box._download_files(folder)
 
 
-class _GitNS:
+class GitNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -317,7 +317,7 @@ class _GitNS:
         self._box._git_checkout(branch)
 
 
-class _ScheduleNS:
+class ScheduleNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -381,7 +381,7 @@ class _ScheduleNS:
         self._box._schedule_delete(id)
 
 
-class _SkillsNS:
+class SkillsNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
@@ -414,12 +414,12 @@ class Box(Generic[T]):
         self._is_agent_configured = config.get("is_agent_configured", False)
         self._client: httpx.Client = config["client"]
 
-        self.agent = _AgentNS(self)
-        self.exec = _ExecNS(self)
-        self.files = _FilesNS(self)
-        self.git = _GitNS(self)
-        self.schedule = _ScheduleNS(self)
-        self.skills = _SkillsNS(self)
+        self.agent = AgentNamespace(self)
+        self.exec = ExecNamespace(self)
+        self.files = FilesNamespace(self)
+        self.git = GitNamespace(self)
+        self.schedule = ScheduleNamespace(self)
+        self.skills = SkillsNamespace(self)
 
     # ==================== Lifecycle / transport ====================
 

@@ -74,16 +74,10 @@ def infer_default_provider(model: str) -> Agent:
 
 # ==================== Agent config ====================
 
-_CODEX_KEY_MAP = {
-    "modelReasoningEffort": "model_reasoning_effort",
-    "modelReasoningSummary": "model_reasoning_summary",
-    "personality": "personality",
-    "webSearch": "web_search",
-    # snake_case aliases (Python-native option keys)
-    "model_reasoning_effort": "model_reasoning_effort",
-    "model_reasoning_summary": "model_reasoning_summary",
-    "web_search": "web_search",
-}
+# Harnesses whose backend agent_options use camelCase keys (Claude Code, OpenCode).
+# Codex uses snake_case keys, which already match the SDK's snake_case option API,
+# so its options pass through unchanged.
+_CAMEL_OPTION_HARNESSES = {Agent.CLAUDE_CODE.value, Agent.OPEN_CODE.value}
 
 
 def _agent_value(agent: Any) -> Optional[str]:
@@ -92,12 +86,18 @@ def _agent_value(agent: Any) -> Optional[str]:
     return agent
 
 
+def _snake_to_camel(key: str) -> str:
+    head, *tail = key.split("_")
+    return head + "".join(part[:1].upper() + part[1:] for part in tail)
+
+
 def to_backend_agent_options(agent: Optional[Any], options: Mapping[str, Any]) -> Dict[str, Any]:
-    """Convert Codex camelCase option keys to the snake_case keys the backend
-    expects. Other harnesses pass options through unchanged."""
-    if _agent_value(agent) != Agent.CODEX.value:
-        return dict(options)
-    return {_CODEX_KEY_MAP.get(k, k): v for k, v in options.items()}
+    """Convert the SDK's snake_case agent options into the keys the backend
+    expects for the given harness: Claude Code / OpenCode use camelCase, Codex
+    (and others) use snake_case (passed through unchanged)."""
+    if _agent_value(agent) in _CAMEL_OPTION_HARNESSES:
+        return {_snake_to_camel(k): v for k, v in options.items()}
+    return dict(options)
 
 
 def is_custom_agent_harness(agent: Optional[Mapping[str, Any]]) -> bool:

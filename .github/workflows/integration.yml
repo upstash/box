@@ -1,4 +1,4 @@
-name: Integration Tests
+name: TypeScript SDK Integration Tests
 
 on:
   push:

@@ -263,7 +263,7 @@ async def test_no_agent_configured_raises():
 
 
 @respx.mock
-async def test_codex_agent_options_camel_to_snake():
+async def test_codex_agent_options_snake_case_passthrough():
     box = await make_async_box(respx.mock, {"agent": "codex"})
     route = respx.post(RUN_URL).mock(
         return_value=sse_response(
@@ -273,15 +273,32 @@ async def test_codex_agent_options_camel_to_snake():
             ]
         )
     )
+    # Public options are snake_case; Codex backend uses snake_case (pass-through).
     await box.agent.run(
         prompt="test",
-        options={"modelReasoningEffort": "high", "personality": "pragmatic", "webSearch": True},
+        options={"model_reasoning_effort": "high", "personality": "pragmatic", "web_search": True},
     )
     assert last_json_body(route)["agent_options"] == {
         "model_reasoning_effort": "high",
         "personality": "pragmatic",
         "web_search": True,
     }
+
+
+@respx.mock
+async def test_claude_code_agent_options_snake_to_camel():
+    box = await make_async_box(respx.mock, {"agent": "claude-code"})
+    route = respx.post(RUN_URL).mock(
+        return_value=sse_response(
+            [
+                {"event": "run_start", "data": {"run_id": "r1"}},
+                {"event": "done", "data": {"output": "ok"}},
+            ]
+        )
+    )
+    # Public snake_case options are converted to the camelCase Claude Code backend wants.
+    await box.agent.run(prompt="test", options={"max_turns": 5, "system_prompt": "be terse"})
+    assert last_json_body(route)["agent_options"] == {"maxTurns": 5, "systemPrompt": "be terse"}
 
 
 @respx.mock

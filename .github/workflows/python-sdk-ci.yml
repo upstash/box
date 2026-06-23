@@ -2,6 +2,9 @@ name: Python SDK CI
 
 on:
   push:
+    # Only on the default branch (i.e. merges). PR branches are covered by
+    # `pull_request`, so feature-branch pushes don't run the suite twice.
+    branches: [main]
     paths:
       - "packages/python-sdk/**"
       - ".github/workflows/python-sdk-ci.yml"
@@ -9,6 +12,11 @@ on:
     paths:
       - "packages/python-sdk/**"
       - ".github/workflows/python-sdk-ci.yml"
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: python-sdk-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:

@@ -188,7 +188,7 @@ class AsyncStreamRun(AsyncRun[T]):
         await self.aclose()
 
 
-class _AgentNS:
+class AsyncAgentNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -239,7 +239,7 @@ class _AgentNS:
         return await self._box._stream(prompt, files, options, timeout, on_tool_use, on_tool_result)
 
 
-class _ExecNS:
+class AsyncExecNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -260,7 +260,7 @@ class _ExecNS:
         return await self._box._exec_stream_code(code, lang, timeout)
 
 
-class _FilesNS:
+class AsyncFilesNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -280,7 +280,7 @@ class _FilesNS:
         await self._box._download_files(folder)
 
 
-class _GitNS:
+class AsyncGitNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -322,7 +322,7 @@ class _GitNS:
         await self._box._git_checkout(branch)
 
 
-class _ScheduleNS:
+class AsyncScheduleNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -386,7 +386,7 @@ class _ScheduleNS:
         await self._box._schedule_delete(id)
 
 
-class _SkillsNS:
+class AsyncSkillsNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
@@ -419,12 +419,12 @@ class AsyncBox(Generic[T]):
         self._is_agent_configured = config.get("is_agent_configured", False)
         self._client: httpx.AsyncClient = config["client"]
 
-        self.agent = _AgentNS(self)
-        self.exec = _ExecNS(self)
-        self.files = _FilesNS(self)
-        self.git = _GitNS(self)
-        self.schedule = _ScheduleNS(self)
-        self.skills = _SkillsNS(self)
+        self.agent = AsyncAgentNamespace(self)
+        self.exec = AsyncExecNamespace(self)
+        self.files = AsyncFilesNamespace(self)
+        self.git = AsyncGitNamespace(self)
+        self.schedule = AsyncScheduleNamespace(self)
+        self.skills = AsyncSkillsNamespace(self)
 
     # ==================== Lifecycle / transport ====================
 

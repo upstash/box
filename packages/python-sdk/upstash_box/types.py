@@ -269,32 +269,35 @@ ToolUseCallback = Callable[[ToolUsePayload], None]
 ToolResultCallback = Callable[[ToolResultPayload], None]
 
 
-# Agent-specific options forwarded to the underlying harness. Keys are camelCase
-# to match the backend/agent contract (Codex keys are converted to snake_case on
-# the wire). All keys are optional. Mirrors the JS SDK's *AgentOptions types.
+# Agent-specific options forwarded to the underlying harness. Keys are snake_case
+# (Pythonic public API); the SDK converts them to the backend's expected casing
+# per harness (Claude Code / OpenCode -> camelCase, Codex -> snake_case). Mirrors
+# the JS SDK's *AgentOptions, but snake_case instead of JS camelCase. Note: only
+# top-level keys are converted — keys inside nested dicts (e.g. `thinking`) are
+# forwarded verbatim.
 class ClaudeCodeAgentOptions(TypedDict, total=False):
-    maxTurns: int
-    maxBudgetUsd: float
+    max_turns: int
+    max_budget_usd: float
     effort: Literal["low", "medium", "high", "max"]
     thinking: Dict[str, Any]
-    disallowedTools: List[str]
+    disallowed_tools: List[str]
     agents: Dict[str, Any]
-    promptSuggestions: bool
-    fallbackModel: str
-    systemPrompt: Union[str, Dict[str, Any]]
+    prompt_suggestions: bool
+    fallback_model: str
+    system_prompt: Union[str, Dict[str, Any]]
 
 
 class CodexAgentOptions(TypedDict, total=False):
-    modelReasoningEffort: Literal["none", "minimal", "low", "medium", "high", "xhigh"]
-    modelReasoningSummary: Literal["auto", "concise", "detailed", "none"]
+    model_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+    model_reasoning_summary: Literal["auto", "concise", "detailed", "none"]
     personality: Literal["friendly", "pragmatic", "none"]
-    webSearch: Union[bool, Literal["live"]]
+    web_search: Union[bool, Literal["live"]]
 
 
 class OpenCodeAgentOptions(TypedDict, total=False):
-    reasoningEffort: Literal["low", "medium", "high"]
-    textVerbosity: Literal["low", "medium", "high"]
-    reasoningSummary: Literal["auto", "concise", "detailed", "none"]
+    reasoning_effort: Literal["low", "medium", "high"]
+    text_verbosity: Literal["low", "medium", "high"]
+    reasoning_summary: Literal["auto", "concise", "detailed", "none"]
     thinking: Dict[str, Any]
 
 

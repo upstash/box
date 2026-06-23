@@ -43,14 +43,25 @@ def test_deserialize_network_policy_custom():
     assert out["allowed_domains"] == ["a.com"]
 
 
-def test_codex_options_camel_to_snake():
-    out = to_backend_agent_options(Agent.CODEX, {"modelReasoningEffort": "high"})
+def test_codex_options_pass_through_snake_case():
+    # Codex backend uses snake_case, which matches the SDK's public option keys.
+    out = to_backend_agent_options(Agent.CODEX, {"model_reasoning_effort": "high"})
     assert out == {"model_reasoning_effort": "high"}
 
 
-def test_non_codex_options_passthrough():
-    out = to_backend_agent_options(Agent.CLAUDE_CODE, {"maxTurns": 5})
-    assert out == {"maxTurns": 5}
+def test_claude_code_options_snake_to_camel():
+    # Claude Code backend uses camelCase; snake_case public keys are converted.
+    out = to_backend_agent_options(
+        Agent.CLAUDE_CODE, {"max_turns": 5, "max_budget_usd": 1.5, "system_prompt": "x"}
+    )
+    assert out == {"maxTurns": 5, "maxBudgetUsd": 1.5, "systemPrompt": "x"}
+
+
+def test_opencode_options_snake_to_camel():
+    out = to_backend_agent_options(
+        Agent.OPEN_CODE, {"reasoning_effort": "high", "text_verbosity": "low"}
+    )
+    assert out == {"reasoningEffort": "high", "textVerbosity": "low"}
 
 
 def test_resolve_agent_model_requires_model():

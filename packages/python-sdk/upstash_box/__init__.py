@@ -6,9 +6,31 @@ Exposes the synchronous client (``Box`` / ``EphemeralBox`` / ``Run`` /
 
 from __future__ import annotations
 
-from ._async import AsyncBox, AsyncEphemeralBox, AsyncRun, AsyncStreamRun
+from ._async import (
+    AsyncAgentNamespace,
+    AsyncBox,
+    AsyncEphemeralBox,
+    AsyncExecNamespace,
+    AsyncFilesNamespace,
+    AsyncGitNamespace,
+    AsyncRun,
+    AsyncScheduleNamespace,
+    AsyncSkillsNamespace,
+    AsyncStreamRun,
+)
 from ._common import infer_default_provider
-from ._sync import Box, EphemeralBox, Run, StreamRun
+from ._sync import (
+    AgentNamespace,
+    Box,
+    EphemeralBox,
+    ExecNamespace,
+    FilesNamespace,
+    GitNamespace,
+    Run,
+    ScheduleNamespace,
+    SkillsNamespace,
+    StreamRun,
+)
 from .custom_harness import (
     CustomHarnessContext,
     CustomHarnessDone,
@@ -97,6 +119,19 @@ __all__ = [
     "AsyncEphemeralBox",
     "AsyncRun",
     "AsyncStreamRun",
+    # Namespace classes (the types of box.agent / box.exec / etc.)
+    "AgentNamespace",
+    "ExecNamespace",
+    "FilesNamespace",
+    "GitNamespace",
+    "ScheduleNamespace",
+    "SkillsNamespace",
+    "AsyncAgentNamespace",
+    "AsyncExecNamespace",
+    "AsyncFilesNamespace",
+    "AsyncGitNamespace",
+    "AsyncScheduleNamespace",
+    "AsyncSkillsNamespace",
     # Errors / helpers
     "BoxError",
     "infer_default_provider",
