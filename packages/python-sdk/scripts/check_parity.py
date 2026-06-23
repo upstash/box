@@ -34,9 +34,18 @@ JS_NOT_PORTED = {
     "deletePreview",  # deprecated -> deletePublicURL
 }
 
-# (Python-only additions like close/aclose/delete_boxes need no entry here: the
-# check is one-directional JS->Python, so extra Python symbols don't fail it.
-# They're documented in PARITY.md's exceptions table.)
+# (Python-only additions like close/aclose need no entry here: the check is
+# one-directional JS->Python, so extra Python symbols don't fail it. They're
+# documented in PARITY.md's exceptions table.)
+
+# Renamed members: a JS symbol whose Python counterpart has a different name AND
+# coexists with a same-named Python member (so the plain mapping can't guard it).
+# JS static bulk `delete` -> Python `delete_boxes` (instance `delete` also exists,
+# so without this the rename would pass even if delete_boxes were removed).
+RENAMED_REQUIRED = {
+    "Box": {"delete_boxes"},
+    "EphemeralBox": {"delete_boxes"},
+}
 
 # Explicit name mappings where mechanical snake_case conversion is wrong
 # (acronyms, etc.).
@@ -96,6 +105,11 @@ def main() -> int:
                 continue
             if to_snake(name) not in py_set:
                 errors.append(f"{cls_name}.{name} (JS) -> `{to_snake(name)}` missing in Python")
+        # Guard renamed members whose JS name collides with a same-named Python
+        # member (e.g. JS bulk `delete` -> Python `delete_boxes`).
+        for required in RENAMED_REQUIRED.get(cls_name, set()):
+            if required not in py_set:
+                errors.append(f"{cls_name}: renamed member `{required}` missing in Python")
 
     if errors:
         print("PARITY DRIFT DETECTED:\n")

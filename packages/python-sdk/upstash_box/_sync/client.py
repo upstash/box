@@ -13,14 +13,25 @@ import json
 import logging
 import os
 import uuid
-from typing import Any, Iterator, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Iterator, Dict, Generic, List, Mapping, Optional, TypeVar, Union
 
 import httpx
+from typing_extensions import Unpack
 
 from .. import _common as common
 from ..errors import BoxError
 from ..types import (
+    Agent,
+    AgentOptions,
+    BoxConfig,
+    BoxConnectionOptions,
+    BoxData,
+    BoxGetOptions,
+    BoxRunData,
     Chunk,
+    CodeLanguage,
+    CustomHarnessConfig,
+    EphemeralBoxConfig,
     ExecExitChunk,
     ExecOutputChunk,
     ExecStreamChunk,
@@ -30,9 +41,13 @@ from ..types import (
     GitCommitResult,
     GitConfigResult,
     LogEntry,
+    ModelConfig,
+    NetworkPolicy,
+    PromptFiles,
     PublicURL,
     PullRequest,
     ReasoningChunk,
+    ResponseSchema,
     RunCost,
     RunLog,
     RunStatus,
@@ -42,8 +57,12 @@ from ..types import (
     StatsChunk,
     TextDeltaChunk,
     ToolCallChunk,
+    ToolResultCallback,
     ToolResultChunk,
+    ToolUseCallback,
     UnknownChunk,
+    UploadFileEntry,
+    WebhookConfig,
 )
 from ._sse import iter_exec_stream, iter_sse_events
 
@@ -176,14 +195,14 @@ class _AgentNS:
         self,
         *,
         prompt: str,
-        response_schema: Any = None,
-        files: Any = None,
-        options: Optional[Dict[str, Any]] = None,
+        response_schema: Optional[ResponseSchema] = None,
+        files: Optional[PromptFiles] = None,
+        options: Optional[AgentOptions] = None,
         timeout: Optional[float] = None,
         max_retries: int = 0,
-        on_tool_use: Any = None,
-        on_tool_result: Any = None,
-        webhook: Optional[Dict[str, Any]] = None,
+        on_tool_use: Optional[ToolUseCallback] = None,
+        on_tool_result: Optional[ToolResultCallback] = None,
+        webhook: Optional[WebhookConfig] = None,
     ) -> Run[Any]:
         self._box._require_agent()
         if not prompt:
@@ -205,11 +224,11 @@ class _AgentNS:
         self,
         *,
         prompt: str,
-        files: Any = None,
-        options: Optional[Dict[str, Any]] = None,
+        files: Optional[PromptFiles] = None,
+        options: Optional[AgentOptions] = None,
         timeout: Optional[float] = None,
-        on_tool_use: Any = None,
-        on_tool_result: Any = None,
+        on_tool_use: Optional[ToolUseCallback] = None,
+        on_tool_result: Optional[ToolResultCallback] = None,
     ) -> StreamRun[str]:
         self._box._require_agent()
         if not prompt:
@@ -224,14 +243,14 @@ class _ExecNS:
     def command(self, command: str) -> Run[str]:
         return self._box._exec_command(command)
 
-    def code(self, *, code: str, lang: str, timeout: Optional[float] = None) -> Run[str]:
+    def code(self, *, code: str, lang: CodeLanguage, timeout: Optional[float] = None) -> Run[str]:
         return self._box._exec_code(code, lang, timeout)
 
     def stream(self, command: str) -> StreamRun[str]:
         return self._box._exec_stream(command)
 
     def stream_code(
-        self, *, code: str, lang: str, timeout: Optional[float] = None
+        self, *, code: str, lang: CodeLanguage, timeout: Optional[float] = None
     ) -> StreamRun[str]:
         return self._box._exec_stream_code(code, lang, timeout)
 
@@ -249,7 +268,7 @@ class _FilesNS:
     def list(self, path: Optional[str] = None) -> List[FileEntry]:
         return self._box._list_files(path)
 
-    def upload(self, files: List[Dict[str, str]]) -> None:
+    def upload(self, files: List[UploadFileEntry]) -> None:
         self._box._upload_files(files)
 
     def download(self, *, folder: Optional[str] = None) -> None:
@@ -302,11 +321,49 @@ class _ScheduleNS:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
-    def exec(self, **options: Any) -> Schedule:
-        return self._box._schedule_exec(options)
+    def exec(
+        self,
+        *,
+        cron: str,
+        command: List[str],
+        folder: Optional[str] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        return self._box._schedule_exec(
+            {
+                "cron": cron,
+                "command": command,
+                "folder": folder,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            }
+        )
 
-    def agent(self, **options: Any) -> Schedule:
-        return self._box._schedule_agent(options)
+    def agent(
+        self,
+        *,
+        cron: str,
+        prompt: str,
+        folder: Optional[str] = None,
+        model: Optional[str] = None,
+        options: Optional[AgentOptions] = None,
+        timeout: Optional[float] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        return self._box._schedule_agent(
+            {
+                "cron": cron,
+                "prompt": prompt,
+                "folder": folder,
+                "model": model,
+                "options": options,
+                "timeout": timeout,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            }
+        )
 
     def list(self) -> List[Schedule]:
         return self._box._schedule_list()
@@ -371,11 +428,11 @@ class Box(Generic[T]):
         return self._cwd
 
     @property
-    def network_policy(self) -> Dict[str, Any]:
+    def network_policy(self) -> NetworkPolicy:
         return self._network_policy
 
     @property
-    def model_config(self) -> Dict[str, Any]:
+    def model_config(self) -> ModelConfig:
         return {"harness": self._agent, "model": self._model}
 
     def close(self) -> None:
@@ -870,7 +927,7 @@ class Box(Generic[T]):
         files = data.get("files") or []
         return [FileEntry.model_validate(f) for f in files]
 
-    def _upload_files(self, files: List[Dict[str, str]]) -> None:
+    def _upload_files(self, files: List[UploadFileEntry]) -> None:
         upload_files = []
         data_paths = []
         for f in files:
@@ -928,8 +985,7 @@ class Box(Generic[T]):
         self._model = model
         self._is_agent_configured = True
 
-    def configure_custom_harness(self, custom_harness: Dict[str, Any]) -> None:
-        from ..types import Agent
+    def configure_custom_harness(self, custom_harness: CustomHarnessConfig) -> None:
 
         if self._agent != Agent.CUSTOM.value:
             raise BoxError("Custom harness can only be configured on custom agent boxes")
@@ -940,7 +996,7 @@ class Box(Generic[T]):
         )
         self._is_agent_configured = True
 
-    def update_network_policy(self, policy: Dict[str, Any]) -> None:
+    def update_network_policy(self, policy: NetworkPolicy) -> None:
         self._request(
             "PUT",
             f"/v2/box/{self.id}/config/network-policy",
@@ -1008,8 +1064,7 @@ class Box(Generic[T]):
         data = self._request("GET", f"/v2/box/{self.id}/logs{qs}")
         return [LogEntry.model_validate(entry) for entry in data.get("logs", [])]
 
-    def list_runs(self) -> List[Any]:
-        from ..types import BoxRunData
+    def list_runs(self) -> List[BoxRunData]:
 
         data = self._request("GET", f"/v2/box/{self.id}/runs")
         return [BoxRunData.model_validate(r) for r in data.get("runs", [])]
@@ -1041,7 +1096,7 @@ class Box(Generic[T]):
             body["model"] = options["model"]
         if options.get("options"):
             body["agent_options"] = common.to_backend_agent_options(self._agent, options["options"])
-        if options.get("timeout"):
+        if options.get("timeout") is not None:
             body["timeout"] = options["timeout"]
         if options.get("webhook_url"):
             body["webhook_url"] = options["webhook_url"]
@@ -1175,7 +1230,7 @@ class Box(Generic[T]):
     # ==================== Static methods ====================
 
     @classmethod
-    def create(cls, **config: Any) -> "Box":
+    def create(cls, **config: Unpack[BoxConfig]) -> "Box":
         api_key = common.resolve_api_key(config.get("api_key"))
         agent = config.get("agent")
         if agent:
@@ -1232,7 +1287,7 @@ class Box(Generic[T]):
         )
 
     @classmethod
-    def get(cls, box_id: str, **options: Any) -> "Box":
+    def get(cls, box_id: str, **options: Unpack[BoxGetOptions]) -> "Box":
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1264,12 +1319,11 @@ class Box(Generic[T]):
         )
 
     @classmethod
-    def get_by_name(cls, name: str, **options: Any) -> "Box":
+    def get_by_name(cls, name: str, **options: Unpack[BoxGetOptions]) -> "Box":
         return cls.get(name, **options)
 
     @classmethod
-    def list(cls, **options: Any) -> List[Any]:
-        from ..types import BoxData
+    def list(cls, **options: Unpack[BoxConnectionOptions]) -> List[BoxData]:
 
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
@@ -1280,7 +1334,7 @@ class Box(Generic[T]):
             return [BoxData.model_validate(b) for b in response.json()]
 
     @classmethod
-    def from_snapshot(cls, snapshot_id: str, **config: Any) -> "Box":
+    def from_snapshot(cls, snapshot_id: str, **config: Unpack[BoxConfig]) -> "Box":
         api_key = common.resolve_api_key(config.get("api_key"))
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1334,7 +1388,9 @@ class Box(Generic[T]):
         )
 
     @classmethod
-    def delete_boxes(cls, *, box_ids: Any, **options: Any) -> None:
+    def delete_boxes(
+        cls, *, box_ids: Union[str, List[str]], **options: Unpack[BoxConnectionOptions]
+    ) -> None:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1349,7 +1405,12 @@ class Box(Generic[T]):
             common.raise_for_status(response)
 
     @classmethod
-    def delete_snapshots(cls, *, snapshot_ids: Any = None, **options: Any) -> Dict[str, Any]:
+    def delete_snapshots(
+        cls,
+        *,
+        snapshot_ids: Optional[Union[str, List[str]]] = None,
+        **options: Unpack[BoxConnectionOptions],
+    ) -> Dict[str, Any]:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1367,7 +1428,7 @@ class Box(Generic[T]):
             return response.json()
 
     @classmethod
-    def set_env(cls, key: str, value: str, **options: Any) -> None:
+    def set_env(cls, key: str, value: str, **options: Unpack[BoxConnectionOptions]) -> None:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1380,7 +1441,7 @@ class Box(Generic[T]):
             common.raise_for_status(response)
 
     @classmethod
-    def list_env(cls, **options: Any) -> Dict[str, str]:
+    def list_env(cls, **options: Unpack[BoxConnectionOptions]) -> Dict[str, str]:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1391,7 +1452,7 @@ class Box(Generic[T]):
             return data.get("env_vars", data)
 
     @classmethod
-    def delete_env(cls, key: str, **options: Any) -> None:
+    def delete_env(cls, key: str, **options: Unpack[BoxConnectionOptions]) -> None:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1400,7 +1461,7 @@ class Box(Generic[T]):
             common.raise_for_status(response)
 
     @classmethod
-    def set_all_env(cls, vars: Dict[str, str], **options: Any) -> None:
+    def set_all_env(cls, vars: Dict[str, str], **options: Unpack[BoxConnectionOptions]) -> None:
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1429,7 +1490,7 @@ class EphemeralBox:
         return self._box.cwd
 
     @property
-    def network_policy(self) -> Dict[str, Any]:
+    def network_policy(self) -> NetworkPolicy:
         return self._box.network_policy
 
     def cd(self, path: str) -> None:
@@ -1460,7 +1521,7 @@ class EphemeralBox:
         self._box.delete_snapshot(snapshot_id)
 
     @classmethod
-    def create(cls, **config: Any) -> "EphemeralBox":
+    def create(cls, **config: Unpack[EphemeralBoxConfig]) -> "EphemeralBox":
         api_key = common.resolve_api_key(config.get("api_key"))
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1493,7 +1554,9 @@ class EphemeralBox:
         return cls(box, data.get("expires_at", 0))
 
     @classmethod
-    def from_snapshot(cls, snapshot_id: str, **config: Any) -> "EphemeralBox":
+    def from_snapshot(
+        cls, snapshot_id: str, **config: Unpack[EphemeralBoxConfig]
+    ) -> "EphemeralBox":
         api_key = common.resolve_api_key(config.get("api_key"))
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
@@ -1527,16 +1590,23 @@ class EphemeralBox:
         return cls(box, data.get("expires_at", 0))
 
     @classmethod
-    def get_by_name(cls, name: str, **options: Any) -> Box:
+    def get_by_name(cls, name: str, **options: Unpack[BoxGetOptions]) -> Box:
         # Mirrors JS: EphemeralBox.getByName = Box.get -> returns a Box, not Ephemeral.
         return Box.get(name, **options)
 
     @classmethod
-    def delete_boxes(cls, *, box_ids: Any, **options: Any) -> None:
+    def delete_boxes(
+        cls, *, box_ids: Union[str, List[str]], **options: Unpack[BoxConnectionOptions]
+    ) -> None:
         Box.delete_boxes(box_ids=box_ids, **options)
 
     @classmethod
-    def delete_snapshots(cls, *, snapshot_ids: Any = None, **options: Any) -> Dict[str, Any]:
+    def delete_snapshots(
+        cls,
+        *,
+        snapshot_ids: Optional[Union[str, List[str]]] = None,
+        **options: Unpack[BoxConnectionOptions],
+    ) -> Dict[str, Any]:
         return Box.delete_snapshots(snapshot_ids=snapshot_ids, **options)
 
 
@@ -1572,7 +1642,9 @@ def _build_multipart_files(file_paths: List[str]) -> List[Any]:
     return out
 
 
-def _build_create_body(config: Dict[str, Any], agent: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _build_create_body(
+    config: Mapping[str, Any], agent: Optional[Mapping[str, Any]]
+) -> Dict[str, Any]:
     body: Dict[str, Any] = {}
     if config.get("name"):
         body["name"] = config["name"]
@@ -1606,7 +1678,7 @@ def _build_create_body(config: Dict[str, Any], agent: Optional[Dict[str, Any]]) 
     return body
 
 
-def _build_ephemeral_body(config: Dict[str, Any]) -> Dict[str, Any]:
+def _build_ephemeral_body(config: Mapping[str, Any]) -> Dict[str, Any]:
     body: Dict[str, Any] = {"ephemeral": True}
     if config.get("name"):
         body["name"] = config["name"]

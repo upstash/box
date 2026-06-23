@@ -50,6 +50,18 @@ async def test_schedule_agent():
 
 
 @respx.mock
+async def test_schedule_agent_timeout_zero_is_sent():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/schedules").mock(
+        return_value=httpx.Response(200, json=_sched(type="prompt"))
+    )
+    # timeout=0 must reach the body (not dropped by truthiness).
+    await box.schedule.agent(cron="* * * * *", prompt="x", timeout=0)
+    assert last_json_body(route)["timeout"] == 0
+    await box.aclose()
+
+
+@respx.mock
 async def test_schedule_list_get_pause_resume_delete():
     box = await make_async_box(respx.mock)
     respx.get(f"{BASE}/schedules").mock(return_value=httpx.Response(200, json=[_sched()]))

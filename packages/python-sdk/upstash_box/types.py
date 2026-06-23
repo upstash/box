@@ -213,13 +213,20 @@ class McpServerConfig(TypedDict):
     headers: NotRequired[Dict[str, str]]
 
 
-class NetworkPolicy(TypedDict):
-    """Network access policy for a box."""
+class AllowDenyNetworkPolicy(TypedDict):
+    mode: Literal["allow-all", "deny-all"]
 
-    mode: Literal["allow-all", "deny-all", "custom"]
+
+class CustomNetworkPolicy(TypedDict):
+    mode: Literal["custom"]
     allowed_domains: NotRequired[List[str]]
     allowed_cidrs: NotRequired[List[str]]
     denied_cidrs: NotRequired[List[str]]
+
+
+# Discriminated on ``mode`` (mirrors the JS union): allow-all/deny-all take no
+# extra fields; custom takes the optional allow/deny lists.
+NetworkPolicy = Union[AllowDenyNetworkPolicy, CustomNetworkPolicy]
 
 
 class WebhookConfig(TypedDict):
@@ -242,8 +249,69 @@ PromptFiles = Union[List[str], List[Base64FileInput]]
 
 # ==================== Run / stream options ====================
 
-ToolUseCallback = Callable[[Dict[str, Any]], None]
-ToolResultCallback = Callable[[Dict[str, Any]], None]
+
+class ToolUsePayload(TypedDict):
+    """Payload passed to an ``on_tool_use`` callback."""
+
+    tool_call_id: Optional[str]
+    name: str
+    input: Dict[str, Any]
+
+
+class ToolResultPayload(TypedDict):
+    """Payload passed to an ``on_tool_result`` callback."""
+
+    tool_call_id: Optional[str]
+    output: Any
+
+
+ToolUseCallback = Callable[[ToolUsePayload], None]
+ToolResultCallback = Callable[[ToolResultPayload], None]
+
+
+# Agent-specific options forwarded to the underlying harness. Keys are camelCase
+# to match the backend/agent contract (Codex keys are converted to snake_case on
+# the wire). All keys are optional. Mirrors the JS SDK's *AgentOptions types.
+class ClaudeCodeAgentOptions(TypedDict, total=False):
+    maxTurns: int
+    maxBudgetUsd: float
+    effort: Literal["low", "medium", "high", "max"]
+    thinking: Dict[str, Any]
+    disallowedTools: List[str]
+    agents: Dict[str, Any]
+    promptSuggestions: bool
+    fallbackModel: str
+    systemPrompt: Union[str, Dict[str, Any]]
+
+
+class CodexAgentOptions(TypedDict, total=False):
+    modelReasoningEffort: Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+    modelReasoningSummary: Literal["auto", "concise", "detailed", "none"]
+    personality: Literal["friendly", "pragmatic", "none"]
+    webSearch: Union[bool, Literal["live"]]
+
+
+class OpenCodeAgentOptions(TypedDict, total=False):
+    reasoningEffort: Literal["low", "medium", "high"]
+    textVerbosity: Literal["low", "medium", "high"]
+    reasoningSummary: Literal["auto", "concise", "detailed", "none"]
+    thinking: Dict[str, Any]
+
+
+# Cursor has no fixed option schema (mirrors the JS Record<string, unknown>).
+CursorAgentOptions = Dict[str, Any]
+
+
+# Union of the known per-harness option shapes plus a raw-dict escape hatch (the
+# options are forwarded verbatim, so arbitrary keys remain allowed). Note: unlike
+# the JS `AgentOptions<TProvider>` generic, Python does not resolve options by
+# harness, so completion shows the union of all shapes rather than harness-specific.
+AgentOptions = Union[
+    ClaudeCodeAgentOptions,
+    CodexAgentOptions,
+    OpenCodeAgentOptions,
+    Dict[str, Any],
+]
 
 # response_schema accepts a pydantic BaseModel subclass or a raw JSON-schema dict.
 ResponseSchema = Union[type[BaseModel], Dict[str, Any]]
@@ -253,7 +321,7 @@ class RunOptions(TypedDict):
     prompt: str
     response_schema: NotRequired[ResponseSchema]
     files: NotRequired[PromptFiles]
-    options: NotRequired[Dict[str, Any]]
+    options: NotRequired[AgentOptions]
     timeout: NotRequired[float]
     max_retries: NotRequired[int]
     on_tool_use: NotRequired[ToolUseCallback]
@@ -264,7 +332,7 @@ class RunOptions(TypedDict):
 class StreamOptions(TypedDict):
     prompt: str
     files: NotRequired[PromptFiles]
-    options: NotRequired[Dict[str, Any]]
+    options: NotRequired[AgentOptions]
     timeout: NotRequired[float]
     on_tool_use: NotRequired[ToolUseCallback]
     on_tool_result: NotRequired[ToolResultCallback]
@@ -536,7 +604,78 @@ class AgentScheduleOptions(TypedDict):
     prompt: str
     folder: NotRequired[str]
     model: NotRequired[str]
-    options: NotRequired[Dict[str, Any]]
+    options: NotRequired[AgentOptions]
     timeout: NotRequired[float]
     webhook_url: NotRequired[str]
     webhook_headers: NotRequired[Dict[str, str]]
+
+
+# ==================== Box config / connection (inputs) ====================
+
+
+class UploadFileEntry(TypedDict):
+    """A local file to upload into the box."""
+
+    path: str
+    destination: str
+
+
+class ModelConfig(TypedDict):
+    """Returned by ``box.model_config``."""
+
+    harness: Optional[str]
+    model: Optional[str]
+
+
+class BoxConnectionOptions(TypedDict, total=False):
+    """Shared auth/endpoint options for the static methods."""
+
+    api_key: str
+    base_url: str
+
+
+class BoxGetOptions(TypedDict, total=False):
+    """Options for ``Box.get`` / ``get_by_name``."""
+
+    api_key: str
+    base_url: str
+    git_token: str
+    timeout: float
+    debug: bool
+
+
+class BoxConfig(TypedDict, total=False):
+    """Configuration for ``Box.create`` / ``Box.from_snapshot``."""
+
+    api_key: str
+    base_url: str
+    name: str
+    runtime: Runtime
+    size: BoxSize
+    keep_alive: bool
+    init_command: str
+    agent: AgentConfig
+    git: GitConfigInput
+    env: Dict[str, str]
+    attach_headers: Dict[str, Dict[str, str]]
+    network_policy: NetworkPolicy
+    skills: List[str]
+    mcp_servers: List[McpServerConfig]
+    timeout: float
+    debug: bool
+
+
+class EphemeralBoxConfig(TypedDict, total=False):
+    """Configuration for ``EphemeralBox.create`` / ``from_snapshot``."""
+
+    api_key: str
+    base_url: str
+    name: str
+    runtime: Runtime
+    size: BoxSize
+    ttl: int
+    env: Dict[str, str]
+    attach_headers: Dict[str, Dict[str, str]]
+    network_policy: NetworkPolicy
+    timeout: float
+    debug: bool

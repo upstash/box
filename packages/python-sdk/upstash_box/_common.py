@@ -6,12 +6,12 @@ No ``await`` here — this module is imported verbatim by both clients.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 
 import httpx
 
 from .errors import BoxError
-from .types import Agent
+from .types import Agent, NetworkPolicy
 
 DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com"
 WORKSPACE = "/workspace/home"
@@ -92,21 +92,21 @@ def _agent_value(agent: Any) -> Optional[str]:
     return agent
 
 
-def to_backend_agent_options(agent: Optional[Any], options: Dict[str, Any]) -> Dict[str, Any]:
+def to_backend_agent_options(agent: Optional[Any], options: Mapping[str, Any]) -> Dict[str, Any]:
     """Convert Codex camelCase option keys to the snake_case keys the backend
     expects. Other harnesses pass options through unchanged."""
     if _agent_value(agent) != Agent.CODEX.value:
-        return options
+        return dict(options)
     return {_CODEX_KEY_MAP.get(k, k): v for k, v in options.items()}
 
 
-def is_custom_agent_harness(agent: Optional[Dict[str, Any]]) -> bool:
+def is_custom_agent_harness(agent: Optional[Mapping[str, Any]]) -> bool:
     if not agent:
         return False
     return _agent_value(agent.get("harness")) == Agent.CUSTOM.value
 
 
-def resolve_agent_harness(agent: Optional[Dict[str, Any]]) -> Optional[str]:
+def resolve_agent_harness(agent: Optional[Mapping[str, Any]]) -> Optional[str]:
     # harness-only — the JS deprecated provider/runner aliases are not supported.
     if not agent:
         return None
@@ -116,7 +116,7 @@ def resolve_agent_harness(agent: Optional[Dict[str, Any]]) -> Optional[str]:
     return _agent_value(harness)
 
 
-def resolve_agent_model(agent: Dict[str, Any]) -> str:
+def resolve_agent_model(agent: Mapping[str, Any]) -> str:
     if is_custom_agent_harness(agent):
         return agent.get("model") or "custom"
     model = agent.get("model")
@@ -125,7 +125,7 @@ def resolve_agent_model(agent: Dict[str, Any]) -> str:
     return _agent_value(model) or ""
 
 
-def append_agent_config_to_body(body: Dict[str, Any], agent: Dict[str, Any]) -> None:
+def append_agent_config_to_body(body: Dict[str, Any], agent: Mapping[str, Any]) -> None:
     body["model"] = resolve_agent_model(agent)
     body["agent"] = resolve_agent_harness(agent)
     if is_custom_agent_harness(agent):
@@ -138,7 +138,7 @@ def append_agent_config_to_body(body: Dict[str, Any], agent: Dict[str, Any]) -> 
             body["agent_api_key"] = _agent_value(agent.get("api_key"))
 
 
-def _serialize_custom_harness(custom: Dict[str, Any]) -> Dict[str, Any]:
+def _serialize_custom_harness(custom: Mapping[str, Any]) -> Dict[str, Any]:
     out: Dict[str, Any] = {"command": custom["command"]}
     if custom.get("args") is not None:
         out["args"] = custom["args"]
@@ -150,7 +150,7 @@ def _serialize_custom_harness(custom: Dict[str, Any]) -> Dict[str, Any]:
 # ==================== Network policy ====================
 
 
-def serialize_network_policy(policy: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_network_policy(policy: Mapping[str, Any]) -> Dict[str, Any]:
     if policy.get("mode") == "custom":
         return {
             "mode": "custom",
@@ -161,23 +161,26 @@ def serialize_network_policy(policy: Dict[str, Any]) -> Dict[str, Any]:
     return {"mode": policy["mode"]}
 
 
-def deserialize_network_policy(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def deserialize_network_policy(raw: Optional[Mapping[str, Any]]) -> NetworkPolicy:
     if not raw:
-        return {"mode": "allow-all"}
+        return cast(NetworkPolicy, {"mode": "allow-all"})
     if raw.get("mode") == "custom":
-        return {
-            "mode": "custom",
-            "allowed_domains": raw.get("allowed_domains"),
-            "allowed_cidrs": raw.get("allowed_cidrs"),
-            "denied_cidrs": raw.get("denied_cidrs"),
-        }
-    return {"mode": raw["mode"]}
+        return cast(
+            NetworkPolicy,
+            {
+                "mode": "custom",
+                "allowed_domains": raw.get("allowed_domains"),
+                "allowed_cidrs": raw.get("allowed_cidrs"),
+                "denied_cidrs": raw.get("denied_cidrs"),
+            },
+        )
+    return cast(NetworkPolicy, {"mode": raw["mode"]})
 
 
 # ==================== MCP servers ====================
 
 
-def serialize_mcp_servers(servers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def serialize_mcp_servers(servers: List[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for s in servers:
         if s.get("package"):
