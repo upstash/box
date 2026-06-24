@@ -4,7 +4,7 @@
   "description": "CLI for Upstash Box — REPL-first interface for AI coding agents",
   "repository": {
     "type": "git",
-    "url": "git@github.com:upstash/box.git"
+    "url": "git+https://github.com/upstash/box.git"
   },
   "type": "module",
   "bin": {
