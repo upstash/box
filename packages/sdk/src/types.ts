@@ -1,9 +1,22 @@
 import type { ZodType } from "zod/v3";
 
 /**
- * Runtime environments available for boxes
+ * Runtime environments available for boxes.
+ *
+ * Defaults use Debian (glibc, wider binary compatibility). Append `-alpine`
+ * for the smaller musl-based image of the same runtime.
  */
-export type Runtime = "node" | "python" | "golang" | "ruby" | "rust";
+export type Runtime =
+  | "node"
+  | "python"
+  | "golang"
+  | "ruby"
+  | "rust"
+  | "node-alpine"
+  | "python-alpine"
+  | "golang-alpine"
+  | "ruby-alpine"
+  | "rust-alpine";
 
 /**
  * Resource size presets for boxes.

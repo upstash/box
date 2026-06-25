@@ -27,7 +27,10 @@ program
   .command("create")
   .description("Create a new box and enter the REPL")
   .option("--token <token>", "Upstash Box API token")
-  .option("--runtime <runtime>", "Runtime environment (node, python, golang, ruby, rust)")
+  .option(
+    "--runtime <runtime>",
+    "Runtime environment (node, python, golang, ruby, rust; append -alpine for smaller musl images)",
+  )
   .option("--agent-model <model>", "Agent model identifier")
   .option("--agent-harness <harness>", "Agent harness (claude-code, codex, opencode, cursor)")
   .option("--agent-provider <provider>", "Agent provider (claude-code, codex, opencode, cursor)")

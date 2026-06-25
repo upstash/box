@@ -16,7 +16,20 @@ from typing_extensions import NotRequired, TypedDict
 
 # ==================== Runtime / size ====================
 
-Runtime = Literal["node", "python", "golang", "ruby", "rust"]
+# Defaults use Debian (glibc, wider binary compatibility). Append ``-alpine`` for
+# the smaller musl-based image of the same runtime.
+Runtime = Literal[
+    "node",
+    "python",
+    "golang",
+    "ruby",
+    "rust",
+    "node-alpine",
+    "python-alpine",
+    "golang-alpine",
+    "ruby-alpine",
+    "rust-alpine",
+]
 BoxSize = Literal["small", "medium", "large"]
 
 
