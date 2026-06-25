@@ -2,6 +2,12 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## 0.1.1
+
+- Add Alpine runtime variants to the `Runtime` type: `node-alpine`,
+  `python-alpine`, `golang-alpine`, `ruby-alpine`, `rust-alpine`. Defaults remain
+  Debian (glibc); the `-alpine` suffix selects the smaller musl-based image.
+
 ## 0.1.0
 
 Initial release — Python port of `@upstash/box`, at parity with the JS SDK as of
