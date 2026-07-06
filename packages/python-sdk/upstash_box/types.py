@@ -49,6 +49,7 @@ class Agent(str, Enum):
 class ClaudeCode(str, Enum):
     """Claude Code model identifiers."""
 
+    FABLE_5 = "anthropic/claude-fable-5"
     OPUS_4_5 = "anthropic/claude-opus-4-5"
     OPUS_4_6 = "anthropic/claude-opus-4-6"
     OPUS_4_7 = "anthropic/claude-opus-4-7"
