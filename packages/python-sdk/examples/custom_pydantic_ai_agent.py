@@ -96,6 +96,12 @@ def _model_settings():
         opts = json.loads(raw)
     except json.JSONDecodeError:
         return None
+    if not isinstance(opts, dict):
+        return None
+    # Some SDK paths wrap the user's options under an "agentOptions" key.
+    inner = opts.get("agentOptions")
+    if isinstance(inner, dict):
+        opts = inner
     settings = {k: v for k, v in opts.items() if k in SAFE_SETTINGS}
     return settings or None
 
@@ -145,7 +151,10 @@ def _load_prompt_files():
 
     notes, binaries = [], []
     for f in files:
-        data = base64.b64decode(f.get("data") or "")
+        try:
+            data = base64.b64decode(f.get("data") or "")
+        except ValueError:
+            continue  # skip a malformed attachment rather than abort the run
         name = f.get("filename") or "unnamed"
         mime = f.get("media_type") or "application/octet-stream"
         if _is_text_mime(mime):
@@ -347,9 +356,9 @@ async def main() -> None:
             },
         },
         env={
-            "ANTHROPIC_API_KEY": os.environ.get("ANTHROPIC_API_KEY", ""),
-            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", ""),
-            "GEMINI_API_KEY": os.environ.get("GEMINI_API_KEY", ""),
+            k: v
+            for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY")
+            if (v := os.environ.get(k))  # only forward keys that are actually set
         },
         # Box writes these to .box-internal/mcp-config.json; the harness reads them.
         mcp_servers=[{"name": "deepwiki", "url": "https://mcp.deepwiki.com/mcp"}],
