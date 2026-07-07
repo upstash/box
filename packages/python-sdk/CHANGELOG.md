@@ -2,6 +2,11 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## 0.1.2
+
+- Add `ClaudeCode.FABLE_5` (`anthropic/claude-fable-5`) to the Claude Code model
+  options, mirroring `@upstash/box` 0.5.2.
+
 ## 0.1.1
 
 - Add Alpine runtime variants to the `Runtime` type: `node-alpine`,
