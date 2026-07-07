@@ -1,5 +1,12 @@
 # @upstash/box
 
+## 0.5.2
+
+### Patch Changes
+
+- b42b94b: add alpine versions of runtimes
+- 0ca3415: Add Claude Fable 5 to Claude Code model options.
+
 ## 0.5.1
 
 ### Patch Changes
