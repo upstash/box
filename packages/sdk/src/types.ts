@@ -454,6 +454,11 @@ export interface BoxConfig extends BoxConnectionOptions {
   runtime?: Runtime;
   /** Resource size for the box. Defaults to `"small"`. */
   size?: BoxSize;
+  /**
+   * Provision the box with a desktop environment (Xvfb + XFCE + noVNC +
+   * Chromium) usable via `box.desktop`. Uses the Debian Desktop image.
+   */
+  desktop?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
   /** Optional startup script for keep-alive boxes. */
@@ -1060,3 +1065,163 @@ export interface PublicURL {
 
 /** @deprecated Use `PublicURL` instead. */
 export type Preview = PublicURL;
+
+// ==================== Desktop / Desktop ====================
+
+/** Stream auth mode for the Desktop desktop session. */
+export type DesktopAuthMode = "basic" | "token" | "none";
+
+/** Mouse button name. */
+export type DesktopMouseButton = "left" | "middle" | "right";
+
+/** Options for `box.desktop.start()`. */
+export interface DesktopStartOptions {
+  /** Desktop width in px (640-3840). Defaults to 1280. */
+  width?: number;
+  /** Desktop height in px (480-2160). Defaults to 800. */
+  height?: number;
+  /** URL to open in the browser right after the desktop starts. */
+  open?: string;
+}
+
+/** Result of `box.desktop.start()` — the running desktop, no viewer URL. */
+export interface DesktopInfo {
+  running: boolean;
+  width?: number;
+  height?: number;
+  /** URL opened via the `open` option, when provided. */
+  opened?: string;
+}
+
+/** Options for `box.desktop.stream()`. */
+export interface DesktopStreamOptions {
+  /** Who can view the stream: "basic" (default, password), "token", or "none" (public). */
+  auth?: DesktopAuthMode;
+  /** Viewers can watch but not send input. */
+  viewOnly?: boolean;
+}
+
+/** A viewable desktop stream — the URL and its credentials. */
+export interface DesktopStream {
+  /** Browser-viewable noVNC URL. */
+  url: string;
+  /** Raw websocket URL for custom VNC clients. */
+  rawWsUrl?: string;
+  port: number;
+  auth?: DesktopAuthMode;
+  /** Basic auth credentials (auth: "basic"). */
+  username?: string;
+  password?: string;
+  /** Bearer token (auth: "token"). */
+  token?: string;
+}
+
+/** Result of `box.desktop.status()`. */
+export interface DesktopStatus {
+  running: boolean;
+  /** Whether a viewer stream is currently exposed (see `stream()`). */
+  streaming: boolean;
+  display?: string;
+  width?: number;
+  height?: number;
+  processes?: Record<string, boolean>;
+}
+
+/** Result of `box.desktop.screen()`. */
+export interface DesktopScreen {
+  width: number;
+  height: number;
+  cursor: { x: number; y: number };
+}
+
+/**
+ * One computer-use action, following the Anthropic `computer_20250124`
+ * tool schema verbatim (e.g. `{ type: "left_click", coordinate: [x, y] }`).
+ */
+export type ComputerUseAction = { type: string } & Record<string, unknown>;
+
+/** Per-action result from `box.desktop.actions()`. */
+export type ComputerUseResult = {
+  ok: boolean;
+  message?: string;
+} & Record<string, unknown>;
+
+/** Options for `box.desktop.agent.act()`. */
+export interface DesktopActOptions {
+  /** Model override for grounding the instruction. */
+  model?: string;
+}
+
+/** Result of `box.desktop.agent.act()`. */
+export interface DesktopActResult {
+  /** Computer-use actions the model executed. */
+  actions: ComputerUseAction[];
+  /** Model's explanation of what it did. */
+  reasoning?: string;
+  /** Base64 PNG screenshot taken after the action. */
+  screenshot?: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** Options for `box.browser.extract()` / `observe()`. */
+export interface DesktopExtractOptions {
+  /** Model override for the extraction. */
+  model?: string;
+}
+
+/** A link on the page. */
+export interface BrowserLink {
+  /** Link text. */
+  t: string;
+  /** Resolved href. */
+  h: string;
+}
+
+/** Content of the active browser page (from `box.browser.goto/content`). */
+export interface BrowserContent {
+  title: string;
+  url: string;
+  text: string;
+  links?: BrowserLink[];
+}
+
+/** One actionable element from `box.browser.observe()`. */
+export interface BrowserObserveElement {
+  description: string;
+  url?: string;
+}
+
+/** Result of `box.browser.observe()`. */
+export interface BrowserObserveResult {
+  elements: BrowserObserveElement[];
+}
+
+/** Options for `box.desktop.agent.run()`. */
+export interface DesktopRunOptions {
+  /** The task to complete, in natural language. */
+  prompt: string;
+  /** Hard cap on model turns. Defaults to 12, max 30. */
+  maxSteps?: number;
+  /** Model override. */
+  model?: string;
+}
+
+/** One turn of an autonomous `box.desktop.agent.run()`. */
+export interface DesktopRunStep {
+  step: number;
+  reasoning?: string;
+  actions?: ComputerUseAction[];
+}
+
+/** Result of `box.desktop.agent.run()`. */
+export interface DesktopRunResult {
+  /** The model's final summary of the task. */
+  result: string;
+  /** Whether the model finished before hitting the step limit. */
+  completed: boolean;
+  steps: DesktopRunStep[];
+  stepCount: number;
+  inputTokens: number;
+  outputTokens: number;
+}

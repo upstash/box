@@ -47,15 +47,40 @@ import {
   type OpenCodeAgentOptions,
   type AgentConfig,
   type CustomHarnessConfig,
+  type DesktopStartOptions,
+  type DesktopInfo,
+  type DesktopStreamOptions,
+  type DesktopStream,
+  type DesktopStatus,
+  type DesktopScreen,
+  type DesktopMouseButton,
+  type DesktopActOptions,
+  type DesktopActResult,
+  type DesktopExtractOptions,
+  type BrowserContent,
+  type BrowserObserveResult,
+  type DesktopRunOptions,
+  type DesktopRunResult,
+  type ComputerUseAction,
+  type ComputerUseResult,
   Agent,
 } from "./types.js";
-import type { ZodType } from "zod/v3";
+import type { z, ZodType } from "zod/v3";
 import { telemetryHeaders } from "./telemetry.js";
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
 function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, string> {
   return { "X-Box-Api-Key": apiKey, ...telemetryHeaders(enableTelemetry) };
+}
+
+/** Decode base64 to bytes in both Node and edge runtimes. */
+function base64ToBytes(b64: string): Uint8Array {
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 /** Infer the default harness from a model string prefix. */
@@ -480,6 +505,87 @@ export class Box<TProvider = unknown> {
   };
 
   /**
+   * Desktop / desktop namespace — requires a box created with `desktop: true`.
+   *
+   * Everything directly on `desktop.*` is deterministic and token-free;
+   * everything under `desktop.agent.*` calls a model and is metered.
+   */
+  readonly desktop: {
+    /** Boot the desktop (idempotent). Returns the running desktop — no viewer URL. */
+    start: (options?: DesktopStartOptions) => Promise<DesktopInfo>;
+    /** Expose the running desktop as a viewable stream. Returns the URL + credentials. */
+    stream: (options?: DesktopStreamOptions) => Promise<DesktopStream>;
+    /** Stop the desktop and revoke any stream credential. */
+    stop: () => Promise<void>;
+    /** Desktop status (running, streaming, resolution, processes). */
+    status: () => Promise<DesktopStatus>;
+    /** PNG screenshot — Uint8Array by default, string with encoding: "base64". */
+    screenshot: (options?: {
+      encoding?: "base64";
+      cursor?: boolean;
+    }) => Promise<Uint8Array | string>;
+    /** Screen size + cursor position. */
+    screen: () => Promise<DesktopScreen>;
+    moveMouse: (x: number, y: number) => Promise<void>;
+    /** Click at (x, y), or at the current position when omitted. */
+    leftClick: (x?: number, y?: number) => Promise<void>;
+    rightClick: (x?: number, y?: number) => Promise<void>;
+    middleClick: (x?: number, y?: number) => Promise<void>;
+    doubleClick: (x?: number, y?: number) => Promise<void>;
+    drag: (
+      from: { x: number; y: number },
+      to: { x: number; y: number },
+      button?: DesktopMouseButton,
+    ) => Promise<void>;
+    mousePress: (button?: DesktopMouseButton) => Promise<void>;
+    mouseRelease: (button?: DesktopMouseButton) => Promise<void>;
+    scroll: (
+      direction: "up" | "down" | "left" | "right",
+      amount?: number,
+      at?: { x: number; y: number },
+    ) => Promise<void>;
+    /** Type text at the cursor. */
+    type: (text: string, options?: { delayMs?: number }) => Promise<void>;
+    /** Press a key or combo: press("enter"), press(["ctrl", "c"]). */
+    press: (keys: string | string[]) => Promise<void>;
+    /** Open a URL or file with the default application. */
+    open: (target: string) => Promise<void>;
+    /** Launch an allowlisted Desktop app (e.g. "chromium"). */
+    launch: (app: string, args?: string[]) => Promise<void>;
+    /** Execute a batch of computer-use actions in one round-trip. */
+    actions: (actions: ComputerUseAction[]) => Promise<ComputerUseResult[]>;
+    /** Model-powered control (metered). */
+    agent: {
+      /** Ground one natural-language instruction to a UI action and do it. */
+      act: (instruction: string, options?: DesktopActOptions) => Promise<DesktopActResult>;
+      /** Autonomously complete a multi-step task, looping until done. */
+      run: (options: DesktopRunOptions) => Promise<DesktopRunResult>;
+    };
+  };
+
+  /**
+   * Browser namespace — DOM-aware control of the desktop's Chromium via CDP.
+   * Requires a running desktop with an open page.
+   */
+  readonly browser: {
+    /** Navigate the active tab to a URL and return the page content. */
+    goto: (url: string) => Promise<BrowserContent>;
+    /** Read the current page's title, URL, text, and links. */
+    content: () => Promise<BrowserContent>;
+    /** Extract schema-validated structured data from the current page (metered). */
+    extract: <T extends ZodType<unknown>>(
+      instruction: string,
+      schema: T,
+      options?: DesktopExtractOptions,
+    ) => Promise<z.infer<T>>;
+    /** List actionable page elements matching an instruction (metered). */
+    observe: (
+      instruction: string,
+      options?: DesktopExtractOptions,
+    ) => Promise<BrowserObserveResult>;
+  };
+
+  /**
    * The current working directory tracked in the SDK (not in the box).
    * Every new session starts at /workspace/home.
    */
@@ -620,6 +726,60 @@ export class Box<TProvider = unknown> {
       remove: (label) => this._labelRemove(label),
       list: () => this._labelList(),
     };
+
+    this.desktop = {
+      start: (options) => this._desktopStart(options),
+      stream: (options) => this._desktopStream(options),
+      stop: () => this._desktopOk("POST", "desktop/stop"),
+      status: () => this._request<DesktopStatus>("GET", `/v2/box/${this.id}/desktop/status`),
+      screenshot: (options) => this._desktopScreenshot(options),
+      screen: () => this._request<DesktopScreen>("GET", `/v2/box/${this.id}/desktop/screen`),
+      moveMouse: (x, y) => this._desktopOk("POST", "desktop/mouse/move", { x, y }),
+      leftClick: (x, y) => this._desktopClick("left", 1, x, y),
+      rightClick: (x, y) => this._desktopClick("right", 1, x, y),
+      middleClick: (x, y) => this._desktopClick("middle", 1, x, y),
+      doubleClick: (x, y) => this._desktopClick("left", 2, x, y),
+      drag: (from, to, button) =>
+        this._desktopOk("POST", "desktop/mouse/drag", { from, to, button }),
+      mousePress: (button) =>
+        this._desktopOk("POST", "desktop/mouse/press", { button: button ?? "left" }),
+      mouseRelease: (button) =>
+        this._desktopOk("POST", "desktop/mouse/release", { button: button ?? "left" }),
+      scroll: (direction, amount, at) =>
+        this._desktopOk("POST", "desktop/mouse/scroll", {
+          direction,
+          amount: amount ?? 1,
+          ...(at ? { x: at.x, y: at.y } : {}),
+        }),
+      type: (text, options) =>
+        this._desktopOk("POST", "desktop/keyboard/type", {
+          text,
+          ...(options?.delayMs !== undefined ? { delay_ms: options.delayMs } : {}),
+        }),
+      press: (keys) => this._desktopOk("POST", "desktop/keyboard/press", { keys }),
+      open: (target) => this._desktopOk("POST", "desktop/open", { target }),
+      launch: (app, args) =>
+        this._desktopOk("POST", "desktop/launch", { app, ...(args?.length ? { args } : {}) }),
+      actions: (actions) => this._desktopActions(actions),
+      agent: {
+        act: (instruction, options) => this._desktopAct(instruction, options),
+        run: (options) => this._desktopRun(options),
+      },
+    };
+
+    this.browser = {
+      goto: (url) =>
+        this._request<BrowserContent>("POST", `/v2/box/${this.id}/browser/goto`, {
+          body: { url },
+          timeout: 60000,
+        }),
+      content: () =>
+        this._request<BrowserContent>("GET", `/v2/box/${this.id}/browser/content`, {
+          timeout: 60000,
+        }),
+      extract: (instruction, schema, options) => this._browserExtract(instruction, schema, options),
+      observe: (instruction, options) => this._browserObserve(instruction, options),
+    };
   }
 
   /**
@@ -653,6 +813,7 @@ export class Box<TProvider = unknown> {
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
     if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
+    if (config?.desktop) body.desktop = true;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.git?.userName) body.git_user_name = config.git.userName;
     if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
@@ -2130,6 +2291,182 @@ export class Box<TProvider = unknown> {
   }
 
   /** @internal */
+  // ==================== Desktop (private, exposed via this.desktop) ====================
+
+  private async _desktopOk(
+    method: string,
+    subpath: string,
+    body?: Record<string, unknown>,
+  ): Promise<void> {
+    await this._request<{ ok: boolean }>(
+      method,
+      `/v2/box/${this.id}/${subpath}`,
+      body ? { body } : {},
+    );
+  }
+
+  private _desktopClick(
+    button: DesktopMouseButton,
+    count: number,
+    x?: number,
+    y?: number,
+  ): Promise<void> {
+    return this._desktopOk("POST", "desktop/mouse/click", {
+      button,
+      count,
+      ...(x !== undefined && y !== undefined ? { x, y } : {}),
+    });
+  }
+
+  private async _desktopStart(options?: DesktopStartOptions): Promise<DesktopInfo> {
+    const body: Record<string, unknown> = {};
+    if (options?.width) body.width = options.width;
+    if (options?.height) body.height = options.height;
+    if (options?.open) body.open = options.open;
+    const raw = await this._request<Record<string, unknown>>(
+      "POST",
+      `/v2/box/${this.id}/desktop/start`,
+      { body, timeout: 120000 },
+    );
+    return {
+      running: Boolean(raw.running),
+      width: raw.width as number | undefined,
+      height: raw.height as number | undefined,
+      opened: raw.opened as string | undefined,
+    };
+  }
+
+  private async _desktopStream(options?: DesktopStreamOptions): Promise<DesktopStream> {
+    const body: Record<string, unknown> = {};
+    if (options?.auth) body.auth = options.auth;
+    if (options?.viewOnly) body.view_only = true;
+    const raw = await this._request<Record<string, unknown>>(
+      "POST",
+      `/v2/box/${this.id}/desktop/stream`,
+      { body },
+    );
+    return {
+      url: (raw.url as string) ?? "",
+      rawWsUrl: raw.raw_ws_url as string | undefined,
+      port: (raw.port as number) ?? 6080,
+      auth: raw.auth as DesktopStream["auth"],
+      username: raw.username as string | undefined,
+      password: raw.password as string | undefined,
+      token: raw.token as string | undefined,
+    };
+  }
+
+  private async _desktopScreenshot(options?: {
+    encoding?: "base64";
+    cursor?: boolean;
+  }): Promise<Uint8Array | string> {
+    const params = new URLSearchParams({ encoding: "base64" });
+    if (options?.cursor === false) params.set("cursor", "false");
+    const resp = await this._request<{ data: string }>(
+      "GET",
+      `/v2/box/${this.id}/desktop/screenshot?${params}`,
+      { timeout: 60000 },
+    );
+    if (options?.encoding === "base64") return resp.data;
+    return base64ToBytes(resp.data);
+  }
+
+  private async _desktopActions(actions: ComputerUseAction[]): Promise<ComputerUseResult[]> {
+    const resp = await this._request<{ results: ComputerUseResult[] | null }>(
+      "POST",
+      `/v2/box/${this.id}/desktop/actions`,
+      { body: { actions }, timeout: 180000 },
+    );
+    return resp.results ?? [];
+  }
+
+  private async _desktopAct(
+    instruction: string,
+    options?: DesktopActOptions,
+  ): Promise<DesktopActResult> {
+    const resp = await this._request<{
+      actions: ComputerUseAction[] | null;
+      reasoning?: string;
+      screenshot?: { data?: string };
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.id}/desktop/agent/act`, {
+      body: { instruction, ...(options?.model ? { model: options.model } : {}) },
+      timeout: 180000,
+    });
+    return {
+      actions: resp.actions ?? [],
+      reasoning: resp.reasoning,
+      screenshot: resp.screenshot?.data,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
+  }
+
+  private async _desktopRun(options: DesktopRunOptions): Promise<DesktopRunResult> {
+    const resp = await this._request<{
+      result?: string;
+      completed?: boolean;
+      steps?: { step: number; reasoning?: string; actions?: ComputerUseAction[] }[];
+      step_count?: number;
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.id}/desktop/agent/run`, {
+      body: {
+        prompt: options.prompt,
+        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
+        ...(options.model ? { model: options.model } : {}),
+      },
+      timeout: 600000,
+    });
+    return {
+      result: resp.result ?? "",
+      completed: Boolean(resp.completed),
+      steps: resp.steps ?? [],
+      stepCount: resp.step_count ?? 0,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
+  }
+
+  private async _browserExtract<T extends ZodType<unknown>>(
+    instruction: string,
+    schema: T,
+    options?: DesktopExtractOptions,
+  ): Promise<z.infer<T>> {
+    const jsonSchema = toJsonSchema(schema);
+    if (!jsonSchema) throw new BoxError("extract requires a Zod object schema");
+    const resp = await this._request<{ data?: unknown }>(
+      "POST",
+      `/v2/box/${this.id}/browser/extract`,
+      {
+        body: {
+          instruction,
+          schema: jsonSchema,
+          ...(options?.model ? { model: options.model } : {}),
+        },
+        timeout: 180000,
+      },
+    );
+    // Validate + type the result against the caller's schema.
+    return schema.parse(resp.data) as z.infer<T>;
+  }
+
+  private async _browserObserve(
+    instruction: string,
+    options?: DesktopExtractOptions,
+  ): Promise<BrowserObserveResult> {
+    const resp = await this._request<{ elements?: BrowserObserveResult["elements"] }>(
+      "POST",
+      `/v2/box/${this.id}/browser/observe`,
+      {
+        body: { instruction, ...(options?.model ? { model: options.model } : {}) },
+        timeout: 180000,
+      },
+    );
+    return { elements: resp.elements ?? [] };
+  }
+
   async _request<T>(
     method: string,
     path: string,
