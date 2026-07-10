@@ -41,15 +41,15 @@ Create a new box and enter an interactive REPL.
 
 ```bash
 # Uses Upstash-managed key by default (no --agent-api-key needed)
-box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-4-5
+box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-5
 
 # Use a key stored in the Upstash console
-box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-4-5 --agent-api-key stored
+box create --agent-harness claude-code --agent-model anthropic/claude-sonnet-5 --agent-api-key stored
 
 # Pass a direct API key
 box create \
   --agent-harness claude-code \
-  --agent-model anthropic/claude-sonnet-4-5 \
+  --agent-model anthropic/claude-sonnet-5 \
   --agent-api-key $CLAUDE_KEY \
   --runtime node \
   --git-token $GITHUB_TOKEN \
@@ -87,8 +87,8 @@ box connect  # connects to most recent
 Create a new box from a snapshot and enter the REPL. Accepts the same flags as `create`.
 
 ```bash
-box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-4-5 --agent-harness claude-code
-box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-4-5 --agent-harness claude-code --agent-api-key $CLAUDE_KEY
+box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-5 --agent-harness claude-code
+box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-5 --agent-harness claude-code --agent-api-key $CLAUDE_KEY
 ```
 
 ### `box list`
@@ -115,7 +115,7 @@ Scaffold a standalone demo project that uses the `@upstash/box` SDK. Creates a d
 box init-demo \
   --token $UPSTASH_BOX_API_KEY \
   --agent-harness claude-code \
-  --agent-model anthropic/claude-sonnet-4-5 \
+  --agent-model anthropic/claude-sonnet-5 \
   --runtime node \
   --git-token $GITHUB_TOKEN \
   --directory my-demo

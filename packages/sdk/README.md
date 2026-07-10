@@ -15,7 +15,7 @@ import { Box, Agent } from "@upstash/box";
 
 const box = await Box.create({
   runtime: "node",
-  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-5" },
 });
 
 const run = await box.agent.run({
@@ -48,7 +48,7 @@ const box = await Box.create({
   initCommand: "npm install && npm run dev",
   agent: {
     harness: Agent.ClaudeCode,
-    model: "anthropic/claude-sonnet-4-5",
+    model: "anthropic/claude-sonnet-5",
     apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
     // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
     // apiKey: process.env.CLAUDE_KEY!, // or pass a direct API key
@@ -96,7 +96,7 @@ Create a new box from a saved snapshot.
 
 ```ts
 const box = await Box.fromSnapshot("snap_abc123", {
-  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-5" },
   keepAlive: true,
   initCommand: "npm install && npm run dev",
 });
@@ -249,10 +249,10 @@ await box.cd(".."); // back to /workspace/home
 const { harness, model } = box.modelConfig;
 
 // Change the model
-await box.configureModel("anthropic/claude-opus-4-5");
+await box.configureModel("anthropic/claude-opus-4-8");
 
 // modelConfig reflects the change immediately
-box.modelConfig.model; // "anthropic/claude-opus-4-5"
+box.modelConfig.model; // "anthropic/claude-opus-4-8"
 ```
 
 ### Lifecycle
@@ -328,13 +328,19 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 | `ClaudeCode.Sonnet_4`   | `anthropic/claude-sonnet-4`   |
 | `ClaudeCode.Sonnet_4_5` | `anthropic/claude-sonnet-4-5` |
 | `ClaudeCode.Sonnet_4_6` | `anthropic/claude-sonnet-4-6` |
+| `ClaudeCode.Sonnet_5`   | `anthropic/claude-sonnet-5`   |
 | `ClaudeCode.Haiku_4_5`  | `anthropic/claude-haiku-4-5`  |
 
 ### OpenAI Codex
 
-| Enum                              | Value                        |
-| --------------------------------- | ---------------------------- |
-| `OpenAICodex.GPT_5_4`             | `openai/gpt-5.4`             |
+| Enum                              | Value                            |
+| --------------------------------- | -------------------------------- |
+| `OpenAICodex.GPT_5_6`             | `openai/gpt-5.6` (alias → Sol)   |
+| `OpenAICodex.GPT_5_6_Sol`         | `openai/gpt-5.6-sol`             |
+| `OpenAICodex.GPT_5_6_Terra`       | `openai/gpt-5.6-terra`           |
+| `OpenAICodex.GPT_5_6_Luna`        | `openai/gpt-5.6-luna`            |
+| `OpenAICodex.GPT_5_5`             | `openai/gpt-5.5`                 |
+| `OpenAICodex.GPT_5_4`             | `openai/gpt-5.4`                 |
 | `OpenAICodex.GPT_5_4_Mini`        | `openai/gpt-5.4-mini`        |
 | `OpenAICodex.GPT_5_3_Codex`       | `openai/gpt-5.3-codex`       |
 | `OpenAICodex.GPT_5_3_Codex_Spark` | `openai/gpt-5.3-codex-spark` |
@@ -345,12 +351,17 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                               | Value                                   |
 | ---------------------------------- | --------------------------------------- |
+| `OpenRouterModel.Claude_Fable_5`   | `openrouter/anthropic/claude-fable-5`   |
+| `OpenRouterModel.Claude_Sonnet_5`  | `openrouter/anthropic/claude-sonnet-5`  |
 | `OpenRouterModel.Claude_Opus_4_5`  | `openrouter/anthropic/claude-opus-4-5`  |
 | `OpenRouterModel.Claude_Sonnet_4`  | `openrouter/anthropic/claude-sonnet-4`  |
 | `OpenRouterModel.Claude_Haiku_4_5` | `openrouter/anthropic/claude-haiku-4-5` |
 | `OpenRouterModel.DeepSeek_R1`      | `openrouter/deepseek/deepseek-r1`       |
 | `OpenRouterModel.Gemini_2_5_Pro`   | `openrouter/google/gemini-2.5-pro`      |
 | `OpenRouterModel.Gemini_2_5_Flash` | `openrouter/google/gemini-2.5-flash`    |
+| `OpenRouterModel.GPT_5_6_Sol`      | `openrouter/openai/gpt-5.6-sol`         |
+| `OpenRouterModel.GPT_5_6_Terra`    | `openrouter/openai/gpt-5.6-terra`       |
+| `OpenRouterModel.GPT_5_6_Luna`     | `openrouter/openai/gpt-5.6-luna`        |
 | `OpenRouterModel.GPT_4_1`          | `openrouter/openai/gpt-4.1`             |
 | `OpenRouterModel.O3`               | `openrouter/openai/o3`                  |
 | `OpenRouterModel.O4_Mini`          | `openrouter/openai/o4-mini`             |
@@ -361,14 +372,14 @@ Boxes have configurable resource sizes, set at creation time via the `size` opti
 
 | Size     | CPU     | Memory |
 | -------- | ------- | ------ |
-| `small`  | 2 cores | 2 GB   |
+| `small`  | 2 cores | 4 GB   |
 | `medium` | 4 cores | 8 GB   |
 | `large`  | 8 cores | 16 GB  |
 
 ```ts
 const box = await Box.create({
   size: "large",
-  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-4-5" },
+  agent: { harness: Agent.ClaudeCode, model: "anthropic/claude-sonnet-5" },
 });
 
 console.log(box.size); // "large"

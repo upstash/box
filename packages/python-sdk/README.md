@@ -20,7 +20,7 @@ from upstash_box import AsyncBox, Agent, ClaudeCode
 async def main():
     box = await AsyncBox.create(
         runtime="node",
-        agent={"harness": Agent.CLAUDE_CODE, "model": ClaudeCode.SONNET_4_5},
+        agent={"harness": Agent.CLAUDE_CODE, "model": ClaudeCode.SONNET_5},
     )
     async with box:
         run = await box.agent.run(prompt="Create a hello world Express server")
@@ -37,7 +37,7 @@ from upstash_box import Box, Agent, ClaudeCode
 
 box = Box.create(
     runtime="node",
-    agent={"harness": Agent.CLAUDE_CODE, "model": ClaudeCode.SONNET_4_5},
+    agent={"harness": Agent.CLAUDE_CODE, "model": ClaudeCode.SONNET_5},
 )
 with box:
     run = box.agent.run(prompt="Create a hello world Express server")
@@ -80,7 +80,7 @@ box = await AsyncBox.create(
     init_command="npm install && npm run dev",
     agent={
         "harness": Agent.CLAUDE_CODE,
-        "model": "anthropic/claude-sonnet-4-5",
+        "model": "anthropic/claude-sonnet-5",
         "api_key": BoxApiKey.UPSTASH_KEY,  # or BoxApiKey.STORED_KEY, or a direct key
     },
     git={"token": "...", "user_name": "Jane", "user_email": "jane@example.com"},
@@ -166,7 +166,7 @@ await box.schedule.pause(schedule.id)
 await box.cd("my-project")
 print(box.cwd)
 
-await box.configure_model("anthropic/claude-opus-4-5")
+await box.configure_model("anthropic/claude-opus-4-8")
 print(box.model_config)  # {"harness": ..., "model": ...}
 
 await box.pause()

@@ -6,7 +6,7 @@ const box = await Box.create({
   runtime: "node",
   agent: {
     harness: Agent.ClaudeCode,
-    model: "anthropic/claude-sonnet-4",
+    model: "anthropic/claude-sonnet-5",
     apiKey: process.env.CLAUDE_KEY!,
   },
 });
