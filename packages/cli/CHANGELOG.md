@@ -1,5 +1,13 @@
 # @upstash/box-cli
 
+## 0.2.12
+
+### Patch Changes
+
+- 59ce633: introduce gpt-5.6 and sonnet 5
+- Updated dependencies [59ce633]
+  - @upstash/box@0.5.3
+
 ## 0.2.11
 
 ### Patch Changes

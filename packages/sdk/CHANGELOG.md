@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.5.3
+
+### Patch Changes
+
+- 59ce633: introduce gpt-5.6 and sonnet 5
+
 ## 0.5.2
 
 ### Patch Changes
