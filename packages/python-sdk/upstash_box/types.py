@@ -57,12 +57,17 @@ class ClaudeCode(str, Enum):
     SONNET_4 = "anthropic/claude-sonnet-4"
     SONNET_4_5 = "anthropic/claude-sonnet-4-5"
     SONNET_4_6 = "anthropic/claude-sonnet-4-6"
+    SONNET_5 = "anthropic/claude-sonnet-5"
     HAIKU_4_5 = "anthropic/claude-haiku-4-5"
 
 
 class OpenAICodex(str, Enum):
     """OpenAI Codex model identifiers."""
 
+    GPT_5_6 = "openai/gpt-5.6"
+    GPT_5_6_SOL = "openai/gpt-5.6-sol"
+    GPT_5_6_TERRA = "openai/gpt-5.6-terra"
+    GPT_5_6_LUNA = "openai/gpt-5.6-luna"
     GPT_5_5 = "openai/gpt-5.5"
     GPT_5_4 = "openai/gpt-5.4"
     GPT_5_4_MINI = "openai/gpt-5.4-mini"
@@ -76,12 +81,17 @@ class OpenAICodex(str, Enum):
 class OpenRouterModel(str, Enum):
     """OpenRouter model identifiers — shared across agents that support OpenRouter."""
 
+    CLAUDE_FABLE_5 = "openrouter/anthropic/claude-fable-5"
+    CLAUDE_SONNET_5 = "openrouter/anthropic/claude-sonnet-5"
     CLAUDE_SONNET_4 = "openrouter/anthropic/claude-sonnet-4"
     CLAUDE_OPUS_4_5 = "openrouter/anthropic/claude-opus-4-5"
     CLAUDE_HAIKU_4_5 = "openrouter/anthropic/claude-haiku-4-5"
     DEEPSEEK_R1 = "openrouter/deepseek/deepseek-r1"
     GEMINI_2_5_PRO = "openrouter/google/gemini-2.5-pro"
     GEMINI_2_5_FLASH = "openrouter/google/gemini-2.5-flash"
+    GPT_5_6_SOL = "openrouter/openai/gpt-5.6-sol"
+    GPT_5_6_TERRA = "openrouter/openai/gpt-5.6-terra"
+    GPT_5_6_LUNA = "openrouter/openai/gpt-5.6-luna"
     GPT_4_1 = "openrouter/openai/gpt-4.1"
     O3 = "openrouter/openai/o3"
     O4_MINI = "openrouter/openai/o4-mini"
@@ -90,10 +100,15 @@ class OpenRouterModel(str, Enum):
 class VercelModel(str, Enum):
     """Vercel AI Gateway model identifiers."""
 
+    CLAUDE_FABLE_5 = "vercel/anthropic/claude-fable-5"
+    CLAUDE_SONNET_5 = "vercel/anthropic/claude-sonnet-5"
     CLAUDE_OPUS_4_7 = "vercel/anthropic/claude-opus-4.7"
     CLAUDE_SONNET_4_6 = "vercel/anthropic/claude-sonnet-4.6"
     CLAUDE_OPUS_4_6 = "vercel/anthropic/claude-opus-4.6"
     CLAUDE_HAIKU_4_5 = "vercel/anthropic/claude-haiku-4.5"
+    GPT_5_6_SOL = "vercel/openai/gpt-5.6-sol"
+    GPT_5_6_TERRA = "vercel/openai/gpt-5.6-terra"
+    GPT_5_6_LUNA = "vercel/openai/gpt-5.6-luna"
     GPT_5_5 = "vercel/openai/gpt-5.5"
     GPT_5_5_PRO = "vercel/openai/gpt-5.5-pro"
     GPT_5_4 = "vercel/openai/gpt-5.4"
@@ -110,6 +125,7 @@ class OpenCodeModel(str, Enum):
     """OpenCode model identifiers — supports models from multiple providers."""
 
     # Anthropic-backed OpenCode models
+    CLAUDE_FABLE_5 = "opencode/claude-fable-5"
     CLAUDE_OPUS_4_5 = "opencode/claude-opus-4-5"
     CLAUDE_OPUS_4_6 = "opencode/claude-opus-4-6"
     CLAUDE_OPUS_4_7 = "opencode/claude-opus-4-7"
@@ -117,6 +133,7 @@ class OpenCodeModel(str, Enum):
     CLAUDE_SONNET_4 = "opencode/claude-sonnet-4"
     CLAUDE_SONNET_4_5 = "opencode/claude-sonnet-4-5"
     CLAUDE_SONNET_4_6 = "opencode/claude-sonnet-4-6"
+    CLAUDE_SONNET_5 = "opencode/claude-sonnet-5"
     CLAUDE_HAIKU_4_5 = "opencode/claude-haiku-4-5"
     # OpenAI-backed OpenCode models
     GPT_5_5 = "opencode/gpt-5.5"
@@ -137,9 +154,11 @@ class OpenCodeModel(str, Enum):
     ZEN_BIG_PICKLE = "opencode/big-pickle"
     # Paid models
     ZEN_MINIMAX_M2_7 = "opencode/minimax-m2.7"
+    ZEN_CLAUDE_FABLE_5 = "opencode/claude-fable-5"
     ZEN_CLAUDE_SONNET_4_6 = "opencode/claude-sonnet-4-6"
     ZEN_CLAUDE_SONNET_4_5 = "opencode/claude-sonnet-4-5"
     ZEN_CLAUDE_SONNET_4 = "opencode/claude-sonnet-4"
+    ZEN_CLAUDE_SONNET_5 = "opencode/claude-sonnet-5"
     ZEN_CLAUDE_HAIKU_4_5 = "opencode/claude-haiku-4-5"
     ZEN_CLAUDE_OPUS_4_8 = "opencode/claude-opus-4-8"
     ZEN_CLAUDE_OPUS_4_7 = "opencode/claude-opus-4-7"
@@ -168,6 +187,7 @@ class CursorModel(str, Enum):
     GPT_5_1_CODEX_MAX = "cursor/gpt-5.1-codex-max"
     GPT_5_1_CODEX_MINI = "cursor/gpt-5.1-codex-mini"
     GPT_5_MINI = "cursor/gpt-5-mini"
+    CLAUDE_FABLE_5 = "cursor/claude-fable-5"
     CLAUDE_OPUS_4_8 = "cursor/claude-opus-4-8"
     CLAUDE_OPUS_4_7 = "cursor/claude-opus-4-7"
     CLAUDE_OPUS_4_6 = "cursor/claude-opus-4-6"
@@ -175,6 +195,7 @@ class CursorModel(str, Enum):
     CLAUDE_SONNET_4_6 = "cursor/claude-sonnet-4-6"
     CLAUDE_SONNET_4_5 = "cursor/claude-sonnet-4-5"
     CLAUDE_SONNET_4 = "cursor/claude-sonnet-4"
+    CLAUDE_SONNET_5 = "cursor/claude-sonnet-5"
     CLAUDE_HAIKU_4_5 = "cursor/claude-haiku-4-5"
     GEMINI_3_1_PRO = "cursor/gemini-3.1-pro"
     GEMINI_3_FLASH = "cursor/gemini-3-flash"

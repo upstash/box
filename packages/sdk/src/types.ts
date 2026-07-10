@@ -52,6 +52,7 @@ export enum ClaudeCode {
   Sonnet_4 = "anthropic/claude-sonnet-4",
   Sonnet_4_5 = "anthropic/claude-sonnet-4-5",
   Sonnet_4_6 = "anthropic/claude-sonnet-4-6",
+  Sonnet_5 = "anthropic/claude-sonnet-5",
   Haiku_4_5 = "anthropic/claude-haiku-4-5",
 }
 
@@ -59,6 +60,10 @@ export enum ClaudeCode {
  * OpenAI Codex model identifiers
  */
 export enum OpenAICodex {
+  GPT_5_6 = "openai/gpt-5.6",
+  GPT_5_6_Sol = "openai/gpt-5.6-sol",
+  GPT_5_6_Terra = "openai/gpt-5.6-terra",
+  GPT_5_6_Luna = "openai/gpt-5.6-luna",
   GPT_5_5 = "openai/gpt-5.5",
   GPT_5_4 = "openai/gpt-5.4",
   GPT_5_4_Mini = "openai/gpt-5.4-mini",
@@ -73,12 +78,17 @@ export enum OpenAICodex {
  * OpenRouter model identifiers — shared across agents that support OpenRouter
  */
 export enum OpenRouterModel {
+  Claude_Fable_5 = "openrouter/anthropic/claude-fable-5",
+  Claude_Sonnet_5 = "openrouter/anthropic/claude-sonnet-5",
   Claude_Sonnet_4 = "openrouter/anthropic/claude-sonnet-4",
   Claude_Opus_4_5 = "openrouter/anthropic/claude-opus-4-5",
   Claude_Haiku_4_5 = "openrouter/anthropic/claude-haiku-4-5",
   DeepSeek_R1 = "openrouter/deepseek/deepseek-r1",
   Gemini_2_5_Pro = "openrouter/google/gemini-2.5-pro",
   Gemini_2_5_Flash = "openrouter/google/gemini-2.5-flash",
+  GPT_5_6_Sol = "openrouter/openai/gpt-5.6-sol",
+  GPT_5_6_Terra = "openrouter/openai/gpt-5.6-terra",
+  GPT_5_6_Luna = "openrouter/openai/gpt-5.6-luna",
   GPT_4_1 = "openrouter/openai/gpt-4.1",
   O3 = "openrouter/openai/o3",
   O4_Mini = "openrouter/openai/o4-mini",
@@ -88,10 +98,15 @@ export enum OpenRouterModel {
  * Vercel AI Gateway model identifiers — shared across agents that support Vercel AI Gateway
  */
 export enum VercelModel {
+  Claude_Fable_5 = "vercel/anthropic/claude-fable-5",
+  Claude_Sonnet_5 = "vercel/anthropic/claude-sonnet-5",
   Claude_Opus_4_7 = "vercel/anthropic/claude-opus-4.7",
   Claude_Sonnet_4_6 = "vercel/anthropic/claude-sonnet-4.6",
   Claude_Opus_4_6 = "vercel/anthropic/claude-opus-4.6",
   Claude_Haiku_4_5 = "vercel/anthropic/claude-haiku-4.5",
+  GPT_5_6_Sol = "vercel/openai/gpt-5.6-sol",
+  GPT_5_6_Terra = "vercel/openai/gpt-5.6-terra",
+  GPT_5_6_Luna = "vercel/openai/gpt-5.6-luna",
   GPT_5_5 = "vercel/openai/gpt-5.5",
   GPT_5_5_Pro = "vercel/openai/gpt-5.5-pro",
   GPT_5_4 = "vercel/openai/gpt-5.4",
@@ -109,6 +124,7 @@ export enum VercelModel {
  */
 export enum OpenCodeModel {
   // Anthropic-backed OpenCode models
+  Claude_Fable_5 = "opencode/claude-fable-5",
   Claude_Opus_4_5 = "opencode/claude-opus-4-5",
   Claude_Opus_4_6 = "opencode/claude-opus-4-6",
   Claude_Opus_4_7 = "opencode/claude-opus-4-7",
@@ -116,6 +132,7 @@ export enum OpenCodeModel {
   Claude_Sonnet_4 = "opencode/claude-sonnet-4",
   Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
   Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
+  Claude_Sonnet_5 = "opencode/claude-sonnet-5",
   Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   // OpenAI-backed OpenCode models
   GPT_5_5 = "opencode/gpt-5.5",
@@ -136,9 +153,11 @@ export enum OpenCodeModel {
   Zen_Big_Pickle = "opencode/big-pickle",
   // Paid models
   Zen_MiniMax_M2_7 = "opencode/minimax-m2.7",
+  Zen_Claude_Fable_5 = "opencode/claude-fable-5",
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
   Zen_Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
   Zen_Claude_Sonnet_4 = "opencode/claude-sonnet-4",
+  Zen_Claude_Sonnet_5 = "opencode/claude-sonnet-5",
   Zen_Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   Zen_Claude_Opus_4_8 = "opencode/claude-opus-4-8",
   Zen_Claude_Opus_4_7 = "opencode/claude-opus-4-7",
@@ -168,6 +187,7 @@ export enum CursorModel {
   GPT_5_1_Codex_Max = "cursor/gpt-5.1-codex-max",
   GPT_5_1_Codex_Mini = "cursor/gpt-5.1-codex-mini",
   GPT_5_Mini = "cursor/gpt-5-mini",
+  Claude_Fable_5 = "cursor/claude-fable-5",
   Claude_Opus_4_8 = "cursor/claude-opus-4-8",
   Claude_Opus_4_7 = "cursor/claude-opus-4-7",
   Claude_Opus_4_6 = "cursor/claude-opus-4-6",
@@ -175,6 +195,7 @@ export enum CursorModel {
   Claude_Sonnet_4_6 = "cursor/claude-sonnet-4-6",
   Claude_Sonnet_4_5 = "cursor/claude-sonnet-4-5",
   Claude_Sonnet_4 = "cursor/claude-sonnet-4",
+  Claude_Sonnet_5 = "cursor/claude-sonnet-5",
   Claude_Haiku_4_5 = "cursor/claude-haiku-4-5",
   Gemini_3_1_Pro = "cursor/gemini-3.1-pro",
   Gemini_3_Flash = "cursor/gemini-3-flash",

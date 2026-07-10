@@ -22,6 +22,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: ClaudeCode.Opus_4_7, label: "Claude Opus 4.7" },
         { value: ClaudeCode.Opus_4_6, label: "Claude Opus 4.6" },
         { value: ClaudeCode.Opus_4_5, label: "Claude Opus 4.5" },
+        { value: ClaudeCode.Sonnet_5, label: "Claude Sonnet 5" },
         { value: ClaudeCode.Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: ClaudeCode.Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: ClaudeCode.Sonnet_4, label: "Claude Sonnet 4" },
@@ -31,12 +32,17 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
+        { value: OpenRouterModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (OR)" },
         { value: OpenRouterModel.Claude_Sonnet_4, label: "Claude Sonnet 4 (OR)" },
         { value: OpenRouterModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (OR)" },
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
@@ -45,6 +51,8 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.Claude_Fable_5, label: "Claude Fable 5 (Vercel)" },
+        { value: VercelModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (Vercel)" },
         { value: VercelModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Vercel)" },
         { value: VercelModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Vercel)" },
         { value: VercelModel.Claude_Opus_4_6, label: "Claude Opus 4.6 (Vercel)" },
@@ -59,6 +67,9 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenAICodex.GPT_5_6_Sol, label: "GPT-5.6 Sol" },
+        { value: OpenAICodex.GPT_5_6_Terra, label: "GPT-5.6 Terra" },
+        { value: OpenAICodex.GPT_5_6_Luna, label: "GPT-5.6 Luna" },
         { value: OpenAICodex.GPT_5_5, label: "GPT-5.5" },
         { value: OpenAICodex.GPT_5_4, label: "GPT-5.4" },
         { value: OpenAICodex.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
@@ -72,12 +83,17 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
+        { value: OpenRouterModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (OR)" },
         { value: OpenRouterModel.Claude_Sonnet_4, label: "Claude Sonnet 4 (OR)" },
         { value: OpenRouterModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (OR)" },
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
@@ -86,6 +102,9 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (Vercel)" },
+        { value: VercelModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (Vercel)" },
+        { value: VercelModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (Vercel)" },
         { value: VercelModel.GPT_5_5, label: "GPT-5.5 (Vercel)" },
         { value: VercelModel.GPT_5_5_Pro, label: "GPT-5.5 Pro (Vercel)" },
         { value: VercelModel.GPT_5_4, label: "GPT-5.4 (Vercel)" },
@@ -107,6 +126,8 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       label: "OpenCode — Paid",
       options: [
         { value: OpenCodeModel.Zen_MiniMax_M2_7, label: "MiniMax M2.7" },
+        { value: OpenCodeModel.Zen_Claude_Fable_5, label: "Claude Fable 5" },
+        { value: OpenCodeModel.Zen_Claude_Sonnet_5, label: "Claude Sonnet 5" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_4, label: "Claude Sonnet 4" },
@@ -124,10 +145,12 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: OpenCodeModel.Claude_Fable_5, label: "Claude Fable 5" },
         { value: OpenCodeModel.Claude_Opus_4_8, label: "Claude Opus 4.8" },
         { value: OpenCodeModel.Claude_Opus_4_7, label: "Claude Opus 4.7" },
         { value: OpenCodeModel.Claude_Opus_4_6, label: "Claude Opus 4.6" },
         { value: OpenCodeModel.Claude_Opus_4_5, label: "Claude Opus 4.5" },
+        { value: OpenCodeModel.Claude_Sonnet_5, label: "Claude Sonnet 5" },
         { value: OpenCodeModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: OpenCodeModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: OpenCodeModel.Claude_Sonnet_4, label: "Claude Sonnet 4" },
@@ -155,12 +178,17 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
+        { value: OpenRouterModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (OR)" },
         { value: OpenRouterModel.Claude_Sonnet_4, label: "Claude Sonnet 4 (OR)" },
         { value: OpenRouterModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (OR)" },
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
+        { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },
         { value: OpenRouterModel.GPT_4_1, label: "GPT-4.1 (OR)" },
         { value: OpenRouterModel.O3, label: "o3 (OR)" },
         { value: OpenRouterModel.O4_Mini, label: "o4-mini (OR)" },
@@ -169,6 +197,8 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.Claude_Fable_5, label: "Claude Fable 5 (Vercel)" },
+        { value: VercelModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (Vercel)" },
         { value: VercelModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Vercel)" },
         { value: VercelModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Vercel)" },
         { value: VercelModel.GPT_5_5, label: "GPT-5.5 (Vercel)" },
@@ -187,8 +217,10 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: CursorModel.GPT_5_4, label: "GPT-5.4" },
         { value: CursorModel.GPT_5_4_Mini, label: "GPT-5.4 Mini" },
         { value: CursorModel.GPT_5_3_Codex, label: "GPT-5.3 Codex" },
+        { value: CursorModel.Claude_Fable_5, label: "Claude Fable 5" },
         { value: CursorModel.Claude_Opus_4_8, label: "Claude Opus 4.8" },
         { value: CursorModel.Claude_Opus_4_7, label: "Claude Opus 4.7" },
+        { value: CursorModel.Claude_Sonnet_5, label: "Claude Sonnet 5" },
         { value: CursorModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6" },
         { value: CursorModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5" },
         { value: CursorModel.Gemini_3_1_Pro, label: "Gemini 3.1 Pro" },
