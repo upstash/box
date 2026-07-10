@@ -333,19 +333,19 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 ### OpenAI Codex
 
-| Enum                              | Value                            |
-| --------------------------------- | -------------------------------- |
-| `OpenAICodex.GPT_5_6`             | `openai/gpt-5.6` (alias → Sol)   |
-| `OpenAICodex.GPT_5_6_Sol`         | `openai/gpt-5.6-sol`             |
-| `OpenAICodex.GPT_5_6_Terra`       | `openai/gpt-5.6-terra`           |
-| `OpenAICodex.GPT_5_6_Luna`        | `openai/gpt-5.6-luna`            |
-| `OpenAICodex.GPT_5_5`             | `openai/gpt-5.5`                 |
-| `OpenAICodex.GPT_5_4`             | `openai/gpt-5.4`                 |
-| `OpenAICodex.GPT_5_4_Mini`        | `openai/gpt-5.4-mini`        |
-| `OpenAICodex.GPT_5_3_Codex`       | `openai/gpt-5.3-codex`       |
-| `OpenAICodex.GPT_5_3_Codex_Spark` | `openai/gpt-5.3-codex-spark` |
-| `OpenAICodex.GPT_5_2_Codex`       | `openai/gpt-5.2-codex`       |
-| `OpenAICodex.GPT_5_1_Codex_Max`   | `openai/gpt-5.1-codex-max`   |
+| Enum                              | Value                          |
+| --------------------------------- | ------------------------------ |
+| `OpenAICodex.GPT_5_6`             | `openai/gpt-5.6` (alias → Sol) |
+| `OpenAICodex.GPT_5_6_Sol`         | `openai/gpt-5.6-sol`           |
+| `OpenAICodex.GPT_5_6_Terra`       | `openai/gpt-5.6-terra`         |
+| `OpenAICodex.GPT_5_6_Luna`        | `openai/gpt-5.6-luna`          |
+| `OpenAICodex.GPT_5_5`             | `openai/gpt-5.5`               |
+| `OpenAICodex.GPT_5_4`             | `openai/gpt-5.4`               |
+| `OpenAICodex.GPT_5_4_Mini`        | `openai/gpt-5.4-mini`          |
+| `OpenAICodex.GPT_5_3_Codex`       | `openai/gpt-5.3-codex`         |
+| `OpenAICodex.GPT_5_3_Codex_Spark` | `openai/gpt-5.3-codex-spark`   |
+| `OpenAICodex.GPT_5_2_Codex`       | `openai/gpt-5.2-codex`         |
+| `OpenAICodex.GPT_5_1_Codex_Max`   | `openai/gpt-5.1-codex-max`     |
 
 ### OpenRouter
 
