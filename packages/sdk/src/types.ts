@@ -455,10 +455,9 @@ export interface BoxConfig extends BoxConnectionOptions {
   /** Resource size for the box. Defaults to `"small"`. */
   size?: BoxSize;
   /**
-   * Provision the box with a desktop environment (Xvfb + XFCE + noVNC +
-   * Chromium) usable via `box.desktop`. Uses the Debian Desktop image.
+   * Provision a headless browser (Chromium) usable via `box.browser`.
    */
-  desktop?: boolean;
+  browser?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
   /** Optional startup script for keep-alive boxes. */
@@ -1066,107 +1065,14 @@ export interface PublicURL {
 /** @deprecated Use `PublicURL` instead. */
 export type Preview = PublicURL;
 
-// ==================== Desktop / Desktop ====================
+// ==================== Browser ====================
 
-/** Stream auth mode for the Desktop desktop session. */
-export type DesktopAuthMode = "basic" | "token" | "none";
-
-/** Mouse button name. */
-export type DesktopMouseButton = "left" | "middle" | "right";
-
-/** Options for `box.desktop.start()`. */
-export interface DesktopStartOptions {
-  /** Desktop width in px (640-3840). Defaults to 1280. */
-  width?: number;
-  /** Desktop height in px (480-2160). Defaults to 800. */
-  height?: number;
-  /** URL to open in the browser right after the desktop starts. */
-  open?: string;
-}
-
-/** Result of `box.desktop.start()` — the running desktop, no viewer URL. */
-export interface DesktopInfo {
-  running: boolean;
-  width?: number;
-  height?: number;
-  /** URL opened via the `open` option, when provided. */
-  opened?: string;
-}
-
-/** Options for `box.desktop.stream()`. */
-export interface DesktopStreamOptions {
-  /** Who can view the stream: "basic" (default, password), "token", or "none" (public). */
-  auth?: DesktopAuthMode;
-  /** Viewers can watch but not send input. */
-  viewOnly?: boolean;
-}
-
-/** A viewable desktop stream — the URL and its credentials. */
-export interface DesktopStream {
-  /** Browser-viewable noVNC URL. */
-  url: string;
-  /** Raw websocket URL for custom VNC clients. */
-  rawWsUrl?: string;
-  port: number;
-  auth?: DesktopAuthMode;
-  /** Basic auth credentials (auth: "basic"). */
-  username?: string;
-  password?: string;
-  /** Bearer token (auth: "token"). */
-  token?: string;
-}
-
-/** Result of `box.desktop.status()`. */
-export interface DesktopStatus {
-  running: boolean;
-  /** Whether a viewer stream is currently exposed (see `stream()`). */
-  streaming: boolean;
-  display?: string;
-  width?: number;
-  height?: number;
-  processes?: Record<string, boolean>;
-}
-
-/** Result of `box.desktop.screen()`. */
-export interface DesktopScreen {
-  width: number;
-  height: number;
-  cursor: { x: number; y: number };
-}
-
-/**
- * One computer-use action, following the Anthropic `computer_20250124`
- * tool schema verbatim (e.g. `{ type: "left_click", coordinate: [x, y] }`).
- */
-export type ComputerUseAction = { type: string } & Record<string, unknown>;
-
-/** Per-action result from `box.desktop.actions()`. */
-export type ComputerUseResult = {
-  ok: boolean;
-  message?: string;
-} & Record<string, unknown>;
-
-/** Options for `box.desktop.agent.act()`. */
-export interface DesktopActOptions {
-  /** Model override for grounding the instruction. */
-  model?: string;
-}
-
-/** Result of `box.desktop.agent.act()`. */
-export interface DesktopActResult {
-  /** Computer-use actions the model executed. */
-  actions: ComputerUseAction[];
-  /** Model's explanation of what it did. */
-  reasoning?: string;
-  /** Base64 PNG screenshot taken after the action. */
-  screenshot?: string;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-/** Options for `box.browser.extract()` / `observe()`. */
-export interface DesktopExtractOptions {
-  /** Model override for the extraction. */
+/** Options for `box.browser.extract()` / `observe()` / `act()`. */
+export interface BrowserExtractOptions {
+  /**
+   * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5` or
+   * `openai/gpt-4o`. Defaults to `anthropic/claude-sonnet-4-5`.
+   */
   model?: string;
 }
 
@@ -1186,9 +1092,11 @@ export interface BrowserContent {
   links?: BrowserLink[];
 }
 
-/** One actionable element from `box.browser.observe()`. */
+/** One actionable element from `tab.observe()`. */
 export interface BrowserObserveElement {
   description: string;
+  /** A selector for the element (Stagehand-resolved), when available. */
+  selector?: string;
   url?: string;
 }
 
@@ -1197,31 +1105,101 @@ export interface BrowserObserveResult {
   elements: BrowserObserveElement[];
 }
 
-/** Options for `box.desktop.agent.run()`. */
-export interface DesktopRunOptions {
-  /** The task to complete, in natural language. */
+/** Options for `tab.run()`. */
+export interface BrowserRunOptions {
+  /** The task to accomplish on the page, in natural language. */
   prompt: string;
-  /** Hard cap on model turns. Defaults to 12, max 30. */
+  /** Max agent steps. Default 15, max 30. */
   maxSteps?: number;
-  /** Model override. */
+  /**
+   * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5`,
+   * `openai/gpt-4o`, `openrouter/...`, `vercel/...`, `opencode/...`. The box or
+   * account must have a key for that provider. Defaults to
+   * `anthropic/claude-sonnet-4-5`.
+   */
   model?: string;
 }
 
-/** One turn of an autonomous `box.desktop.agent.run()`. */
-export interface DesktopRunStep {
+/** One turn of a `tab.run()` loop. */
+export interface BrowserRunStep {
   step: number;
+  action?: string;
+  index?: number;
+  text?: string;
   reasoning?: string;
-  actions?: ComputerUseAction[];
+  url?: string;
 }
 
-/** Result of `box.desktop.agent.run()`. */
-export interface DesktopRunResult {
-  /** The model's final summary of the task. */
+/** Result of `tab.run()` — the agent's outcome after the loop. */
+export interface BrowserRunResult {
+  /** The agent's answer/summary when finished. */
   result: string;
-  /** Whether the model finished before hitting the step limit. */
+  /** Whether the agent reported the task complete (vs. hit maxSteps). */
   completed: boolean;
-  steps: DesktopRunStep[];
+  steps: BrowserRunStep[];
   stepCount: number;
   inputTokens: number;
   outputTokens: number;
+}
+
+/** A labeled point (or span) on a recording's timeline. */
+export interface BrowserRecordingMarker {
+  /** "tab_switch" (recorder-observed) or "run" (a `tab.run` chapter). */
+  type: "tab_switch" | "run";
+  /** Offset from the start of the recording, in milliseconds. */
+  atMs: number;
+  /** For spans (runs): end offset in milliseconds. */
+  endMs?: number;
+  /** Tab title/URL for switches; the prompt for runs. */
+  label?: string;
+  tabId?: string;
+}
+
+/** One captured browser session (HLS video + timeline metadata). */
+export interface BrowserRecording {
+  id: string;
+  boxId: string;
+  status: "recording" | "completed" | "failed";
+  startedAt: number;
+  endedAt?: number;
+  durationMs?: number;
+  sizeBytes?: number;
+  segmentCount?: number;
+  /** Why the recording ended: "requested" | "max_duration" | "idle" | "browser_disconnected" | "lost". */
+  stoppedReason?: string;
+  maxDurationSeconds?: number;
+  markers: BrowserRecordingMarker[];
+  /**
+   * HLS playlist URL for playback (hls.js / Safari / ffplay). Served by the
+   * coordinator — requests need the same `Authorization: Bearer <apiKey>`
+   * header as any other API call.
+   */
+  playlistUrl: string;
+}
+
+/** Options for `box.browser.recordings.start()`. */
+export interface BrowserRecordingOptions {
+  /** Auto-stop after this many seconds (default and maximum: 600 = 10 minutes). */
+  maxDurationSeconds?: number;
+}
+
+/** Handle for an in-flight recording returned by `recordings.start()`. */
+export interface BrowserRecordingHandle {
+  id: string;
+  /** Finalize the recording: flush the encoder, upload, return metadata. */
+  stop: () => Promise<BrowserRecording>;
+}
+
+/** Result of `box.browser.connect()` — a CDP endpoint for Playwright/Puppeteer/Stagehand. */
+export interface BrowserConnection {
+  /**
+   * Ready-to-use WebSocket CDP endpoint with the token as a query param
+   * (`wss://…?token=…`). Drops straight into Playwright `connectOverCDP`,
+   * Puppeteer `browserWSEndpoint`, or Stagehand `localBrowserLaunchOptions.cdpUrl`.
+   */
+  cdpUrl: string;
+  /** HTTPS endpoint for the header-based flow: connect to `host`, pass `token` as a Basic-auth header. */
+  host: string;
+  /** The access token (also carried in `cdpUrl`'s query string). */
+  token: string;
 }

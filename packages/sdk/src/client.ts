@@ -47,22 +47,17 @@ import {
   type OpenCodeAgentOptions,
   type AgentConfig,
   type CustomHarnessConfig,
-  type DesktopStartOptions,
-  type DesktopInfo,
-  type DesktopStreamOptions,
-  type DesktopStream,
-  type DesktopStatus,
-  type DesktopScreen,
-  type DesktopMouseButton,
-  type DesktopActOptions,
-  type DesktopActResult,
-  type DesktopExtractOptions,
+  type BrowserExtractOptions,
   type BrowserContent,
   type BrowserObserveResult,
-  type DesktopRunOptions,
-  type DesktopRunResult,
-  type ComputerUseAction,
-  type ComputerUseResult,
+  type BrowserRunOptions,
+  type BrowserRunResult,
+  type BrowserRunStep,
+  type BrowserConnection,
+  type BrowserRecording,
+  type BrowserRecordingHandle,
+  type BrowserRecordingMarker,
+  type BrowserRecordingOptions,
   Agent,
 } from "./types.js";
 import type { z, ZodType } from "zod/v3";
@@ -403,6 +398,156 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  * await box.delete();
  * ```
  */
+/**
+ * A single browser tab in a box's Chromium, addressed by its CDP target id.
+ *
+ * Obtain one via {@link Box.browser}: `box.browser.newTab(url)`,
+ * `box.browser.listTabs()`, or `box.browser.getTab(id)`. All page operations
+ * run against this specific tab. `screenshot`/`extract`/`observe` all work
+ * headless, without a visible screen.
+ */
+export class Tab {
+  /** CDP target id of this tab. */
+  readonly id: string;
+  /** Last known URL of this tab (from `newTab`/`listTabs`; not live). */
+  readonly url?: string;
+  /** Last known title of this tab (from `newTab`/`listTabs`; not live). */
+  readonly title?: string;
+
+  private readonly box: Box;
+
+  constructor(box: Box, init: { id: string; url?: string; title?: string }) {
+    this.box = box;
+    this.id = init.id;
+    this.url = init.url;
+    this.title = init.title;
+  }
+
+  /** Navigate this tab to a URL and return the page content. */
+  goto(url: string): Promise<BrowserContent> {
+    return this.box._request<BrowserContent>("POST", `/v2/box/${this.box.id}/browser/goto`, {
+      body: { url, tab: this.id },
+      timeout: 60000,
+    });
+  }
+
+  /** Read this tab's current title, URL, text, and links. */
+  content(): Promise<BrowserContent> {
+    return this.box._request<BrowserContent>(
+      "GET",
+      `/v2/box/${this.box.id}/browser/content?tab=${this.id}`,
+      { timeout: 60000 },
+    );
+  }
+
+  /** PNG of this tab via CDP (works headless), as raw bytes. */
+  screenshot(): Promise<Uint8Array> {
+    return this._screenshotData().then(base64ToBytes);
+  }
+
+  /** PNG of this tab via CDP (works headless), as a base64 string. */
+  screenshotBase64(): Promise<string> {
+    return this._screenshotData();
+  }
+
+  private async _screenshotData(): Promise<string> {
+    const resp = await this.box._request<{ data: string }>(
+      "GET",
+      `/v2/box/${this.box.id}/browser/screenshot?encoding=base64&tab=${this.id}`,
+      { timeout: 60000 },
+    );
+    return resp.data;
+  }
+
+  /** Extract schema-validated structured data from this tab (metered). */
+  async extract<T extends ZodType<unknown>>(
+    instruction: string,
+    schema: T,
+    options?: BrowserExtractOptions,
+  ): Promise<z.infer<T>> {
+    const jsonSchema = toJsonSchema(schema);
+    if (!jsonSchema) throw new BoxError("extract requires a Zod object schema");
+    const resp = await this.box._request<{ data?: unknown }>(
+      "POST",
+      `/v2/box/${this.box.id}/browser/extract`,
+      {
+        body: {
+          instruction,
+          schema: jsonSchema,
+          tab: this.id,
+          ...(options?.model ? { model: options.model } : {}),
+        },
+        timeout: 180000,
+      },
+    );
+    // Validate + type the result against the caller's schema.
+    return schema.parse(resp.data) as z.infer<T>;
+  }
+
+  /** List actionable page elements matching an instruction (metered). */
+  async observe(
+    instruction: string,
+    options?: BrowserExtractOptions,
+  ): Promise<BrowserObserveResult> {
+    const resp = await this.box._request<{ elements?: BrowserObserveResult["elements"] }>(
+      "POST",
+      `/v2/box/${this.box.id}/browser/observe`,
+      {
+        body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+        timeout: 180000,
+      },
+    );
+    return { elements: resp.elements ?? [] };
+  }
+
+  /**
+   * Autonomously complete a multi-step task on this tab. Runs a DOM-aware
+   * browser agent (Stagehand) inside the box: it reads the page, acts, and
+   * repeats until done. Metered — needs a key for the model's provider on the
+   * box or account (Anthropic, OpenAI, OpenRouter, Vercel, or OpenCode).
+   */
+  async run(options: BrowserRunOptions): Promise<BrowserRunResult> {
+    const resp = await this.box._request<{
+      result?: string;
+      completed?: boolean;
+      steps?: BrowserRunStep[];
+      step_count?: number;
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.box.id}/browser/run`, {
+      body: {
+        prompt: options.prompt,
+        tab: this.id,
+        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
+        ...(options.model ? { model: options.model } : {}),
+      },
+      timeout: 600000,
+    });
+    return {
+      result: resp.result ?? "",
+      completed: Boolean(resp.completed),
+      steps: resp.steps ?? [],
+      stepCount: resp.step_count ?? 0,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
+  }
+
+  /**
+   * Live-view URL for this tab (authenticated via a token in the URL). Open it
+   * directly or embed it in an iframe — the page renders the tab live via CDP
+   * screencast. View-only: frames flow out, no input goes in.
+   */
+  screencastUrl(): Promise<string> {
+    return this.box._browserScreencastUrl(this.id);
+  }
+
+  /** Close this tab. */
+  async close(): Promise<void> {
+    await this.box._request("DELETE", `/v2/box/${this.box.id}/browser/tabs/${this.id}`);
+  }
+}
+
 export class Box<TProvider = unknown> {
   readonly id: string;
 
@@ -505,84 +650,39 @@ export class Box<TProvider = unknown> {
   };
 
   /**
-   * Desktop / desktop namespace — requires a box created with `desktop: true`.
-   *
-   * Everything directly on `desktop.*` is deterministic and token-free;
-   * everything under `desktop.agent.*` calls a model and is metered.
-   */
-  readonly desktop: {
-    /** Boot the desktop (idempotent). Returns the running desktop — no viewer URL. */
-    start: (options?: DesktopStartOptions) => Promise<DesktopInfo>;
-    /** Expose the running desktop as a viewable stream. Returns the URL + credentials. */
-    stream: (options?: DesktopStreamOptions) => Promise<DesktopStream>;
-    /** Stop the desktop and revoke any stream credential. */
-    stop: () => Promise<void>;
-    /** Desktop status (running, streaming, resolution, processes). */
-    status: () => Promise<DesktopStatus>;
-    /** PNG screenshot — Uint8Array by default, string with encoding: "base64". */
-    screenshot: (options?: {
-      encoding?: "base64";
-      cursor?: boolean;
-    }) => Promise<Uint8Array | string>;
-    /** Screen size + cursor position. */
-    screen: () => Promise<DesktopScreen>;
-    moveMouse: (x: number, y: number) => Promise<void>;
-    /** Click at (x, y), or at the current position when omitted. */
-    leftClick: (x?: number, y?: number) => Promise<void>;
-    rightClick: (x?: number, y?: number) => Promise<void>;
-    middleClick: (x?: number, y?: number) => Promise<void>;
-    doubleClick: (x?: number, y?: number) => Promise<void>;
-    drag: (
-      from: { x: number; y: number },
-      to: { x: number; y: number },
-      button?: DesktopMouseButton,
-    ) => Promise<void>;
-    mousePress: (button?: DesktopMouseButton) => Promise<void>;
-    mouseRelease: (button?: DesktopMouseButton) => Promise<void>;
-    scroll: (
-      direction: "up" | "down" | "left" | "right",
-      amount?: number,
-      at?: { x: number; y: number },
-    ) => Promise<void>;
-    /** Type text at the cursor. */
-    type: (text: string, options?: { delayMs?: number }) => Promise<void>;
-    /** Press a key or combo: press("enter"), press(["ctrl", "c"]). */
-    press: (keys: string | string[]) => Promise<void>;
-    /** Open a URL or file with the default application. */
-    open: (target: string) => Promise<void>;
-    /** Launch an allowlisted Desktop app (e.g. "chromium"). */
-    launch: (app: string, args?: string[]) => Promise<void>;
-    /** Execute a batch of computer-use actions in one round-trip. */
-    actions: (actions: ComputerUseAction[]) => Promise<ComputerUseResult[]>;
-    /** Model-powered control (metered). */
-    agent: {
-      /** Ground one natural-language instruction to a UI action and do it. */
-      act: (instruction: string, options?: DesktopActOptions) => Promise<DesktopActResult>;
-      /** Autonomously complete a multi-step task, looping until done. */
-      run: (options: DesktopRunOptions) => Promise<DesktopRunResult>;
-    };
-  };
-
-  /**
-   * Browser namespace — DOM-aware control of the desktop's Chromium via CDP.
-   * Requires a running desktop with an open page.
+   * Browser namespace — DOM-aware control of Chromium via CDP. Requires a box
+   * created with `browser: true`. Tab management only: open, list, and address
+   * tabs. All page operations (`goto`, `content`, `screenshot`, `extract`,
+   * `observe`, `close`) live on the {@link Tab} handle returned here.
    */
   readonly browser: {
-    /** Navigate the active tab to a URL and return the page content. */
-    goto: (url: string) => Promise<BrowserContent>;
-    /** Read the current page's title, URL, text, and links. */
-    content: () => Promise<BrowserContent>;
-    /** Extract schema-validated structured data from the current page (metered). */
-    extract: <T extends ZodType<unknown>>(
-      instruction: string,
-      schema: T,
-      options?: DesktopExtractOptions,
-    ) => Promise<z.infer<T>>;
-    /** List actionable page elements matching an instruction (metered). */
-    observe: (
-      instruction: string,
-      options?: DesktopExtractOptions,
-    ) => Promise<BrowserObserveResult>;
+    /** Open a new tab (optionally navigating to `url`) and return its handle. */
+    newTab: (url?: string) => Promise<Tab>;
+    /** List the box's open tabs as handles. */
+    listTabs: () => Promise<Tab[]>;
+    /** Address an existing tab by its CDP target id — no network call. */
+    getTab: (id: string) => Tab;
+    /**
+     * Expose the box's Chromium over CDP and return an authenticated endpoint
+     * for Playwright/Puppeteer `connectOverCDP` (or Selenium via chromedriver).
+     */
+    connect: () => Promise<BrowserConnection>;
+    /**
+     * Session recordings — capture the browser (all tabs, follows the
+     * foreground) to a replayable HLS video with run/tab-switch chapters.
+     * Recordings auto-stop after `maxDurationSeconds` (max 10 minutes) or
+     * after 3 minutes of no on-screen activity.
+     */
+    recordings: {
+      /** Start capturing. One active recording per box. */
+      start: (options?: BrowserRecordingOptions) => Promise<BrowserRecordingHandle>;
+      /** Stop the active recording and return its metadata. */
+      stop: () => Promise<BrowserRecording>;
+      /** List this box's recordings, newest first. */
+      list: () => Promise<BrowserRecording[]>;
+      /** Fetch one recording's metadata. */
+      get: (recordingId: string) => Promise<BrowserRecording>;
+    };
   };
 
   /**
@@ -727,58 +827,17 @@ export class Box<TProvider = unknown> {
       list: () => this._labelList(),
     };
 
-    this.desktop = {
-      start: (options) => this._desktopStart(options),
-      stream: (options) => this._desktopStream(options),
-      stop: () => this._desktopOk("POST", "desktop/stop"),
-      status: () => this._request<DesktopStatus>("GET", `/v2/box/${this.id}/desktop/status`),
-      screenshot: (options) => this._desktopScreenshot(options),
-      screen: () => this._request<DesktopScreen>("GET", `/v2/box/${this.id}/desktop/screen`),
-      moveMouse: (x, y) => this._desktopOk("POST", "desktop/mouse/move", { x, y }),
-      leftClick: (x, y) => this._desktopClick("left", 1, x, y),
-      rightClick: (x, y) => this._desktopClick("right", 1, x, y),
-      middleClick: (x, y) => this._desktopClick("middle", 1, x, y),
-      doubleClick: (x, y) => this._desktopClick("left", 2, x, y),
-      drag: (from, to, button) =>
-        this._desktopOk("POST", "desktop/mouse/drag", { from, to, button }),
-      mousePress: (button) =>
-        this._desktopOk("POST", "desktop/mouse/press", { button: button ?? "left" }),
-      mouseRelease: (button) =>
-        this._desktopOk("POST", "desktop/mouse/release", { button: button ?? "left" }),
-      scroll: (direction, amount, at) =>
-        this._desktopOk("POST", "desktop/mouse/scroll", {
-          direction,
-          amount: amount ?? 1,
-          ...(at ? { x: at.x, y: at.y } : {}),
-        }),
-      type: (text, options) =>
-        this._desktopOk("POST", "desktop/keyboard/type", {
-          text,
-          ...(options?.delayMs !== undefined ? { delay_ms: options.delayMs } : {}),
-        }),
-      press: (keys) => this._desktopOk("POST", "desktop/keyboard/press", { keys }),
-      open: (target) => this._desktopOk("POST", "desktop/open", { target }),
-      launch: (app, args) =>
-        this._desktopOk("POST", "desktop/launch", { app, ...(args?.length ? { args } : {}) }),
-      actions: (actions) => this._desktopActions(actions),
-      agent: {
-        act: (instruction, options) => this._desktopAct(instruction, options),
-        run: (options) => this._desktopRun(options),
-      },
-    };
-
     this.browser = {
-      goto: (url) =>
-        this._request<BrowserContent>("POST", `/v2/box/${this.id}/browser/goto`, {
-          body: { url },
-          timeout: 60000,
-        }),
-      content: () =>
-        this._request<BrowserContent>("GET", `/v2/box/${this.id}/browser/content`, {
-          timeout: 60000,
-        }),
-      extract: (instruction, schema, options) => this._browserExtract(instruction, schema, options),
-      observe: (instruction, options) => this._browserObserve(instruction, options),
+      newTab: (url) => this._browserNewTab(url),
+      listTabs: () => this._browserListTabs(),
+      getTab: (id) => new Tab(this, { id }),
+      connect: () => this._browserConnect(),
+      recordings: {
+        start: (options) => this._recordingStart(options),
+        stop: () => this._recordingStop(),
+        list: () => this._recordingList(),
+        get: (recordingId) => this._recordingGet(recordingId),
+      },
     };
   }
 
@@ -813,7 +872,7 @@ export class Box<TProvider = unknown> {
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
     if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
-    if (config?.desktop) body.desktop = true;
+    if (config?.browser) body.browser = true;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.git?.userName) body.git_user_name = config.git.userName;
     if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
@@ -2290,181 +2349,116 @@ export class Box<TProvider = unknown> {
     }
   }
 
-  /** @internal */
-  // ==================== Desktop (private, exposed via this.desktop) ====================
-
-  private async _desktopOk(
-    method: string,
-    subpath: string,
-    body?: Record<string, unknown>,
-  ): Promise<void> {
-    await this._request<{ ok: boolean }>(
-      method,
-      `/v2/box/${this.id}/${subpath}`,
-      body ? { body } : {},
-    );
-  }
-
-  private _desktopClick(
-    button: DesktopMouseButton,
-    count: number,
-    x?: number,
-    y?: number,
-  ): Promise<void> {
-    return this._desktopOk("POST", "desktop/mouse/click", {
-      button,
-      count,
-      ...(x !== undefined && y !== undefined ? { x, y } : {}),
-    });
-  }
-
-  private async _desktopStart(options?: DesktopStartOptions): Promise<DesktopInfo> {
-    const body: Record<string, unknown> = {};
-    if (options?.width) body.width = options.width;
-    if (options?.height) body.height = options.height;
-    if (options?.open) body.open = options.open;
-    const raw = await this._request<Record<string, unknown>>(
+  private async _browserNewTab(url?: string): Promise<Tab> {
+    const resp = await this._request<{ id: string; url?: string; title?: string }>(
       "POST",
-      `/v2/box/${this.id}/desktop/start`,
-      { body, timeout: 120000 },
+      `/v2/box/${this.id}/browser/tabs`,
+      {
+        body: url !== undefined ? { url } : {},
+        timeout: 60000,
+      },
     );
-    return {
-      running: Boolean(raw.running),
-      width: raw.width as number | undefined,
-      height: raw.height as number | undefined,
-      opened: raw.opened as string | undefined,
-    };
+    return new Tab(this, { id: resp.id, url: resp.url, title: resp.title });
   }
 
-  private async _desktopStream(options?: DesktopStreamOptions): Promise<DesktopStream> {
-    const body: Record<string, unknown> = {};
-    if (options?.auth) body.auth = options.auth;
-    if (options?.viewOnly) body.view_only = true;
-    const raw = await this._request<Record<string, unknown>>(
-      "POST",
-      `/v2/box/${this.id}/desktop/stream`,
-      { body },
-    );
-    return {
-      url: (raw.url as string) ?? "",
-      rawWsUrl: raw.raw_ws_url as string | undefined,
-      port: (raw.port as number) ?? 6080,
-      auth: raw.auth as DesktopStream["auth"],
-      username: raw.username as string | undefined,
-      password: raw.password as string | undefined,
-      token: raw.token as string | undefined,
-    };
-  }
-
-  private async _desktopScreenshot(options?: {
-    encoding?: "base64";
-    cursor?: boolean;
-  }): Promise<Uint8Array | string> {
-    const params = new URLSearchParams({ encoding: "base64" });
-    if (options?.cursor === false) params.set("cursor", "false");
-    const resp = await this._request<{ data: string }>(
+  private async _browserListTabs(): Promise<Tab[]> {
+    const resp = await this._request<{ tabs?: { id: string; url?: string; title?: string }[] }>(
       "GET",
-      `/v2/box/${this.id}/desktop/screenshot?${params}`,
+      `/v2/box/${this.id}/browser/tabs`,
       { timeout: 60000 },
     );
-    if (options?.encoding === "base64") return resp.data;
-    return base64ToBytes(resp.data);
+    return (resp.tabs ?? []).map((t) => new Tab(this, t));
   }
 
-  private async _desktopActions(actions: ComputerUseAction[]): Promise<ComputerUseResult[]> {
-    const resp = await this._request<{ results: ComputerUseResult[] | null }>(
+  private async _browserConnect(): Promise<BrowserConnection> {
+    const resp = await this._request<{ cdp_url?: string; host?: string; token?: string }>(
       "POST",
-      `/v2/box/${this.id}/desktop/actions`,
-      { body: { actions }, timeout: 180000 },
+      `/v2/box/${this.id}/browser/connect`,
+      { timeout: 60000 },
     );
-    return resp.results ?? [];
-  }
-
-  private async _desktopAct(
-    instruction: string,
-    options?: DesktopActOptions,
-  ): Promise<DesktopActResult> {
-    const resp = await this._request<{
-      actions: ComputerUseAction[] | null;
-      reasoning?: string;
-      screenshot?: { data?: string };
-      input_tokens?: number;
-      output_tokens?: number;
-    }>("POST", `/v2/box/${this.id}/desktop/agent/act`, {
-      body: { instruction, ...(options?.model ? { model: options.model } : {}) },
-      timeout: 180000,
-    });
     return {
-      actions: resp.actions ?? [],
-      reasoning: resp.reasoning,
-      screenshot: resp.screenshot?.data,
-      inputTokens: resp.input_tokens ?? 0,
-      outputTokens: resp.output_tokens ?? 0,
+      cdpUrl: resp.cdp_url ?? "",
+      host: resp.host ?? "",
+      token: resp.token ?? "",
     };
   }
 
-  private async _desktopRun(options: DesktopRunOptions): Promise<DesktopRunResult> {
-    const resp = await this._request<{
-      result?: string;
-      completed?: boolean;
-      steps?: { step: number; reasoning?: string; actions?: ComputerUseAction[] }[];
-      step_count?: number;
-      input_tokens?: number;
-      output_tokens?: number;
-    }>("POST", `/v2/box/${this.id}/desktop/agent/run`, {
-      body: {
-        prompt: options.prompt,
-        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
-        ...(options.model ? { model: options.model } : {}),
-      },
-      timeout: 600000,
-    });
+  private _mapRecording(raw: Record<string, unknown>): BrowserRecording {
+    const markers = Array.isArray(raw.markers) ? (raw.markers as Record<string, unknown>[]) : [];
+    const id = String(raw.id ?? "");
     return {
-      result: resp.result ?? "",
-      completed: Boolean(resp.completed),
-      steps: resp.steps ?? [],
-      stepCount: resp.step_count ?? 0,
-      inputTokens: resp.input_tokens ?? 0,
-      outputTokens: resp.output_tokens ?? 0,
+      id,
+      boxId: String(raw.box_id ?? this.id),
+      status: (raw.status as BrowserRecording["status"]) ?? "recording",
+      startedAt: Number(raw.started_at ?? 0),
+      endedAt: raw.ended_at ? Number(raw.ended_at) : undefined,
+      durationMs: raw.duration_ms ? Number(raw.duration_ms) : undefined,
+      sizeBytes: raw.size_bytes ? Number(raw.size_bytes) : undefined,
+      segmentCount: raw.segment_count ? Number(raw.segment_count) : undefined,
+      stoppedReason: raw.stopped_reason ? String(raw.stopped_reason) : undefined,
+      maxDurationSeconds: raw.max_duration_seconds ? Number(raw.max_duration_seconds) : undefined,
+      markers: markers.map((m) => ({
+        type: (m.type as BrowserRecordingMarker["type"]) ?? "tab_switch",
+        atMs: Number(m.at_ms ?? 0),
+        endMs: m.end_ms ? Number(m.end_ms) : undefined,
+        label: m.label ? String(m.label) : undefined,
+        tabId: m.tab_id ? String(m.tab_id) : undefined,
+      })),
+      playlistUrl: `${this._baseUrl}/v2/box/${this.id}/browser/recordings/${id}/playlist`,
     };
   }
 
-  private async _browserExtract<T extends ZodType<unknown>>(
-    instruction: string,
-    schema: T,
-    options?: DesktopExtractOptions,
-  ): Promise<z.infer<T>> {
-    const jsonSchema = toJsonSchema(schema);
-    if (!jsonSchema) throw new BoxError("extract requires a Zod object schema");
-    const resp = await this._request<{ data?: unknown }>(
+  private async _recordingStart(
+    options?: BrowserRecordingOptions,
+  ): Promise<BrowserRecordingHandle> {
+    const resp = await this._request<Record<string, unknown>>(
       "POST",
-      `/v2/box/${this.id}/browser/extract`,
+      `/v2/box/${this.id}/browser/recordings`,
       {
-        body: {
-          instruction,
-          schema: jsonSchema,
-          ...(options?.model ? { model: options.model } : {}),
-        },
-        timeout: 180000,
+        body: options?.maxDurationSeconds
+          ? { max_duration_seconds: options.maxDurationSeconds }
+          : {},
+        timeout: 60000,
       },
     );
-    // Validate + type the result against the caller's schema.
-    return schema.parse(resp.data) as z.infer<T>;
+    const rec = this._mapRecording(resp);
+    return { id: rec.id, stop: () => this._recordingStop() };
   }
 
-  private async _browserObserve(
-    instruction: string,
-    options?: DesktopExtractOptions,
-  ): Promise<BrowserObserveResult> {
-    const resp = await this._request<{ elements?: BrowserObserveResult["elements"] }>(
+  private async _recordingStop(): Promise<BrowserRecording> {
+    // Stopping flushes the encoder and uploads the HLS artifacts.
+    const resp = await this._request<Record<string, unknown>>(
       "POST",
-      `/v2/box/${this.id}/browser/observe`,
-      {
-        body: { instruction, ...(options?.model ? { model: options.model } : {}) },
-        timeout: 180000,
-      },
+      `/v2/box/${this.id}/browser/recordings/stop`,
+      { timeout: 180000 },
     );
-    return { elements: resp.elements ?? [] };
+    return this._mapRecording(resp);
+  }
+
+  private async _recordingList(): Promise<BrowserRecording[]> {
+    const resp = await this._request<{ recordings?: Record<string, unknown>[] }>(
+      "GET",
+      `/v2/box/${this.id}/browser/recordings`,
+    );
+    return (resp.recordings ?? []).map((r) => this._mapRecording(r));
+  }
+
+  private async _recordingGet(recordingId: string): Promise<BrowserRecording> {
+    const resp = await this._request<Record<string, unknown>>(
+      "GET",
+      `/v2/box/${this.id}/browser/recordings/${recordingId}`,
+    );
+    return this._mapRecording(resp);
+  }
+
+  /** @internal — Authenticated live-view URL for a tab (used by Tab.screencastUrl). */
+  async _browserScreencastUrl(tabId?: string): Promise<string> {
+    const resp = await this._request<{ screencast_url?: string }>(
+      "POST",
+      `/v2/box/${this.id}/browser/screencast`,
+      { body: tabId ? { tab: tabId } : {}, timeout: 60000 },
+    );
+    return resp.screencast_url ?? "";
   }
 
   async _request<T>(
