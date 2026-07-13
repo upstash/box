@@ -85,6 +85,10 @@ export type {
   BrowserRunOptions,
   BrowserRunResult,
   BrowserRunStep,
+  BrowserRecording,
+  BrowserRecordingHandle,
+  BrowserRecordingMarker,
+  BrowserRecordingOptions,
   BrowserConnection,
 } from "./types.js";
 export type {

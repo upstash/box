@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod/v3";
+import { z as z3 } from "zod/v3";
+import { z as z4 } from "zod/v4";
 import { parseErrorResponse, toJsonSchema } from "../client.js";
 import { mockResponse } from "./helpers.js";
 
@@ -28,10 +29,10 @@ describe("parseErrorResponse", () => {
 
 describe("toJsonSchema", () => {
   it("converts a zod object schema to JSON Schema", () => {
-    const schema = z.object({
-      name: z.string(),
-      age: z.number(),
-      active: z.boolean(),
+    const schema = z3.object({
+      name: z3.string(),
+      age: z3.number(),
+      active: z3.boolean(),
     });
     const result = toJsonSchema(schema);
     expect(result).not.toBeNull();
@@ -47,14 +48,24 @@ describe("toJsonSchema", () => {
     expect(result!.additionalProperties).toBe(false);
   });
 
+  it("converts a Zod 4 object schema to JSON Schema", () => {
+    const result = toJsonSchema(z4.object({ name: z4.string(), age: z4.number() }));
+    expect(result).toMatchObject({
+      type: "object",
+      properties: { name: { type: "string" }, age: { type: "number" } },
+      required: ["name", "age"],
+      additionalProperties: false,
+    });
+  });
+
   it("returns null for a non-zod schema", () => {
     const schema = { parse: (d: unknown) => d };
     expect(toJsonSchema(schema)).toBeNull();
   });
 
   it("handles array types", () => {
-    const schema = z.object({
-      items: z.array(z.string()),
+    const schema = z3.object({
+      items: z3.array(z3.string()),
     });
     const result = toJsonSchema(schema);
     expect(result).not.toBeNull();
@@ -64,9 +75,9 @@ describe("toJsonSchema", () => {
   });
 
   it("handles optional fields", () => {
-    const schema = z.object({
-      name: z.string(),
-      nickname: z.string().optional(),
+    const schema = z3.object({
+      name: z3.string(),
+      nickname: z3.string().optional(),
     });
     const result = toJsonSchema(schema);
     expect(result).not.toBeNull();
@@ -75,7 +86,7 @@ describe("toJsonSchema", () => {
   });
 
   it("strips $schema key from output", () => {
-    const schema = z.object({ name: z.string() });
+    const schema = z3.object({ name: z3.string() });
     const result = toJsonSchema(schema);
     expect(result).not.toBeNull();
     expect(result!.$schema).toBeUndefined();

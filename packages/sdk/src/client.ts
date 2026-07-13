@@ -1,4 +1,5 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
+import { toJSONSchema as zod4ToJsonSchema } from "zod/v4/core";
 import {
   type BoxConfig,
   type BoxConnectionOptions,
@@ -60,8 +61,11 @@ import {
   type BrowserRecordingOptions,
   Agent,
 } from "./types.js";
-import type { z, ZodType } from "zod/v3";
 import { telemetryHeaders } from "./telemetry.js";
+
+type BrowserExtractSchema<T> = {
+  parse(data: unknown): T;
+};
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
@@ -460,11 +464,11 @@ export class Tab {
   }
 
   /** Extract schema-validated structured data from this tab (metered). */
-  async extract<T extends ZodType<unknown>>(
+  async extract<T>(
     instruction: string,
-    schema: T,
+    schema: BrowserExtractSchema<T>,
     options?: BrowserExtractOptions,
-  ): Promise<z.infer<T>> {
+  ): Promise<T> {
     const jsonSchema = toJsonSchema(schema);
     if (!jsonSchema) throw new BoxError("extract requires a Zod object schema");
     const resp = await this.box._request<{ data?: unknown }>(
@@ -481,7 +485,7 @@ export class Tab {
       },
     );
     // Validate + type the result against the caller's schema.
-    return schema.parse(resp.data) as z.infer<T>;
+    return schema.parse(resp.data);
   }
 
   /** List actionable page elements matching an instruction (metered). */
@@ -3045,14 +3049,17 @@ export class EphemeralBox {
 // ==================== Helpers ====================
 
 /** @internal — Convert a Zod schema to a JSON Schema object for the API's json_schema parameter */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toJsonSchema(schema: ZodType<any>): Record<string, unknown> | null {
+export function toJsonSchema(
+  schema: BrowserExtractSchema<unknown>,
+): Record<string, unknown> | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = zodToJsonSchemaLib(schema as any);
+    const result =
+      "_zod" in schema
+        ? (zod4ToJsonSchema as (schema: unknown) => unknown)(schema)
+        : zodToJsonSchemaLib(schema as Parameters<typeof zodToJsonSchemaLib>[0]);
     // Strip the $schema meta key — the API only needs the schema body
     const { $schema: _, ...jsonSchema } = result as Record<string, unknown>;
-    return jsonSchema;
+    return Object.keys(jsonSchema).length > 0 ? jsonSchema : null;
   } catch {
     // Not a Zod schema or conversion failed
   }

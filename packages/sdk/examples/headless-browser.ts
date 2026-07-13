@@ -13,23 +13,24 @@ import { writeFileSync } from "node:fs";
 
 const box = await Box.create({ runtime: "node", browser: true }); // headless — NO desktop
 try {
-  // Navigate (launches Chromium if none is open — no desktop.start needed)
-  const page = await box.browser.goto("https://upstash.com/pricing/redis");
+  // Open a tab and navigate it (launches Chromium if none is open).
+  const tab = await box.browser.newTab();
+  const page = await tab.goto("https://upstash.com/pricing/redis");
   console.log("page:", page.title);
 
   // Read the DOM
-  const { text, links } = await box.browser.content();
+  const { text, links } = await tab.content();
   console.log("content:", text.length, "chars,", links?.length, "links");
 
   // Extract schema-validated data
-  const payg = await box.browser.extract(
+  const payg = await tab.extract(
     "Extract the Pay as you go price per 100K commands",
     z.object({ pricePer100kCommands: z.string() }),
   );
   console.log("extracted:", payg);
 
   // Screenshot via CDP (renders to memory — there is no screen)
-  const png = (await box.browser.screenshot()) as Uint8Array;
+  const png = await tab.screenshot();
   writeFileSync("/tmp/headless.png", png);
   console.log("screenshot:", png.length, "bytes -> /tmp/headless.png");
 } finally {
