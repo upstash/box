@@ -408,6 +408,18 @@ See the [`examples/`](./examples) directory for complete working examples:
 - `multi-runtime.ts` — Run across different runtimes
 - `mcp-skills.ts` — Attach MCP servers to a box
 
+## Telemetry
+
+The SDK sends anonymous usage telemetry with every API request, following the
+same convention as the other Upstash SDKs: three HTTP headers reporting the SDK
+version (`Upstash-Telemetry-Sdk`), the JS runtime (`Upstash-Telemetry-Runtime`,
+e.g. `node@v22.1.0`), and the deployment platform (`Upstash-Telemetry-Platform`,
+e.g. `vercel`). No user data, request payloads, or identifiers are ever
+collected.
+
+To opt out, set the `UPSTASH_DISABLE_TELEMETRY` environment variable to any
+value.
+
 ## License
 
 MIT

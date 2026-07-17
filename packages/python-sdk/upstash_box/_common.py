@@ -6,15 +6,49 @@ No ``await`` here — this module is imported verbatim by both clients.
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 
 import httpx
 
+from ._version import __version__
 from .errors import BoxError
 from .types import Agent, NetworkPolicy
 
 DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com"
 WORKSPACE = "/workspace/home"
+
+_TELEMETRY_RUNTIME = "python@{}.{}.{}".format(*sys.version_info[:3])
+
+
+def _telemetry_platform() -> str:
+    if os.environ.get("UPSTASH_CONSOLE"):
+        return "console"
+    if os.environ.get("VERCEL"):
+        return "vercel"
+    if os.environ.get("CF_PAGES"):
+        return "cloudflare"
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or os.environ.get("AWS_REGION"):
+        return "aws"
+    if os.environ.get("CI"):
+        return "ci"
+    return "unknown"
+
+
+def telemetry_headers() -> Dict[str, str]:
+    """Anonymous client telemetry (SDK version, runtime, platform), following
+    the same header convention as the other Upstash SDKs. No user data or
+    request payloads are ever collected.
+
+    Disable by setting the ``UPSTASH_DISABLE_TELEMETRY`` environment variable.
+    """
+    if os.environ.get("UPSTASH_DISABLE_TELEMETRY"):
+        return {}
+    return {
+        "Upstash-Telemetry-Sdk": f"upstash-box-py@{__version__}",
+        "Upstash-Telemetry-Runtime": _TELEMETRY_RUNTIME,
+        "Upstash-Telemetry-Platform": _telemetry_platform(),
+    }
 
 
 def resolve_base_url(base_url: Optional[str]) -> str:
@@ -30,7 +64,7 @@ def resolve_api_key(api_key: Optional[str]) -> str:
 
 
 def build_headers(api_key: str) -> Dict[str, str]:
-    return {"X-Box-Api-Key": api_key}
+    return {"X-Box-Api-Key": api_key, **telemetry_headers()}
 
 
 def parse_error_response(response: httpx.Response) -> str:

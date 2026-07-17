@@ -8,6 +8,7 @@ export {
   inferDefaultRunner,
 } from "./client.js";
 export { runCustomHarness } from "./custom-harness.js";
+export { appendTelemetryIdentity } from "./telemetry.js";
 export {
   ClaudeCode,
   CursorModel,

@@ -68,6 +68,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | `response_schema` = Pydantic model or raw dict (Python) | Narrower than JS Zod by design (v1). |
 | `close` / `aclose` / context managers (Python) | httpx transport lifecycle — JS has no equivalent (fetch-per-call). |
 | `delete_boxes` (Python) | JS static `delete` renamed. |
+| `appendTelemetryIdentity` (JS) | Internal hook for JS wrappers (the CLI) to join the telemetry chain; no Python wrapper exists, so not ported. |
 | timeouts in **milliseconds** | Matches the JS SDK units. |
 | agent `options` keys are **snake_case** (Python) vs camelCase (JS) | Pythonic public API; the SDK converts to the backend's per-harness casing (Claude Code / OpenCode → camelCase, Codex → snake_case). |
 | `StreamRun.aclose()` needed for `detached` on early break | Python doesn't run generator `finally` on `break` (JS `for await` does). |

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import "dotenv/config";
 import { Command } from "commander";
+import { appendTelemetryIdentity } from "@upstash/box";
+import { VERSION } from "./version.js";
 import { createCommand } from "./commands/create.js";
 import { connectCommand } from "./commands/connect.js";
 import { fromSnapshotCommand } from "./commands/from-snapshot.js";
@@ -16,12 +18,14 @@ import {
   envSetAllCommand,
 } from "./commands/env.js";
 
+appendTelemetryIdentity(`@upstash/box-cli@${VERSION}`);
+
 const program = new Command();
 
 program
   .name("box")
   .description("CLI for Upstash Box — REPL-first interface for AI coding agents")
-  .version("0.1.0");
+  .version(VERSION);
 
 program
   .command("create")

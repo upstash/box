@@ -122,7 +122,7 @@ This repo uses [Changesets](https://github.com/changesets/changesets) for versio
 The Python SDK versions independently of the npm packages (it does not track the
 JS SDK version lockstep — see [`packages/python-sdk/RELEASE.md`](./packages/python-sdk/RELEASE.md)).
 
-1. Bump `version` in `packages/python-sdk/pyproject.toml` and `__version__` in `upstash_box/__init__.py`, and update the changelog.
+1. Bump `version` in `packages/python-sdk/pyproject.toml` and `__version__` in `upstash_box/_version.py`, and update the changelog.
 2. Push a tag `python-sdk-v<X.Y.Z>` (matching the package version).
 3. The **python-sdk-publish** workflow builds, runs full verification (sync-gen check, ruff, mypy, tests, parity), then publishes via **PyPI Trusted Publishing** (OIDC — no stored token) after approval in the gated `pypi` GitHub Environment.
 

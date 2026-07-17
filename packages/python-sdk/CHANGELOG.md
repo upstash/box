@@ -2,6 +2,17 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## Unreleased
+
+- Add anonymous client telemetry, following the same header convention as the
+  other Upstash SDKs: every API request carries `Upstash-Telemetry-Sdk`,
+  `Upstash-Telemetry-Runtime`, and `Upstash-Telemetry-Platform` headers
+  describing the SDK version, Python runtime, and deployment platform. No user
+  data, request payloads, or identifiers are collected. Disable by setting the
+  `UPSTASH_DISABLE_TELEMETRY` environment variable.
+- `__version__` moved to `upstash_box/_version.py` (still re-exported from the
+  package root).
+
 ## 0.1.2
 
 - Add `ClaudeCode.FABLE_5` (`anthropic/claude-fable-5`) to the Claude Code model

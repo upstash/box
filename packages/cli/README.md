@@ -182,6 +182,14 @@ box_abc123> snapshot before-refactor
 box_abc123> exit
 ```
 
+## Telemetry
+
+The CLI sends anonymous usage telemetry with API requests via the
+`@upstash/box` SDK it wraps, identifying itself as `@upstash/box-cli@<version>`
+in the SDK telemetry chain. No user data, prompts, or identifiers are ever
+collected. To opt out, set the `UPSTASH_DISABLE_TELEMETRY` environment
+variable to any value.
+
 ## License
 
 MIT

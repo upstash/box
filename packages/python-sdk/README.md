@@ -206,6 +206,18 @@ and `delete` — but not `agent`, `git`, or `skills`.
 All `timeout` values are in **milliseconds**, matching the TypeScript SDK
 (default `600000`).
 
+## Telemetry
+
+The SDK sends anonymous usage telemetry with every API request, following the
+same convention as the other Upstash SDKs: three HTTP headers reporting the SDK
+version (`Upstash-Telemetry-Sdk`), the Python runtime
+(`Upstash-Telemetry-Runtime`, e.g. `python@3.12.4`), and the deployment
+platform (`Upstash-Telemetry-Platform`, e.g. `vercel`). No user data, request
+payloads, or identifiers are ever collected.
+
+To opt out, set the `UPSTASH_DISABLE_TELEMETRY` environment variable to any
+value.
+
 ## License
 
 MIT

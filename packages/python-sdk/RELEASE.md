@@ -14,8 +14,9 @@ Each release records the JS feature level it reached parity with:
 | 0.1.2              | 0.5.2                       |
 
 When a JS feature is mirrored, bump the Python patch/minor version and update the
-row above (and `__version__` in `upstash_box/__init__.py` + `version` in
-`pyproject.toml`).
+row above (and `__version__` in `upstash_box/_version.py` + `version` in
+`pyproject.toml` — `__init__.py` re-exports `__version__` from `_version.py`,
+which is also what telemetry reports).
 
 ## Publishing
 
@@ -30,7 +31,7 @@ version, then publishes via **PyPI Trusted Publishing** (OIDC — no stored toke
 after environment approval.
 
 ```bash
-# 1. bump version in pyproject.toml + upstash_box/__init__.py, update CHANGELOG
+# 1. bump version in pyproject.toml + upstash_box/_version.py, update CHANGELOG
 # 2. tag and push:
 git tag python-sdk-v0.1.0
 git push origin python-sdk-v0.1.0

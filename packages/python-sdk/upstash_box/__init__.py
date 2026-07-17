@@ -31,6 +31,7 @@ from ._sync import (
     SkillsNamespace,
     StreamRun,
 )
+from ._version import __version__
 from .custom_harness import (
     CustomHarnessContext,
     CustomHarnessDone,
@@ -107,9 +108,8 @@ from .types import (
     WebhookConfig,
 )
 
-__version__ = "0.1.2"
-
 __all__ = [
+    "__version__",
     # Clients (sync canonical + async variants)
     "Box",
     "EphemeralBox",

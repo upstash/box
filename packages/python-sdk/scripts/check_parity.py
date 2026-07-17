@@ -32,6 +32,7 @@ JS_NOT_PORTED = {
     "getPreviewUrl",  # deprecated -> getPublicURL
     "listPreviews",  # deprecated -> listPublicURLs
     "deletePreview",  # deprecated -> deletePublicURL
+    "appendTelemetryIdentity",  # internal hook for JS wrappers (CLI); no Python wrapper exists
 }
 
 # (Python-only additions like close/aclose need no entry here: the check is
