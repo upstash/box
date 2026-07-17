@@ -8,7 +8,7 @@ describe("telemetryHeaders", () => {
   });
 
   it("reports sdk, runtime and platform", () => {
-    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", "");
+    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", undefined);
     const headers = telemetryHeaders();
     expect(headers["Upstash-Telemetry-Sdk"]).toContain(`@upstash/box@${VERSION}`);
     expect(headers["Upstash-Telemetry-Runtime"]).toMatch(/^(node|bun|deno)@/);
@@ -20,8 +20,13 @@ describe("telemetryHeaders", () => {
     expect(telemetryHeaders()).toEqual({});
   });
 
-  it("detects the platform from env vars at call time", () => {
+  it("treats an empty UPSTASH_DISABLE_TELEMETRY as disabled", () => {
     vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", "");
+    expect(telemetryHeaders()).toEqual({});
+  });
+
+  it("detects the platform from env vars at call time", () => {
+    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", undefined);
     vi.stubEnv("UPSTASH_CONSOLE", "");
     vi.stubEnv("CF_PAGES", "");
     vi.stubEnv("AWS_LAMBDA_FUNCTION_NAME", "");
@@ -34,7 +39,7 @@ describe("telemetryHeaders", () => {
   });
 
   it("appends wrapping client identities comma-joined, idempotently", () => {
-    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", "");
+    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", undefined);
     appendTelemetryIdentity("@upstash/box-test-wrapper@9.9.9");
     appendTelemetryIdentity("@upstash/box-test-wrapper@9.9.9");
     const chain = telemetryHeaders()["Upstash-Telemetry-Sdk"].split(",");

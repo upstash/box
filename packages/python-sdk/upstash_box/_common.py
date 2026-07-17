@@ -42,7 +42,7 @@ def telemetry_headers() -> Dict[str, str]:
 
     Disable by setting the ``UPSTASH_DISABLE_TELEMETRY`` environment variable.
     """
-    if os.environ.get("UPSTASH_DISABLE_TELEMETRY"):
+    if "UPSTASH_DISABLE_TELEMETRY" in os.environ:
         return {}
     return {
         "Upstash-Telemetry-Sdk": f"upstash-box-py@{__version__}",

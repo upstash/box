@@ -1,4 +1,4 @@
-"""Telemetry header tests — transport-agnostic, shared by sync and async."""
+"""Telemetry header tests for the shared ``_common`` helpers (transport-agnostic)."""
 
 import upstash_box
 from upstash_box._common import build_headers, telemetry_headers
@@ -37,6 +37,11 @@ def test_opt_out_via_env(monkeypatch):
     monkeypatch.setenv("UPSTASH_DISABLE_TELEMETRY", "1")
     assert telemetry_headers() == {}
     assert build_headers("key") == {"X-Box-Api-Key": "key"}
+
+
+def test_opt_out_with_empty_value(monkeypatch):
+    monkeypatch.setenv("UPSTASH_DISABLE_TELEMETRY", "")
+    assert telemetry_headers() == {}
 
 
 def test_platform_detection(monkeypatch):

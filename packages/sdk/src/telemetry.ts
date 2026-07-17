@@ -65,7 +65,7 @@ let runtime: string | undefined;
  */
 export function telemetryHeaders(): Record<string, string> {
   const env = safeEnv();
-  if (env.UPSTASH_DISABLE_TELEMETRY) return {};
+  if (env.UPSTASH_DISABLE_TELEMETRY !== undefined) return {};
   runtime ??= detectRuntime();
   return {
     "Upstash-Telemetry-Sdk": sdkChain.join(","),
