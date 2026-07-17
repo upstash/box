@@ -34,6 +34,9 @@ try {
     "observed:",
     elements.map((e) => e.description),
   );
+  // Resolve and execute exactly one action.
+  const action = await tab.act("click the Files tab");
+  console.log("acted:", action.actionDescription);
 
   // Open a second tab, screenshot it, then list and close tabs.
   const search = await box.browser.newTab("https://html.duckduckgo.com/html/");

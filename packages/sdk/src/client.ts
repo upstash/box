@@ -51,6 +51,7 @@ import {
   type BrowserExtractOptions,
   type BrowserContent,
   type BrowserObserveResult,
+  type BrowserActResult,
   type BrowserRunOptions,
   type BrowserRunResult,
   type BrowserRunStep,
@@ -502,6 +503,31 @@ export class Tab {
       },
     );
     return { elements: resp.elements ?? [] };
+  }
+
+  /** Resolve and execute one natural-language action on this tab (metered). */
+  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult> {
+    const resp = await this.box._request<{
+      success?: boolean;
+      message?: string;
+      action_description?: string;
+      actions?: BrowserActResult["actions"];
+      cache_status?: "HIT" | "MISS";
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.box.id}/browser/act`, {
+      body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+      timeout: 180000,
+    });
+    return {
+      success: Boolean(resp.success),
+      message: resp.message ?? "",
+      actionDescription: resp.action_description ?? "",
+      actions: resp.actions ?? [],
+      cacheStatus: resp.cache_status,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
   }
 
   /**

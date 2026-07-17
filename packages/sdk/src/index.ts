@@ -82,6 +82,8 @@ export type {
   BrowserLink,
   BrowserObserveElement,
   BrowserObserveResult,
+  BrowserActAction,
+  BrowserActResult,
   BrowserRunOptions,
   BrowserRunResult,
   BrowserRunStep,

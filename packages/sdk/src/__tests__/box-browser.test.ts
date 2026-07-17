@@ -62,6 +62,56 @@ describe("Box browser operations", () => {
     });
   });
 
+  it("executes one Stagehand-style action on the selected tab", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://example.com/login" }))
+      .mockResolvedValueOnce(
+        mockResponse({
+          success: true,
+          message: "Action completed successfully",
+          action_description: "Click the sign-in button",
+          actions: [
+            {
+              selector: "xpath=/html/body/button",
+              description: "Sign in",
+              method: "click",
+              arguments: [],
+            },
+          ],
+          cache_status: "MISS",
+          input_tokens: 30,
+          output_tokens: 8,
+        }),
+      );
+
+    const tab = await box.browser.newTab("https://example.com/login");
+    const result = await tab.act("click the sign-in button", { model: "openai/gpt-5" });
+
+    expect(result).toEqual({
+      success: true,
+      message: "Action completed successfully",
+      actionDescription: "Click the sign-in button",
+      actions: [
+        {
+          selector: "xpath=/html/body/button",
+          description: "Sign in",
+          method: "click",
+          arguments: [],
+        },
+      ],
+      cacheStatus: "MISS",
+      inputTokens: 30,
+      outputTokens: 8,
+    });
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/act");
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
+      instruction: "click the sign-in button",
+      tab: "tab-2",
+      model: "openai/gpt-5",
+    });
+  });
+
   it("starts and stops a recording and maps its playback metadata", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock

@@ -1071,7 +1071,8 @@ export type Preview = PublicURL;
 export interface BrowserExtractOptions {
   /**
    * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5` or
-   * `openai/gpt-4o`. Defaults to `anthropic/claude-sonnet-4-5`.
+   * `openai/gpt-4o`. Defaults to the Box's configured model, or
+   * `anthropic/claude-sonnet-4-5` when the Box has no model.
    */
   model?: string;
 }
@@ -1105,6 +1106,25 @@ export interface BrowserObserveResult {
   elements: BrowserObserveElement[];
 }
 
+/** One action selected and executed by `tab.act()`. */
+export interface BrowserActAction {
+  selector: string;
+  description: string;
+  method?: string;
+  arguments?: string[];
+}
+
+/** Result of one natural-language `tab.act()` call. */
+export interface BrowserActResult {
+  success: boolean;
+  message: string;
+  actionDescription: string;
+  actions: BrowserActAction[];
+  cacheStatus?: "HIT" | "MISS";
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /** Options for `tab.run()`. */
 export interface BrowserRunOptions {
   /** The task to accomplish on the page, in natural language. */
@@ -1114,8 +1134,8 @@ export interface BrowserRunOptions {
   /**
    * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5`,
    * `openai/gpt-4o`, `openrouter/...`, `vercel/...`, `opencode/...`. The box or
-   * account must have a key for that provider. Defaults to
-   * `anthropic/claude-sonnet-4-5`.
+   * account must have a key for that provider. Defaults to the Box's configured
+   * model, or `anthropic/claude-sonnet-4-5` when the Box has no model.
    */
   model?: string;
 }
