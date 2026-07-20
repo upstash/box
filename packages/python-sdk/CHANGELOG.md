@@ -2,7 +2,7 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
-## Unreleased
+## 0.1.3
 
 - Add box labels: `labels` on `Box.create` / `Box.from_snapshot` /
   `EphemeralBox.create` / `EphemeralBox.from_snapshot`, a `label` filter on
