@@ -17,6 +17,7 @@ import {
   envDeleteCommand,
   envSetAllCommand,
 } from "./commands/env.js";
+import { labelAddCommand, labelRemoveCommand, labelListCommand } from "./commands/labels.js";
 
 appendTelemetryIdentity(`@upstash/box-cli@${VERSION}`);
 
@@ -52,6 +53,12 @@ program
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
+  .option(
+    "--label <label>",
+    "Label to tag the box with (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
   .action((opts) => createCommand(opts));
 
 program
@@ -80,12 +87,19 @@ program
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
+  .option(
+    "--label <label>",
+    "Label to tag the box with (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
   .action((snapshotId, opts) => fromSnapshotCommand(snapshotId, opts));
 
 program
   .command("list")
   .description("List all boxes")
   .option("--token <token>", "Upstash Box API token")
+  .option("--label <label>", "Only show boxes carrying this label")
   .action((opts) => listCommand(opts));
 
 program
@@ -141,6 +155,26 @@ envCmd
   .option("--token <token>", "Upstash Box API token")
   .argument("<vars...>", "Key=value pairs")
   .action((vars, opts) => envSetAllCommand(vars, opts));
+
+const labelsCmd = program.command("labels").description("Manage labels on a box");
+
+labelsCmd
+  .command("add <box-id> <label>")
+  .description("Add a label to a box")
+  .option("--token <token>", "Upstash Box API token")
+  .action((boxId, label, opts) => labelAddCommand(boxId, label, opts));
+
+labelsCmd
+  .command("remove <box-id> <label>")
+  .description("Remove a label from a box")
+  .option("--token <token>", "Upstash Box API token")
+  .action((boxId, label, opts) => labelRemoveCommand(boxId, label, opts));
+
+labelsCmd
+  .command("list <box-id>")
+  .description("List a box's labels")
+  .option("--token <token>", "Upstash Box API token")
+  .action((boxId, opts) => labelListCommand(boxId, opts));
 
 program
   .command("completion")

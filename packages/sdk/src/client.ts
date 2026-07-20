@@ -447,6 +447,16 @@ export class Box<TProvider = unknown> {
     list: () => Promise<string[]>;
   };
 
+  /** Labels namespace — tag this box for organization and filtering */
+  readonly labels: {
+    /** Add a label. Returns the box's updated label set. */
+    add: (label: string) => Promise<string[]>;
+    /** Remove a label. Returns the box's updated label set. */
+    remove: (label: string) => Promise<string[]>;
+    /** List this box's labels. */
+    list: () => Promise<string[]>;
+  };
+
   /**
    * The current working directory tracked in the SDK (not in the box).
    * Every new session starts at /workspace/home.
@@ -582,6 +592,12 @@ export class Box<TProvider = unknown> {
       remove: (skillId) => this._skillRemove(skillId),
       list: () => this._skillList(),
     };
+
+    this.labels = {
+      add: (label) => this._labelAdd(label),
+      remove: (label) => this._labelRemove(label),
+      list: () => this._labelList(),
+    };
   }
 
   /**
@@ -609,6 +625,7 @@ export class Box<TProvider = unknown> {
 
     const body: Record<string, unknown> = {};
     if (config?.name) body.name = config.name;
+    if (config?.labels?.length) body.labels = config.labels;
     if (config?.size) body.size = config.size;
     if (config?.keepAlive) body.keep_alive = true;
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
@@ -691,7 +708,8 @@ export class Box<TProvider = unknown> {
     ).replace(/\/$/, "");
     const headers: Record<string, string> = apiHeaders(apiKey, options?.enableTelemetry);
 
-    const response = await fetch(`${baseUrl}/v2/box`, { headers });
+    const query = options?.label ? `?label=${encodeURIComponent(options.label)}` : "";
+    const response = await fetch(`${baseUrl}/v2/box${query}`, { headers });
     if (!response.ok) {
       const msg = await parseErrorResponse(response);
       throw new BoxError(msg, response.status);
@@ -1998,6 +2016,7 @@ export class Box<TProvider = unknown> {
       snapshot_id: snapshotId,
     };
     if (config?.name) body.name = config.name;
+    if (config?.labels?.length) body.labels = config.labels;
     if (config?.size) body.size = config.size;
     if (config?.keepAlive) body.keep_alive = true;
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
@@ -2287,6 +2306,30 @@ export class Box<TProvider = unknown> {
     return data.enabled_skills ?? [];
   }
 
+  // ==================== Labels ====================
+
+  private async _labelAdd(label: string): Promise<string[]> {
+    const data = await this._request<{ labels?: string[] }>(
+      "POST",
+      `/v2/box/${this.id}/config/labels`,
+      { body: { label } },
+    );
+    return data.labels ?? [];
+  }
+
+  private async _labelRemove(label: string): Promise<string[]> {
+    const data = await this._request<{ labels?: string[] }>(
+      "DELETE",
+      `/v2/box/${this.id}/config/labels/${encodeURIComponent(label)}`,
+    );
+    return data.labels ?? [];
+  }
+
+  private async _labelList(): Promise<string[]> {
+    const data = await this._request<BoxData>("GET", `/v2/box/${this.id}`);
+    return data.labels ?? [];
+  }
+
   // ==================== Public URLs ====================
 
   async getPublicURL(
@@ -2527,6 +2570,7 @@ export class EphemeralBox {
 
     const body: Record<string, unknown> = { ephemeral: true };
     if (config?.name) body.name = config.name;
+    if (config?.labels?.length) body.labels = config.labels;
     if (config?.size) body.size = config.size;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;
@@ -2593,6 +2637,7 @@ export class EphemeralBox {
       ephemeral: true,
     };
     if (config?.name) body.name = config.name;
+    if (config?.labels?.length) body.labels = config.labels;
     if (config?.size) body.size = config.size;
     if (config?.ttl !== undefined) body.ttl = config.ttl;
     if (config?.runtime) body.runtime = config.runtime;

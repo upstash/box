@@ -164,6 +164,29 @@ describe("createCommand", () => {
     );
   });
 
+  it("passes labels to Box.create", async () => {
+    vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-1" } as any);
+
+    await createCommand({
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+      label: ["beta", "x-team"],
+    });
+
+    expect(Box.create).toHaveBeenCalledWith(
+      expect.objectContaining({ labels: ["beta", "x-team"] }),
+    );
+  });
+
+  it("omits labels when none provided", async () => {
+    vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-1" } as any);
+
+    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
+
+    expect(Box.create).toHaveBeenCalledWith(expect.objectContaining({ labels: undefined }));
+  });
+
   it("exits on invalid env format", async () => {
     await createCommand({
       token: "key",

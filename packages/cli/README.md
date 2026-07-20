@@ -56,7 +56,9 @@ box create \
   --git-user-name "John Doe" \
   --git-user-email "john@example.com" \
   --env NODE_ENV=production \
-  --env DEBUG=true
+  --env DEBUG=true \
+  --label beta \
+  --label x-team
 ```
 
 | Flag               | Description                                                                                 | Default                       |
@@ -72,6 +74,7 @@ box create \
 | `--git-user-name`  | Git `user.name` set globally in the box container                                           | `Upstash Box`                 |
 | `--git-user-email` | Git `user.email` set globally in the box container                                          | `box@upstash.com`             |
 | `--env KEY=VAL`    | Environment variable (repeatable)                                                           |                               |
+| `--label <label>`  | Label to tag the box with (repeatable)                                                      |                               |
 
 ### `box connect [box-id]`
 
@@ -84,19 +87,21 @@ box connect  # connects to most recent
 
 ### `box from-snapshot <snapshot-id>`
 
-Create a new box from a snapshot and enter the REPL. Accepts the same flags as `create`.
+Create a new box from a snapshot and enter the REPL. Accepts the same flags as `create` (including `--env` and `--label`).
 
 ```bash
 box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-5 --agent-harness claude-code
 box from-snapshot snap_abc123 --agent-model anthropic/claude-sonnet-5 --agent-harness claude-code --agent-api-key $CLAUDE_KEY
+box from-snapshot snap_abc123 --label beta --label x-team
 ```
 
 ### `box list`
 
-List all boxes.
+List all boxes. Output includes a `LABELS` column. Pass `--label` to show only boxes carrying that label.
 
 ```bash
 box list
+box list --label beta
 ```
 
 ### `box get <box-id>`
@@ -105,6 +110,16 @@ Print box details as JSON.
 
 ```bash
 box get box_abc123
+```
+
+### `box labels`
+
+Manage labels on a box. Labels tag a box for organization and filtering (see `box list --label`).
+
+```bash
+box labels add box_abc123 beta      # add a label
+box labels remove box_abc123 beta   # remove a label
+box labels list box_abc123          # list a box's labels
 ```
 
 ### `box init-demo`

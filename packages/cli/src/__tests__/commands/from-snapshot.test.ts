@@ -57,6 +57,17 @@ describe("fromSnapshotCommand", () => {
     expect(startRepl).toHaveBeenCalledWith(mockBox);
   });
 
+  it("passes labels to Box.fromSnapshot", async () => {
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-1" } as any);
+
+    await fromSnapshotCommand("snap-1", { token: "key", label: ["beta", "x-team"] });
+
+    expect(Box.fromSnapshot).toHaveBeenCalledWith(
+      "snap-1",
+      expect.objectContaining({ labels: ["beta", "x-team"] }),
+    );
+  });
+
   it("sends undefined apiKey when --agent-api-key is omitted", async () => {
     const mockBox = { id: "box-2" };
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);

@@ -22,6 +22,24 @@ describe("Box.list", () => {
     expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box`);
   });
 
+  it("appends the label filter as a query param", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse([TEST_BOX_DATA]));
+
+    await Box.list({ apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl, label: "beta" });
+
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box?label=beta`);
+  });
+
+  it("url-encodes the label filter", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse([]));
+
+    await Box.list({ apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl, label: "env:prod" });
+
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${TEST_CONFIG.baseUrl}/v2/box?label=env%3Aprod`);
+  });
+
   it("returns empty array", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse([]));
 

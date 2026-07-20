@@ -559,6 +559,7 @@ class BoxData(_Model):
     created_at: int
     updated_at: int
     name: Optional[str] = None
+    labels: Optional[List[str]] = None
     size: Optional[str] = None
     keep_alive: Optional[bool] = None
     model: Optional[str] = None
@@ -672,6 +673,14 @@ class BoxConnectionOptions(TypedDict, total=False):
     base_url: str
 
 
+class ListOptions(TypedDict, total=False):
+    """Options for ``Box.list``."""
+
+    api_key: str
+    base_url: str
+    label: str
+
+
 class BoxGetOptions(TypedDict, total=False):
     """Options for ``Box.get`` / ``get_by_name``."""
 
@@ -688,6 +697,7 @@ class BoxConfig(TypedDict, total=False):
     api_key: str
     base_url: str
     name: str
+    labels: List[str]
     runtime: Runtime
     size: BoxSize
     keep_alive: bool
@@ -709,6 +719,7 @@ class EphemeralBoxConfig(TypedDict, total=False):
     api_key: str
     base_url: str
     name: str
+    labels: List[str]
     runtime: Runtime
     size: BoxSize
     ttl: int

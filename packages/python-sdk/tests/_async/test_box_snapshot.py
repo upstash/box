@@ -72,3 +72,18 @@ async def test_from_snapshot():
     assert body["snapshot_id"] == "snap-1"
     assert body["size"] == "medium"
     await box.aclose()
+
+
+@respx.mock
+async def test_from_snapshot_with_labels():
+    import json
+
+    route = respx.post(f"{TEST_BASE_URL}/v2/box/from-snapshot").mock(
+        return_value=httpx.Response(200, json=TEST_BOX_DATA)
+    )
+    box = await AsyncBox.from_snapshot(
+        "snap-1", labels=["beta", "x-team"], api_key=TEST_API_KEY, base_url=TEST_BASE_URL
+    )
+    body = json.loads(route.calls.last.request.content)
+    assert body["labels"] == ["beta", "x-team"]
+    await box.aclose()

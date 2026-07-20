@@ -29,6 +29,18 @@ async def test_create_basic():
 
 
 @respx.mock
+async def test_create_with_labels():
+    route = respx.post(CREATE_URL).mock(return_value=httpx.Response(200, json=TEST_BOX_DATA))
+    box = await AsyncBox.create(
+        labels=["beta", "x-team"],
+        agent={"harness": Agent.CLAUDE_CODE, "model": "anthropic/claude-sonnet-4-5"},
+        **_opts(),
+    )
+    assert last_json_body(route)["labels"] == ["beta", "x-team"]
+    await box.aclose()
+
+
+@respx.mock
 async def test_create_with_managed_key_and_options():
     route = respx.post(CREATE_URL).mock(return_value=httpx.Response(200, json=TEST_BOX_DATA))
     box = await AsyncBox.create(

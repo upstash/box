@@ -44,6 +44,7 @@ import { Box, Agent, BoxApiKey } from "@upstash/box";
 const box = await Box.create({
   apiKey: "box_...", // or set UPSTASH_BOX_API_KEY
   runtime: "node", // "node" | "python" | "golang" | "ruby" | "rust"
+  labels: ["beta", "x-team"], // tag the box for organization/filtering
   keepAlive: true,
   initCommand: "npm install && npm run dev",
   agent: {
@@ -84,10 +85,11 @@ const box = await Box.getByName("my-box");
 
 #### `Box.list(options?: ListOptions): Promise<BoxData[]>`
 
-List all boxes for the authenticated user.
+List all boxes for the authenticated user. Pass `label` to return only boxes carrying that label.
 
 ```ts
 const boxes = await Box.list();
+const betaBoxes = await Box.list({ label: "beta" });
 ```
 
 #### `Box.fromSnapshot(snapshotId: string, config: BoxConfig): Promise<Box>`
@@ -224,6 +226,19 @@ await box.schedule.resume(schedule.id);
 
 // Delete a schedule permanently.
 await box.schedule.delete(schedule.id);
+```
+
+### Labels
+
+Tag a box for organization and filtering. Labels are set at create time (`labels`) and managed on a running box via the `labels` namespace. Each `add`/`remove` returns the box's updated label set. Filter with `Box.list({ label })`.
+
+```ts
+// Add / remove — returns the updated label set
+const labels = await box.labels.add("prod"); // ["beta", "x-team", "prod"]
+await box.labels.remove("beta"); // ["x-team", "prod"]
+
+// List this box's labels
+const current = await box.labels.list();
 ```
 
 ### Working directory

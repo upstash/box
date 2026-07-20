@@ -39,6 +39,7 @@ export interface CreateFlags {
   gitUserName?: string;
   gitUserEmail?: string;
   env?: string[];
+  label?: string[];
 }
 
 export async function createCommand(flags: CreateFlags): Promise<void> {
@@ -54,7 +55,8 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     flags.gitToken !== undefined ||
     flags.gitUserName !== undefined ||
     flags.gitUserEmail !== undefined ||
-    (flags.env !== undefined && flags.env.length > 0);
+    (flags.env !== undefined && flags.env.length > 0) ||
+    (flags.label !== undefined && flags.label.length > 0);
 
   if (!hasConfigFlags && process.stdin.isTTY) {
     const wizardResult = await createWizard();
@@ -104,6 +106,7 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
           }
         : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,
+    labels: flags.label && flags.label.length > 0 ? flags.label : undefined,
   });
 
   await startRepl(box);

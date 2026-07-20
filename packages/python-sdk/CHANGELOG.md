@@ -4,6 +4,11 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Add box labels: `labels` on `Box.create` / `Box.from_snapshot` /
+  `EphemeralBox.create` / `EphemeralBox.from_snapshot`, a `label` filter on
+  `Box.list`, `labels` on `BoxData`, and a `box.labels` namespace
+  (`add` / `remove` / `list`) to manage labels on a running box. Mirrors
+  `@upstash/box`.
 - Add anonymous client telemetry, following the same header convention as the
   other Upstash SDKs: every API request carries `Upstash-Telemetry-Sdk`,
   `Upstash-Telemetry-Runtime`, and `Upstash-Telemetry-Platform` headers

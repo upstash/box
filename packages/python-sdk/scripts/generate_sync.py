@@ -56,6 +56,7 @@ _RULES = [
             "AsyncGitNamespace": "GitNamespace",
             "AsyncScheduleNamespace": "ScheduleNamespace",
             "AsyncSkillsNamespace": "SkillsNamespace",
+            "AsyncLabelsNamespace": "LabelsNamespace",
             "AsyncClient": "Client",
             "AsyncIterator": "Iterator",
             "aiter_bytes": "iter_bytes",

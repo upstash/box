@@ -30,6 +30,15 @@ async def test_create_ephemeral():
 
 
 @respx.mock
+async def test_create_ephemeral_with_labels():
+    route = respx.post(ROOT).mock(return_value=httpx.Response(200, json=_ephemeral_data()))
+    box = await AsyncEphemeralBox.create(labels=["beta", "x-team"], **_opts())
+    body = json.loads(route.calls.last.request.content)
+    assert body["labels"] == ["beta", "x-team"]
+    await box.aclose()
+
+
+@respx.mock
 async def test_ephemeral_exec_and_files_namespaces_present():
     respx.post(ROOT).mock(return_value=httpx.Response(200, json=_ephemeral_data()))
     box = await AsyncEphemeralBox.create(**_opts())
@@ -59,4 +68,15 @@ async def test_ephemeral_from_snapshot():
     )
     box = await AsyncEphemeralBox.from_snapshot("snap-1", ttl=1800, **_opts())
     assert box.expires_at == 9999
+    await box.aclose()
+
+
+@respx.mock
+async def test_ephemeral_from_snapshot_with_labels():
+    route = respx.post(f"{ROOT}/from-snapshot").mock(
+        return_value=httpx.Response(200, json=_ephemeral_data())
+    )
+    box = await AsyncEphemeralBox.from_snapshot("snap-1", labels=["beta", "x-team"], **_opts())
+    body = json.loads(route.calls.last.request.content)
+    assert body["labels"] == ["beta", "x-team"]
     await box.aclose()

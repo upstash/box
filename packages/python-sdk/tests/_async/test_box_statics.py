@@ -24,6 +24,13 @@ async def test_list_boxes():
 
 
 @respx.mock
+async def test_list_boxes_with_label():
+    route = respx.get(ROOT).mock(return_value=httpx.Response(200, json=[TEST_BOX_DATA]))
+    await AsyncBox.list(label="beta", **_opts())
+    assert route.calls.last.request.url.params["label"] == "beta"
+
+
+@respx.mock
 async def test_delete_boxes():
     route = respx.delete(ROOT).mock(return_value=httpx.Response(200, json={}))
     await AsyncBox.delete_boxes(box_ids="box-123", **_opts())

@@ -1,7 +1,7 @@
 const BASH_COMPLETION = `
 _box_completions() {
   local cur="\${COMP_WORDS[COMP_CWORD]}"
-  local commands="create connect from-snapshot list get init-demo completion"
+  local commands="create connect from-snapshot list get snapshot init-demo env labels completion"
   COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
 }
 complete -F _box_completions box
@@ -18,7 +18,10 @@ _box() {
     'from-snapshot:Create a new box from a snapshot'
     'list:List all boxes'
     'get:Get details about a box'
+    'snapshot:Create a snapshot of a box'
     'init-demo:Scaffold a standalone demo project'
+    'env:Manage user-level env vars'
+    'labels:Manage labels on a box'
     'completion:Output shell completion script'
   )
   _describe 'command' commands

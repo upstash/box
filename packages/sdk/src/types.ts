@@ -438,6 +438,19 @@ export type NetworkPolicy =
 export interface BoxConfig extends BoxConnectionOptions {
   /** Human-readable name for the box */
   name?: string;
+  /**
+   * Labels to tag the box with, for organization and filtering.
+   *
+   * Each label may contain letters, digits, `.`, `_`, `-`, and `:`
+   * (max 20 characters, up to 5 labels). Filter with `Box.list({ label })`,
+   * and manage on a running box via `box.labels.add()` / `box.labels.remove()`.
+   *
+   * @example
+   * ```ts
+   * { labels: ["beta", "x-team"] }
+   * ```
+   */
+  labels?: string[];
   runtime?: Runtime;
   /** Resource size for the box. Defaults to `"small"`. */
   size?: BoxSize;
@@ -501,6 +514,13 @@ export interface BoxConfig extends BoxConnectionOptions {
 export interface EphemeralBoxConfig extends BoxConnectionOptions {
   /** Human-readable name for the box */
   name?: string;
+  /**
+   * Labels to tag the box with, for organization and filtering.
+   *
+   * Each label may contain letters, digits, `.`, `_`, `-`, and `:`
+   * (max 20 characters, up to 5 labels). Filter with `Box.list({ label })`.
+   */
+  labels?: string[];
   /** Runtime environment for the box. */
   runtime?: Runtime;
   /** Resource size for the box. Defaults to `"small"`. */
@@ -749,7 +769,10 @@ export interface BoxConnectionOptions {
 /**
  * Options for listing boxes
  */
-export interface ListOptions extends BoxConnectionOptions {}
+export interface ListOptions extends BoxConnectionOptions {
+  /** Return only boxes carrying this label. */
+  label?: string;
+}
 
 /**
  * Options for getting/reconnecting to an existing box
@@ -806,6 +829,8 @@ export type BoxData = {
   id: string;
   customer_id?: string;
   name?: string;
+  /** Labels the box is tagged with. */
+  labels?: string[];
   size?: BoxSize;
   keep_alive?: boolean;
   model?: string;

@@ -26,6 +26,24 @@ describe("Box.create", () => {
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
+  it("sends labels when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    await Box.create({ ...TEST_CONFIG, labels: ["beta", "x-team"] });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.labels).toEqual(["beta", "x-team"]);
+  });
+
+  it("omits labels when empty", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    await Box.create({ ...TEST_CONFIG, labels: [] });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.labels).toBeUndefined();
+  });
+
   it("sends explicit harness when provided", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));

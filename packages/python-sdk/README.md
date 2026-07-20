@@ -75,6 +75,7 @@ from upstash_box import Agent, AsyncBox, BoxApiKey
 box = await AsyncBox.create(
     api_key="box_...",            # or set UPSTASH_BOX_API_KEY
     runtime="node",                # "node" | "python" | "golang" | "ruby" | "rust"
+    labels=["beta", "x-team"],     # tag the box for organization/filtering
     size="small",                  # "small" | "medium" | "large"
     keep_alive=True,
     init_command="npm install && npm run dev",
@@ -96,6 +97,7 @@ Reconnect or list:
 box = await AsyncBox.get("box_abc123", git_token="ghp_...")
 box = await AsyncBox.get_by_name("my-box", git_token="ghp_...")
 boxes = await AsyncBox.list()
+beta_boxes = await AsyncBox.list(label="beta")  # filter by label
 box = await AsyncBox.from_snapshot("snap_abc123", size="medium")
 ```
 
@@ -160,6 +162,18 @@ schedules = await box.schedule.list()
 await box.schedule.pause(schedule.id)
 ```
 
+### Labels
+
+Tag a box for organization and filtering. Set labels at create time (`labels=`) and
+manage them on a running box via the `labels` namespace. Each `add`/`remove` returns
+the updated label set. Filter with `AsyncBox.list(label=...)`.
+
+```python
+labels = await box.labels.add("prod")     # ["beta", "x-team", "prod"]
+await box.labels.remove("beta")            # ["x-team", "prod"]
+current = await box.labels.list()
+```
+
 ### Working directory, model, lifecycle
 
 ```python
@@ -199,7 +213,8 @@ async with box:
 ```
 
 Ephemeral boxes support `exec`, `files`, `schedule`, `cd`, snapshots, `get_status`,
-and `delete` — but not `agent`, `git`, or `skills`.
+and `delete` — but not `agent`, `git`, `skills`, or the `labels` namespace. They
+still accept `labels=` at create time and can be filtered with `AsyncBox.list(label=...)`.
 
 ## Note on timeouts
 

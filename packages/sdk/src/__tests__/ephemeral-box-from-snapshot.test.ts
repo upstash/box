@@ -46,6 +46,15 @@ describe("EphemeralBox.fromSnapshot", () => {
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
+  it("sends labels in body when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
+
+    await EphemeralBox.fromSnapshot("snap-1", { ...EPHEMERAL_CONFIG, labels: ["beta", "x-team"] });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.labels).toEqual(["beta", "x-team"]);
+  });
+
   it("sends runtime and ttl in body", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(EPHEMERAL_BOX_DATA));
 

@@ -41,6 +41,7 @@ from ..types import (
     FinishUsage,
     GitCommitResult,
     GitConfigResult,
+    ListOptions,
     LogEntry,
     ModelConfig,
     NetworkPolicy,
@@ -400,6 +401,23 @@ class AsyncSkillsNamespace:
         return await self._box._skill_list()
 
 
+class AsyncLabelsNamespace:
+    def __init__(self, box: "AsyncBox") -> None:
+        self._box = box
+
+    async def add(self, label: str) -> List[str]:
+        """Add a label. Returns the box's updated label set."""
+        return await self._box._label_add(label)
+
+    async def remove(self, label: str) -> List[str]:
+        """Remove a label. Returns the box's updated label set."""
+        return await self._box._label_remove(label)
+
+    async def list(self) -> List[str]:
+        """List this box's labels."""
+        return await self._box._label_list()
+
+
 class AsyncBox(Generic[T]):
     """A sandboxed AI coding environment."""
 
@@ -425,6 +443,7 @@ class AsyncBox(Generic[T]):
         self.git = AsyncGitNamespace(self)
         self.schedule = AsyncScheduleNamespace(self)
         self.skills = AsyncSkillsNamespace(self)
+        self.labels = AsyncLabelsNamespace(self)
 
     # ==================== Lifecycle / transport ====================
 
@@ -1218,6 +1237,20 @@ class AsyncBox(Generic[T]):
         data = await self._request("GET", f"/v2/box/{self.id}")
         return data.get("enabled_skills") or []
 
+    async def _label_add(self, label: str) -> List[str]:
+        data = await self._request(
+            "POST", f"/v2/box/{self.id}/config/labels", body={"label": label}
+        )
+        return (data or {}).get("labels") or []
+
+    async def _label_remove(self, label: str) -> List[str]:
+        data = await self._request("DELETE", f"/v2/box/{self.id}/config/labels/{_q(label)}")
+        return (data or {}).get("labels") or []
+
+    async def _label_list(self) -> List[str]:
+        data = await self._request("GET", f"/v2/box/{self.id}")
+        return data.get("labels") or []
+
     # ==================== Public URLs ====================
 
     async def get_public_url(
@@ -1334,13 +1367,15 @@ class AsyncBox(Generic[T]):
         return await cls.get(name, **options)
 
     @classmethod
-    async def list(cls, **options: Unpack[BoxConnectionOptions]) -> List[BoxData]:
+    async def list(cls, **options: Unpack[ListOptions]) -> List[BoxData]:
 
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
+        label = options.get("label")
+        query = f"?label={_q(label)}" if label else ""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{base_url}/v2/box", headers=headers)
+            response = await client.get(f"{base_url}/v2/box{query}", headers=headers)
             common.raise_for_status(response)
             return [BoxData.model_validate(b) for b in response.json()]
 
@@ -1663,6 +1698,8 @@ def _build_create_body(
     body: Dict[str, Any] = {}
     if config.get("name"):
         body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
     if config.get("size"):
         body["size"] = config["size"]
     if config.get("keep_alive"):
@@ -1697,6 +1734,8 @@ def _build_ephemeral_body(config: Mapping[str, Any]) -> Dict[str, Any]:
     body: Dict[str, Any] = {"ephemeral": True}
     if config.get("name"):
         body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
     if config.get("size"):
         body["size"] = config["size"]
     if config.get("ttl") is not None:

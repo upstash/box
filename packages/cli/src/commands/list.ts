@@ -4,14 +4,15 @@ import { formatJSON } from "../output.js";
 
 interface ListFlags {
   token?: string;
+  label?: string;
 }
 
 export async function listCommand(flags: ListFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
-  const boxes = await Box.list({ apiKey });
+  const boxes = await Box.list({ apiKey, label: flags.label });
 
   if (boxes.length === 0) {
-    console.log("No boxes found.");
+    console.log(flags.label ? `No boxes found with label "${flags.label}".` : "No boxes found.");
     return;
   }
 
@@ -26,13 +27,14 @@ export async function listCommand(flags: ListFlags): Promise<void> {
     return `${time} ${date}`;
   };
 
-  const headers = ["ID", "STATUS", "MODEL", "CREATED", "NAME"];
+  const headers = ["ID", "STATUS", "MODEL", "CREATED", "NAME", "LABELS"];
   const rows = boxes.map((b) => [
     b.id,
     b.status,
     b.model ?? "",
     formatDate(b.created_at),
     b.name ?? "",
+    (b.labels ?? []).join(", "),
   ]);
 
   const colWidths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));

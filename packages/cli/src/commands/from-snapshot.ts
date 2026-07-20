@@ -35,6 +35,7 @@ interface FromSnapshotFlags {
   agentApiKey?: string | true;
   gitToken?: string;
   env?: string[];
+  label?: string[];
 }
 
 export async function fromSnapshotCommand(
@@ -78,6 +79,7 @@ export async function fromSnapshotCommand(
       : undefined,
     git: flags.gitToken ? { token: flags.gitToken } : undefined,
     env: Object.keys(env).length > 0 ? env : undefined,
+    labels: flags.label && flags.label.length > 0 ? flags.label : undefined,
   });
 
   await startRepl(box);

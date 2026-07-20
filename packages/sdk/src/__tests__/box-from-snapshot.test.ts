@@ -37,6 +37,15 @@ describe("Box.fromSnapshot", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
+  it("sends labels when provided", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    await Box.fromSnapshot("snap-1", { ...TEST_CONFIG, labels: ["beta", "x-team"] });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.labels).toEqual(["beta", "x-team"]);
+  });
+
   it("creates a box from snapshot (already running)", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));

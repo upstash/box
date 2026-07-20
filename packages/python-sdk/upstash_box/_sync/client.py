@@ -40,6 +40,7 @@ from ..types import (
     FinishUsage,
     GitCommitResult,
     GitConfigResult,
+    ListOptions,
     LogEntry,
     ModelConfig,
     NetworkPolicy,
@@ -395,6 +396,23 @@ class SkillsNamespace:
         return self._box._skill_list()
 
 
+class LabelsNamespace:
+    def __init__(self, box: "Box") -> None:
+        self._box = box
+
+    def add(self, label: str) -> List[str]:
+        """Add a label. Returns the box's updated label set."""
+        return self._box._label_add(label)
+
+    def remove(self, label: str) -> List[str]:
+        """Remove a label. Returns the box's updated label set."""
+        return self._box._label_remove(label)
+
+    def list(self) -> List[str]:
+        """List this box's labels."""
+        return self._box._label_list()
+
+
 class Box(Generic[T]):
     """A sandboxed AI coding environment."""
 
@@ -420,6 +438,7 @@ class Box(Generic[T]):
         self.git = GitNamespace(self)
         self.schedule = ScheduleNamespace(self)
         self.skills = SkillsNamespace(self)
+        self.labels = LabelsNamespace(self)
 
     # ==================== Lifecycle / transport ====================
 
@@ -1207,6 +1226,18 @@ class Box(Generic[T]):
         data = self._request("GET", f"/v2/box/{self.id}")
         return data.get("enabled_skills") or []
 
+    def _label_add(self, label: str) -> List[str]:
+        data = self._request("POST", f"/v2/box/{self.id}/config/labels", body={"label": label})
+        return (data or {}).get("labels") or []
+
+    def _label_remove(self, label: str) -> List[str]:
+        data = self._request("DELETE", f"/v2/box/{self.id}/config/labels/{_q(label)}")
+        return (data or {}).get("labels") or []
+
+    def _label_list(self) -> List[str]:
+        data = self._request("GET", f"/v2/box/{self.id}")
+        return data.get("labels") or []
+
     # ==================== Public URLs ====================
 
     def get_public_url(
@@ -1323,13 +1354,15 @@ class Box(Generic[T]):
         return cls.get(name, **options)
 
     @classmethod
-    def list(cls, **options: Unpack[BoxConnectionOptions]) -> List[BoxData]:
+    def list(cls, **options: Unpack[ListOptions]) -> List[BoxData]:
 
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
+        label = options.get("label")
+        query = f"?label={_q(label)}" if label else ""
         with httpx.Client() as client:
-            response = client.get(f"{base_url}/v2/box", headers=headers)
+            response = client.get(f"{base_url}/v2/box{query}", headers=headers)
             common.raise_for_status(response)
             return [BoxData.model_validate(b) for b in response.json()]
 
@@ -1648,6 +1681,8 @@ def _build_create_body(
     body: Dict[str, Any] = {}
     if config.get("name"):
         body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
     if config.get("size"):
         body["size"] = config["size"]
     if config.get("keep_alive"):
@@ -1682,6 +1717,8 @@ def _build_ephemeral_body(config: Mapping[str, Any]) -> Dict[str, Any]:
     body: Dict[str, Any] = {"ephemeral": True}
     if config.get("name"):
         body["name"] = config["name"]
+    if config.get("labels"):
+        body["labels"] = config["labels"]
     if config.get("size"):
         body["size"] = config["size"]
     if config.get("ttl") is not None:

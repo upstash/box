@@ -39,6 +39,51 @@ async def test_skill_add_remove_list():
     await box.aclose()
 
 
+# ---------- labels ----------
+
+
+@respx.mock
+async def test_label_add_remove_list():
+    box = await make_async_box(respx.mock)
+    add = respx.post(f"{BASE}/config/labels").mock(
+        return_value=httpx.Response(
+            200, json={"message": "Label added", "labels": ["beta", "x-team"]}
+        )
+    )
+    remove = respx.delete(f"{BASE}/config/labels/beta").mock(
+        return_value=httpx.Response(200, json={"message": "Label removed", "labels": ["x-team"]})
+    )
+    respx.get(f"{BASE}").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "box-123",
+                "status": "running",
+                "created_at": 1,
+                "updated_at": 1,
+                "labels": ["beta", "x-team"],
+            },
+        )
+    )
+    assert await box.labels.add("x-team") == ["beta", "x-team"]
+    assert last_json_body(add) == {"label": "x-team"}
+    assert await box.labels.remove("beta") == ["x-team"]
+    assert remove.called
+    assert await box.labels.list() == ["beta", "x-team"]
+    await box.aclose()
+
+
+@respx.mock
+async def test_label_add_raises_on_conflict():
+    box = await make_async_box(respx.mock)
+    respx.post(f"{BASE}/config/labels").mock(
+        return_value=httpx.Response(409, json={"error": "Label already added"})
+    )
+    with pytest.raises(BoxError, match="Label already added"):
+        await box.labels.add("beta")
+    await box.aclose()
+
+
 # ---------- configure_model ----------
 
 
