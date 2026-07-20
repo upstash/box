@@ -737,6 +737,13 @@ export interface BoxConnectionOptions {
   apiKey?: string;
   /** Base URL of the Box API (defaults to https://us-east-1.box.upstash.com) */
   baseUrl?: string;
+  /**
+   * Send anonymous telemetry headers with API requests (defaults to `true`).
+   * The `UPSTASH_DISABLE_TELEMETRY` env var overrides this to disabled where
+   * an env is available; on runtimes without `process.env` (e.g. Cloudflare
+   * Workers) this option is the only way to opt out.
+   */
+  enableTelemetry?: boolean;
 }
 
 /**

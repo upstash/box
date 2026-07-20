@@ -69,6 +69,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | `close` / `aclose` / context managers (Python) | httpx transport lifecycle — JS has no equivalent (fetch-per-call). |
 | `delete_boxes` (Python) | JS static `delete` renamed. |
 | `appendTelemetryIdentity` (JS) | Internal hook for JS wrappers (the CLI) to join the telemetry chain; no Python wrapper exists, so not ported. |
+| `enableTelemetry` config option (JS) | Needed because edge runtimes (Cloudflare Workers) have no `process.env` to carry the opt-out; Python always has `os.environ`, so `UPSTASH_DISABLE_TELEMETRY` suffices. |
 | timeouts in **milliseconds** | Matches the JS SDK units. |
 | agent `options` keys are **snake_case** (Python) vs camelCase (JS) | Pythonic public API; the SDK converts to the backend's per-harness casing (Claude Code / OpenCode → camelCase, Codex → snake_case). |
 | `StreamRun.aclose()` needed for `detached` on early break | Python doesn't run generator `finally` on `break` (JS `for await` does). |

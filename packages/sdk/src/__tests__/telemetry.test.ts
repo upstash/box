@@ -38,6 +38,16 @@ describe("telemetryHeaders", () => {
     expect(telemetryHeaders()["Upstash-Telemetry-Platform"]).toBe("ci");
   });
 
+  it("returns no headers when enableTelemetry is false", () => {
+    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", undefined);
+    expect(telemetryHeaders(false)).toEqual({});
+  });
+
+  it("lets the env var win over enableTelemetry: true", () => {
+    vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", "1");
+    expect(telemetryHeaders(true)).toEqual({});
+  });
+
   it("appends wrapping client identities comma-joined, idempotently", () => {
     vi.stubEnv("UPSTASH_DISABLE_TELEMETRY", undefined);
     appendTelemetryIdentity("@upstash/box-test-wrapper@9.9.9");

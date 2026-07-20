@@ -418,7 +418,10 @@ e.g. `vercel`). No user data, request payloads, or identifiers are ever
 collected.
 
 To opt out, set the `UPSTASH_DISABLE_TELEMETRY` environment variable to any
-value.
+value, or pass `enableTelemetry: false` in the client config (e.g.
+`Box.create({ enableTelemetry: false })`). On runtimes without `process.env`
+(such as Cloudflare Workers) the config option is the only way to opt out; the
+env var takes precedence where both are available.
 
 ## License
 

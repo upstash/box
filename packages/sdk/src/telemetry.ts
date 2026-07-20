@@ -4,7 +4,9 @@
  * version, the JS runtime, and the deployment platform. No user data, request
  * payloads, or identifiers are ever collected.
  *
- * Disable by setting the `UPSTASH_DISABLE_TELEMETRY` environment variable.
+ * Disable by setting the `UPSTASH_DISABLE_TELEMETRY` environment variable, or
+ * per client via the `enableTelemetry: false` config option (the only way on
+ * runtimes without `process.env`, e.g. Cloudflare Workers).
  */
 
 import { VERSION } from "./version.js";
@@ -49,10 +51,16 @@ function detectRuntime(): string {
   return "unknown";
 }
 
+/** Cloudflare Workers expose no env vars; detect them via the `caches.default` global. */
+function isCloudflareWorkers(): boolean {
+  const caches = (globalThis as { caches?: unknown }).caches;
+  return typeof caches === "object" && caches !== null && "default" in caches;
+}
+
 function detectPlatform(env: Record<string, string | undefined>): string {
   if (env.UPSTASH_CONSOLE) return "console";
   if (env.VERCEL) return "vercel";
-  if (env.CF_PAGES) return "cloudflare";
+  if (env.CF_PAGES || isCloudflareWorkers()) return "cloudflare";
   if (env.AWS_LAMBDA_FUNCTION_NAME || env.AWS_REGION) return "aws";
   if (env.CI) return "ci";
   return "unknown";
@@ -61,11 +69,13 @@ function detectPlatform(env: Record<string, string | undefined>): string {
 let runtime: string | undefined;
 
 /**
- * Headers to attach to every API request. Empty when telemetry is disabled.
+ * Headers to attach to every API request. Empty when telemetry is disabled —
+ * via the `UPSTASH_DISABLE_TELEMETRY` env var or `enable: false` (the
+ * client's `enableTelemetry` config option; the env var wins over it).
  */
-export function telemetryHeaders(): Record<string, string> {
+export function telemetryHeaders(enable?: boolean): Record<string, string> {
   const env = safeEnv();
-  if (env.UPSTASH_DISABLE_TELEMETRY !== undefined) return {};
+  if (env.UPSTASH_DISABLE_TELEMETRY !== undefined || enable === false) return {};
   runtime ??= detectRuntime();
   return {
     "Upstash-Telemetry-Sdk": sdkChain.join(","),
