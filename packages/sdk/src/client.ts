@@ -199,6 +199,8 @@ export class Run<T = string> {
   private _result: T | null = null;
   private _status: RunStatus = "running";
   private _exitCode: number | null = null;
+  private _stdout = "";
+  private _stderr = "";
   private _inputTokens = 0;
   private _outputTokens = 0;
   private _cachedInputTokens = 0;
@@ -230,6 +232,8 @@ export class Run<T = string> {
 
   /**
    * The run result. Returns the typed output when responseSchema was provided.
+   * For command and code runs: stdout on success, stderr (or stdout) on failure.
+   * Use `stdout`/`stderr` for the raw streams.
    */
   get result(): T {
     if (this._result === null) {
@@ -243,6 +247,20 @@ export class Run<T = string> {
    */
   get exitCode(): number | null {
     return this._exitCode;
+  }
+
+  /**
+   * Raw stdout of the process. Only set for command and code runs — empty for agent runs.
+   */
+  get stdout(): string {
+    return this._stdout;
+  }
+
+  /**
+   * Raw stderr of the process. Only set for command and code runs — empty for agent runs.
+   */
+  get stderr(): string {
+    return this._stderr;
   }
 
   /**
@@ -293,6 +311,8 @@ export class Run<T = string> {
       result?: T | null;
       status?: RunStatus;
       exitCode?: number;
+      stdout?: string;
+      stderr?: string;
       inputTokens?: number;
       outputTokens?: number;
       cachedInputTokens?: number;
@@ -305,6 +325,8 @@ export class Run<T = string> {
     if (data.result !== undefined) run._result = data.result;
     if (data.status !== undefined) run._status = data.status;
     if (data.exitCode !== undefined) run._exitCode = data.exitCode;
+    if (data.stdout !== undefined) run._stdout = data.stdout;
+    if (data.stderr !== undefined) run._stderr = data.stderr;
     if (data.inputTokens !== undefined) run._inputTokens = data.inputTokens;
     if (data.outputTokens !== undefined) run._outputTokens = data.outputTokens;
     if (data.cachedInputTokens !== undefined) run._cachedInputTokens = data.cachedInputTokens;
@@ -1405,7 +1427,10 @@ export class Box<TProvider = unknown> {
 
     const run = new Run<string>(this, "command");
     Run._update(run, {
-      result: result.error ? result.error : result.output,
+      // stderr must not shadow stdout on success (commands often emit warnings on stderr)
+      result: result.exit_code === 0 ? result.output : result.error || result.output,
+      stdout: result.output,
+      stderr: result.error ?? "",
       status: result.exit_code === 0 ? "completed" : "failed",
       exitCode: result.exit_code,
       computeMs: Date.now() - start,
@@ -1430,7 +1455,9 @@ export class Box<TProvider = unknown> {
 
     const run = new Run<string>(this, "code");
     Run._update(run, {
-      result: result.error ? result.error : result.output,
+      result: result.exit_code === 0 ? result.output : result.error || result.output,
+      stdout: result.output,
+      stderr: result.error ?? "",
       status: result.exit_code === 0 ? "completed" : "failed",
       exitCode: result.exit_code,
       computeMs: Date.now() - start,

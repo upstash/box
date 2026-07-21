@@ -2,6 +2,19 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## 0.1.4
+
+- Fix `exec.command()` and `exec.code()` discarding stdout whenever the process
+  wrote anything to stderr: `run.result` returned stderr instead of stdout even
+  on exit code 0, so a successful command that emitted a single warning lost its
+  entire stdout. `run.result` is now stdout on success and stderr (falling back
+  to stdout) on failure. Mirrors `@upstash/box` 0.5.5.
+- Behavioral change on the success path: if a command exits 0 and writes only to
+  stderr, `run.result` is now `""` instead of the stderr text — read
+  `run.stderr` for it.
+- Add `run.stdout` and `run.stderr` properties exposing the raw output streams
+  of command and code runs.
+
 ## 0.1.3
 
 - Add box labels: `labels` on `Box.create` / `Box.from_snapshot` /

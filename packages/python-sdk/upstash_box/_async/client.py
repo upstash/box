@@ -107,6 +107,8 @@ class AsyncRun(Generic[T]):
         self._result: Optional[T] = None
         self._status: RunStatus = "running"
         self._exit_code: Optional[int] = None
+        self._stdout = ""
+        self._stderr = ""
         self._input_tokens = 0
         self._output_tokens = 0
         self._cached_input_tokens = 0
@@ -131,6 +133,16 @@ class AsyncRun(Generic[T]):
     @property
     def exit_code(self) -> Optional[int]:
         return self._exit_code
+
+    @property
+    def stdout(self) -> str:
+        """Raw stdout of the process. Only set for command and code runs."""
+        return self._stdout
+
+    @property
+    def stderr(self) -> str:
+        """Raw stderr of the process. Only set for command and code runs."""
+        return self._stderr
 
     @property
     def cost(self) -> RunCost:
@@ -812,7 +824,13 @@ class AsyncBox(Generic[T]):
             body["folder"] = folder
         result = await self._request("POST", f"/v2/box/{self.id}/exec", body=body)
         run: AsyncRun[str] = AsyncRun(self, "command")
-        run._result = result.get("error") or result.get("output") or ""
+        # stderr must not shadow stdout on success (commands often emit warnings on stderr)
+        if result.get("exit_code") == 0:
+            run._result = result.get("output") or ""
+        else:
+            run._result = result.get("error") or result.get("output") or ""
+        run._stdout = result.get("output") or ""
+        run._stderr = result.get("error") or ""
         run._status = "completed" if result.get("exit_code") == 0 else "failed"
         run._exit_code = result.get("exit_code")
         run._compute_ms = time.time() * 1000 - start
@@ -828,7 +846,12 @@ class AsyncBox(Generic[T]):
             body["folder"] = folder
         result = await self._request("POST", f"/v2/box/{self.id}/code", body=body)
         run: AsyncRun[str] = AsyncRun(self, "code")
-        run._result = result.get("error") or result.get("output") or ""
+        if result.get("exit_code") == 0:
+            run._result = result.get("output") or ""
+        else:
+            run._result = result.get("error") or result.get("output") or ""
+        run._stdout = result.get("output") or ""
+        run._stderr = result.get("error") or ""
         run._status = "completed" if result.get("exit_code") == 0 else "failed"
         run._exit_code = result.get("exit_code")
         run._compute_ms = time.time() * 1000 - start

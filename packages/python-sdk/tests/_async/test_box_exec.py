@@ -35,6 +35,38 @@ async def test_exec_command_failure_uses_error():
 
 
 @respx.mock
+async def test_exec_command_stderr_does_not_shadow_stdout_on_success():
+    box = await make_async_box(respx.mock)
+    respx.post(EXEC_URL).mock(
+        return_value=httpx.Response(
+            200, json={"exit_code": 0, "output": "out line\n", "error": "warning line\n"}
+        )
+    )
+    run = await box.exec.command("echo 'out line'; echo 'warning line' >&2")
+    assert run.result == "out line\n"
+    assert run.stdout == "out line\n"
+    assert run.stderr == "warning line\n"
+    assert run.status == "completed"
+    await box.aclose()
+
+
+@respx.mock
+async def test_exec_command_failure_exposes_both_streams():
+    box = await make_async_box(respx.mock)
+    respx.post(EXEC_URL).mock(
+        return_value=httpx.Response(
+            200, json={"exit_code": 1, "output": "partial out\n", "error": "boom\n"}
+        )
+    )
+    run = await box.exec.command("exit 1")
+    assert run.result == "boom\n"
+    assert run.stdout == "partial out\n"
+    assert run.stderr == "boom\n"
+    assert run.status == "failed"
+    await box.aclose()
+
+
+@respx.mock
 async def test_exec_code():
     box = await make_async_box(respx.mock)
     route = respx.post(CODE_URL).mock(

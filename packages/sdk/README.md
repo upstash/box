@@ -306,6 +306,9 @@ const run = await box.agent.run({ prompt: "..." });
 run.id; // Run ID
 run.result; // Final output (typed if schema provided)
 run.status; // "running" | "completed" | "failed" | "cancelled" | "detached"
+run.exitCode; // Process exit code (command/code runs)
+run.stdout; // Raw stdout (command/code runs)
+run.stderr; // Raw stderr (command/code runs)
 run.cost; // { inputTokens, outputTokens, computeMs, totalUsd }
 await run.cancel(); // Abort
 await run.logs(); // Filtered log entries

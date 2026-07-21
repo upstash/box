@@ -3,4 +3,4 @@
 Keep in sync with pyproject.toml — bumped by the release process.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"

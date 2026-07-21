@@ -131,6 +131,8 @@ async for chunk in stream:
 ```python
 run = await box.exec.command("node index.js")
 run = await box.exec.code(code="print('hi')", lang="python")
+print(run.result)     # stdout on success, stderr on failure
+print(run.stdout, run.stderr, run.exit_code)  # raw streams + exit code
 ```
 
 ### Files

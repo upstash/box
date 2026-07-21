@@ -30,6 +30,32 @@ describe("Box instance methods", () => {
       expect(run.exitCode).toBe(1);
       expect(run.result).toBe("error message");
     });
+
+    it("keeps stdout as result when a successful command also writes to stderr", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ exit_code: 0, output: "out line\n", error: "warning line\n" }),
+      );
+
+      const run = await box.exec.command("echo 'out line'; echo 'warning line' >&2");
+      expect(run.result).toBe("out line\n");
+      expect(run.stdout).toBe("out line\n");
+      expect(run.stderr).toBe("warning line\n");
+      expect(run.status).toBe("completed");
+    });
+
+    it("prefers stderr as result on failure but exposes both streams", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ exit_code: 1, output: "partial out\n", error: "boom\n" }),
+      );
+
+      const run = await box.exec.command("exit 1");
+      expect(run.result).toBe("boom\n");
+      expect(run.stdout).toBe("partial out\n");
+      expect(run.stderr).toBe("boom\n");
+      expect(run.status).toBe("failed");
+    });
   });
 
   describe("exec.code", () => {
