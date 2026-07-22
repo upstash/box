@@ -80,6 +80,8 @@ export type {
   BrowserExtractOptions,
   BrowserContent,
   BrowserLink,
+  BrowserScreenshotOptions,
+  BrowserTabCreateOptions,
   BrowserObserveElement,
   BrowserObserveResult,
   BrowserActAction,
@@ -91,7 +93,6 @@ export type {
   BrowserRecordingHandle,
   BrowserRecordingMarker,
   BrowserRecordingOptions,
-  BrowserConnection,
 } from "./types.js";
 export type {
   CustomHarnessContext,

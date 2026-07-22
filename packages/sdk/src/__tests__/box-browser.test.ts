@@ -33,7 +33,10 @@ describe("Box browser operations", () => {
         }),
       );
 
-    const tab = await box.browser.newTab("https://example.com");
+    const tab = await box.browser.tab.create("https://example.com", {
+      waitUntil: "networkidle",
+      timeout: 45_000,
+    });
     const content = await tab.content();
 
     expect(tab.id).toBe("tab-1");
@@ -42,6 +45,53 @@ describe("Box browser operations", () => {
       href: "https://iana.org/help/example-domains",
     });
     expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/content?tab=tab-1");
+    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
+      url: "https://example.com",
+      wait_until: "networkidle",
+      timeout: 45_000,
+    });
+  });
+
+  it("returns live-view and CDP URLs directly", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ id: "tab-1", url: "https://example.com" }))
+      .mockResolvedValueOnce(
+        mockResponse({
+          screencast_url: "https://box.example/screencast?token=live-token&tab=tab-1",
+        }),
+      )
+      .mockResolvedValueOnce(
+        mockResponse({
+          cdp_url: "wss://box.example?token=cdp-token",
+        }),
+      );
+
+    const tab = await box.browser.tab.create("https://example.com");
+
+    await expect(tab.liveViewUrl()).resolves.toBe(
+      "https://box.example/screencast?token=live-token&tab=tab-1",
+    );
+    await expect(box.browser.cdpUrl()).resolves.toBe("wss://box.example?token=cdp-token");
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/screencast");
+    expect(fetchMock.mock.calls[3]?.[0]).toContain("browser/connect");
+  });
+
+  it("returns screenshot bytes or base64 and forwards fullPage", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ id: "tab-1", url: "https://example.com" }))
+      .mockResolvedValueOnce(mockResponse({ data: "AQID" }))
+      .mockResolvedValueOnce(mockResponse({ data: "AQID" }));
+
+    const tab = await box.browser.tab.create("https://example.com");
+    const png = await tab.screenshot();
+    const base64 = await tab.screenshot({ type: "base64", fullPage: true });
+
+    expect(png).toEqual(new Uint8Array([1, 2, 3]));
+    expect(base64).toBe("AQID");
+    expect(fetchMock.mock.calls[2]?.[0]).not.toContain("full_page");
+    expect(fetchMock.mock.calls[3]?.[0]).toContain("full_page=true");
   });
 
   it("extracts with a Zod 4 schema", async () => {
@@ -50,7 +100,7 @@ describe("Box browser operations", () => {
       .mockResolvedValueOnce(mockResponse({ id: "tab-1", url: "https://example.com" }))
       .mockResolvedValueOnce(mockResponse({ data: { heading: "Example Domain" } }));
 
-    const tab = await box.browser.newTab("https://example.com");
+    const tab = await box.browser.tab.create("https://example.com");
     const result = await tab.extract("Extract the heading", z.object({ heading: z.string() }));
 
     expect(result).toEqual({ heading: "Example Domain" });
@@ -85,7 +135,7 @@ describe("Box browser operations", () => {
         }),
       );
 
-    const tab = await box.browser.newTab("https://example.com/login");
+    const tab = await box.browser.tab.create("https://example.com/login");
     const result = await tab.act("click the sign-in button", { model: "openai/gpt-5" });
 
     expect(result).toEqual({
@@ -109,6 +159,63 @@ describe("Box browser operations", () => {
       instruction: "click the sign-in button",
       tab: "tab-2",
       model: "openai/gpt-5",
+    });
+  });
+
+  it("runs a multi-step task with schema-validated structured output", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://linkedin.com" }))
+      .mockResolvedValueOnce(
+        mockResponse({
+          result: "Found five people",
+          data: {
+            people: Array.from({ length: 5 }, (_, index) => ({
+              name: `Founder ${index + 1}`,
+              headline: "AI founder in Berlin",
+              profileUrl: `https://linkedin.com/in/founder-${index + 1}`,
+            })),
+          },
+          completed: true,
+          steps: [{ step: 1, action: "search", url: "https://linkedin.com/search" }],
+          step_count: 1,
+          input_tokens: 100,
+          output_tokens: 25,
+        }),
+      );
+
+    const tab = await box.browser.tab.create("https://linkedin.com");
+    const result = await tab.run("Find five AI founders in Berlin", {
+      schema: z.object({
+        people: z
+          .array(
+            z.object({
+              name: z.string(),
+              headline: z.string(),
+              profileUrl: z.string(),
+            }),
+          )
+          .length(5),
+      }),
+      maxSteps: 25,
+    });
+
+    const typedPeople: Array<{ name: string; headline: string; profileUrl: string }> =
+      result.data.people;
+    expect(typedPeople).toHaveLength(5);
+    expect(result.completed).toBe(true);
+
+    const body = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
+    expect(body).toMatchObject({
+      prompt: "Find five AI founders in Berlin",
+      tab: "tab-2",
+      max_steps: 25,
+      schema: {
+        type: "object",
+        properties: {
+          people: { type: "array", minItems: 5, maxItems: 5 },
+        },
+      },
     });
   });
 

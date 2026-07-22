@@ -14,7 +14,7 @@ import { writeFileSync } from "node:fs";
 const box = await Box.create({ runtime: "node", browser: true }); // headless — NO desktop
 try {
   // Open a tab and navigate it (launches Chromium if none is open).
-  const tab = await box.browser.newTab();
+  const tab = await box.browser.tab.create("about:blank");
   const page = await tab.goto("https://upstash.com/pricing/redis");
   console.log("page:", page.title);
 
@@ -30,7 +30,7 @@ try {
   console.log("extracted:", payg);
 
   // Screenshot via CDP (renders to memory — there is no screen)
-  const png = await tab.screenshot();
+  const png = await tab.screenshot({ fullPage: true });
   writeFileSync("/tmp/headless.png", png);
   console.log("screenshot:", png.length, "bytes -> /tmp/headless.png");
 } finally {

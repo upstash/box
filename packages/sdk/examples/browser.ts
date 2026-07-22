@@ -7,12 +7,12 @@
  *   UPSTASH_BOX_API_KEY=... UPSTASH_BOX_BASE_URL=... tsx examples/browser.ts
  */
 import { Box } from "../src/index.js";
-import { z } from "zod/v3"; // NOTE: zod/v3 (the SDK's schema converter targets v3)
+import { z } from "zod/v3"; // Zod 3 and Zod 4 schemas are supported.
 
 const box = await Box.create({ runtime: "node", browser: true });
 try {
   // Open a tab and navigate it (boots Chromium if it isn't running yet).
-  const tab = await box.browser.newTab("https://github.com/upstash/ratelimit-js/pull/1");
+  const tab = await box.browser.tab.create("https://github.com/upstash/ratelimit-js/pull/1");
 
   // Read the page via the real DOM.
   const page = await tab.content();
@@ -38,9 +38,25 @@ try {
   const action = await tab.act("click the Files tab");
   console.log("acted:", action.actionDescription);
 
+  // Complete a multi-step task and return schema-validated structured data.
+  const run = await tab.run("Collect five useful repository navigation links from this page", {
+    schema: z.object({
+      links: z
+        .array(
+          z.object({
+            title: z.string(),
+            url: z.string(),
+          }),
+        )
+        .length(5),
+    }),
+    maxSteps: 25,
+  });
+  console.log("run:", run.completed, run.data.links);
+
   // Open a second tab, screenshot it, then list and close tabs.
-  const search = await box.browser.newTab("https://html.duckduckgo.com/html/");
-  const shot = await search.screenshot();
+  const search = await box.browser.tab.create("https://html.duckduckgo.com/html/");
+  const shot = await search.screenshot({ fullPage: true });
   console.log("screenshot bytes:", shot.length);
 
   const tabs = await box.browser.listTabs();

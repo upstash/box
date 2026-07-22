@@ -1,5 +1,5 @@
 /**
- * tab.screencastUrl() — live view of a box browser tab.
+ * tab.liveViewUrl() — live view of a box browser tab.
  *
  * Returns a browser-openable, token-authenticated URL that renders the tab
  * live (CDP screencast). Open it directly or embed it in an iframe.
@@ -12,9 +12,9 @@ import { Box } from "../src/index.js";
 
 const box = await Box.create({ runtime: "node", browser: true });
 try {
-  const tab = await box.browser.newTab("https://example.com");
+  const tab = await box.browser.tab.create("https://example.com");
 
-  const url = await tab.screencastUrl();
+  const url = await tab.liveViewUrl();
   console.log("watch live:", url);
 
   // Keep the box around for a minute so you can open the URL.

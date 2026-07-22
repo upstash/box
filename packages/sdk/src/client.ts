@@ -50,12 +50,13 @@ import {
   type CustomHarnessConfig,
   type BrowserExtractOptions,
   type BrowserContent,
+  type BrowserScreenshotOptions,
+  type BrowserTabCreateOptions,
   type BrowserObserveResult,
   type BrowserActResult,
   type BrowserRunOptions,
   type BrowserRunResult,
   type BrowserRunStep,
-  type BrowserConnection,
   type BrowserRecording,
   type BrowserRecordingHandle,
   type BrowserRecordingMarker,
@@ -406,7 +407,7 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
 /**
  * A single browser tab in a box's Chromium, addressed by its CDP target id.
  *
- * Obtain one via {@link Box.browser}: `box.browser.newTab(url)`,
+ * Obtain one via {@link Box.browser}: `box.browser.tab.create(url)`,
  * `box.browser.listTabs()`, or `box.browser.getTab(id)`. All page operations
  * run against this specific tab. `screenshot`/`extract`/`observe` all work
  * headless, without a visible screen.
@@ -414,9 +415,9 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
 export class Tab {
   /** CDP target id of this tab. */
   readonly id: string;
-  /** Last known URL of this tab (from `newTab`/`listTabs`; not live). */
+  /** Last known URL of this tab (from `tab.create`/`listTabs`; not live). */
   readonly url?: string;
-  /** Last known title of this tab (from `newTab`/`listTabs`; not live). */
+  /** Last known title of this tab (from `tab.create`/`listTabs`; not live). */
   readonly title?: string;
 
   private readonly box: Box;
@@ -445,20 +446,21 @@ export class Tab {
     );
   }
 
-  /** PNG of this tab via CDP (works headless), as raw bytes. */
-  screenshot(): Promise<Uint8Array> {
-    return this._screenshotData().then(base64ToBytes);
+  /** Capture this tab as PNG bytes, or as a base64 string when requested. */
+  screenshot(options: BrowserScreenshotOptions & { type: "base64" }): Promise<string>;
+  screenshot(options?: BrowserScreenshotOptions & { type?: "png" }): Promise<Uint8Array>;
+  screenshot(options: BrowserScreenshotOptions): Promise<Uint8Array | string>;
+  async screenshot(options: BrowserScreenshotOptions = {}): Promise<Uint8Array | string> {
+    const data = await this._screenshotData(Boolean(options.fullPage));
+    return options.type === "base64" ? data : base64ToBytes(data);
   }
 
-  /** PNG of this tab via CDP (works headless), as a base64 string. */
-  screenshotBase64(): Promise<string> {
-    return this._screenshotData();
-  }
-
-  private async _screenshotData(): Promise<string> {
+  private async _screenshotData(fullPage: boolean): Promise<string> {
+    const params = new URLSearchParams({ encoding: "base64", tab: this.id });
+    if (fullPage) params.set("full_page", "true");
     const resp = await this.box._request<{ data: string }>(
       "GET",
-      `/v2/box/${this.box.id}/browser/screenshot?encoding=base64&tab=${this.id}`,
+      `/v2/box/${this.box.id}/browser/screenshot?${params.toString()}`,
       { timeout: 60000 },
     );
     return resp.data;
@@ -536,9 +538,24 @@ export class Tab {
    * repeats until done. Metered — needs a key for the model's provider on the
    * box or account (Anthropic, OpenAI, OpenRouter, Vercel, or OpenCode).
    */
-  async run(options: BrowserRunOptions): Promise<BrowserRunResult> {
+  async run<T>(
+    prompt: string,
+    options: BrowserRunOptions<T> & { schema: BrowserExtractSchema<T> },
+  ): Promise<BrowserRunResult<T>>;
+  async run(prompt: string, options?: BrowserRunOptions): Promise<BrowserRunResult>;
+  /** @deprecated Pass the prompt as the first argument. */
+  async run(options: BrowserRunOptions & { prompt: string }): Promise<BrowserRunResult>;
+  async run<T>(
+    promptOrOptions: string | (BrowserRunOptions<T> & { prompt: string }),
+    runOptions: BrowserRunOptions<T> = {},
+  ): Promise<BrowserRunResult<T | undefined>> {
+    const prompt = typeof promptOrOptions === "string" ? promptOrOptions : promptOrOptions.prompt;
+    const options = typeof promptOrOptions === "string" ? runOptions : promptOrOptions;
+    const jsonSchema = options.schema ? toJsonSchema(options.schema) : undefined;
+    if (options.schema && !jsonSchema) throw new BoxError("run requires a Zod object schema");
     const resp = await this.box._request<{
       result?: string;
+      data?: unknown;
       completed?: boolean;
       steps?: BrowserRunStep[];
       step_count?: number;
@@ -546,14 +563,16 @@ export class Tab {
       output_tokens?: number;
     }>("POST", `/v2/box/${this.box.id}/browser/run`, {
       body: {
-        prompt: options.prompt,
+        prompt,
         tab: this.id,
+        ...(jsonSchema ? { schema: jsonSchema } : {}),
         ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
         ...(options.model ? { model: options.model } : {}),
       },
       timeout: 600000,
     });
     return {
+      data: options.schema ? options.schema.parse(resp.data) : undefined,
       result: resp.result ?? "",
       completed: Boolean(resp.completed),
       steps: resp.steps ?? [],
@@ -568,8 +587,8 @@ export class Tab {
    * directly or embed it in an iframe — the page renders the tab live via CDP
    * screencast. View-only: frames flow out, no input goes in.
    */
-  screencastUrl(): Promise<string> {
-    return this.box._browserScreencastUrl(this.id);
+  liveViewUrl(): Promise<string> {
+    return this.box._browserLiveViewUrl(this.id);
   }
 
   /** Close this tab. */
@@ -686,17 +705,16 @@ export class Box<TProvider = unknown> {
    * `observe`, `close`) live on the {@link Tab} handle returned here.
    */
   readonly browser: {
-    /** Open a new tab (optionally navigating to `url`) and return its handle. */
-    newTab: (url?: string) => Promise<Tab>;
+    tab: {
+      /** Open a tab, navigate it, and wait for the requested lifecycle state. */
+      create: (url: string, options?: BrowserTabCreateOptions) => Promise<Tab>;
+    };
     /** List the box's open tabs as handles. */
     listTabs: () => Promise<Tab[]>;
     /** Address an existing tab by its CDP target id — no network call. */
     getTab: (id: string) => Tab;
-    /**
-     * Expose the box's Chromium over CDP and return an authenticated endpoint
-     * for Playwright/Puppeteer `connectOverCDP` (or Selenium via chromedriver).
-     */
-    connect: () => Promise<BrowserConnection>;
+    /** Return an authenticated CDP WebSocket URL for Playwright, Puppeteer, or Stagehand. */
+    cdpUrl: () => Promise<string>;
     /**
      * Session recordings — capture the browser (all tabs, follows the
      * foreground) to a replayable HLS video with run/tab-switch chapters.
@@ -858,10 +876,12 @@ export class Box<TProvider = unknown> {
     };
 
     this.browser = {
-      newTab: (url) => this._browserNewTab(url),
+      tab: {
+        create: (url, options) => this._browserCreateTab(url, options),
+      },
       listTabs: () => this._browserListTabs(),
       getTab: (id) => new Tab(this, { id }),
-      connect: () => this._browserConnect(),
+      cdpUrl: () => this._browserCDPUrl(),
       recordings: {
         start: (options) => this._recordingStart(options),
         stop: () => this._recordingStop(),
@@ -2379,13 +2399,18 @@ export class Box<TProvider = unknown> {
     }
   }
 
-  private async _browserNewTab(url?: string): Promise<Tab> {
+  private async _browserCreateTab(url: string, options?: BrowserTabCreateOptions): Promise<Tab> {
+    const operationTimeout = options?.timeout === 0 ? 2_147_000_000 : options?.timeout;
     const resp = await this._request<{ id: string; url?: string; title?: string }>(
       "POST",
       `/v2/box/${this.id}/browser/tabs`,
       {
-        body: url !== undefined ? { url } : {},
-        timeout: 60000,
+        body: {
+          url,
+          ...(options?.waitUntil ? { wait_until: options.waitUntil } : {}),
+          ...(options?.timeout !== undefined ? { timeout: options.timeout } : {}),
+        },
+        timeout: operationTimeout === undefined ? 60000 : Math.max(60000, operationTimeout + 5000),
       },
     );
     return new Tab(this, { id: resp.id, url: resp.url, title: resp.title });
@@ -2400,17 +2425,13 @@ export class Box<TProvider = unknown> {
     return (resp.tabs ?? []).map((t) => new Tab(this, t));
   }
 
-  private async _browserConnect(): Promise<BrowserConnection> {
-    const resp = await this._request<{ cdp_url?: string; host?: string; token?: string }>(
+  private async _browserCDPUrl(): Promise<string> {
+    const resp = await this._request<{ cdp_url?: string }>(
       "POST",
       `/v2/box/${this.id}/browser/connect`,
       { timeout: 60000 },
     );
-    return {
-      cdpUrl: resp.cdp_url ?? "",
-      host: resp.host ?? "",
-      token: resp.token ?? "",
-    };
+    return resp.cdp_url ?? "";
   }
 
   private _mapRecording(raw: Record<string, unknown>): BrowserRecording {
@@ -2481,8 +2502,8 @@ export class Box<TProvider = unknown> {
     return this._mapRecording(resp);
   }
 
-  /** @internal — Authenticated live-view URL for a tab (used by Tab.screencastUrl). */
-  async _browserScreencastUrl(tabId?: string): Promise<string> {
+  /** @internal — Authenticated live-view URL for a tab (used by Tab.liveViewUrl). */
+  async _browserLiveViewUrl(tabId?: string): Promise<string> {
     const resp = await this._request<{ screencast_url?: string }>(
       "POST",
       `/v2/box/${this.id}/browser/screencast`,

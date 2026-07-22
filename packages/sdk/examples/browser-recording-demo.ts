@@ -21,7 +21,7 @@ let completed = false;
 
 try {
   // Chromium needs one tab before recording can start.
-  const tab = await box.browser.newTab();
+  const tab = await box.browser.tab.create("about:blank");
   const recording = await box.browser.recordings.start({ maxDurationSeconds: 120 });
 
   try {

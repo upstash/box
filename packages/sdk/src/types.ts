@@ -1093,6 +1093,22 @@ export interface BrowserContent {
   links?: BrowserLink[];
 }
 
+/** Options for `tab.screenshot()`. */
+export interface BrowserScreenshotOptions {
+  /** Return PNG bytes by default, or a base64-encoded PNG string. */
+  type?: "png" | "base64";
+  /** Capture the full document instead of only the current viewport. Defaults to `false`. */
+  fullPage?: boolean;
+}
+
+/** Navigation options for `box.browser.tab.create()`. */
+export interface BrowserTabCreateOptions {
+  /** Lifecycle state to wait for. Defaults to `"load"`. */
+  waitUntil?: "load" | "domcontentloaded" | "networkidle";
+  /** Navigation timeout in milliseconds. Defaults to 30,000; `0` disables it. */
+  timeout?: number;
+}
+
 /** One actionable element from `tab.observe()`. */
 export interface BrowserObserveElement {
   description: string;
@@ -1126,9 +1142,14 @@ export interface BrowserActResult {
 }
 
 /** Options for `tab.run()`. */
-export interface BrowserRunOptions {
-  /** The task to accomplish on the page, in natural language. */
-  prompt: string;
+export interface BrowserRunOptions<T = unknown> {
+  /**
+   * Zod object schema for data the agent must return when it completes. The
+   * inferred schema output becomes `BrowserRunResult.data`.
+   */
+  schema?: { parse(data: unknown): T };
+  /** @deprecated Pass the prompt as the first `tab.run()` argument. */
+  prompt?: string;
   /** Max agent steps. Default 15, max 30. */
   maxSteps?: number;
   /**
@@ -1151,7 +1172,9 @@ export interface BrowserRunStep {
 }
 
 /** Result of `tab.run()` — the agent's outcome after the loop. */
-export interface BrowserRunResult {
+export interface BrowserRunResult<T = undefined> {
+  /** Structured output validated against the supplied schema. */
+  data: T;
   /** The agent's answer/summary when finished. */
   result: string;
   /** Whether the agent reported the task complete (vs. hit maxSteps). */
@@ -1208,18 +1231,4 @@ export interface BrowserRecordingHandle {
   id: string;
   /** Finalize the recording: flush the encoder, upload, return metadata. */
   stop: () => Promise<BrowserRecording>;
-}
-
-/** Result of `box.browser.connect()` — a CDP endpoint for Playwright/Puppeteer/Stagehand. */
-export interface BrowserConnection {
-  /**
-   * Ready-to-use WebSocket CDP endpoint with the token as a query param
-   * (`wss://…?token=…`). Drops straight into Playwright `connectOverCDP`,
-   * Puppeteer `browserWSEndpoint`, or Stagehand `localBrowserLaunchOptions.cdpUrl`.
-   */
-  cdpUrl: string;
-  /** HTTPS endpoint for the header-based flow: connect to `host`, pass `token` as a Basic-auth header. */
-  host: string;
-  /** The access token (also carried in `cdpUrl`'s query string). */
-  token: string;
 }
