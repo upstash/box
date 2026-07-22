@@ -1080,9 +1080,9 @@ export interface BrowserExtractOptions {
 /** A link on the page. */
 export interface BrowserLink {
   /** Link text. */
-  t: string;
+  text: string;
   /** Resolved href. */
-  h: string;
+  href: string;
 }
 
 /** Content of the active browser page (from `box.browser.goto/content`). */

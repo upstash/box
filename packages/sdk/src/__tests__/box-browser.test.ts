@@ -29,7 +29,7 @@ describe("Box browser operations", () => {
           title: "Example Domain",
           url: "https://example.com",
           text: "Example Domain",
-          links: [{ t: "More information", h: "https://iana.org/help/example-domains" }],
+          links: [{ text: "More information", href: "https://iana.org/help/example-domains" }],
         }),
       );
 
@@ -38,8 +38,8 @@ describe("Box browser operations", () => {
 
     expect(tab.id).toBe("tab-1");
     expect(content.links?.[0]).toEqual({
-      t: "More information",
-      h: "https://iana.org/help/example-domains",
+      text: "More information",
+      href: "https://iana.org/help/example-domains",
     });
     expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/content?tab=tab-1");
   });
