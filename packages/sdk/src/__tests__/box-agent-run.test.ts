@@ -415,7 +415,9 @@ describe("box.agent.run", () => {
     expect(body.agent_options).toEqual({
       model_reasoning_effort: "high",
       personality: "pragmatic",
-      web_search: true,
+      // webSearch: true is normalized to the codex CLI's string mode — a raw
+      // boolean fails its config validation and the run dies with no output.
+      web_search: "live",
     });
   });
 

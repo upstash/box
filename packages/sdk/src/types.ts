@@ -373,7 +373,7 @@ export interface CodexAgentOptions {
   modelReasoningSummary?: "auto" | "concise" | "detailed" | "none";
   /** Agent personality */
   personality?: "friendly" | "pragmatic" | "none";
-  /** Web search */
+  /** Web search — `true` is normalized to `"live"` (the codex CLI accepts string modes only) */
   webSearch?: "live" | boolean;
 }
 

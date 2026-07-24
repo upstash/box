@@ -95,7 +95,12 @@ function toBackendAgentOptions(
   if (agent !== Agent.Codex) return options as Record<string, unknown>;
   const mapped: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(options)) {
-    mapped[CODEX_KEY_MAP[key as keyof CodexAgentOptions] ?? key] = value;
+    // The codex CLI only accepts string modes for web_search — a raw boolean
+    // fails its config validation and kills the run before any output.
+    // Normalize true → "live" client-side so older box-agent deployments
+    // without runner-side coercion keep working.
+    const normalized = key === "webSearch" && value === true ? "live" : value;
+    mapped[CODEX_KEY_MAP[key as keyof CodexAgentOptions] ?? key] = normalized;
   }
   return mapped;
 }
