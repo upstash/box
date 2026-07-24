@@ -1,0 +1,57 @@
+{
+  "name": "@upstash/box-pi",
+  "version": "0.0.0",
+  "description": "Pi coding agent extension that runs all tool calls inside a remote Upstash Box sandbox while the agent runs locally",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/upstash/box.git",
+    "directory": "packages/box-pi"
+  },
+  "author": "Upstash, Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/upstash/box/issues"
+  },
+  "homepage": "https://github.com/upstash/box/tree/main/packages/box-pi#readme",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "upstash",
+    "box",
+    "sandbox"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "files": [
+    "index.ts",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "npm run typecheck && npm run test && npm run smoke",
+    "test:basic": "node scripts/live-basic.mjs",
+    "test:bash-bg": "node scripts/live-bash-bg.mjs",
+    "test:recovery": "node scripts/live-recovery.mjs",
+    "test:live": "npm run test:basic && npm run test:bash-bg && npm run test:recovery"
+  },
+  "dependencies": {
+    "@upstash/box": "^0.5.5"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.79.0",
+    "typebox": "^1.1.38"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.79.0",
+    "@types/node": "^22",
+    "typebox": "1.1.38",
+    "typescript": "^5.6.0"
+  }
+}

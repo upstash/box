@@ -10,6 +10,7 @@ on:
         options:
           - "@upstash/box"
           - "@upstash/box-cli"
+          - "@upstash/box-pi"
 
 jobs:
   canary:
@@ -41,6 +42,8 @@ jobs:
         run: |
           if [ "${{ inputs.package }}" = "@upstash/box" ]; then
             PKG_DIR="packages/sdk"
+          elif [ "${{ inputs.package }}" = "@upstash/box-pi" ]; then
+            PKG_DIR="packages/box-pi"
           else
             PKG_DIR="packages/cli"
           fi

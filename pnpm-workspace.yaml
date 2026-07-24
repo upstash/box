@@ -1,2 +1,43 @@
 packages:
   - "packages/*"
+
+# Postinstall scripts of transitive @earendil-works/pi-coding-agent deps —
+# not needed (optional provider paths box-pi never exercises).
+allowBuilds:
+  '@google/genai': false
+  protobufjs: false
+
+# Transitive deps of @earendil-works/pi-coding-agent (packages/box-pi) reference
+# several @aws-sdk/@smithy versions that were never published to npm (partially
+# yanked release train). Pin the whole set to the known-good versions npm
+# resolves (see packages/box-pi history). Only used by Pi's optional Bedrock
+# provider, which box-pi never exercises.
+overrides:
+  "@aws-sdk/client-bedrock-runtime": 3.1048.0
+  "@aws-sdk/core": 3.974.11
+  "@aws-sdk/credential-provider-env": 3.972.37
+  "@aws-sdk/credential-provider-http": 3.972.39
+  "@aws-sdk/credential-provider-ini": 3.972.41
+  "@aws-sdk/credential-provider-login": 3.972.41
+  "@aws-sdk/credential-provider-node": 3.972.42
+  "@aws-sdk/credential-provider-process": 3.972.37
+  "@aws-sdk/credential-provider-sso": 3.972.41
+  "@aws-sdk/credential-provider-web-identity": 3.972.41
+  "@aws-sdk/eventstream-handler-node": 3.972.16
+  "@aws-sdk/middleware-eventstream": 3.972.12
+  "@aws-sdk/middleware-websocket": 3.972.19
+  "@aws-sdk/nested-clients": 3.997.9
+  "@aws-sdk/signature-v4-multi-region": 3.996.27
+  "@aws-sdk/token-providers": 3.1048.0
+  "@aws-sdk/types": 3.973.8
+  "@aws-sdk/util-locate-window": 3.965.5
+  "@aws-sdk/xml-builder": 3.972.24
+  "@smithy/core": 3.24.3
+  "@smithy/credential-provider-imds": 4.3.3
+  "@smithy/fetch-http-handler": 5.4.3
+  "@smithy/is-array-buffer": 2.2.0
+  "@smithy/node-http-handler": 4.7.3
+  "@smithy/signature-v4": 5.4.3
+  "@smithy/types": 4.14.2
+  "@smithy/util-buffer-from": 2.2.0
+  "@smithy/util-utf8": 2.3.0

@@ -1,0 +1,19 @@
+{
+  // Standalone config: this is a jiti-loaded ESM extension using .ts-extension
+  // imports + noEmit, so it doesn't share a CommonJS/node-resolution build model.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["index.ts", "src/**/*.ts"]
+}
