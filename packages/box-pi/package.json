@@ -1,6 +1,6 @@
 {
   "name": "@upstash/box-pi",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Pi coding agent extension that runs all tool calls inside a remote Upstash Box sandbox while the agent runs locally",
   "type": "module",
   "repository": {
@@ -25,6 +25,9 @@
     "extensions": [
       "./index.ts"
     ]
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "index.ts",
