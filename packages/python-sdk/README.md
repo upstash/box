@@ -73,10 +73,10 @@ with box:
 from upstash_box import Agent, AsyncBox, BoxApiKey
 
 box = await AsyncBox.create(
-    api_key="box_...",            # or set UPSTASH_BOX_API_KEY
-    runtime="node",                # "node" | "python" | "golang" | "ruby" | "rust"
-    labels=["beta", "x-team"],     # tag the box for organization/filtering
-    size="small",                  # "small" | "medium" | "large"
+    api_key="box_...",  # or set UPSTASH_BOX_API_KEY
+    runtime="node",  # "node" | "python" | "golang" | "ruby" | "rust"
+    labels=["beta", "x-team"],  # tag the box for organization/filtering
+    size="small",  # "small" | "medium" | "large"
     keep_alive=True,
     init_command="npm install && npm run dev",
     agent={
@@ -110,9 +110,11 @@ print(run.result, run.status, run.cost.total_usd)
 # Structured output with Pydantic
 from pydantic import BaseModel
 
+
 class Candidate(BaseModel):
     name: str
     score: int
+
 
 run = await box.agent.run(prompt="Analyze this candidate", response_schema=Candidate)
 result = run.result  # -> Candidate instance
@@ -131,7 +133,7 @@ async for chunk in stream:
 ```python
 run = await box.exec.command("node index.js")
 run = await box.exec.code(code="print('hi')", lang="python")
-print(run.result)     # stdout on success, stderr on failure
+print(run.result)  # stdout on success, stderr on failure
 print(run.stdout, run.stderr, run.exit_code)  # raw streams + exit code
 ```
 
@@ -171,8 +173,8 @@ manage them on a running box via the `labels` namespace. Each `add`/`remove` ret
 the updated label set. Filter with `AsyncBox.list(label=...)`.
 
 ```python
-labels = await box.labels.add("prod")     # ["beta", "x-team", "prod"]
-await box.labels.remove("beta")            # ["x-team", "prod"]
+labels = await box.labels.add("prod")  # ["beta", "x-team", "prod"]
+await box.labels.remove("beta")  # ["x-team", "prod"]
 current = await box.labels.list()
 ```
 

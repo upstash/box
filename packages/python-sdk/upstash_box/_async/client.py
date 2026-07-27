@@ -1582,9 +1582,7 @@ class AsyncBox(Generic[T]):
             body["wait_until"] = wait_until
         if timeout is not None:
             body["timeout"] = timeout
-        http_timeout = (
-            60000 if operation_timeout is None else max(60000, operation_timeout + 5000)
-        )
+        http_timeout = 60000 if operation_timeout is None else max(60000, operation_timeout + 5000)
         resp = await self._request(
             "POST", f"/v2/box/{self.id}/browser/tabs", body=body, timeout=http_timeout
         )
@@ -1662,9 +1660,7 @@ class AsyncBox(Generic[T]):
                 return recordings
 
     async def _recording_get(self, recording_id: str) -> BrowserRecording:
-        resp = await self._request(
-            "GET", f"/v2/box/{self.id}/browser/recordings/{recording_id}"
-        )
+        resp = await self._request("GET", f"/v2/box/{self.id}/browser/recordings/{recording_id}")
         return self._map_recording(resp)
 
     # ==================== Static methods ====================

@@ -365,7 +365,12 @@ async def test_recording_start_stop_and_mapping():
     respx.get(f"{BASE}/browser/recordings/recording-1").mock(
         return_value=httpx.Response(
             200,
-            json={"id": "recording-1", "box_id": "box-123", "status": "recording", "started_at": 1000},
+            json={
+                "id": "recording-1",
+                "box_id": "box-123",
+                "status": "recording",
+                "started_at": 1000,
+            },
         )
     )
     stop = respx.post(f"{BASE}/browser/recordings/stop").mock(
@@ -416,7 +421,12 @@ async def test_stale_handle_does_not_stop_newer_recording():
     respx.post(f"{BASE}/browser/recordings").mock(
         return_value=httpx.Response(
             200,
-            json={"id": "recording-1", "box_id": "box-123", "status": "recording", "started_at": 1000},
+            json={
+                "id": "recording-1",
+                "box_id": "box-123",
+                "status": "recording",
+                "started_at": 1000,
+            },
         )
     )
     respx.get(f"{BASE}/browser/recordings/recording-1").mock(
