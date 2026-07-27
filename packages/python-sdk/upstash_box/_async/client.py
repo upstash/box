@@ -9,12 +9,25 @@ construct that can't be generated cleanly in ``_sync/_fallbacks.py`` instead.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
 import time
 import uuid
-from typing import Any, AsyncIterator, Dict, Generic, List, Mapping, Optional, TypeVar, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Generic,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
+from urllib.parse import urlencode
 
 import httpx
 from typing_extensions import Unpack
@@ -29,6 +42,11 @@ from ..types import (
     BoxData,
     BoxGetOptions,
     BoxRunData,
+    BrowserActResult,
+    BrowserContent,
+    BrowserObserveResult,
+    BrowserRecording,
+    BrowserRunResult,
     Chunk,
     CodeLanguage,
     CustomHarnessConfig,
@@ -430,6 +448,259 @@ class AsyncLabelsNamespace:
         return await self._box._label_list()
 
 
+class AsyncTab:
+    """A single browser tab in a box's Chromium, addressed by its CDP target id.
+
+    Obtain one via ``box.browser``: ``box.browser.tab.create(url)``,
+    ``box.browser.list_tabs()``, or ``box.browser.get_tab(id)``. All page
+    operations run against this specific tab and work headless.
+    """
+
+    def __init__(self, box: "AsyncBox", init: Mapping[str, Any]) -> None:
+        self._box = box
+        #: CDP target id of this tab.
+        self.id: str = init["id"]
+        #: Last known URL of this tab (from create/list_tabs; not live).
+        self.url: Optional[str] = init.get("url")
+        #: Last known title of this tab (from create/list_tabs; not live).
+        self.title: Optional[str] = init.get("title")
+
+    async def goto(self, url: str) -> BrowserContent:
+        """Navigate this tab to a URL and return the page content."""
+        resp = await self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/goto",
+            body={"url": url, "tab": self.id},
+            timeout=60000,
+        )
+        return BrowserContent.model_validate(resp)
+
+    async def content(self) -> BrowserContent:
+        """Read this tab's current title, URL, text, and links."""
+        resp = await self._box._request(
+            "GET",
+            f"/v2/box/{self._box.id}/browser/content?{urlencode({'tab': self.id})}",
+            timeout=60000,
+        )
+        return BrowserContent.model_validate(resp)
+
+    async def screenshot(
+        self,
+        *,
+        encoding: Literal["bytes", "base64"] = "bytes",
+        full_page: bool = False,
+    ) -> Union[bytes, str]:
+        """Capture this tab as PNG bytes, or a base64-encoded PNG string."""
+        params = {"encoding": "base64", "tab": self.id}
+        if full_page:
+            params["full_page"] = "true"
+        resp = await self._box._request(
+            "GET",
+            f"/v2/box/{self._box.id}/browser/screenshot?{urlencode(params)}",
+            timeout=60000,
+        )
+        data = resp.get("data") or ""
+        if encoding == "base64":
+            return data
+        return base64.b64decode(data)
+
+    async def extract(
+        self,
+        instruction: str,
+        schema: ResponseSchema,
+        *,
+        model: Optional[str] = None,
+    ) -> Any:
+        """Extract schema-validated structured data from this tab (metered).
+
+        ``schema`` is a pydantic model class (validated, returns an instance) or
+        a raw JSON-schema dict (returns the raw data). ``model`` optionally
+        overrides the provider-prefixed model, e.g. ``anthropic/claude-sonnet-4-5``.
+        """
+        json_schema = common.to_json_schema(schema)
+        if json_schema is None:
+            raise BoxError("extract requires a pydantic model class or a JSON-schema dict")
+        body: Dict[str, Any] = {"instruction": instruction, "schema": json_schema, "tab": self.id}
+        if model:
+            body["model"] = model
+        resp = await self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/extract",
+            body=body,
+            timeout=180000,
+        )
+        return common.validate_structured_data(schema, resp.get("data"))
+
+    async def observe(
+        self, instruction: str, *, model: Optional[str] = None
+    ) -> BrowserObserveResult:
+        """List actionable page elements matching an instruction (metered)."""
+        body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+        if model:
+            body["model"] = model
+        resp = await self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/observe",
+            body=body,
+            timeout=180000,
+        )
+        return BrowserObserveResult.model_validate({"elements": resp.get("elements") or []})
+
+    async def act(self, instruction: str, *, model: Optional[str] = None) -> BrowserActResult:
+        """Resolve and execute one natural-language action on this tab (metered)."""
+        body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+        if model:
+            body["model"] = model
+        resp = await self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/act",
+            body=body,
+            timeout=180000,
+        )
+        return BrowserActResult.model_validate(resp)
+
+    async def run(
+        self,
+        prompt: str,
+        *,
+        schema: Optional[ResponseSchema] = None,
+        max_steps: Optional[int] = None,
+        model: Optional[str] = None,
+    ) -> BrowserRunResult:
+        """Autonomously complete a multi-step task on this tab (metered).
+
+        Runs a DOM-aware browser agent (Stagehand) inside the box: it reads the
+        page, acts, and repeats until done. ``max_steps`` defaults to 15
+        (max 30). Needs a key for the model's provider on the box or account.
+        """
+        json_schema = common.to_json_schema(schema) if schema is not None else None
+        if schema is not None and json_schema is None:
+            raise BoxError("run requires a pydantic model class or a JSON-schema dict")
+        body: Dict[str, Any] = {"prompt": prompt, "tab": self.id}
+        if json_schema is not None:
+            body["schema"] = json_schema
+        if max_steps:
+            body["max_steps"] = max_steps
+        if model:
+            body["model"] = model
+        resp = await self._box._request(
+            "POST",
+            f"/v2/box/{self._box.id}/browser/run",
+            body=body,
+            timeout=600000,
+        )
+        data = (
+            common.validate_structured_data(schema, resp.get("data"))
+            if schema is not None
+            else None
+        )
+        return BrowserRunResult.model_validate({**resp, "data": data})
+
+    async def live_view_url(self) -> str:
+        """Live-view URL for this tab (authenticated via a token in the URL).
+
+        Open it directly or embed it in an iframe — view-only: frames flow out,
+        no input goes in.
+        """
+        return await self._box._browser_live_view_url(self.id)
+
+    async def close(self) -> None:
+        """Close this tab."""
+        await self._box._request("DELETE", f"/v2/box/{self._box.id}/browser/tabs/{self.id}")
+
+
+class AsyncBrowserRecordingHandle:
+    """Handle for an in-flight recording returned by ``recordings.start()``."""
+
+    def __init__(self, box: "AsyncBox", recording_id: str) -> None:
+        self._box = box
+        self.id = recording_id
+
+    async def stop(self) -> BrowserRecording:
+        """Finalize the recording: flush the encoder, upload, return metadata.
+
+        If this handle's recording already ended (e.g. auto-stopped), returns
+        its metadata without stopping whatever newer recording may be active.
+        """
+        # The stop endpoint is box-wide; guard so a stale handle can't stop a
+        # newer recording on the same box.
+        current = await self._box._recording_get(self.id)
+        if current.status != "recording":
+            return current
+        return await self._box._recording_stop()
+
+
+class AsyncBrowserTabNamespace:
+    def __init__(self, box: "AsyncBox") -> None:
+        self._box = box
+
+    async def create(
+        self,
+        url: str,
+        *,
+        wait_until: Optional[Literal["load", "domcontentloaded", "networkidle"]] = None,
+        timeout: Optional[int] = None,
+    ) -> AsyncTab:
+        """Open a tab, navigate it, and wait for the requested lifecycle state.
+
+        ``wait_until`` defaults to ``"load"`` server-side. ``timeout`` is the
+        navigation timeout in milliseconds (default 30,000; ``0`` disables it).
+        """
+        return await self._box._browser_create_tab(url, wait_until, timeout)
+
+
+class AsyncBrowserRecordingsNamespace:
+    """Session recordings — capture the browser (all tabs, follows the
+    foreground) to a replayable HLS video with run/tab-switch chapters.
+    Recordings auto-stop after ``max_duration_seconds`` (max 10 minutes) or
+    after 3 minutes of no on-screen activity."""
+
+    def __init__(self, box: "AsyncBox") -> None:
+        self._box = box
+
+    async def start(
+        self, *, max_duration_seconds: Optional[int] = None
+    ) -> AsyncBrowserRecordingHandle:
+        """Start capturing. One active recording per box."""
+        return await self._box._recording_start(max_duration_seconds)
+
+    async def stop(self) -> BrowserRecording:
+        """Stop the active recording and return its metadata."""
+        return await self._box._recording_stop()
+
+    async def list(self) -> List[BrowserRecording]:
+        """List this box's recordings, newest first (auto-paginates)."""
+        return await self._box._recording_list()
+
+    async def get(self, recording_id: str) -> BrowserRecording:
+        """Fetch one recording's metadata."""
+        return await self._box._recording_get(recording_id)
+
+
+class AsyncBrowserNamespace:
+    """Browser namespace — DOM-aware control of Chromium via CDP. Requires a
+    box created with ``browser=True``. Tab management only: open, list, and
+    address tabs. All page operations live on the tab handle returned here."""
+
+    def __init__(self, box: "AsyncBox") -> None:
+        self._box = box
+        self.tab = AsyncBrowserTabNamespace(box)
+        self.recordings = AsyncBrowserRecordingsNamespace(box)
+
+    async def list_tabs(self) -> List[AsyncTab]:
+        """List the box's open tabs as handles."""
+        return await self._box._browser_list_tabs()
+
+    def get_tab(self, tab_id: str) -> AsyncTab:
+        """Address an existing tab by its CDP target id — no network call."""
+        return AsyncTab(self._box, {"id": tab_id})
+
+    async def cdp_url(self) -> str:
+        """Return an authenticated CDP WebSocket URL for Playwright, Puppeteer,
+        or Stagehand."""
+        return await self._box._browser_cdp_url()
+
+
 class AsyncBox(Generic[T]):
     """A sandboxed AI coding environment."""
 
@@ -456,6 +727,7 @@ class AsyncBox(Generic[T]):
         self.schedule = AsyncScheduleNamespace(self)
         self.skills = AsyncSkillsNamespace(self)
         self.labels = AsyncLabelsNamespace(self)
+        self.browser = AsyncBrowserNamespace(self)
 
     # ==================== Lifecycle / transport ====================
 
@@ -1294,6 +1566,107 @@ class AsyncBox(Generic[T]):
     async def delete_public_url(self, port: int) -> None:
         await self._request("DELETE", f"/v2/box/{self.id}/preview/{port}")
 
+    # ==================== Browser ====================
+
+    async def _browser_create_tab(
+        self,
+        url: str,
+        wait_until: Optional[str],
+        timeout: Optional[int],
+    ) -> AsyncTab:
+        # timeout=0 disables the navigation deadline server-side; give the HTTP
+        # request an effectively unbounded budget to match (mirrors the JS SDK).
+        operation_timeout = 2_147_000_000 if timeout == 0 else timeout
+        body: Dict[str, Any] = {"url": url}
+        if wait_until:
+            body["wait_until"] = wait_until
+        if timeout is not None:
+            body["timeout"] = timeout
+        http_timeout = (
+            60000 if operation_timeout is None else max(60000, operation_timeout + 5000)
+        )
+        resp = await self._request(
+            "POST", f"/v2/box/{self.id}/browser/tabs", body=body, timeout=http_timeout
+        )
+        return AsyncTab(self, resp)
+
+    async def _browser_list_tabs(self) -> List[AsyncTab]:
+        resp = await self._request("GET", f"/v2/box/{self.id}/browser/tabs", timeout=60000)
+        return [AsyncTab(self, t) for t in resp.get("tabs") or []]
+
+    async def _browser_cdp_url(self) -> str:
+        resp = await self._request("POST", f"/v2/box/{self.id}/browser/connect", timeout=60000)
+        cdp_url = resp.get("cdp_url")
+        if not cdp_url:
+            raise BoxError("Browser connect did not return a CDP URL")
+        return cdp_url
+
+    async def _browser_live_view_url(self, tab_id: Optional[str]) -> str:
+        resp = await self._request(
+            "POST",
+            f"/v2/box/{self.id}/browser/screencast",
+            body={"tab": tab_id} if tab_id else None,
+            timeout=60000,
+        )
+        screencast_url = resp.get("screencast_url")
+        if not screencast_url:
+            raise BoxError("Browser screencast did not return a URL")
+        return screencast_url
+
+    def _map_recording(self, raw: Mapping[str, Any]) -> BrowserRecording:
+        data = dict(raw)
+        if not data.get("box_id"):
+            data["box_id"] = self.id
+        # The API reports expires_at in epoch seconds; normalize to ms like the
+        # other timestamps.
+        if data.get("expires_at") is not None:
+            data["expires_at"] = int(data["expires_at"]) * 1000
+        rec_id = data.get("id") or ""
+        data["playlist_url"] = (
+            f"{self._base_url}/v2/box/{self.id}/browser/recordings/{rec_id}/playlist"
+        )
+        return BrowserRecording.model_validate(data)
+
+    async def _recording_start(
+        self, max_duration_seconds: Optional[int]
+    ) -> AsyncBrowserRecordingHandle:
+        body: Dict[str, Any] = {}
+        if max_duration_seconds:
+            body["max_duration_seconds"] = max_duration_seconds
+        resp = await self._request(
+            "POST", f"/v2/box/{self.id}/browser/recordings", body=body, timeout=60000
+        )
+        rec = self._map_recording(resp)
+        return AsyncBrowserRecordingHandle(self, rec.id)
+
+    async def _recording_stop(self) -> BrowserRecording:
+        # Stopping flushes the encoder and uploads the HLS artifacts.
+        resp = await self._request(
+            "POST", f"/v2/box/{self.id}/browser/recordings/stop", timeout=180000
+        )
+        return self._map_recording(resp)
+
+    async def _recording_list(self) -> List[BrowserRecording]:
+        recordings: List[BrowserRecording] = []
+        cursor: Optional[str] = None
+        while True:
+            params = {"limit": "100"}
+            if cursor:
+                params["cursor"] = cursor
+            resp = await self._request(
+                "GET", f"/v2/box/{self.id}/browser/recordings?{urlencode(params)}"
+            )
+            recordings.extend(self._map_recording(r) for r in resp.get("recordings") or [])
+            cursor = resp.get("next_cursor") or None
+            if not cursor:
+                return recordings
+
+    async def _recording_get(self, recording_id: str) -> BrowserRecording:
+        resp = await self._request(
+            "GET", f"/v2/box/{self.id}/browser/recordings/{recording_id}"
+        )
+        return self._map_recording(resp)
+
     # ==================== Static methods ====================
 
     @classmethod
@@ -1729,6 +2102,8 @@ def _build_create_body(
         body["keep_alive"] = True
     if config.get("init_command") is not None:
         body["init_command"] = config["init_command"]
+    if config.get("browser"):
+        body["browser"] = True
     if agent:
         common.append_agent_config_to_body(body, agent)
     if config.get("runtime"):

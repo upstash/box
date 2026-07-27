@@ -266,3 +266,43 @@ def test_codex_agent_options_snake_passthrough():
     box.agent.run(prompt="x", options={"model_reasoning_effort": "high"})
     assert last_json_body(route)["agent_options"] == {"model_reasoning_effort": "high"}
     box.close()
+
+
+# ---------- browser (generated-sync smoke) ----------
+
+
+@respx.mock
+def test_browser_tab_flow_sync():
+    box = make_sync_box(respx.mock)
+    create = respx.post(f"{BASE}/browser/tabs").mock(
+        return_value=httpx.Response(200, json={"id": "tab-1", "url": "https://example.com"})
+    )
+    respx.get(f"{BASE}/browser/content", params={"tab": "tab-1"}).mock(
+        return_value=httpx.Response(
+            200, json={"title": "Example", "url": "https://example.com", "text": "Example"}
+        )
+    )
+    respx.get(f"{BASE}/browser/recordings/rec-1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "rec-1",
+                "box_id": "box-123",
+                "status": "completed",
+                "started_at": 1000,
+                "expires_at": 1_209_601,
+                "stopped_reason": "idle",
+            },
+        )
+    )
+
+    tab = box.browser.tab.create("https://example.com", wait_until="load")
+    content = tab.content()
+    recording = box.browser.recordings.get("rec-1")
+
+    assert tab.id == "tab-1"
+    assert content.title == "Example"
+    assert last_json_body(create) == {"url": "https://example.com", "wait_until": "load"}
+    # seconds -> ms normalization survives sync generation
+    assert recording.expires_at == 1_209_601_000
+    box.close()

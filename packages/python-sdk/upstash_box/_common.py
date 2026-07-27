@@ -292,6 +292,22 @@ def parse_structured_output(schema: Any, output: str) -> Any:
         ) from e
 
 
+def validate_structured_data(schema: Any, data: Any) -> Any:
+    """Validate already-decoded structured data (browser extract/run) against a
+    response_schema. Pydantic model classes validate and return an instance; raw
+    dict schemas return the data unvalidated."""
+    try:
+        from pydantic import BaseModel
+
+        if isinstance(schema, type) and issubclass(schema, BaseModel):
+            return schema.model_validate(data)
+    except BoxError:
+        raise
+    except Exception as e:
+        raise BoxError(f"Structured data failed schema validation: {e}") from e
+    return data
+
+
 # ==================== Prompt files / run request ====================
 
 MIME_TYPES = {

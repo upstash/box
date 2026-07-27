@@ -78,7 +78,10 @@ function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, s
 /** Decode base64 to bytes in both Node and edge runtimes. */
 function base64ToBytes(b64: string): Uint8Array {
   if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
-  const bin = atob(b64);
+  if (typeof globalThis.atob !== "function") {
+    throw new BoxError("base64ToBytes requires Buffer (Node) or atob (browser/edge)");
+  }
+  const bin = globalThis.atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
@@ -409,8 +412,8 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  *
  * Obtain one via {@link Box.browser}: `box.browser.tab.create(url)`,
  * `box.browser.listTabs()`, or `box.browser.getTab(id)`. All page operations
- * run against this specific tab. `screenshot`/`extract`/`observe` all work
- * headless, without a visible screen.
+ * run against this specific tab. `screenshot`/`extract`/`observe`/`act`/`run`
+ * all work headless, without a visible screen.
  */
 export class Tab {
   /** CDP target id of this tab. */
@@ -702,7 +705,8 @@ export class Box<TProvider = unknown> {
    * Browser namespace — DOM-aware control of Chromium via CDP. Requires a box
    * created with `browser: true`. Tab management only: open, list, and address
    * tabs. All page operations (`goto`, `content`, `screenshot`, `extract`,
-   * `observe`, `close`) live on the {@link Tab} handle returned here.
+   * `observe`, `act`, `run`, `close`) live on the {@link Tab} handle returned
+   * here.
    */
   readonly browser: {
     tab: {

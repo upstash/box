@@ -1,6 +1,8 @@
 from .client import (
     AsyncAgentNamespace,
     AsyncBox,
+    AsyncBrowserNamespace,
+    AsyncBrowserRecordingHandle,
     AsyncEphemeralBox,
     AsyncExecNamespace,
     AsyncFilesNamespace,
@@ -9,6 +11,7 @@ from .client import (
     AsyncScheduleNamespace,
     AsyncSkillsNamespace,
     AsyncStreamRun,
+    AsyncTab,
 )
 
 __all__ = [
@@ -17,9 +20,12 @@ __all__ = [
     "AsyncRun",
     "AsyncStreamRun",
     "AsyncAgentNamespace",
+    "AsyncBrowserNamespace",
+    "AsyncBrowserRecordingHandle",
     "AsyncExecNamespace",
     "AsyncFilesNamespace",
     "AsyncGitNamespace",
     "AsyncScheduleNamespace",
     "AsyncSkillsNamespace",
+    "AsyncTab",
 ]
