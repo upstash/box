@@ -492,9 +492,13 @@ export default function (pi: ExtensionAPI) {
     } else {
       // In-memory session: nothing to resume, so tidy up GitHub and delete the
       // box now. Push any commits made after the last agent_end (e.g. a manual
-      // `!git commit`) so work isn't silently lost; then, if the branch
-      // contributed nothing, delete the throwaway ref we created at startup so
-      // it doesn't leak.
+      // `!git commit`) so work isn't silently lost.
+      //
+      // The box is only safe to delete once that push has landed: this session
+      // can't be resumed, so commits that never reached GitHub would be gone
+      // for good (expired gh token, network blip). On a failed push we keep the
+      // box and hand the user its id instead.
+      let pushed = true
       if (current.git) {
         try {
           const token = await getGithubToken(pi)
@@ -502,19 +506,33 @@ export default function (pi: ExtensionAPI) {
             { box: current.box, branch: current.git.branch, syncConfigured: true },
             token,
           )
-          // Delete the branch only if it contributed nothing (HEAD == base on
-          // GitHub). Compare on the remote — local ahead-of-remote is 0 right
-          // after the push and would wrongly flag branches with real work.
-          const ahead = await getBranchAhead(pi, current.git.slug, current.git.base, current.git.branch)
-          if (ahead === 0) await deleteBranch(pi, current.git.slug, current.git.branch)
-        } catch {
-          // Best-effort cleanup; a leaked branch is preferable to lost work.
+        } catch (err) {
+          pushed = false
+          ctx.ui.notify(
+            `Upstash Box: final push failed — keeping box ${shortId(current.box.id)} so the commits ` +
+              `in it aren't lost. Delete it once you've recovered them. ${errorMessage(err)}`,
+            'warning',
+          )
+        }
+        // Branch cleanup is cosmetic and runs only after a good push: delete the
+        // throwaway ref if it contributed nothing (HEAD == base on GitHub).
+        // Compare on the remote — local ahead-of-remote is 0 right after the
+        // push and would wrongly flag branches with real work.
+        if (pushed) {
+          try {
+            const ahead = await getBranchAhead(pi, current.git.slug, current.git.base, current.git.branch)
+            if (ahead === 0) await deleteBranch(pi, current.git.slug, current.git.branch)
+          } catch {
+            // Best-effort; a leaked branch is preferable to lost work.
+          }
         }
       }
-      try {
-        await current.box.delete()
-      } catch {
-        // Best-effort: reapOrphans catches it on the next launch if this didn't run.
+      if (pushed) {
+        try {
+          await current.box.delete()
+        } catch {
+          // Best-effort: reapOrphans catches it on the next launch if this didn't run.
+        }
       }
     }
   })
