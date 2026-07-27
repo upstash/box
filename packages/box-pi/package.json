@@ -34,7 +34,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "vitest run",
     "check": "npm run typecheck && npm run test && npm run smoke",
     "test:basic": "node scripts/live-basic.mjs",
     "test:bash-bg": "node scripts/live-bash-bg.mjs",
