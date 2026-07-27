@@ -2431,27 +2431,32 @@ export class Box<TProvider = unknown> {
       `/v2/box/${this.id}/browser/connect`,
       { timeout: 60000 },
     );
-    return resp.cdp_url ?? "";
+    if (!resp.cdp_url) throw new BoxError("Browser connect did not return a CDP URL");
+    return resp.cdp_url;
   }
 
   private _mapRecording(raw: Record<string, unknown>): BrowserRecording {
     const markers = Array.isArray(raw.markers) ? (raw.markers as Record<string, unknown>[]) : [];
     const id = String(raw.id ?? "");
+    const num = (v: unknown): number | undefined => (v == null ? undefined : Number(v));
+    const expiresAtSeconds = num(raw.expires_at);
     return {
       id,
       boxId: String(raw.box_id ?? this.id),
       status: (raw.status as BrowserRecording["status"]) ?? "recording",
       startedAt: Number(raw.started_at ?? 0),
-      endedAt: raw.ended_at ? Number(raw.ended_at) : undefined,
-      durationMs: raw.duration_ms ? Number(raw.duration_ms) : undefined,
-      sizeBytes: raw.size_bytes ? Number(raw.size_bytes) : undefined,
-      segmentCount: raw.segment_count ? Number(raw.segment_count) : undefined,
+      // The API reports expires_at in epoch seconds; normalize to ms like the rest.
+      expiresAt: expiresAtSeconds === undefined ? undefined : expiresAtSeconds * 1000,
+      endedAt: num(raw.ended_at),
+      durationMs: num(raw.duration_ms),
+      sizeBytes: num(raw.size_bytes),
+      segmentCount: num(raw.segment_count),
       stoppedReason: raw.stopped_reason ? String(raw.stopped_reason) : undefined,
-      maxDurationSeconds: raw.max_duration_seconds ? Number(raw.max_duration_seconds) : undefined,
+      maxDurationSeconds: num(raw.max_duration_seconds),
       markers: markers.map((m) => ({
         type: (m.type as BrowserRecordingMarker["type"]) ?? "tab_switch",
         atMs: Number(m.at_ms ?? 0),
-        endMs: m.end_ms ? Number(m.end_ms) : undefined,
+        endMs: num(m.end_ms),
         label: m.label ? String(m.label) : undefined,
         tabId: m.tab_id ? String(m.tab_id) : undefined,
       })),
@@ -2473,7 +2478,16 @@ export class Box<TProvider = unknown> {
       },
     );
     const rec = this._mapRecording(resp);
-    return { id: rec.id, stop: () => this._recordingStop() };
+    return {
+      id: rec.id,
+      stop: async () => {
+        // The stop endpoint is box-wide; guard so a stale handle (its recording
+        // already auto-stopped) can't stop a newer recording on the same box.
+        const current = await this._recordingGet(rec.id);
+        if (current.status !== "recording") return current;
+        return this._recordingStop();
+      },
+    };
   }
 
   private async _recordingStop(): Promise<BrowserRecording> {
@@ -2487,11 +2501,19 @@ export class Box<TProvider = unknown> {
   }
 
   private async _recordingList(): Promise<BrowserRecording[]> {
-    const resp = await this._request<{ recordings?: Record<string, unknown>[] }>(
-      "GET",
-      `/v2/box/${this.id}/browser/recordings`,
-    );
-    return (resp.recordings ?? []).map((r) => this._mapRecording(r));
+    const all: BrowserRecording[] = [];
+    let cursor: string | undefined;
+    do {
+      const params = new URLSearchParams({ limit: "100" });
+      if (cursor) params.set("cursor", cursor);
+      const resp = await this._request<{
+        recordings?: Record<string, unknown>[];
+        next_cursor?: string;
+      }>("GET", `/v2/box/${this.id}/browser/recordings?${params.toString()}`);
+      all.push(...(resp.recordings ?? []).map((r) => this._mapRecording(r)));
+      cursor = resp.next_cursor || undefined;
+    } while (cursor);
+    return all;
   }
 
   private async _recordingGet(recordingId: string): Promise<BrowserRecording> {
@@ -2509,7 +2531,8 @@ export class Box<TProvider = unknown> {
       `/v2/box/${this.id}/browser/screencast`,
       { body: tabId ? { tab: tabId } : {}, timeout: 60000 },
     );
-    return resp.screencast_url ?? "";
+    if (!resp.screencast_url) throw new BoxError("Browser screencast did not return a URL");
+    return resp.screencast_url;
   }
 
   async _request<T>(

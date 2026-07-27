@@ -1165,8 +1165,6 @@ export interface BrowserRunOptions<T = unknown> {
 export interface BrowserRunStep {
   step: number;
   action?: string;
-  index?: number;
-  text?: string;
   reasoning?: string;
   url?: string;
 }
@@ -1202,8 +1200,13 @@ export interface BrowserRecordingMarker {
 export interface BrowserRecording {
   id: string;
   boxId: string;
-  status: "recording" | "completed" | "failed";
+  status: "recording" | "completed" | "failed" | "deleted";
   startedAt: number;
+  /**
+   * When the recording's stored video expires, in epoch milliseconds
+   * (recordings are retained 14 days). Normalized from the API's epoch seconds.
+   */
+  expiresAt?: number;
   endedAt?: number;
   durationMs?: number;
   sizeBytes?: number;
@@ -1214,8 +1217,8 @@ export interface BrowserRecording {
   markers: BrowserRecordingMarker[];
   /**
    * HLS playlist URL for playback (hls.js / Safari / ffplay). Served by the
-   * coordinator — requests need the same `Authorization: Bearer <apiKey>`
-   * header as any other API call.
+   * API — requests must authenticate like any other API call, e.g. with an
+   * `X-Box-Api-Key: <apiKey>` header.
    */
   playlistUrl: string;
 }
@@ -1229,6 +1232,10 @@ export interface BrowserRecordingOptions {
 /** Handle for an in-flight recording returned by `recordings.start()`. */
 export interface BrowserRecordingHandle {
   id: string;
-  /** Finalize the recording: flush the encoder, upload, return metadata. */
+  /**
+   * Finalize the recording: flush the encoder, upload, return metadata. If
+   * this handle's recording already ended (e.g. auto-stopped), returns its
+   * metadata without stopping whatever newer recording may be active.
+   */
   stop: () => Promise<BrowserRecording>;
 }

@@ -26,6 +26,20 @@ describe("Box.create", () => {
     expect(body.agent_api_key).toBe("test-agent-key");
   });
 
+  it("sends browser: true when requested and omits it otherwise", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }))
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    await Box.create({ ...TEST_CONFIG, browser: true });
+    await Box.create(TEST_CONFIG);
+
+    const withBrowser = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    const withoutBrowser = JSON.parse(vi.mocked(fetch).mock.calls[1]![1]?.body as string);
+    expect(withBrowser.browser).toBe(true);
+    expect(withoutBrowser.browser).toBeUndefined();
+  });
+
   it("sends labels when provided", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
 
