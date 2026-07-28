@@ -68,6 +68,8 @@ jobs:
             PKG_DIR="packages/sdk"
           elif [ "$PACKAGE" = "@upstash/box-cli" ]; then
             PKG_DIR="packages/cli"
+          elif [ "$PACKAGE" = "@upstash/box-pi" ]; then
+            PKG_DIR="packages/box-pi"
           else
             echo "Unknown package: $PACKAGE"
             exit 1
