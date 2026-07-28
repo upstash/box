@@ -6,7 +6,7 @@
     "test": "pnpm -r test",
     "test:integration": "vitest run -c packages/sdk/vitest.integration.config.ts",
     "changeset": "changeset",
-    "ci:version": "changeset version",
+    "ci:version": "changeset version && node packages/sdk/scripts/gen-version.mjs && node packages/cli/scripts/gen-version.mjs && pnpm install --lockfile-only",
     "ci:tag": "changeset tag",
     "lint": "pnpm -r lint",
     "ci:lint": "pnpm -r ci:lint"

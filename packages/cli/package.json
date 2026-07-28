@@ -19,12 +19,12 @@
     }
   },
   "scripts": {
-    "build": "node scripts/gen-version.mjs && tsc",
-    "dev": "node scripts/gen-version.mjs && tsc --watch",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "vitest run",
     "lint": "prettier --check . --write",
     "ci:lint": "prettier --check .",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "node scripts/gen-version.mjs && npm run build"
   },
   "keywords": [
     "upstash",

@@ -51,6 +51,11 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Snapshot version: $VERSION"
 
+      - name: Generate version files
+        run: |
+          node packages/sdk/scripts/gen-version.mjs
+          node packages/cli/scripts/gen-version.mjs
+
       - run: pnpm build
 
       - name: Create GitHub prerelease

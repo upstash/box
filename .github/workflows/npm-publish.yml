@@ -94,12 +94,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
-
       - name: Set package version
         run: |
           cd ${{ steps.parse.outputs.pkg_dir }}
           npm version "${{ steps.parse.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Generate version files
+        run: |
+          node packages/sdk/scripts/gen-version.mjs
+          node packages/cli/scripts/gen-version.mjs
+
+      - run: pnpm build
 
       - name: Publish (canary)
         if: needs.load.outputs.prerelease == 'true'

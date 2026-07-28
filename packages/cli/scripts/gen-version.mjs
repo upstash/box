@@ -1,7 +1,7 @@
 // Regenerates src/version.ts from package.json so the version reported by
 // `box --version` and telemetry can never drift from the published version.
-// Runs as part of `npm run build` (and therefore prepublishOnly, which covers
-// changeset releases and canaries).
+// Runs from ci:version (Version Packages PRs), the canary/publish workflows
+// after version bumps, and prepublishOnly as a safety net for manual publishes.
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
