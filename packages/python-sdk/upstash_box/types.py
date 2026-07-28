@@ -124,9 +124,16 @@ class VercelModel(str, Enum):
 class BedrockModel(str, Enum):
     """AWS Bedrock model identifiers (Claude Code harness only)."""
 
-    CLAUDE_SONNET_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    CLAUDE_SONNET_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0"
-    CLAUDE_HAIKU_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    OPUS_5 = "bedrock/global.anthropic.claude-opus-5"
+    OPUS_4_8 = "bedrock/global.anthropic.claude-opus-4-8"
+    OPUS_4_7 = "bedrock/global.anthropic.claude-opus-4-7"
+    OPUS_4_6 = "bedrock/global.anthropic.claude-opus-4-6-v1"
+    OPUS_4_5 = "bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0"
+    SONNET_5 = "bedrock/global.anthropic.claude-sonnet-5"
+    SONNET_4_6 = "bedrock/global.anthropic.claude-sonnet-4-6"
+    SONNET_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    SONNET_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0"
+    HAIKU_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 class OpenCodeModel(str, Enum):

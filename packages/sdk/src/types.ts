@@ -125,9 +125,16 @@ export enum VercelModel {
  * key as AWS_BEARER_TOKEN_BEDROCK and runs Claude Code in Bedrock mode.
  */
 export enum BedrockModel {
-  Claude_Sonnet_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-  Claude_Sonnet_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
-  Claude_Haiku_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+  Opus_5 = "bedrock/global.anthropic.claude-opus-5",
+  Opus_4_8 = "bedrock/global.anthropic.claude-opus-4-8",
+  Opus_4_7 = "bedrock/global.anthropic.claude-opus-4-7",
+  Opus_4_6 = "bedrock/global.anthropic.claude-opus-4-6-v1",
+  Opus_4_5 = "bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0",
+  Sonnet_5 = "bedrock/global.anthropic.claude-sonnet-5",
+  Sonnet_4_6 = "bedrock/global.anthropic.claude-sonnet-4-6",
+  Sonnet_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  Sonnet_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
+  Haiku_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
 }
 
 /**
