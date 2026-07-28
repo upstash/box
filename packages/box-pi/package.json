@@ -45,7 +45,7 @@
     "test:live": "npm run test:basic && npm run test:bash-bg && npm run test:recovery"
   },
   "dependencies": {
-    "@upstash/box": "^0.6.0"
+    "@upstash/box": "workspace:*"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.0",
