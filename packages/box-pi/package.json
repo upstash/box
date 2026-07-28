@@ -1,6 +1,6 @@
 {
   "name": "@upstash/box-pi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi coding agent extension that runs all tool calls inside a remote Upstash Box sandbox while the agent runs locally",
   "type": "module",
   "repository": {
@@ -45,7 +45,7 @@
     "test:live": "npm run test:basic && npm run test:bash-bg && npm run test:recovery"
   },
   "dependencies": {
-    "@upstash/box": "^0.5.5"
+    "@upstash/box": "^0.6.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.0",
