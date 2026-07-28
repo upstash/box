@@ -1,4 +1,5 @@
 import { zodToJsonSchema as zodToJsonSchemaLib } from "zod-to-json-schema";
+import { toJSONSchema as zod4ToJsonSchema } from "zod/v4/core";
 import {
   type BoxConfig,
   type BoxConnectionOptions,
@@ -47,15 +48,43 @@ import {
   type OpenCodeAgentOptions,
   type AgentConfig,
   type CustomHarnessConfig,
+  type BrowserExtractOptions,
+  type BrowserContent,
+  type BrowserScreenshotOptions,
+  type BrowserTabCreateOptions,
+  type BrowserObserveResult,
+  type BrowserActResult,
+  type BrowserRunOptions,
+  type BrowserRunResult,
+  type BrowserRunStep,
+  type BrowserRecording,
+  type BrowserRecordingHandle,
+  type BrowserRecordingMarker,
+  type BrowserRecordingOptions,
   Agent,
 } from "./types.js";
-import type { ZodType } from "zod/v3";
 import { telemetryHeaders } from "./telemetry.js";
+
+type BrowserExtractSchema<T> = {
+  parse(data: unknown): T;
+};
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
 function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, string> {
   return { "X-Box-Api-Key": apiKey, ...telemetryHeaders(enableTelemetry) };
+}
+
+/** Decode base64 to bytes in both Node and edge runtimes. */
+function base64ToBytes(b64: string): Uint8Array {
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
+  if (typeof globalThis.atob !== "function") {
+    throw new BoxError("base64ToBytes requires Buffer (Node) or atob (browser/edge)");
+  }
+  const bin = globalThis.atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 /** Infer the default harness from a model string prefix. */
@@ -378,6 +407,199 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  * await box.delete();
  * ```
  */
+/**
+ * A single browser tab in a box's Chromium, addressed by its CDP target id.
+ *
+ * Obtain one via {@link Box.browser}: `box.browser.tab.create(url)`,
+ * `box.browser.listTabs()`, or `box.browser.getTab(id)`. All page operations
+ * run against this specific tab. `screenshot`/`extract`/`observe`/`act`/`run`
+ * all work headless, without a visible screen.
+ */
+export class Tab {
+  /** CDP target id of this tab. */
+  readonly id: string;
+  /** Last known URL of this tab (from `tab.create`/`listTabs`; not live). */
+  readonly url?: string;
+  /** Last known title of this tab (from `tab.create`/`listTabs`; not live). */
+  readonly title?: string;
+
+  private readonly box: Box;
+
+  constructor(box: Box, init: { id: string; url?: string; title?: string }) {
+    this.box = box;
+    this.id = init.id;
+    this.url = init.url;
+    this.title = init.title;
+  }
+
+  /** Navigate this tab to a URL and return the page content. */
+  goto(url: string): Promise<BrowserContent> {
+    return this.box._request<BrowserContent>("POST", `/v2/box/${this.box.id}/browser/goto`, {
+      body: { url, tab: this.id },
+      timeout: 60000,
+    });
+  }
+
+  /** Read this tab's current title, URL, text, and links. */
+  content(): Promise<BrowserContent> {
+    return this.box._request<BrowserContent>(
+      "GET",
+      `/v2/box/${this.box.id}/browser/content?tab=${this.id}`,
+      { timeout: 60000 },
+    );
+  }
+
+  /** Capture this tab as PNG bytes, or as a base64 string when requested. */
+  screenshot(options: BrowserScreenshotOptions & { type: "base64" }): Promise<string>;
+  screenshot(options?: BrowserScreenshotOptions & { type?: "png" }): Promise<Uint8Array>;
+  screenshot(options: BrowserScreenshotOptions): Promise<Uint8Array | string>;
+  async screenshot(options: BrowserScreenshotOptions = {}): Promise<Uint8Array | string> {
+    const data = await this._screenshotData(Boolean(options.fullPage));
+    return options.type === "base64" ? data : base64ToBytes(data);
+  }
+
+  private async _screenshotData(fullPage: boolean): Promise<string> {
+    const params = new URLSearchParams({ encoding: "base64", tab: this.id });
+    if (fullPage) params.set("full_page", "true");
+    const resp = await this.box._request<{ data: string }>(
+      "GET",
+      `/v2/box/${this.box.id}/browser/screenshot?${params.toString()}`,
+      { timeout: 60000 },
+    );
+    return resp.data;
+  }
+
+  /** Extract schema-validated structured data from this tab (metered). */
+  async extract<T>(
+    instruction: string,
+    schema: BrowserExtractSchema<T>,
+    options?: BrowserExtractOptions,
+  ): Promise<T> {
+    const jsonSchema = toJsonSchema(schema);
+    if (!jsonSchema) throw new BoxError("extract requires a Zod object schema");
+    const resp = await this.box._request<{ data?: unknown }>(
+      "POST",
+      `/v2/box/${this.box.id}/browser/extract`,
+      {
+        body: {
+          instruction,
+          schema: jsonSchema,
+          tab: this.id,
+          ...(options?.model ? { model: options.model } : {}),
+        },
+        timeout: 180000,
+      },
+    );
+    // Validate + type the result against the caller's schema.
+    return schema.parse(resp.data);
+  }
+
+  /** List actionable page elements matching an instruction (metered). */
+  async observe(
+    instruction: string,
+    options?: BrowserExtractOptions,
+  ): Promise<BrowserObserveResult> {
+    const resp = await this.box._request<{ elements?: BrowserObserveResult["elements"] }>(
+      "POST",
+      `/v2/box/${this.box.id}/browser/observe`,
+      {
+        body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+        timeout: 180000,
+      },
+    );
+    return { elements: resp.elements ?? [] };
+  }
+
+  /** Resolve and execute one natural-language action on this tab (metered). */
+  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult> {
+    const resp = await this.box._request<{
+      success?: boolean;
+      message?: string;
+      action_description?: string;
+      actions?: BrowserActResult["actions"];
+      cache_status?: "HIT" | "MISS";
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.box.id}/browser/act`, {
+      body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+      timeout: 180000,
+    });
+    return {
+      success: Boolean(resp.success),
+      message: resp.message ?? "",
+      actionDescription: resp.action_description ?? "",
+      actions: resp.actions ?? [],
+      cacheStatus: resp.cache_status,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
+  }
+
+  /**
+   * Autonomously complete a multi-step task on this tab. Runs a DOM-aware
+   * browser agent (Stagehand) inside the box: it reads the page, acts, and
+   * repeats until done. Metered — needs a key for the model's provider on the
+   * box or account (Anthropic, OpenAI, OpenRouter, Vercel, or OpenCode).
+   */
+  async run<T>(
+    prompt: string,
+    options: BrowserRunOptions<T> & { schema: BrowserExtractSchema<T> },
+  ): Promise<BrowserRunResult<T>>;
+  async run(prompt: string, options?: BrowserRunOptions): Promise<BrowserRunResult>;
+  /** @deprecated Pass the prompt as the first argument. */
+  async run(options: BrowserRunOptions & { prompt: string }): Promise<BrowserRunResult>;
+  async run<T>(
+    promptOrOptions: string | (BrowserRunOptions<T> & { prompt: string }),
+    runOptions: BrowserRunOptions<T> = {},
+  ): Promise<BrowserRunResult<T | undefined>> {
+    const prompt = typeof promptOrOptions === "string" ? promptOrOptions : promptOrOptions.prompt;
+    const options = typeof promptOrOptions === "string" ? runOptions : promptOrOptions;
+    const jsonSchema = options.schema ? toJsonSchema(options.schema) : undefined;
+    if (options.schema && !jsonSchema) throw new BoxError("run requires a Zod object schema");
+    const resp = await this.box._request<{
+      result?: string;
+      data?: unknown;
+      completed?: boolean;
+      steps?: BrowserRunStep[];
+      step_count?: number;
+      input_tokens?: number;
+      output_tokens?: number;
+    }>("POST", `/v2/box/${this.box.id}/browser/run`, {
+      body: {
+        prompt,
+        tab: this.id,
+        ...(jsonSchema ? { schema: jsonSchema } : {}),
+        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
+        ...(options.model ? { model: options.model } : {}),
+      },
+      timeout: 600000,
+    });
+    return {
+      data: options.schema ? options.schema.parse(resp.data) : undefined,
+      result: resp.result ?? "",
+      completed: Boolean(resp.completed),
+      steps: resp.steps ?? [],
+      stepCount: resp.step_count ?? 0,
+      inputTokens: resp.input_tokens ?? 0,
+      outputTokens: resp.output_tokens ?? 0,
+    };
+  }
+
+  /**
+   * Live-view URL for this tab (authenticated via a token in the URL). Open it
+   * directly or embed it in an iframe — the page renders the tab live via CDP
+   * screencast. View-only: frames flow out, no input goes in.
+   */
+  liveViewUrl(): Promise<string> {
+    return this.box._browserLiveViewUrl(this.id);
+  }
+
+  /** Close this tab. */
+  async close(): Promise<void> {
+    await this.box._request("DELETE", `/v2/box/${this.box.id}/browser/tabs/${this.id}`);
+  }
+}
+
 export class Box<TProvider = unknown> {
   readonly id: string;
 
@@ -477,6 +699,42 @@ export class Box<TProvider = unknown> {
     remove: (label: string) => Promise<string[]>;
     /** List this box's labels. */
     list: () => Promise<string[]>;
+  };
+
+  /**
+   * Browser namespace — DOM-aware control of Chromium via CDP. Requires a box
+   * created with `browser: true`. Tab management only: open, list, and address
+   * tabs. All page operations (`goto`, `content`, `screenshot`, `extract`,
+   * `observe`, `act`, `run`, `close`) live on the {@link Tab} handle returned
+   * here.
+   */
+  readonly browser: {
+    tab: {
+      /** Open a tab, navigate it, and wait for the requested lifecycle state. */
+      create: (url: string, options?: BrowserTabCreateOptions) => Promise<Tab>;
+    };
+    /** List the box's open tabs as handles. */
+    listTabs: () => Promise<Tab[]>;
+    /** Address an existing tab by its CDP target id — no network call. */
+    getTab: (id: string) => Tab;
+    /** Return an authenticated CDP WebSocket URL for Playwright, Puppeteer, or Stagehand. */
+    cdpUrl: () => Promise<string>;
+    /**
+     * Session recordings — capture the browser (all tabs, follows the
+     * foreground) to a replayable HLS video with run/tab-switch chapters.
+     * Recordings auto-stop after `maxDurationSeconds` (max 10 minutes) or
+     * after 3 minutes of no on-screen activity.
+     */
+    recordings: {
+      /** Start capturing. One active recording per box. */
+      start: (options?: BrowserRecordingOptions) => Promise<BrowserRecordingHandle>;
+      /** Stop the active recording and return its metadata. */
+      stop: () => Promise<BrowserRecording>;
+      /** List this box's recordings, newest first. */
+      list: () => Promise<BrowserRecording[]>;
+      /** Fetch one recording's metadata. */
+      get: (recordingId: string) => Promise<BrowserRecording>;
+    };
   };
 
   /**
@@ -620,6 +878,21 @@ export class Box<TProvider = unknown> {
       remove: (label) => this._labelRemove(label),
       list: () => this._labelList(),
     };
+
+    this.browser = {
+      tab: {
+        create: (url, options) => this._browserCreateTab(url, options),
+      },
+      listTabs: () => this._browserListTabs(),
+      getTab: (id) => new Tab(this, { id }),
+      cdpUrl: () => this._browserCDPUrl(),
+      recordings: {
+        start: (options) => this._recordingStart(options),
+        stop: () => this._recordingStop(),
+        list: () => this._recordingList(),
+        get: (recordingId) => this._recordingGet(recordingId),
+      },
+    };
   }
 
   /**
@@ -653,6 +926,7 @@ export class Box<TProvider = unknown> {
     if (config?.initCommand !== undefined) body.init_command = config.initCommand;
     if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
+    if (config?.browser) body.browser = true;
     if (config?.git?.token) body.github_token = config.git.token;
     if (config?.git?.userName) body.git_user_name = config.git.userName;
     if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
@@ -2129,7 +2403,142 @@ export class Box<TProvider = unknown> {
     }
   }
 
-  /** @internal */
+  private async _browserCreateTab(url: string, options?: BrowserTabCreateOptions): Promise<Tab> {
+    const operationTimeout = options?.timeout === 0 ? 2_147_000_000 : options?.timeout;
+    const resp = await this._request<{ id: string; url?: string; title?: string }>(
+      "POST",
+      `/v2/box/${this.id}/browser/tabs`,
+      {
+        body: {
+          url,
+          ...(options?.waitUntil ? { wait_until: options.waitUntil } : {}),
+          ...(options?.timeout !== undefined ? { timeout: options.timeout } : {}),
+        },
+        timeout: operationTimeout === undefined ? 60000 : Math.max(60000, operationTimeout + 5000),
+      },
+    );
+    return new Tab(this, { id: resp.id, url: resp.url, title: resp.title });
+  }
+
+  private async _browserListTabs(): Promise<Tab[]> {
+    const resp = await this._request<{ tabs?: { id: string; url?: string; title?: string }[] }>(
+      "GET",
+      `/v2/box/${this.id}/browser/tabs`,
+      { timeout: 60000 },
+    );
+    return (resp.tabs ?? []).map((t) => new Tab(this, t));
+  }
+
+  private async _browserCDPUrl(): Promise<string> {
+    const resp = await this._request<{ cdp_url?: string }>(
+      "POST",
+      `/v2/box/${this.id}/browser/connect`,
+      { timeout: 60000 },
+    );
+    if (!resp.cdp_url) throw new BoxError("Browser connect did not return a CDP URL");
+    return resp.cdp_url;
+  }
+
+  private _mapRecording(raw: Record<string, unknown>): BrowserRecording {
+    const markers = Array.isArray(raw.markers) ? (raw.markers as Record<string, unknown>[]) : [];
+    const id = String(raw.id ?? "");
+    const num = (v: unknown): number | undefined => (v == null ? undefined : Number(v));
+    const expiresAtSeconds = num(raw.expires_at);
+    return {
+      id,
+      boxId: String(raw.box_id ?? this.id),
+      status: (raw.status as BrowserRecording["status"]) ?? "recording",
+      startedAt: Number(raw.started_at ?? 0),
+      // The API reports expires_at in epoch seconds; normalize to ms like the rest.
+      expiresAt: expiresAtSeconds === undefined ? undefined : expiresAtSeconds * 1000,
+      endedAt: num(raw.ended_at),
+      durationMs: num(raw.duration_ms),
+      sizeBytes: num(raw.size_bytes),
+      segmentCount: num(raw.segment_count),
+      stoppedReason: raw.stopped_reason ? String(raw.stopped_reason) : undefined,
+      maxDurationSeconds: num(raw.max_duration_seconds),
+      markers: markers.map((m) => ({
+        type: (m.type as BrowserRecordingMarker["type"]) ?? "tab_switch",
+        atMs: Number(m.at_ms ?? 0),
+        endMs: num(m.end_ms),
+        label: m.label ? String(m.label) : undefined,
+        tabId: m.tab_id ? String(m.tab_id) : undefined,
+      })),
+      playlistUrl: `${this._baseUrl}/v2/box/${this.id}/browser/recordings/${id}/playlist`,
+    };
+  }
+
+  private async _recordingStart(
+    options?: BrowserRecordingOptions,
+  ): Promise<BrowserRecordingHandle> {
+    const resp = await this._request<Record<string, unknown>>(
+      "POST",
+      `/v2/box/${this.id}/browser/recordings`,
+      {
+        body: options?.maxDurationSeconds
+          ? { max_duration_seconds: options.maxDurationSeconds }
+          : {},
+        timeout: 60000,
+      },
+    );
+    const rec = this._mapRecording(resp);
+    return {
+      id: rec.id,
+      stop: async () => {
+        // The stop endpoint is box-wide; guard so a stale handle (its recording
+        // already auto-stopped) can't stop a newer recording on the same box.
+        const current = await this._recordingGet(rec.id);
+        if (current.status !== "recording") return current;
+        return this._recordingStop();
+      },
+    };
+  }
+
+  private async _recordingStop(): Promise<BrowserRecording> {
+    // Stopping flushes the encoder and uploads the HLS artifacts.
+    const resp = await this._request<Record<string, unknown>>(
+      "POST",
+      `/v2/box/${this.id}/browser/recordings/stop`,
+      { timeout: 180000 },
+    );
+    return this._mapRecording(resp);
+  }
+
+  private async _recordingList(): Promise<BrowserRecording[]> {
+    const all: BrowserRecording[] = [];
+    let cursor: string | undefined;
+    do {
+      const params = new URLSearchParams({ limit: "100" });
+      if (cursor) params.set("cursor", cursor);
+      const resp = await this._request<{
+        recordings?: Record<string, unknown>[];
+        next_cursor?: string;
+      }>("GET", `/v2/box/${this.id}/browser/recordings?${params.toString()}`);
+      all.push(...(resp.recordings ?? []).map((r) => this._mapRecording(r)));
+      cursor = resp.next_cursor || undefined;
+    } while (cursor);
+    return all;
+  }
+
+  private async _recordingGet(recordingId: string): Promise<BrowserRecording> {
+    const resp = await this._request<Record<string, unknown>>(
+      "GET",
+      `/v2/box/${this.id}/browser/recordings/${recordingId}`,
+    );
+    return this._mapRecording(resp);
+  }
+
+  /** @internal — Authenticated live-view URL for a tab (used by Tab.liveViewUrl). */
+  async _browserLiveViewUrl(tabId?: string): Promise<string> {
+    const resp = await this._request<{ screencast_url?: string }>(
+      "POST",
+      `/v2/box/${this.id}/browser/screencast`,
+      { body: tabId ? { tab: tabId } : {}, timeout: 60000 },
+    );
+    if (!resp.screencast_url) throw new BoxError("Browser screencast did not return a URL");
+    return resp.screencast_url;
+  }
+
   async _request<T>(
     method: string,
     path: string,
@@ -2714,14 +3123,17 @@ export class EphemeralBox {
 // ==================== Helpers ====================
 
 /** @internal — Convert a Zod schema to a JSON Schema object for the API's json_schema parameter */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toJsonSchema(schema: ZodType<any>): Record<string, unknown> | null {
+export function toJsonSchema(
+  schema: BrowserExtractSchema<unknown>,
+): Record<string, unknown> | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = zodToJsonSchemaLib(schema as any);
+    const result =
+      "_zod" in schema
+        ? (zod4ToJsonSchema as (schema: unknown) => unknown)(schema)
+        : zodToJsonSchemaLib(schema as Parameters<typeof zodToJsonSchemaLib>[0]);
     // Strip the $schema meta key — the API only needs the schema body
     const { $schema: _, ...jsonSchema } = result as Record<string, unknown>;
-    return jsonSchema;
+    return Object.keys(jsonSchema).length > 0 ? jsonSchema : null;
   } catch {
     // Not a Zod schema or conversion failed
   }

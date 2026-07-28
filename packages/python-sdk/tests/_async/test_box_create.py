@@ -114,3 +114,34 @@ async def test_create_non_ok_raises():
     respx.post(CREATE_URL).mock(return_value=httpx.Response(400, json={"error": "bad config"}))
     with pytest.raises(BoxError, match="bad config"):
         await AsyncBox.create(**_opts())
+
+
+@respx.mock
+async def test_create_sends_browser_flag_and_omits_it_otherwise():
+    route = respx.post(CREATE_URL).mock(return_value=httpx.Response(200, json=TEST_BOX_DATA))
+    box = await AsyncBox.create(
+        browser=True,
+        agent={"harness": Agent.CLAUDE_CODE, "model": "anthropic/claude-sonnet-4-5"},
+        **_opts(),
+    )
+    assert last_json_body(route)["browser"] is True
+    await box.aclose()
+
+    box = await AsyncBox.create(
+        agent={"harness": Agent.CLAUDE_CODE, "model": "anthropic/claude-sonnet-4-5"},
+        **_opts(),
+    )
+    assert "browser" not in last_json_body(route)
+    await box.aclose()
+
+
+@respx.mock
+async def test_from_snapshot_sends_browser_flag():
+    route = respx.post(f"{TEST_BASE_URL}/v2/box/from-snapshot").mock(
+        return_value=httpx.Response(200, json=TEST_BOX_DATA)
+    )
+    box = await AsyncBox.from_snapshot("snap-1", browser=True, **_opts())
+    body = last_json_body(route)
+    assert body["browser"] is True
+    assert body["snapshot_id"] == "snap-1"
+    await box.aclose()

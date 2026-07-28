@@ -454,6 +454,10 @@ export interface BoxConfig extends BoxConnectionOptions {
   runtime?: Runtime;
   /** Resource size for the box. Defaults to `"small"`. */
   size?: BoxSize;
+  /**
+   * Provision a headless browser (Chromium) usable via `box.browser`.
+   */
+  browser?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
   /** Optional startup script for keep-alive boxes. */
@@ -1060,3 +1064,178 @@ export interface PublicURL {
 
 /** @deprecated Use `PublicURL` instead. */
 export type Preview = PublicURL;
+
+// ==================== Browser ====================
+
+/** Options for `box.browser.extract()` / `observe()` / `act()`. */
+export interface BrowserExtractOptions {
+  /**
+   * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5` or
+   * `openai/gpt-4o`. Defaults to the Box's configured model, or
+   * `anthropic/claude-sonnet-4-5` when the Box has no model.
+   */
+  model?: string;
+}
+
+/** A link on the page. */
+export interface BrowserLink {
+  /** Link text. */
+  text: string;
+  /** Resolved href. */
+  href: string;
+}
+
+/** Content of the active browser page (from `box.browser.goto/content`). */
+export interface BrowserContent {
+  title: string;
+  url: string;
+  text: string;
+  links?: BrowserLink[];
+}
+
+/** Options for `tab.screenshot()`. */
+export interface BrowserScreenshotOptions {
+  /** Return PNG bytes by default, or a base64-encoded PNG string. */
+  type?: "png" | "base64";
+  /** Capture the full document instead of only the current viewport. Defaults to `false`. */
+  fullPage?: boolean;
+}
+
+/** Navigation options for `box.browser.tab.create()`. */
+export interface BrowserTabCreateOptions {
+  /** Lifecycle state to wait for. Defaults to `"load"`. */
+  waitUntil?: "load" | "domcontentloaded" | "networkidle";
+  /** Navigation timeout in milliseconds. Defaults to 30,000; `0` disables it. */
+  timeout?: number;
+}
+
+/** One actionable element from `tab.observe()`. */
+export interface BrowserObserveElement {
+  description: string;
+  /** A selector for the element (Stagehand-resolved), when available. */
+  selector?: string;
+  url?: string;
+}
+
+/** Result of `box.browser.observe()`. */
+export interface BrowserObserveResult {
+  elements: BrowserObserveElement[];
+}
+
+/** One action selected and executed by `tab.act()`. */
+export interface BrowserActAction {
+  selector: string;
+  description: string;
+  method?: string;
+  arguments?: string[];
+}
+
+/** Result of one natural-language `tab.act()` call. */
+export interface BrowserActResult {
+  success: boolean;
+  message: string;
+  actionDescription: string;
+  actions: BrowserActAction[];
+  cacheStatus?: "HIT" | "MISS";
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** Options for `tab.run()`. */
+export interface BrowserRunOptions<T = unknown> {
+  /**
+   * Zod object schema for data the agent must return when it completes. The
+   * inferred schema output becomes `BrowserRunResult.data`.
+   */
+  schema?: { parse(data: unknown): T };
+  /** @deprecated Pass the prompt as the first `tab.run()` argument. */
+  prompt?: string;
+  /** Max agent steps. Default 15, max 30. */
+  maxSteps?: number;
+  /**
+   * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5`,
+   * `openai/gpt-4o`, `openrouter/...`, `vercel/...`, `opencode/...`. The box or
+   * account must have a key for that provider. Defaults to the Box's configured
+   * model, or `anthropic/claude-sonnet-4-5` when the Box has no model.
+   */
+  model?: string;
+}
+
+/** One turn of a `tab.run()` loop. */
+export interface BrowserRunStep {
+  step: number;
+  action?: string;
+  reasoning?: string;
+  url?: string;
+}
+
+/** Result of `tab.run()` — the agent's outcome after the loop. */
+export interface BrowserRunResult<T = undefined> {
+  /** Structured output validated against the supplied schema. */
+  data: T;
+  /** The agent's answer/summary when finished. */
+  result: string;
+  /** Whether the agent reported the task complete (vs. hit maxSteps). */
+  completed: boolean;
+  steps: BrowserRunStep[];
+  stepCount: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** A labeled point (or span) on a recording's timeline. */
+export interface BrowserRecordingMarker {
+  /** "tab_switch" (recorder-observed) or "run" (a `tab.run` chapter). */
+  type: "tab_switch" | "run";
+  /** Offset from the start of the recording, in milliseconds. */
+  atMs: number;
+  /** For spans (runs): end offset in milliseconds. */
+  endMs?: number;
+  /** Tab title/URL for switches; the prompt for runs. */
+  label?: string;
+  tabId?: string;
+}
+
+/** One captured browser session (HLS video + timeline metadata). */
+export interface BrowserRecording {
+  id: string;
+  boxId: string;
+  status: "recording" | "completed" | "failed" | "deleted";
+  startedAt: number;
+  /**
+   * When the recording's stored video expires, in epoch milliseconds
+   * (recordings are retained 14 days). Normalized from the API's epoch seconds.
+   */
+  expiresAt?: number;
+  endedAt?: number;
+  durationMs?: number;
+  sizeBytes?: number;
+  segmentCount?: number;
+  /** Why the recording ended: "requested" | "max_duration" | "idle" | "browser_disconnected" | "lost". */
+  stoppedReason?: string;
+  maxDurationSeconds?: number;
+  markers: BrowserRecordingMarker[];
+  /**
+   * HLS playlist URL for playback (hls.js / Safari / ffplay). Served by the
+   * API — requests must authenticate like any other API call, e.g. with an
+   * `X-Box-Api-Key: <apiKey>` header.
+   */
+  playlistUrl: string;
+}
+
+/** Options for `box.browser.recordings.start()`. */
+export interface BrowserRecordingOptions {
+  /** Auto-stop after this many seconds (default and maximum: 600 = 10 minutes). */
+  maxDurationSeconds?: number;
+}
+
+/** Handle for an in-flight recording returned by `recordings.start()`. */
+export interface BrowserRecordingHandle {
+  id: string;
+  /**
+   * Finalize the recording: flush the encoder, upload, return metadata. If
+   * this handle's recording already ended (e.g. auto-stopped), returns its
+   * metadata without stopping whatever newer recording may be active.
+   */
+  stop: () => Promise<BrowserRecording>;
+}

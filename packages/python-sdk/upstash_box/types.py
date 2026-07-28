@@ -702,6 +702,8 @@ class BoxConfig(TypedDict, total=False):
     size: BoxSize
     keep_alive: bool
     init_command: str
+    # Provision a headless browser (Chromium) usable via ``box.browser``.
+    browser: bool
     agent: AgentConfig
     git: GitConfigInput
     env: Dict[str, str]
@@ -728,3 +730,125 @@ class EphemeralBoxConfig(TypedDict, total=False):
     network_policy: NetworkPolicy
     timeout: float
     debug: bool
+
+
+# ==================== Browser ====================
+
+
+class BrowserLink(_Model):
+    """A link on the page."""
+
+    text: str
+    href: str
+
+
+class BrowserContent(_Model):
+    """Content of a browser tab (from ``tab.goto()`` / ``tab.content()``)."""
+
+    title: str
+    url: str
+    text: str
+    links: Optional[List[BrowserLink]] = None
+
+
+class BrowserObserveElement(_Model):
+    """One actionable element from ``tab.observe()``."""
+
+    description: str
+    # A selector for the element (Stagehand-resolved), when available.
+    selector: Optional[str] = None
+    url: Optional[str] = None
+
+
+class BrowserObserveResult(_Model):
+    """Result of ``tab.observe()``."""
+
+    elements: List[BrowserObserveElement] = []
+
+
+class BrowserActAction(_Model):
+    """One action selected and executed by ``tab.act()``."""
+
+    selector: str
+    description: str
+    method: Optional[str] = None
+    arguments: Optional[List[str]] = None
+
+
+class BrowserActResult(_Model):
+    """Result of one natural-language ``tab.act()`` call."""
+
+    success: bool = False
+    message: str = ""
+    action_description: str = ""
+    actions: List[BrowserActAction] = []
+    cache_status: Optional[Literal["HIT", "MISS"]] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+
+class BrowserRunStep(_Model):
+    """One turn of a ``tab.run()`` loop."""
+
+    step: int
+    action: Optional[str] = None
+    reasoning: Optional[str] = None
+    url: Optional[str] = None
+
+
+class BrowserRunResult(_Model):
+    """Result of ``tab.run()`` — the agent's outcome after the loop.
+
+    ``data`` holds the structured output: an instance of the schema when a
+    pydantic model class was supplied, the raw value for a dict schema, or
+    ``None`` when no schema was given.
+    """
+
+    data: Any = None
+    result: str = ""
+    # Whether the agent reported the task complete (vs. hit max_steps).
+    completed: bool = False
+    steps: List[BrowserRunStep] = []
+    step_count: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+
+class BrowserRecordingMarker(_Model):
+    """A labeled point (or span) on a recording's timeline."""
+
+    # "tab_switch" (recorder-observed) or "run" (a ``tab.run`` chapter).
+    type: Literal["tab_switch", "run"] = "tab_switch"
+    # Offset from the start of the recording, in milliseconds.
+    at_ms: int = 0
+    # For spans (runs): end offset in milliseconds.
+    end_ms: Optional[int] = None
+    # Tab title/URL for switches; the prompt for runs.
+    label: Optional[str] = None
+    tab_id: Optional[str] = None
+
+
+class BrowserRecording(_Model):
+    """One captured browser session (HLS video + timeline metadata)."""
+
+    id: str
+    box_id: str
+    status: Literal["recording", "completed", "failed", "deleted"] = "recording"
+    # Epoch milliseconds.
+    started_at: int = 0
+    # When the stored video expires, in epoch milliseconds (recordings are
+    # retained 14 days). Normalized from the API's epoch seconds.
+    expires_at: Optional[int] = None
+    ended_at: Optional[int] = None
+    duration_ms: Optional[int] = None
+    size_bytes: Optional[int] = None
+    segment_count: Optional[int] = None
+    # Why the recording ended: "requested" | "max_duration" | "idle" |
+    # "browser_disconnected" | "lost".
+    stopped_reason: Optional[str] = None
+    max_duration_seconds: Optional[int] = None
+    markers: List[BrowserRecordingMarker] = []
+    # HLS playlist URL for playback (hls.js / Safari / ffplay). Served by the
+    # API — requests must authenticate like any other API call, e.g. with an
+    # ``X-Box-Api-Key: <api_key>`` header.
+    playlist_url: str = ""

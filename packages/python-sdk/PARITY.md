@@ -39,6 +39,25 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `logs`, `listRuns` | `logs`, `list_runs` |
 | `getPublicURL`, `listPublicURLs`, `deletePublicURL` | `get_public_url`, `list_public_urls`, `delete_public_url` |
 | `id`, `size`, `keepAlive` | `id`, `size`, `keep_alive` |
+| `browser.tab.create` | `browser.tab.create` |
+| `browser.listTabs` / `browser.getTab` / `browser.cdpUrl` | `browser.list_tabs` / `browser.get_tab` / `browser.cdp_url` |
+| `browser.recordings.start/stop/list/get` | same (snake) |
+
+## `Tab` (browser)
+
+| JS | Python |
+| -- | ------ |
+| `goto`, `content`, `observe`, `act`, `close` | same |
+| `screenshot({type, fullPage})` | `screenshot(encoding=, full_page=)` — see drift table |
+| `extract(instruction, schema, options?)` | `extract(instruction, schema, *, model=None)` |
+| `run(prompt, options?)` | `run(prompt, *, schema=None, max_steps=None, model=None)` |
+| `liveViewUrl` | `live_view_url` |
+| `id`, `url`, `title` | `id`, `url`, `title` |
+
+Recording handles (`BrowserRecordingHandle.stop()`) carry the same stale-handle
+guard as JS: stop checks its own recording first and never fires the box-wide
+stop for an already-ended recording. `expires_at` is normalized from the API's
+epoch seconds to **ms** in both SDKs.
 
 ## `Box` static methods
 
@@ -74,6 +93,10 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | timeouts in **milliseconds** | Matches the JS SDK units. |
 | agent `options` keys are **snake_case** (Python) vs camelCase (JS) | Pythonic public API; the SDK converts to the backend's per-harness casing (Claude Code / OpenCode → camelCase, Codex → snake_case). |
 | `StreamRun.aclose()` needed for `detached` on early break | Python doesn't run generator `finally` on `break` (JS `for await` does). |
+| `BrowserRunOptions.prompt` (JS, deprecated) | Legacy `run({prompt})` overload — not ported; Python takes the prompt as the first argument only. |
+| Browser `schema` = Pydantic model or raw dict (Python) vs Zod (JS) | Same `ResponseSchema` contract as `agent.run`; raw dicts skip client-side validation. |
+| `screenshot` `type: "png"\|"base64"` (JS) → `encoding: "bytes"\|"base64"` (Python) | Python returns native `bytes`; `encoding` matches `files.read` naming. |
+| `browser` on `from_snapshot` (Python) | Python's shared create-body builder forwards `browser=True` on `from_snapshot`; JS `fromSnapshot` currently omits it (JS gap). |
 
 ## Behavioral quirks mirrored exactly
 
@@ -95,6 +118,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 `box-list`/`box-delete`/`box-env` → `test_box_statics`;
 `ephemeral-box`(+`from-snapshot`) → `test_ephemeral_box`;
 `custom-harness` → `test_custom_harness`; `error` → `test_errors`;
+`box-browser` → `test_box_browser`;
 `helpers` → covered by `tests/helpers.py`; `box-instance` → `test_box_instance`;
 models → `test_models`; helpers/common → `test_common`. Sync coverage:
 `tests/_sync/test_sync_client` + `test_sse_golden`.

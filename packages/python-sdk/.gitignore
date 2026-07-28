@@ -8,6 +8,8 @@ dist/
 .venv/
 venv/
 
+uv.lock
+
 # Test / coverage
 .pytest_cache/
 .ruff_cache/

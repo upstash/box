@@ -2,6 +2,19 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## 0.2.0
+
+- Browser API: create boxes with `browser=True` and drive a headless Chromium
+  via `box.browser` — tab lifecycle (`tab.create` / `list_tabs` / `get_tab` /
+  `close`), page ops (`goto`, `content`, `screenshot` with `full_page` and
+  base64 encoding), AI ops (`extract` / `observe` / `act` / `run` with
+  Pydantic-validated structured output), authenticated `cdp_url()` /
+  `live_view_url()`, and session recordings (`recordings.start/stop/list/get`
+  with HLS `playlist_url`). Mirrors `@upstash/box` BOX-186, including the
+  auto-paginating recordings list, the stale-handle stop guard, and
+  `expires_at` normalized to epoch ms.
+- `browser=True` is also forwarded by `from_snapshot` (shared create body).
+
 ## 0.1.4
 
 - Fix `exec.command()` and `exec.code()` discarding stdout whenever the process

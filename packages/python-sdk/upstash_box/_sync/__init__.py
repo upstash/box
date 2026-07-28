@@ -4,6 +4,8 @@
 from .client import (
     AgentNamespace,
     Box,
+    BrowserNamespace,
+    BrowserRecordingHandle,
     EphemeralBox,
     ExecNamespace,
     FilesNamespace,
@@ -12,6 +14,7 @@ from .client import (
     ScheduleNamespace,
     SkillsNamespace,
     StreamRun,
+    Tab,
 )
 
 __all__ = [
@@ -20,9 +23,12 @@ __all__ = [
     "Run",
     "StreamRun",
     "AgentNamespace",
+    "BrowserNamespace",
+    "BrowserRecordingHandle",
     "ExecNamespace",
     "FilesNamespace",
     "GitNamespace",
     "ScheduleNamespace",
     "SkillsNamespace",
+    "Tab",
 ]
