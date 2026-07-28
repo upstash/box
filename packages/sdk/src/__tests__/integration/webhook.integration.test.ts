@@ -16,7 +16,7 @@ const WEBHOOK_URL = "https://testing-ma-feat.requestcatcher.com";
 async function waitForRun(
   box: Box,
   runId: string,
-  timeoutMs = 20_000,
+  timeoutMs = 120_000,
   intervalMs = 1_000,
 ): Promise<{ status: string; output?: string }> {
   const start = Date.now();
@@ -57,7 +57,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
 
     expect(run.id).toBeTruthy();
     expect(run.status).toBe("running");
-  }, 30_000);
+
+    const completed = await waitForRun(box, run.id);
+    expect(completed.status).toBe("completed");
+  }, 180_000);
 
   it("sends webhook with custom headers", async () => {
     const run = await box.agent.run({
@@ -70,7 +73,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
 
     expect(run.id).toBeTruthy();
     expect(run.status).toBe("running");
-  }, 30_000);
+
+    const completed = await waitForRun(box, run.id);
+    expect(completed.status).toBe("completed");
+  }, 180_000);
 
   it("sends webhook with responseSchema (json_schema)", async () => {
     const schema = z.object({
@@ -86,7 +92,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
 
     expect(run.id).toBeTruthy();
     expect(run.status).toBe("running");
-  }, 30_000);
+
+    const completed = await waitForRun(box, run.id);
+    expect(completed.status).toBe("completed");
+  }, 180_000);
 
   it("sends multipart file paths with webhook", async () => {
     const run = await box.agent.run({
@@ -102,7 +111,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
     const completed = await waitForRun(box, run.id);
     expect(completed.status).toBe("completed");
     expect(completed.output).toContain("3");
-  }, 30_000);
+  }, 180_000);
 
   it("webhook run eventually completes and appears in listRuns", async () => {
     const run = await box.agent.run({
