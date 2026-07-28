@@ -90,6 +90,7 @@ function base64ToBytes(b64: string): Uint8Array {
 /** Infer the default harness from a model string prefix. */
 export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("custom/")) return Agent.Custom;
+  if (model.startsWith("bedrock/")) return Agent.ClaudeCode;
   if (model.startsWith("cursor/")) return Agent.Cursor;
   if (model.startsWith("vercel/openai/")) return Agent.Codex;
   if (model.startsWith("vercel/")) return Agent.ClaudeCode;

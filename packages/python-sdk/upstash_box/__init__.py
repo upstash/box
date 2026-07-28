@@ -67,6 +67,7 @@ from .types import (
     BrowserRecording,
     BrowserRecordingMarker,
     BrowserRunResult,
+    BedrockModel,
     BrowserRunStep,
     Chunk,
     ClaudeCode,
@@ -165,6 +166,7 @@ __all__ = [
     "CustomHarnessEmitter",
     # Enums
     "Agent",
+    "BedrockModel",
     "BoxApiKey",
     "ClaudeCode",
     "CursorModel",

@@ -1,5 +1,6 @@
 import {
   Agent,
+  BedrockModel,
   ClaudeCode,
   CursorModel,
   OpenAICodex,
@@ -60,6 +61,14 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: VercelModel.Gemini_3_5_Flash, label: "Gemini 3.5 Flash (Vercel)" },
         { value: VercelModel.Grok_Build_0_1, label: "Grok Build 0.1 (Vercel)" },
         { value: VercelModel.Grok_4_3, label: "Grok 4.3 (Vercel)" },
+      ],
+    },
+    {
+      label: "AWS Bedrock",
+      options: [
+        { value: BedrockModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5 (Bedrock)" },
+        { value: BedrockModel.Claude_Sonnet_4, label: "Claude Sonnet 4 (Bedrock)" },
+        { value: BedrockModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (Bedrock)" },
       ],
     },
   ],

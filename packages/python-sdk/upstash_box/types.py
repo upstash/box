@@ -121,6 +121,14 @@ class VercelModel(str, Enum):
     GROK_4_20_REASONING = "vercel/xai/grok-4.20-reasoning"
 
 
+class BedrockModel(str, Enum):
+    """AWS Bedrock model identifiers (Claude Code harness only)."""
+
+    CLAUDE_SONNET_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    CLAUDE_SONNET_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0"
+    CLAUDE_HAIKU_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+
 class OpenCodeModel(str, Enum):
     """OpenCode model identifiers — supports models from multiple providers."""
 

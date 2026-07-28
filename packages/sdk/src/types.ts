@@ -120,6 +120,17 @@ export enum VercelModel {
 }
 
 /**
+ * AWS Bedrock model identifiers (Claude Code harness only). Values are global
+ * cross-region inference-profile ids; the Box injects the caller's Bedrock API
+ * key as AWS_BEARER_TOKEN_BEDROCK and runs Claude Code in Bedrock mode.
+ */
+export enum BedrockModel {
+  Claude_Sonnet_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  Claude_Sonnet_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
+  Claude_Haiku_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+}
+
+/**
  * OpenCode model identifiers — supports models from multiple providers
  */
 export enum OpenCodeModel {
@@ -249,7 +260,7 @@ type ManagedAgentApiKeyConfig = {
 type HarnessConfig =
   | {
       harness: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | BedrockModel;
       provider?: never;
       runner?: never;
     }
@@ -270,7 +281,7 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | BedrockModel;
       harness?: never;
       runner?: never;
     }
