@@ -2626,7 +2626,10 @@ export class Box<TProvider = unknown> {
     return this._request<Schedule>("GET", `/v2/box/${this.id}/schedules/${id}`);
   }
 
-  private async _scheduleUpdate(id: string, options: UpdateScheduleOptions<TProvider>): Promise<Schedule> {
+  private async _scheduleUpdate(
+    id: string,
+    options: UpdateScheduleOptions<TProvider>,
+  ): Promise<Schedule> {
     // Partial update: only fields the caller set are sent; empty values
     // ("" / [] / {}) clear the field on the backend, null clears agent options.
     const body: Record<string, unknown> = {};

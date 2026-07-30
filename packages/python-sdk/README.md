@@ -249,10 +249,12 @@ tabs = await box.browser.list_tabs()
 content = await tab.goto("https://news.ycombinator.com")
 png = await tab.screenshot()  # bytes; encoding="base64", full_page=True supported
 
+
 # AI ops (metered) — schema is a Pydantic model or raw dict
 class Headline(BaseModel):
     title: str
     points: int
+
 
 data = await tab.extract("Get the top headline", Headline)
 actions = await tab.observe("What can I click?")
