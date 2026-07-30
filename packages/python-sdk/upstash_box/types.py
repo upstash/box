@@ -566,6 +566,7 @@ class BoxData(_Model):
     agent: Optional[str] = None
     enabled_skills: Optional[List[str]] = None
     runtime: Optional[str] = None
+    browser: Optional[bool] = None
     network_policy: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
 
@@ -644,6 +645,24 @@ class AgentScheduleOptions(TypedDict):
     folder: NotRequired[str]
     model: NotRequired[str]
     options: NotRequired[AgentOptions]
+    timeout: NotRequired[float]
+    webhook_url: NotRequired[str]
+    webhook_headers: NotRequired[Dict[str, str]]
+
+
+class UpdateScheduleOptions(TypedDict):
+    """Partial schedule update: omitted fields keep their current value,
+    explicitly empty values (``""`` / ``[]`` / ``{}``) clear the field, and
+    ``options=None`` clears agent options. The schedule's type cannot be
+    changed (``command`` is only valid on exec schedules, ``prompt`` only on
+    prompt schedules)."""
+
+    cron: NotRequired[str]
+    command: NotRequired[List[str]]
+    prompt: NotRequired[str]
+    folder: NotRequired[str]
+    model: NotRequired[str]
+    options: NotRequired[Optional[AgentOptions]]
     timeout: NotRequired[float]
     webhook_url: NotRequired[str]
     webhook_headers: NotRequired[Dict[str, str]]

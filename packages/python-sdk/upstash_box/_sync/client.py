@@ -87,6 +87,10 @@ from ._sse import iter_exec_stream, iter_sse_events
 
 _logger = logging.getLogger("upstash_box")
 
+# Sentinel to distinguish "argument omitted" from an explicit ``None`` in
+# partial updates (``None`` means "clear" for agent options).
+_UNSET: Any = object()
+
 T = TypeVar("T")
 
 WORKSPACE = common.WORKSPACE
@@ -401,6 +405,43 @@ class ScheduleNamespace:
 
     def get(self, id: str) -> Schedule:
         return self._box._schedule_get(id)
+
+    def update(
+        self,
+        id: str,
+        *,
+        cron: Optional[str] = None,
+        command: Optional[List[str]] = None,
+        prompt: Optional[str] = None,
+        folder: Optional[str] = None,
+        model: Optional[str] = None,
+        options: Any = _UNSET,
+        timeout: Optional[float] = None,
+        webhook_url: Optional[str] = None,
+        webhook_headers: Optional[Dict[str, str]] = None,
+    ) -> Schedule:
+        """Partially update a schedule.
+
+        Omitted arguments keep their current value. Explicitly empty values
+        (``""`` / ``[]`` / ``{}``) clear the field, and ``options=None``
+        clears agent options. The schedule's type cannot be changed
+        (``command`` is only valid on exec schedules, ``prompt`` only on
+        prompt schedules), and pause/resume have their own methods.
+        """
+        return self._box._schedule_update(
+            id,
+            {
+                "cron": cron,
+                "command": command,
+                "prompt": prompt,
+                "folder": folder,
+                "model": model,
+                "options": options,
+                "timeout": timeout,
+                "webhook_url": webhook_url,
+                "webhook_headers": webhook_headers,
+            },
+        )
 
     def pause(self, id: str) -> None:
         self._box._schedule_pause(id)
@@ -1421,6 +1462,38 @@ class Box(Generic[T]):
 
     def _schedule_get(self, id: str) -> Schedule:
         data = self._request("GET", f"/v2/box/{self.id}/schedules/{id}")
+        return Schedule.model_validate(data)
+
+    def _schedule_update(self, id: str, options: Dict[str, Any]) -> Schedule:
+        # Partial update: only fields the caller set are sent; empty values
+        # ("" / [] / {}) clear the field on the backend, options=None clears
+        # agent options (sent as JSON null).
+        body: Dict[str, Any] = {}
+        if options.get("cron") is not None:
+            body["cron"] = options["cron"]
+        if options.get("command") is not None:
+            body["command"] = options["command"]
+        if options.get("prompt") is not None:
+            body["prompt"] = options["prompt"]
+        folder = options.get("folder")
+        if folder is not None:
+            body["folder"] = self._resolve_path(folder) if folder else ""
+        if options.get("model") is not None:
+            body["model"] = options["model"]
+        agent_options = options.get("options", _UNSET)
+        if agent_options is not _UNSET:
+            body["agent_options"] = (
+                None
+                if agent_options is None
+                else common.to_backend_agent_options(self._agent, agent_options)
+            )
+        if options.get("timeout") is not None:
+            body["timeout"] = options["timeout"]
+        if options.get("webhook_url") is not None:
+            body["webhook_url"] = options["webhook_url"]
+        if options.get("webhook_headers") is not None:
+            body["webhook_headers"] = options["webhook_headers"]
+        data = self._request("PATCH", f"/v2/box/{self.id}/schedules/{id}", body=body)
         return Schedule.model_validate(data)
 
     def _schedule_pause(self, id: str) -> None:

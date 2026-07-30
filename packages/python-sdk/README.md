@@ -74,7 +74,7 @@ from upstash_box import Agent, AsyncBox, BoxApiKey
 
 box = await AsyncBox.create(
     api_key="box_...",  # or set UPSTASH_BOX_API_KEY
-    runtime="node",  # "node" | "python" | "golang" | "ruby" | "rust"
+    runtime="node",  # see Runtimes below
     labels=["beta", "x-team"],  # tag the box for organization/filtering
     size="small",  # "small" | "medium" | "large"
     keep_alive=True,
@@ -100,6 +100,31 @@ boxes = await AsyncBox.list()
 beta_boxes = await AsyncBox.list(label="beta")  # filter by label
 box = await AsyncBox.from_snapshot("snap_abc123", size="medium")
 ```
+
+### Static methods
+
+Bulk deletion and account-level environment variables (injected into every box
+you create):
+
+```python
+await AsyncBox.delete_boxes(box_ids=["box_1", "box_2"])  # or a single id
+await AsyncBox.delete_snapshots(snapshot_ids=["snap_1"])
+
+await AsyncBox.set_env("API_TOKEN", "secret")
+env = await AsyncBox.list_env()  # {"API_TOKEN": "secret"}
+await AsyncBox.set_all_env({"A": "1", "B": "2"})  # replaces the whole set
+await AsyncBox.delete_env("API_TOKEN")
+```
+
+### SSH
+
+You can also connect directly to a box shell:
+
+```bash
+ssh <box-id>@us-east-1.box.upstash.com
+```
+
+Use your **Box API key** as the SSH password.
 
 ### Agent
 
@@ -164,6 +189,10 @@ await box.schedule.exec(cron="* * * * *", command=["bash", "-c", "date"])
 await box.schedule.agent(cron="0 9 * * *", prompt="Run the test suite", timeout=300000)
 schedules = await box.schedule.list()
 await box.schedule.pause(schedule.id)
+
+# Partial update: omitted fields keep their value; "" / [] / {} clear a
+# field, options=None clears agent options. The type cannot be changed.
+await box.schedule.update(schedule.id, cron="0 18 * * *", webhook_url="")
 ```
 
 ### Labels
@@ -205,6 +234,43 @@ urls = await box.list_public_urls()
 await box.delete_public_url(3000)
 ```
 
+### Browser
+
+Create the box with `browser=True` to get a headless Chromium you can drive
+through `box.browser` — tab lifecycle, page ops, AI ops (metered), and session
+recordings:
+
+```python
+box = await AsyncBox.create(runtime="node", browser=True, agent={...})
+
+tab = await box.browser.tab.create("https://example.com")  # wait_until=, timeout=
+tabs = await box.browser.list_tabs()
+
+content = await tab.goto("https://news.ycombinator.com")
+png = await tab.screenshot()  # bytes; encoding="base64", full_page=True supported
+
+
+# AI ops (metered) — schema is a Pydantic model or raw dict
+class Headline(BaseModel):
+    title: str
+    points: int
+
+
+data = await tab.extract("Get the top headline", Headline)
+actions = await tab.observe("What can I click?")
+await tab.act("Click the first headline")
+result = await tab.run("Find the top comment and summarize it", max_steps=10)
+
+print(await tab.live_view_url())  # watch the tab live
+print(await box.browser.cdp_url())  # connect Playwright/Puppeteer over CDP
+await tab.close()
+
+# Recordings
+handle = await box.browser.recordings.start(max_duration_seconds=600)
+recording = await handle.stop()
+recordings = await box.browser.recordings.list()
+```
+
 ### Ephemeral boxes
 
 ```python
@@ -219,6 +285,12 @@ async with box:
 Ephemeral boxes support `exec`, `files`, `schedule`, `cd`, snapshots, `get_status`,
 and `delete` — but not `agent`, `git`, `skills`, or the `labels` namespace. They
 still accept `labels=` at create time and can be filtered with `AsyncBox.list(label=...)`.
+
+## Runtimes
+
+`runtime` is one of `"node"`, `"python"`, `"golang"`, `"ruby"`, `"rust"`, or
+their Alpine variants (`"node-alpine"`, `"python-alpine"`, `"golang-alpine"`,
+`"ruby-alpine"`, `"rust-alpine"`).
 
 ## Note on timeouts
 

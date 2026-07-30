@@ -41,6 +41,7 @@ import {
   type NetworkPolicy,
   type ExecScheduleOptions,
   type AgentScheduleOptions,
+  type UpdateScheduleOptions,
   type Schedule,
   type ClaudeCodeAgentOptions,
   type CodexAgentOptions,
@@ -663,6 +664,7 @@ export class Box<TProvider = unknown> {
     agent: (options: AgentScheduleOptions<TProvider>) => Promise<Schedule>;
     list: () => Promise<Schedule[]>;
     get: (id: string) => Promise<Schedule>;
+    update: (id: string, options: UpdateScheduleOptions<TProvider>) => Promise<Schedule>;
     pause: (id: string) => Promise<void>;
     resume: (id: string) => Promise<void>;
     delete: (id: string) => Promise<void>;
@@ -850,6 +852,7 @@ export class Box<TProvider = unknown> {
       agent: (options) => this._scheduleAgent(options),
       list: () => this._scheduleList(),
       get: (id) => this._scheduleGet(id),
+      update: (id, options) => this._scheduleUpdate(id, options),
       pause: (id) => this._schedulePause(id),
       resume: (id) => this._scheduleResume(id),
       delete: (id) => this._scheduleDelete(id),
@@ -2621,6 +2624,30 @@ export class Box<TProvider = unknown> {
 
   private async _scheduleGet(id: string): Promise<Schedule> {
     return this._request<Schedule>("GET", `/v2/box/${this.id}/schedules/${id}`);
+  }
+
+  private async _scheduleUpdate(
+    id: string,
+    options: UpdateScheduleOptions<TProvider>,
+  ): Promise<Schedule> {
+    // Partial update: only fields the caller set are sent; empty values
+    // ("" / [] / {}) clear the field on the backend, null clears agent options.
+    const body: Record<string, unknown> = {};
+    if (options.cron !== undefined) body.cron = options.cron;
+    if (options.command !== undefined) body.command = options.command;
+    if (options.prompt !== undefined) body.prompt = options.prompt;
+    if (options.folder !== undefined) {
+      body.folder = options.folder ? this._resolvePath(options.folder) : "";
+    }
+    if (options.model !== undefined) body.model = options.model;
+    if (options.options !== undefined) {
+      body.agent_options =
+        options.options === null ? null : toBackendAgentOptions(this._agent, options.options);
+    }
+    if (options.timeout !== undefined) body.timeout = options.timeout;
+    if (options.webhookUrl !== undefined) body.webhook_url = options.webhookUrl;
+    if (options.webhookHeaders !== undefined) body.webhook_headers = options.webhookHeaders;
+    return this._request<Schedule>("PATCH", `/v2/box/${this.id}/schedules/${id}`, { body });
   }
 
   private async _schedulePause(id: string): Promise<void> {

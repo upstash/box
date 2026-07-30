@@ -841,6 +841,8 @@ export type BoxData = {
   agent?: Agent | string;
   enabled_skills?: string[];
   runtime?: string;
+  /** Whether the box was provisioned with a headless browser (see `CreateBoxOptions.browser`). */
+  browser?: boolean;
   status: BoxStatus;
   /**
    * Network access policy for this box. If omitted, defaults to allow-all
@@ -1008,6 +1010,27 @@ export interface AgentScheduleOptions<TProvider = unknown> {
   model?: string;
   /** SDK-specific options forwarded to the underlying agent */
   options?: AgentOptions<TProvider>;
+  /** Timeout in milliseconds — kills the run if exceeded */
+  timeout?: number;
+  /** URL to POST results to after each run */
+  webhookUrl?: string;
+  /** Custom headers sent with webhook */
+  webhookHeaders?: Record<string, string>;
+}
+
+export interface UpdateScheduleOptions<TProvider = unknown> {
+  /** Cron expression (e.g. "0 9 * * *"). UTC. */
+  cron?: string;
+  /** Command and arguments to execute (exec schedules only) */
+  command?: string[];
+  /** The prompt/task for the AI agent (prompt schedules only) */
+  prompt?: string;
+  /** Working directory override */
+  folder?: string;
+  /** Model override */
+  model?: string;
+  /** SDK-specific options forwarded to the underlying agent; null clears */
+  options?: AgentOptions<TProvider> | null;
   /** Timeout in milliseconds — kills the run if exceeded */
   timeout?: number;
   /** URL to POST results to after each run */
