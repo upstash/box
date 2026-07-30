@@ -75,6 +75,7 @@ export type {
   EphemeralBoxData,
   ExecScheduleOptions,
   AgentScheduleOptions,
+  UpdateScheduleOptions,
   Schedule,
   ScheduleStatus,
   BrowserExtractOptions,

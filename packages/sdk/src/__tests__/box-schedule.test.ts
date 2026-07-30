@@ -300,6 +300,141 @@ describe("Box schedule operations", () => {
     });
   });
 
+  describe("schedule.update", () => {
+    it("sends only provided fields as PATCH", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-1",
+          box_id: "box-123",
+          type: "exec",
+          cron: "*/5 * * * *",
+          command: ["echo", "updated"],
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000100,
+        }),
+      );
+
+      const result = await box.schedule.update("sched-1", {
+        cron: "*/5 * * * *",
+        command: ["echo", "updated"],
+      });
+
+      expect(result.cron).toBe("*/5 * * * *");
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/schedules/sched-1");
+      expect(init?.method).toBe("PATCH");
+      const body = JSON.parse(init?.body as string);
+      expect(body).toEqual({ cron: "*/5 * * * *", command: ["echo", "updated"] });
+    });
+
+    it("sends explicit empty values to clear fields", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000100,
+        }),
+      );
+
+      await box.schedule.update("sched-2", {
+        webhookUrl: "",
+        webhookHeaders: {},
+        options: null,
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.webhook_url).toBe("");
+      expect(body.webhook_headers).toEqual({});
+      expect(body.agent_options).toBeNull();
+      expect(body).not.toHaveProperty("cron");
+      expect(body).not.toHaveProperty("prompt");
+    });
+
+    it("resolves relative folder against cwd", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-1",
+          box_id: "box-123",
+          type: "exec",
+          cron: "* * * * *",
+          command: ["echo"],
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000100,
+        }),
+      );
+
+      await box.schedule.update("sched-1", { folder: "src" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.folder).toBe("/workspace/home/src");
+    });
+
+    it("maps agent options through the backend converter", async () => {
+      const { box, fetchMock } = await createTestBox<Agent.ClaudeCode>();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000100,
+        }),
+      );
+
+      await box.schedule.update("sched-2", {
+        options: { maxTurns: 3, effort: "high" },
+      });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.agent_options).toEqual({ maxTurns: 3, effort: "high" });
+    });
+
+    it("sends timeout 0 to clear the timeout", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          id: "sched-2",
+          box_id: "box-123",
+          type: "prompt",
+          cron: "0 9 * * *",
+          prompt: "Run tests",
+          status: "active",
+          total_runs: 0,
+          total_failures: 0,
+          created_at: 1710000000,
+          updated_at: 1710000100,
+        }),
+      );
+
+      await box.schedule.update("sched-2", { timeout: 0 });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.timeout).toBe(0);
+    });
+  });
+
   describe("schedule.pause", () => {
     it("pauses a schedule", async () => {
       const { box, fetchMock } = await createTestBox();

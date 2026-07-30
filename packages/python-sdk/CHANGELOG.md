@@ -2,6 +2,16 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## Unreleased
+
+- `schedule.update(id, ...)` — partial schedule updates (PATCH). Omitted
+  arguments keep their current value; explicitly empty values (`""` / `[]` /
+  `{}`) clear the field, and `options=None` clears agent options. The
+  schedule's type cannot be changed. Mirrors `schedule.update` in
+  `@upstash/box`.
+- `BoxData.browser` — surface the API's `browser` flag on box responses
+  (create / get / list), matching `@upstash/box`.
+
 ## 0.2.0
 
 - Browser API: create boxes with `browser=True` and drive a headless Chromium

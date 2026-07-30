@@ -218,6 +218,14 @@ const schedules = await box.schedule.list();
 // Get a specific schedule by ID.
 const schedule = await box.schedule.get("sched-abc123");
 
+// Update a schedule (partial — omitted fields keep their current value).
+// Empty values ("" / [] / {}) clear a field; `options: null` clears agent
+// options. The schedule's type (exec vs agent) cannot be changed.
+const updated = await box.schedule.update(schedule.id, {
+  cron: "0 18 * * *",
+  webhookUrl: "", // clears the webhook
+});
+
 // Pause a schedule. It won't fire until resumed.
 await box.schedule.pause(schedule.id);
 
@@ -411,7 +419,7 @@ const box = await Box.fromSnapshot("snap_abc123", { size: "medium" });
 
 ## Runtimes
 
-`Runtime` is a string union type: `"node" | "python" | "golang" | "ruby" | "rust"`
+`Runtime` is a string union type: `"node" | "python" | "golang" | "ruby" | "rust"`, plus their Alpine variants: `"node-alpine" | "python-alpine" | "golang-alpine" | "ruby-alpine" | "rust-alpine"`
 
 ## Examples
 
