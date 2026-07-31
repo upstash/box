@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.6.1
+
+### Patch Changes
+
+- b55d832: adds update schedule endpoint
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @upstash/box-pi
 
+## 0.1.2
+
+### Patch Changes
+
+- 7987437: widens the pi-coding-agent peer range to >=0.79.0 <1.0.0 (npm install failed with ERESOLVE next to Pi >= 0.80), adds a gallery image to the pi manifest, and simplifies the README
+- Updated dependencies [b55d832]
+  - @upstash/box@0.6.1
+
 ## 0.1.1
 
 ### Patch Changes
