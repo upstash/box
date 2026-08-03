@@ -222,6 +222,21 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: VercelModel.Grok_4_3, label: "Grok 4.3 (Vercel)" },
       ],
     },
+    {
+      label: "AWS Bedrock",
+      options: [
+        { value: BedrockModel.Opus_5, label: "Claude Opus 5 (Bedrock)" },
+        { value: BedrockModel.Opus_4_8, label: "Claude Opus 4.8 (Bedrock)" },
+        { value: BedrockModel.Opus_4_7, label: "Claude Opus 4.7 (Bedrock)" },
+        { value: BedrockModel.Opus_4_6, label: "Claude Opus 4.6 (Bedrock)" },
+        { value: BedrockModel.Opus_4_5, label: "Claude Opus 4.5 (Bedrock)" },
+        { value: BedrockModel.Sonnet_5, label: "Claude Sonnet 5 (Bedrock)" },
+        { value: BedrockModel.Sonnet_4_6, label: "Claude Sonnet 4.6 (Bedrock)" },
+        { value: BedrockModel.Sonnet_4_5, label: "Claude Sonnet 4.5 (Bedrock)" },
+        { value: BedrockModel.Sonnet_4, label: "Claude Sonnet 4 (Bedrock)" },
+        { value: BedrockModel.Haiku_4_5, label: "Claude Haiku 4.5 (Bedrock)" },
+      ],
+    },
   ],
   [Agent.Cursor]: [
     {
