@@ -279,7 +279,13 @@ type HarnessConfig =
     }
   | {
       harness: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | BedrockModel;
+      model:
+        | OpenCodeModel
+        | ClaudeCode
+        | OpenAICodex
+        | OpenRouterModel
+        | VercelModel
+        | BedrockModel;
       provider?: never;
       runner?: never;
     }
@@ -302,7 +308,13 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | BedrockModel;
+      model:
+        | OpenCodeModel
+        | ClaudeCode
+        | OpenAICodex
+        | OpenRouterModel
+        | VercelModel
+        | BedrockModel;
       harness?: never;
       runner?: never;
     }
