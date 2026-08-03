@@ -4,6 +4,8 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Add Claude Opus 5 model constants for Claude Code, OpenRouter, Vercel AI
+  Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
 - `schedule.update(id, ...)` — partial schedule updates (PATCH). Omitted
   arguments keep their current value; explicitly empty values (`""` / `[]` /
   `{}`) clear the field, and `options=None` clears agent options. The

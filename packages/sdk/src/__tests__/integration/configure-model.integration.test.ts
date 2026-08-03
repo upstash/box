@@ -34,11 +34,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
     expect(config.model).toBe(ClaudeCode.Haiku_4_5);
   });
 
-  it("changes to Opus and reflects in modelConfig", async () => {
-    await box.configureModel(ClaudeCode.Opus_4_5);
+  it("changes to Opus 5 and reflects in modelConfig", async () => {
+    await box.configureModel(ClaudeCode.Opus_5);
 
     const config = box.modelConfig;
-    expect(config.model).toBe(ClaudeCode.Opus_4_5);
+    expect(config.model).toBe(ClaudeCode.Opus_5);
   });
 
   it("changes back to Sonnet", async () => {

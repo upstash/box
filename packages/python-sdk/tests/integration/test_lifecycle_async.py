@@ -16,8 +16,8 @@ async def test_config_status_logs_runs(opts):
     )
     try:
         # configure_model updates model_config immediately
-        await box.configure_model(ClaudeCode.HAIKU_4_5.value)
-        assert box.model_config["model"] == ClaudeCode.HAIKU_4_5.value
+        await box.configure_model(ClaudeCode.OPUS_5.value)
+        assert box.model_config["model"] == ClaudeCode.OPUS_5.value
 
         # network policy round-trips
         await box.update_network_policy({"mode": "deny-all"})
