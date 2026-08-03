@@ -896,6 +896,12 @@ export interface FileEntry {
 export interface GitCloneOptions {
   repo: string;
   branch?: string;
+  /**
+   * Number of commits of history to fetch (git clone --depth N).
+   * `depth: 1` produces a shallow clone with only the latest commit —
+   * dramatically faster for large repos. Omit for a full clone.
+   */
+  depth?: number;
 }
 
 export interface GitExecOptions {
