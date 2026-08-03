@@ -2670,8 +2670,8 @@ export class Box<TProvider = unknown> {
       body: {
         repo: options.repo,
         branch: options.branch,
+        depth: options.depth,
         github_token: this._gitToken,
-        ...(options.depth !== undefined ? { depth: options.depth } : {}),
         ...(folder ? { folder } : {}),
       },
     });
