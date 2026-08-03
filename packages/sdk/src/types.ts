@@ -49,6 +49,7 @@ export enum ClaudeCode {
   Opus_4_6 = "anthropic/claude-opus-4-6",
   Opus_4_7 = "anthropic/claude-opus-4-7",
   Opus_4_8 = "anthropic/claude-opus-4-8",
+  Opus_5 = "anthropic/claude-opus-5",
   Sonnet_4 = "anthropic/claude-sonnet-4",
   Sonnet_4_5 = "anthropic/claude-sonnet-4-5",
   Sonnet_4_6 = "anthropic/claude-sonnet-4-6",
@@ -79,6 +80,7 @@ export enum OpenAICodex {
  */
 export enum OpenRouterModel {
   Claude_Fable_5 = "openrouter/anthropic/claude-fable-5",
+  Claude_Opus_5 = "openrouter/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "openrouter/anthropic/claude-sonnet-5",
   Claude_Sonnet_4 = "openrouter/anthropic/claude-sonnet-4",
   Claude_Opus_4_5 = "openrouter/anthropic/claude-opus-4-5",
@@ -99,6 +101,7 @@ export enum OpenRouterModel {
  */
 export enum VercelModel {
   Claude_Fable_5 = "vercel/anthropic/claude-fable-5",
+  Claude_Opus_5 = "vercel/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "vercel/anthropic/claude-sonnet-5",
   Claude_Opus_4_7 = "vercel/anthropic/claude-opus-4.7",
   Claude_Sonnet_4_6 = "vercel/anthropic/claude-sonnet-4.6",
@@ -125,6 +128,7 @@ export enum VercelModel {
 export enum OpenCodeModel {
   // Anthropic-backed OpenCode models
   Claude_Fable_5 = "opencode/claude-fable-5",
+  Claude_Opus_5 = "opencode/claude-opus-5",
   Claude_Opus_4_5 = "opencode/claude-opus-4-5",
   Claude_Opus_4_6 = "opencode/claude-opus-4-6",
   Claude_Opus_4_7 = "opencode/claude-opus-4-7",
@@ -154,6 +158,7 @@ export enum OpenCodeModel {
   // Paid models
   Zen_MiniMax_M2_7 = "opencode/minimax-m2.7",
   Zen_Claude_Fable_5 = "opencode/claude-fable-5",
+  Zen_Claude_Opus_5 = "opencode/claude-opus-5",
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
   Zen_Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
   Zen_Claude_Sonnet_4 = "opencode/claude-sonnet-4",
@@ -188,6 +193,7 @@ export enum CursorModel {
   GPT_5_1_Codex_Mini = "cursor/gpt-5.1-codex-mini",
   GPT_5_Mini = "cursor/gpt-5-mini",
   Claude_Fable_5 = "cursor/claude-fable-5",
+  Claude_Opus_5 = "cursor/claude-opus-5",
   Claude_Opus_4_8 = "cursor/claude-opus-4-8",
   Claude_Opus_4_7 = "cursor/claude-opus-4-7",
   Claude_Opus_4_6 = "cursor/claude-opus-4-6",
