@@ -1,5 +1,14 @@
 # @upstash/box-cli
 
+## 0.2.17
+
+### Patch Changes
+
+- 7fda346: Add Claude Opus 5 model constants and CLI options for Claude Code, OpenRouter,
+  Vercel AI Gateway, OpenCode/Zen, and Cursor.
+- Updated dependencies [7fda346]
+  - @upstash/box@0.6.2
+
 ## 0.2.16
 
 ### Patch Changes
