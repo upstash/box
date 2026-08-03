@@ -120,9 +120,9 @@ export enum VercelModel {
 }
 
 /**
- * AWS Bedrock model identifiers (Claude Code harness only). Values are global
- * cross-region inference-profile ids; the Box injects the caller's Bedrock API
- * key as AWS_BEARER_TOKEN_BEDROCK and runs Claude Code in Bedrock mode.
+ * AWS Bedrock model identifiers (Claude Code and OpenCode harnesses). Values are
+ * global cross-region inference-profile ids; the Box injects the caller's Bedrock
+ * API key as AWS_BEARER_TOKEN_BEDROCK.
  */
 export enum BedrockModel {
   Opus_5 = "bedrock/global.anthropic.claude-opus-5",

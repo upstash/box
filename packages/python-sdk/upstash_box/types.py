@@ -122,7 +122,7 @@ class VercelModel(str, Enum):
 
 
 class BedrockModel(str, Enum):
-    """AWS Bedrock model identifiers (Claude Code harness only)."""
+    """AWS Bedrock model identifiers (Claude Code and OpenCode harnesses)."""
 
     OPUS_5 = "bedrock/global.anthropic.claude-opus-5"
     OPUS_4_8 = "bedrock/global.anthropic.claude-opus-4-8"
