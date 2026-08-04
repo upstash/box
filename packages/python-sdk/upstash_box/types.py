@@ -54,6 +54,7 @@ class ClaudeCode(str, Enum):
     OPUS_4_6 = "anthropic/claude-opus-4-6"
     OPUS_4_7 = "anthropic/claude-opus-4-7"
     OPUS_4_8 = "anthropic/claude-opus-4-8"
+    OPUS_5 = "anthropic/claude-opus-5"
     SONNET_4 = "anthropic/claude-sonnet-4"
     SONNET_4_5 = "anthropic/claude-sonnet-4-5"
     SONNET_4_6 = "anthropic/claude-sonnet-4-6"
@@ -82,6 +83,7 @@ class OpenRouterModel(str, Enum):
     """OpenRouter model identifiers — shared across agents that support OpenRouter."""
 
     CLAUDE_FABLE_5 = "openrouter/anthropic/claude-fable-5"
+    CLAUDE_OPUS_5 = "openrouter/anthropic/claude-opus-5"
     CLAUDE_SONNET_5 = "openrouter/anthropic/claude-sonnet-5"
     CLAUDE_SONNET_4 = "openrouter/anthropic/claude-sonnet-4"
     CLAUDE_OPUS_4_5 = "openrouter/anthropic/claude-opus-4-5"
@@ -101,6 +103,7 @@ class VercelModel(str, Enum):
     """Vercel AI Gateway model identifiers."""
 
     CLAUDE_FABLE_5 = "vercel/anthropic/claude-fable-5"
+    CLAUDE_OPUS_5 = "vercel/anthropic/claude-opus-5"
     CLAUDE_SONNET_5 = "vercel/anthropic/claude-sonnet-5"
     CLAUDE_OPUS_4_7 = "vercel/anthropic/claude-opus-4.7"
     CLAUDE_SONNET_4_6 = "vercel/anthropic/claude-sonnet-4.6"
@@ -126,6 +129,7 @@ class OpenCodeModel(str, Enum):
 
     # Anthropic-backed OpenCode models
     CLAUDE_FABLE_5 = "opencode/claude-fable-5"
+    CLAUDE_OPUS_5 = "opencode/claude-opus-5"
     CLAUDE_OPUS_4_5 = "opencode/claude-opus-4-5"
     CLAUDE_OPUS_4_6 = "opencode/claude-opus-4-6"
     CLAUDE_OPUS_4_7 = "opencode/claude-opus-4-7"
@@ -155,6 +159,7 @@ class OpenCodeModel(str, Enum):
     # Paid models
     ZEN_MINIMAX_M2_7 = "opencode/minimax-m2.7"
     ZEN_CLAUDE_FABLE_5 = "opencode/claude-fable-5"
+    ZEN_CLAUDE_OPUS_5 = "opencode/claude-opus-5"
     ZEN_CLAUDE_SONNET_4_6 = "opencode/claude-sonnet-4-6"
     ZEN_CLAUDE_SONNET_4_5 = "opencode/claude-sonnet-4-5"
     ZEN_CLAUDE_SONNET_4 = "opencode/claude-sonnet-4"
@@ -188,6 +193,7 @@ class CursorModel(str, Enum):
     GPT_5_1_CODEX_MINI = "cursor/gpt-5.1-codex-mini"
     GPT_5_MINI = "cursor/gpt-5-mini"
     CLAUDE_FABLE_5 = "cursor/claude-fable-5"
+    CLAUDE_OPUS_5 = "cursor/claude-opus-5"
     CLAUDE_OPUS_4_8 = "cursor/claude-opus-4-8"
     CLAUDE_OPUS_4_7 = "cursor/claude-opus-4-7"
     CLAUDE_OPUS_4_6 = "cursor/claude-opus-4-6"

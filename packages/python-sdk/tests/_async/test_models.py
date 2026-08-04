@@ -3,8 +3,12 @@ a backend contract regression."""
 
 from upstash_box import (
     BoxRunData,
+    ClaudeCode,
+    CursorModel,
     FinishChunk,
     FinishUsage,
+    OpenCodeModel,
+    OpenRouterModel,
     PublicURL,
     RunCost,
     Schedule,
@@ -12,7 +16,25 @@ from upstash_box import (
     StartChunk,
     TextDeltaChunk,
     ToolCallChunk,
+    VercelModel,
 )
+
+
+def test_claude_opus_5_model_identifier():
+    assert {
+        ClaudeCode.OPUS_5.value,
+        CursorModel.CLAUDE_OPUS_5.value,
+        OpenCodeModel.CLAUDE_OPUS_5.value,
+        OpenCodeModel.ZEN_CLAUDE_OPUS_5.value,
+        OpenRouterModel.CLAUDE_OPUS_5.value,
+        VercelModel.CLAUDE_OPUS_5.value,
+    } == {
+        "anthropic/claude-opus-5",
+        "cursor/claude-opus-5",
+        "opencode/claude-opus-5",
+        "openrouter/anthropic/claude-opus-5",
+        "vercel/anthropic/claude-opus-5",
+    }
 
 
 def test_box_run_data_fields():
