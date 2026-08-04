@@ -119,9 +119,6 @@ export enum VercelModel {
   Grok_4_20_Reasoning = "vercel/xai/grok-4.20-reasoning",
 }
 
-/**
- * AWS Bedrock model identifiers — shared across Claude Code and OpenCode harnesses
- */
 export enum BedrockModel {
   Opus_5 = "bedrock/global.anthropic.claude-opus-5",
   Opus_4_8 = "bedrock/global.anthropic.claude-opus-4-8",
