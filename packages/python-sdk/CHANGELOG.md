@@ -4,6 +4,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- `git.clone(depth=...)` — shallow clone support (`git clone --depth N`).
+  `depth=1` fetches only the latest commit; omitting it keeps the current
+  full-clone behavior. Mirrors `depth` in `@upstash/box` `git.clone`.
 - `schedule.update(id, ...)` — partial schedule updates (PATCH). Omitted
   arguments keep their current value; explicitly empty values (`""` / `[]` /
   `{}`) clear the field, and `options=None` clears agent options. The
