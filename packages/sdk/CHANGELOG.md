@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.6.3
+
+### Patch Changes
+
+- a419844: adds depth option to git.clone for shallow clones
+
 ## 0.6.2
 
 ### Patch Changes
