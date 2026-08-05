@@ -26,6 +26,26 @@ describe("Box git operations", () => {
       const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
       expect(body.branch).toBe("dev");
     });
+
+    it("clones a repo with depth", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.git.clone({ repo: "owner/repo", depth: 1 });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.depth).toBe(1);
+    });
+
+    it("omits depth when not provided", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.git.clone({ repo: "owner/repo" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body).not.toHaveProperty("depth");
+    });
   });
 
   describe("git.diff", () => {

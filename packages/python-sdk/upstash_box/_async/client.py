@@ -319,8 +319,10 @@ class AsyncGitNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
-    async def clone(self, *, repo: str, branch: Optional[str] = None) -> None:
-        await self._box._git_clone(repo, branch)
+    async def clone(
+        self, *, repo: str, branch: Optional[str] = None, depth: Optional[int] = None
+    ) -> None:
+        await self._box._git_clone(repo, branch, depth)
 
     async def diff(self) -> str:
         return await self._box._git_diff()
@@ -1522,9 +1524,11 @@ class AsyncBox(Generic[T]):
 
     # ==================== Git ====================
 
-    async def _git_clone(self, repo, branch) -> None:
+    async def _git_clone(self, repo, branch, depth) -> None:
         folder = self._get_folder()
         body: Dict[str, Any] = {"repo": repo, "branch": branch, "github_token": self._git_token}
+        if depth is not None:
+            body["depth"] = depth
         if folder:
             body["folder"] = folder
         await self._request("POST", f"/v2/box/{self.id}/git/clone", body=body)

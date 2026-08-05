@@ -314,8 +314,10 @@ class GitNamespace:
     def __init__(self, box: "Box") -> None:
         self._box = box
 
-    def clone(self, *, repo: str, branch: Optional[str] = None) -> None:
-        self._box._git_clone(repo, branch)
+    def clone(
+        self, *, repo: str, branch: Optional[str] = None, depth: Optional[int] = None
+    ) -> None:
+        self._box._git_clone(repo, branch, depth)
 
     def diff(self) -> str:
         return self._box._git_diff()
@@ -1507,9 +1509,11 @@ class Box(Generic[T]):
 
     # ==================== Git ====================
 
-    def _git_clone(self, repo, branch) -> None:
+    def _git_clone(self, repo, branch, depth) -> None:
         folder = self._get_folder()
         body: Dict[str, Any] = {"repo": repo, "branch": branch, "github_token": self._git_token}
+        if depth is not None:
+            body["depth"] = depth
         if folder:
             body["folder"] = folder
         self._request("POST", f"/v2/box/{self.id}/git/clone", body=body)
