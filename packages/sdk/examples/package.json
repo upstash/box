@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@upstash/box": "latest"
+    "@upstash/box": "latest",
+    "playwright-core": "^1.50.0",
+    "zod": "^4.0.0"
   }
 }
