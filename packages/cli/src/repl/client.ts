@@ -66,6 +66,23 @@ export class BoxREPLClient {
   private _suggestion: string | null = "ls";
   private _cwdEntries: string[] = [];
 
+  /** The currently active streaming run (shell or agent), if any. */
+  activeRun: { cancel(): Promise<void> } | null = null;
+  private _runCancelled = false;
+
+  /**
+   * Cancel the active run. Called when the user presses Ctrl+C during execution.
+   * Sets `_runCancelled` flag so the generator can distinguish cancellation from errors.
+   */
+  async cancelActiveRun(): Promise<void> {
+    const run = this.activeRun;
+    if (run) {
+      this._runCancelled = true;
+      this.activeRun = null;
+      await run.cancel();
+    }
+  }
+
   constructor(box: Box, options?: BoxREPLClientOptions) {
     this.box = box;
     this._onModelConfiguration = options?.onModelConfiguration;
@@ -143,10 +160,16 @@ export class BoxREPLClient {
   /** Execute a shell command in the box, streaming output in real time. */
   private async *execShellCommand(command: string): AsyncGenerator<BoxREPLEvent> {
     const run = await this.box.exec.stream(command);
-    for await (const chunk of run) {
-      if (chunk.type === "output") {
-        yield { type: "stream", text: chunk.data };
+    this.activeRun = run;
+    this._runCancelled = false;
+    try {
+      for await (const chunk of run) {
+        if (chunk.type === "output") {
+          yield { type: "stream", text: chunk.data };
+        }
       }
+    } finally {
+      this.activeRun = null;
     }
   }
 
@@ -263,19 +286,34 @@ export class BoxREPLClient {
             };
           }
         } catch (err) {
-          yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+          if (this._runCancelled) {
+            yield { type: "stream", text: "\n" };
+            yield { type: "log", message: "Cancelled." };
+          } else {
+            yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+          }
         }
       } else {
         // Agent mode
         this._suggestion = getNextSuggestion({ kind: "agent", initial: false });
         yield { type: "command:start", command: "agent", args: trimmed };
         const start = Date.now();
+        this._runCancelled = false;
         try {
-          yield* handleRun(this.box, trimmed);
+          yield* handleRun(this.box, trimmed, (run) => {
+            this.activeRun = run;
+          });
           const durationMs = Date.now() - start;
           yield { type: "command:complete", command: "agent", durationMs };
         } catch (err) {
-          yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+          if (this._runCancelled) {
+            yield { type: "stream", text: "\n" };
+            yield { type: "log", message: "Cancelled." };
+          } else {
+            yield { type: "error", message: `Error: ${err instanceof Error ? err.message : err}` };
+          }
+        } finally {
+          this.activeRun = null;
         }
       }
     }
