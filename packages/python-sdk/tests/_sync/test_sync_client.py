@@ -306,3 +306,40 @@ def test_browser_tab_flow_sync():
     # seconds -> ms normalization survives sync generation
     assert recording.expires_at == 1_209_601_000
     box.close()
+
+
+@respx.mock
+def test_recording_download_sync(tmp_path):
+    box = make_sync_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/rec-1/download").mock(
+        return_value=httpx.Response(
+            200, content=b"mp4-bytes", headers={"content-type": "video/mp4"}
+        )
+    )
+
+    # Parent directories are created as needed.
+    dest = box.browser.recordings.download("rec-1", path=str(tmp_path / "nested" / "demo.mp4"))
+
+    assert dest == str(tmp_path / "nested" / "demo.mp4")
+    with open(dest, "rb") as fh:
+        assert fh.read() == b"mp4-bytes"
+    box.close()
+
+
+@respx.mock
+def test_recording_download_sync_legacy_ts(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    box = make_sync_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/rec-1/download").mock(
+        return_value=httpx.Response(
+            200, content=b"ts-bytes", headers={"content-type": "video/mp2t"}
+        )
+    )
+
+    # Legacy recordings without an MP4 remux stream raw MPEG-TS.
+    dest = box.browser.recordings.download("rec-1")
+
+    assert dest == "./box-recording-rec-1.ts"
+    with open(dest, "rb") as fh:
+        assert fh.read() == b"ts-bytes"
+    box.close()

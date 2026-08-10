@@ -736,6 +736,8 @@ export class Box<TProvider = unknown> {
       list: () => Promise<BrowserRecording[]>;
       /** Fetch one recording's metadata. */
       get: (recordingId: string) => Promise<BrowserRecording>;
+      /** Download a recording's video (MP4, or MPEG-TS for pre-MP4 recordings) to a local file; returns the path written. */
+      download: (recordingId: string, options?: { path?: string }) => Promise<string>;
     };
   };
 
@@ -894,6 +896,7 @@ export class Box<TProvider = unknown> {
         stop: () => this._recordingStop(),
         list: () => this._recordingList(),
         get: (recordingId) => this._recordingGet(recordingId),
+        download: (recordingId, options) => this._recordingDownload(recordingId, options),
       },
     };
   }
@@ -2458,6 +2461,7 @@ export class Box<TProvider = unknown> {
       durationMs: num(raw.duration_ms),
       sizeBytes: num(raw.size_bytes),
       segmentCount: num(raw.segment_count),
+      mp4SizeBytes: num(raw.mp4_size_bytes),
       stoppedReason: raw.stopped_reason ? String(raw.stopped_reason) : undefined,
       maxDurationSeconds: num(raw.max_duration_seconds),
       markers: markers.map((m) => ({
@@ -2529,6 +2533,73 @@ export class Box<TProvider = unknown> {
       `/v2/box/${this.id}/browser/recordings/${recordingId}`,
     );
     return this._mapRecording(resp);
+  }
+
+  private async _recordingDownload(
+    recordingId: string,
+    options?: { path?: string },
+  ): Promise<string> {
+    const url = `${this._baseUrl}/v2/box/${this.id}/browser/recordings/${recordingId}/download`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this._timeout);
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: this._headers, signal: controller.signal });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new BoxError("Request timeout");
+      }
+      throw new BoxError(error instanceof Error ? error.message : "Unknown error");
+    }
+    try {
+      if (!response.ok) {
+        throw new BoxError(await parseErrorResponse(response), response.status);
+      }
+      // The backend serves only remuxed MP4 or legacy MPEG-TS; reject anything else.
+      const contentType = (response.headers.get("content-type") ?? "")
+        .split(";")[0]!
+        .trim()
+        .toLowerCase();
+      const extension =
+        contentType === "video/mp4" ? "mp4" : contentType === "video/mp2t" ? "ts" : null;
+      if (!extension) {
+        throw new BoxError(`Unexpected recording content type: ${contentType || "unknown"}`);
+      }
+      if (!response.body) {
+        throw new BoxError("Streaming not supported in this environment");
+      }
+      const dest = options?.path ?? `./box-recording-${recordingId}.${extension}`;
+      const fs = await this._getFs();
+      const path = await this._getPath();
+      const parent = path.dirname(dest);
+      if (parent && parent !== ".") {
+        await fs.mkdir(parent, { recursive: true });
+      }
+      // Stream to a sibling temp file, then atomically replace dest, so a failed
+      // download never truncates or removes an existing file at dest.
+      const tmp = `${dest}.${Math.random().toString(36).slice(2)}.tmp`;
+      try {
+        const [{ Readable }, { pipeline }, { createWriteStream }] = await Promise.all([
+          import("node:stream"),
+          import("node:stream/promises"),
+          import("node:fs"),
+        ]);
+        await pipeline(
+          Readable.fromWeb(response.body as import("node:stream/web").ReadableStream),
+          createWriteStream(tmp),
+        );
+        await fs.rename(tmp, dest);
+      } catch (err) {
+        await fs.unlink(tmp).catch(() => {});
+        throw new BoxError(
+          `Failed to save recording ${recordingId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      return dest;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /** @internal — Authenticated live-view URL for a tab (used by Tab.liveViewUrl). */

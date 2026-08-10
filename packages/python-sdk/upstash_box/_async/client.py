@@ -717,6 +717,14 @@ class AsyncBrowserRecordingsNamespace:
         """Fetch one recording's metadata."""
         return await self._box._recording_get(recording_id)
 
+    async def download(self, recording_id: str, *, path: Optional[str] = None) -> str:
+        """Download a recording's video and return the local path written.
+
+        Recordings are MP4; recordings captured before MP4 support (or whose
+        remux failed) download as raw MPEG-TS.
+        """
+        return await self._box._recording_download(recording_id, path)
+
 
 class AsyncBrowserNamespace:
     """Browser namespace — DOM-aware control of Chromium via CDP. Requires a
@@ -1735,6 +1743,55 @@ class AsyncBox(Generic[T]):
     async def _recording_get(self, recording_id: str) -> BrowserRecording:
         resp = await self._request("GET", f"/v2/box/{self.id}/browser/recordings/{recording_id}")
         return self._map_recording(resp)
+
+    async def _recording_download(self, recording_id: str, path: Optional[str]) -> str:
+        url = f"{self._base_url}/v2/box/{self.id}/browser/recordings/{recording_id}/download"
+        # Normalize transport failures (header timeouts, connection resets, interrupted
+        # streams) to BoxError, matching _request(); BoxError from validation propagates.
+        try:
+            async with self._client.stream(
+                "GET", url, headers=self._headers, timeout=_ms_to_seconds(self._timeout_ms)
+            ) as response:
+                if not response.is_success:
+                    await response.aread()
+                    common.raise_for_status(response)
+                # The backend serves only remuxed MP4 or legacy MPEG-TS; reject anything else.
+                content_type = (
+                    response.headers.get("content-type", "").split(";")[0].strip().lower()
+                )
+                if content_type == "video/mp4":
+                    extension = "mp4"
+                elif content_type == "video/mp2t":
+                    extension = "ts"
+                else:
+                    raise BoxError(
+                        f"Unexpected recording content type: {content_type or 'unknown'}"
+                    )
+                dest = path or f"./box-recording-{recording_id}.{extension}"
+                parent = os.path.dirname(dest)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                # Write to a sibling temp file, then atomically replace dest, so a failed
+                # download never truncates or removes an existing file at dest.
+                tmp = f"{dest}.{uuid.uuid4().hex}.tmp"
+                try:
+                    with open(tmp, "wb") as fh:
+                        async for chunk in response.aiter_bytes():
+                            fh.write(chunk)
+                    os.replace(tmp, dest)
+                except BaseException:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+                    raise
+        except httpx.TimeoutException as e:
+            raise BoxError("Request timeout") from e
+        except BoxError:
+            raise
+        except Exception as e:
+            raise BoxError(str(e)) from e
+        return dest
 
     # ==================== Static methods ====================
 

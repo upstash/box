@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { Buffer } from "node:buffer";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod/v4";
 import type {
   BrowserRecording,
@@ -8,6 +11,22 @@ import type {
 } from "../index.js";
 import { createTestBox, mockResponse } from "./helpers.js";
 
+const { writeFileMock, mkdirMock, unlinkMock, renameMock } = vi.hoisted(() => ({
+  writeFileMock: vi.fn().mockResolvedValue(undefined),
+  mkdirMock: vi.fn().mockResolvedValue(undefined),
+  unlinkMock: vi.fn().mockResolvedValue(undefined),
+  renameMock: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("node:fs/promises", () => ({
+  writeFile: writeFileMock,
+  mkdir: mkdirMock,
+  unlink: unlinkMock,
+  rename: renameMock,
+}));
+
+// The un-mocked module, for tests that exercise real streaming writes.
+const realFs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+
 type PublicRecordingTypes = [
   BrowserRecording,
   BrowserRecordingHandle,
@@ -15,7 +34,28 @@ type PublicRecordingTypes = [
   BrowserRecordingOptions,
 ];
 
+function mockVideoResponse(contentType: string, bytes: Uint8Array): Response {
+  return {
+    ...mockResponse({}),
+    headers: new Headers({ "content-type": contentType }),
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    }),
+  } as unknown as Response;
+}
+
 describe("Box browser operations", () => {
+  beforeEach(() => {
+    // Reset call history and per-test implementations, restoring the default
+    // resolved-undefined so each test starts clean.
+    writeFileMock.mockReset().mockResolvedValue(undefined);
+    mkdirMock.mockReset().mockResolvedValue(undefined);
+    unlinkMock.mockReset().mockResolvedValue(undefined);
+    renameMock.mockReset().mockResolvedValue(undefined);
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("addresses page operations through a tab", async () => {
@@ -287,6 +327,168 @@ describe("Box browser operations", () => {
     expect(startBody).toEqual({ max_duration_seconds: 60 });
     expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/recordings/recording-1");
     expect(fetchMock.mock.calls[3]?.[0]).toContain("browser/recordings/stop");
+  });
+
+  it("downloads a recording as mp4 named after the served content type", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const bytes = new TextEncoder().encode("mp4-bytes");
+    fetchMock.mockResolvedValueOnce(mockVideoResponse("video/mp4", bytes));
+
+    // Default path is cwd-relative; run in a temp cwd so the real stream/rename
+    // don't touch the repo.
+    const dir = await realFs.mkdtemp(join(tmpdir(), "box-sdk-test-"));
+    const cwd = process.cwd();
+    process.chdir(dir);
+    renameMock.mockImplementation((from: string, to: string) => realFs.rename(from, to));
+    try {
+      const dest = await box.browser.recordings.download("recording-1");
+
+      expect(dest).toBe("./box-recording-recording-1.mp4");
+      expect(await realFs.readFile(join(dir, "box-recording-recording-1.mp4"), "utf8")).toBe(
+        "mp4-bytes",
+      );
+    } finally {
+      process.chdir(cwd);
+      await realFs.rm(dir, { recursive: true, force: true });
+    }
+    expect(fetchMock.mock.calls[1]?.[0]).toContain(
+      "/v2/box/box-123/browser/recordings/recording-1/download",
+    );
+  });
+
+  it("downloads a legacy recording as raw MPEG-TS", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const bytes = new TextEncoder().encode("ts-bytes");
+    fetchMock.mockResolvedValueOnce(mockVideoResponse("video/mp2t", bytes));
+
+    const dir = await realFs.mkdtemp(join(tmpdir(), "box-sdk-test-"));
+    const cwd = process.cwd();
+    process.chdir(dir);
+    renameMock.mockImplementation((from: string, to: string) => realFs.rename(from, to));
+    try {
+      const dest = await box.browser.recordings.download("recording-1");
+
+      expect(dest).toBe("./box-recording-recording-1.ts");
+      expect(await realFs.readFile(join(dir, "box-recording-recording-1.ts"), "utf8")).toBe(
+        "ts-bytes",
+      );
+    } finally {
+      process.chdir(cwd);
+      await realFs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a download whose content type is neither MP4 nor MPEG-TS", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockVideoResponse("text/html", new TextEncoder().encode("<html>nope</html>")),
+    );
+
+    await expect(box.browser.recordings.download("recording-1")).rejects.toThrow(
+      "Unexpected recording content type: text/html",
+    );
+    // Rejected before any file is opened.
+    expect(renameMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when the response body is not streamable", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce({
+      ...mockResponse({}),
+      headers: new Headers({ "content-type": "video/mp4" }),
+      body: null,
+    } as Response);
+
+    await expect(box.browser.recordings.download("recording-1")).rejects.toThrow(
+      "Streaming not supported",
+    );
+  });
+
+  it("surfaces the backend error body when a download request fails", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ error: "recording is not ready for download" }, 409),
+    );
+
+    await expect(box.browser.recordings.download("recording-1")).rejects.toThrow(
+      "recording is not ready for download",
+    );
+  });
+
+  it("downloads a recording to an explicit path, creating parent directories", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const bytes = new TextEncoder().encode("mp4-bytes");
+    fetchMock.mockResolvedValueOnce(mockVideoResponse("video/mp4", bytes));
+
+    const dir = await realFs.mkdtemp(join(tmpdir(), "box-sdk-test-"));
+    const dest = join(dir, "recordings", "nested", "demo.mp4");
+    mkdirMock.mockImplementation((p: string, opts: object) => realFs.mkdir(p, opts));
+    renameMock.mockImplementation((from: string, to: string) => realFs.rename(from, to));
+
+    const saved = await box.browser.recordings.download("recording-1", { path: dest });
+
+    expect(saved).toBe(dest);
+    expect(mkdirMock).toHaveBeenCalledWith(join(dir, "recordings", "nested"), { recursive: true });
+    expect(await realFs.readFile(dest, "utf8")).toBe("mp4-bytes");
+    await realFs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("streams a download body to disk and tolerates content-type parameters", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const dir = await realFs.mkdtemp(join(tmpdir(), "box-sdk-test-"));
+    const dest = join(dir, "streamed.mp4");
+    const bytes = new TextEncoder().encode("streamed-mp4-bytes");
+    fetchMock.mockResolvedValueOnce({
+      ...mockResponse({}),
+      headers: new Headers({ "content-type": "Video/MP4; some=param" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      }),
+    } as unknown as Response);
+
+    // The temp file is a real sibling of dest; move it onto dest as the code does.
+    renameMock.mockImplementationOnce((from: string, to: string) => realFs.rename(from, to));
+
+    const saved = await box.browser.recordings.download("recording-1", { path: dest });
+
+    expect(saved).toBe(dest);
+    expect(await realFs.readFile(dest, "utf8")).toBe("streamed-mp4-bytes");
+    // Streamed, not buffered: the whole-body fallback never fired for this file.
+    expect(writeFileMock).not.toHaveBeenCalledWith(dest, expect.anything());
+    // Renamed from a sibling temp file, never written to dest directly.
+    expect(renameMock.mock.calls[0]?.[0]).toMatch(/\.tmp$/);
+    expect(renameMock.mock.calls[0]?.[1]).toBe(dest);
+    await realFs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("removes only the temp file, preserving an existing dest, when a stream fails", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const dir = await realFs.mkdtemp(join(tmpdir(), "box-sdk-test-"));
+    const dest = join(dir, "partial.mp4");
+    // A prior good download exists at dest; a failed download must not destroy it.
+    await realFs.writeFile(dest, "existing-recording");
+    fetchMock.mockResolvedValueOnce({
+      ...mockResponse({}),
+      headers: new Headers({ "content-type": "video/mp4" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("partial"));
+          controller.error(new Error("connection reset"));
+        },
+      }),
+    } as unknown as Response);
+
+    await expect(box.browser.recordings.download("recording-1", { path: dest })).rejects.toThrow(
+      "Failed to save recording recording-1",
+    );
+    // Only the sibling temp file is unlinked; dest itself is never touched.
+    expect(unlinkMock.mock.calls[0]?.[0]).toMatch(/\.tmp$/);
+    expect(unlinkMock).not.toHaveBeenCalledWith(dest);
+    expect(await realFs.readFile(dest, "utf8")).toBe("existing-recording");
+    await realFs.rm(dir, { recursive: true, force: true });
   });
 
   it("does not stop a newer recording from a stale handle", async () => {

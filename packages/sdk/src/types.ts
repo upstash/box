@@ -1240,6 +1240,8 @@ export interface BrowserRecording {
   durationMs?: number;
   sizeBytes?: number;
   segmentCount?: number;
+  /** Size of the downloadable MP4 in bytes; absent when the download falls back to MPEG-TS. */
+  mp4SizeBytes?: number;
   /** Why the recording ended: "requested" | "max_duration" | "idle" | "browser_disconnected" | "lost". */
   stoppedReason?: string;
   maxDurationSeconds?: number;

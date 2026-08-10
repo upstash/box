@@ -4,6 +4,12 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- `browser.recordings.download(recording_id, path=...)` — save a recording's
+  video to a local file (streamed to disk, parent directories created as
+  needed) and return the path written. Recordings download as MP4; recordings
+  captured before MP4 support (or whose remux failed) download as raw MPEG-TS
+  with a `.ts` extension. Adds `mp4_size_bytes` to `BrowserRecording`.
+  Mirrors `recordings.download` in `@upstash/box`.
 - Add Claude Opus 5 model constants for Claude Code, OpenRouter, Vercel AI
   Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
 - `schedule.update(id, ...)` — partial schedule updates (PATCH). Omitted
