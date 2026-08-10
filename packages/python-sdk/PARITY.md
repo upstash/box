@@ -42,6 +42,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `browser.tab.create` | `browser.tab.create` |
 | `browser.listTabs` / `browser.getTab` / `browser.cdpUrl` | `browser.list_tabs` / `browser.get_tab` / `browser.cdp_url` |
 | `browser.recordings.start/stop/list/get` | same (snake) |
+| `browser.recordings.download(id, { path? })` | `browser.recordings.download(id, path=...)` |
 
 ## `Tab` (browser)
 
