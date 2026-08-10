@@ -2330,6 +2330,8 @@ export class Box<TProvider = unknown> {
     if (config?.agent) appendAgentConfigToBody(body, config.agent);
     if (config?.runtime) body.runtime = config.runtime;
     if (config?.git?.token) body.github_token = config.git.token;
+    if (config?.git?.userName) body.git_user_name = config.git.userName;
+    if (config?.git?.userEmail) body.git_user_email = config.git.userEmail;
     if (config?.env) body.env_vars = config.env;
     if (config?.attachHeaders) body.attach_headers = config.attachHeaders;
     if (config?.networkPolicy) body.network_policy = serializeNetworkPolicy(config.networkPolicy);
@@ -2741,6 +2743,7 @@ export class Box<TProvider = unknown> {
       body: {
         repo: options.repo,
         branch: options.branch,
+        depth: options.depth,
         github_token: this._gitToken,
         ...(folder ? { folder } : {}),
       },
