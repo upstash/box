@@ -440,9 +440,7 @@ async def test_recording_download_mp4(tmp_path):
 
 
 @respx.mock
-async def test_recording_download_default_extension_follows_content_type(
-    tmp_path, monkeypatch
-):
+async def test_recording_download_default_extension_follows_content_type(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     box = await make_async_box(respx.mock)
     respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
@@ -480,15 +478,11 @@ async def test_recording_download_rejects_unexpected_content_type(tmp_path):
 async def test_recording_download_surfaces_backend_error(tmp_path):
     box = await make_async_box(respx.mock)
     respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
-        return_value=httpx.Response(
-            409, json={"error": "recording is not ready for download"}
-        )
+        return_value=httpx.Response(409, json={"error": "recording is not ready for download"})
     )
 
     with pytest.raises(BoxError, match="recording is not ready for download"):
-        await box.browser.recordings.download(
-            "recording-1", path=str(tmp_path / "demo.mp4")
-        )
+        await box.browser.recordings.download("recording-1", path=str(tmp_path / "demo.mp4"))
     await box.aclose()
 
 
@@ -529,9 +523,7 @@ async def test_recording_download_wraps_transport_timeout(tmp_path):
     )
 
     with pytest.raises(BoxError, match="Request timeout"):
-        await box.browser.recordings.download(
-            "recording-1", path=str(tmp_path / "demo.mp4")
-        )
+        await box.browser.recordings.download("recording-1", path=str(tmp_path / "demo.mp4"))
     await box.aclose()
 
 
