@@ -18,6 +18,17 @@ async def test_clone_includes_git_token():
     assert body["repo"] == "https://github.com/u/r"
     assert body["branch"] == "main"
     assert body["github_token"] == "ght"
+    assert "depth" not in body
+    await box.aclose()
+
+
+@respx.mock
+async def test_clone_with_depth():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/git/clone").mock(return_value=httpx.Response(200, json={}))
+    await box.git.clone(repo="https://github.com/u/r", depth=1)
+    body = last_json_body(route)
+    assert body["depth"] == 1
     await box.aclose()
 
 

@@ -84,7 +84,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          standalone: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -110,10 +110,10 @@ jobs:
         if: needs.load.outputs.prerelease == 'true'
         run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --tag canary --no-git-checks --access public
         env:
-          NPM_CONFIG_PROVENANCE: "true"
+          PNPM_CONFIG_PROVENANCE: "true"
 
       - name: Publish (stable)
         if: needs.load.outputs.prerelease != 'true'
         run: pnpm --filter "${{ steps.parse.outputs.package }}" publish --no-git-checks --access public
         env:
-          NPM_CONFIG_PROVENANCE: "true"
+          PNPM_CONFIG_PROVENANCE: "true"

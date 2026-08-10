@@ -902,6 +902,8 @@ export interface FileEntry {
 export interface GitCloneOptions {
   repo: string;
   branch?: string;
+  /** History depth (git clone --depth N); depth: 1 = shallow clone. Omit for a full clone. */
+  depth?: number;
 }
 
 export interface GitExecOptions {

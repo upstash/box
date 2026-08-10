@@ -176,6 +176,7 @@ await box.files.download(folder="output/")
 
 ```python
 await box.git.clone(repo="https://github.com/user/repo", branch="main")
+await box.git.clone(repo="https://github.com/user/repo", depth=1)  # shallow clone
 diff = await box.git.diff()
 await box.git.commit(message="feat: add feature")
 await box.git.push(branch="main")

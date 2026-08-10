@@ -10,6 +10,9 @@ All notable changes to `upstash-box` (Python) are documented here.
   captured before MP4 support (or whose remux failed) download as raw MPEG-TS
   with a `.ts` extension. Adds `mp4_size_bytes` to `BrowserRecording`.
   Mirrors `recordings.download` in `@upstash/box`.
+- `git.clone(depth=...)` — shallow clone support (`git clone --depth N`).
+  `depth=1` fetches only the latest commit; omitting it keeps the current
+  full-clone behavior. Mirrors `depth` in `@upstash/box` `git.clone`.
 - Add Claude Opus 5 model constants for Claude Code, OpenRouter, Vercel AI
   Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
 - `schedule.update(id, ...)` — partial schedule updates (PATCH). Omitted

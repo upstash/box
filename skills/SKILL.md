@@ -151,6 +151,8 @@ await box.cd("/workspace/home/other") // absolute path
 
 ```ts
 await box.git.clone({ repo: "github.com/org/repo", branch: "main" })
+// large repo? depth: 1 fetches only the latest commit
+await box.git.clone({ repo: "github.com/org/repo", depth: 1 })
 await box.cd("repo") // cd into cloned repo
 
 const status = await box.git.status()

@@ -128,6 +128,21 @@ describe("Box.fromSnapshot", () => {
     expect(body.github_token).toBe("gh-tok");
   });
 
+  it("sends git identity in body", async () => {
+    const data = { ...TEST_BOX_DATA, status: "running" };
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
+
+    await Box.fromSnapshot("snap-1", {
+      ...TEST_CONFIG,
+      git: { userName: "my-bot[bot]", userEmail: "bot@example.com" },
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.git_user_name).toBe("my-bot[bot]");
+    expect(body.git_user_email).toBe("bot@example.com");
+    expect(body.github_token).toBeUndefined();
+  });
+
   it("sends env_vars in body", async () => {
     const data = { ...TEST_BOX_DATA, status: "running" };
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse(data));
