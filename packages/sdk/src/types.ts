@@ -1146,6 +1146,9 @@ export interface BrowserObserveElement {
   /** A selector for the element (Stagehand-resolved), when available. */
   selector?: string;
   url?: string;
+  /** Suggested method and args, for replay via `act(action)`. */
+  method?: string;
+  arguments?: string[];
 }
 
 /** Result of `box.browser.observe()`. */
@@ -1160,6 +1163,9 @@ export interface BrowserActAction {
   method?: string;
   arguments?: string[];
 }
+
+/** A pre-resolved action from `observe()`, passable to `act()` for a no-LLM replay. */
+export type BrowserAction = BrowserObserveElement | BrowserActAction;
 
 /** Result of one natural-language `tab.act()` call. */
 export interface BrowserActResult {

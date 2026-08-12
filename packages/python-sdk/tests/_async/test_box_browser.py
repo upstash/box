@@ -260,6 +260,45 @@ async def test_act_executes_one_action():
     await box.aclose()
 
 
+@respx.mock
+async def test_act_replays_pre_resolved_action():
+    from upstash_box import BrowserActAction
+
+    box = await make_async_box(respx.mock)
+    act = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "message": "done",
+                "action_description": "Sign in",
+                "actions": [],
+                "input_tokens": 0,
+                "output_tokens": 0,
+            },
+        )
+    )
+
+    action = BrowserActAction(
+        selector="xpath=/html/body/button", description="Sign in", method="click", arguments=[]
+    )
+    result = await box.browser.get_tab("tab-2").act(action)
+
+    assert result.success is True
+    assert result.input_tokens == 0
+    # Posts a pre-resolved action, never an instruction.
+    assert last_json_body(act) == {
+        "action": {
+            "selector": "xpath=/html/body/button",
+            "description": "Sign in",
+            "method": "click",
+            "arguments": [],
+        },
+        "tab": "tab-2",
+    }
+    await box.aclose()
+
+
 class Person(BaseModel):
     name: str
     headline: str

@@ -783,6 +783,9 @@ class BrowserObserveElement(_Model):
     # A selector for the element (Stagehand-resolved), when available.
     selector: Optional[str] = None
     url: Optional[str] = None
+    # Suggested method and args, for replay via ``tab.act(element)``.
+    method: Optional[str] = None
+    arguments: Optional[List[str]] = None
 
 
 class BrowserObserveResult(_Model):

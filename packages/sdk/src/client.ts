@@ -55,6 +55,7 @@ import {
   type BrowserTabCreateOptions,
   type BrowserObserveResult,
   type BrowserActResult,
+  type BrowserAction,
   type BrowserRunOptions,
   type BrowserRunResult,
   type BrowserRunStep,
@@ -512,7 +513,21 @@ export class Tab {
   }
 
   /** Resolve and execute one natural-language action on this tab (metered). */
-  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult> {
+  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult>;
+  /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
+  async act(action: BrowserAction): Promise<BrowserActResult>;
+  async act(
+    instructionOrAction: string | BrowserAction,
+    options?: BrowserExtractOptions,
+  ): Promise<BrowserActResult> {
+    const body =
+      typeof instructionOrAction === "string"
+        ? {
+            instruction: instructionOrAction,
+            tab: this.id,
+            ...(options?.model ? { model: options.model } : {}),
+          }
+        : { action: instructionOrAction, tab: this.id };
     const resp = await this.box._request<{
       success?: boolean;
       message?: string;
@@ -522,7 +537,7 @@ export class Tab {
       input_tokens?: number;
       output_tokens?: number;
     }>("POST", `/v2/box/${this.box.id}/browser/act`, {
-      body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+      body,
       timeout: 180000,
     });
     return {

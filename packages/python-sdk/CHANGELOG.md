@@ -4,6 +4,11 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- `tab.act(action)` — replay a pre-resolved action from `observe()`
+  deterministically, with no LLM call, no tokens, and no model provider key
+  required (pass a `BrowserObserveElement` or `BrowserActAction` instead of a
+  string; `model` is ignored in that form). `BrowserObserveElement` now also
+  carries `method` and `arguments`. Mirrors `act(action)` in `@upstash/box`.
 - `git.clone(depth=...)` — shallow clone support (`git clone --depth N`).
   `depth=1` fetches only the latest commit; omitting it keeps the current
   full-clone behavior. Mirrors `depth` in `@upstash/box` `git.clone`.

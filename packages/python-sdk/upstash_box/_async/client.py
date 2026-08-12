@@ -42,8 +42,10 @@ from ..types import (
     BoxData,
     BoxGetOptions,
     BoxRunData,
+    BrowserActAction,
     BrowserActResult,
     BrowserContent,
+    BrowserObserveElement,
     BrowserObserveResult,
     BrowserRecording,
     BrowserRunResult,
@@ -589,11 +591,23 @@ class AsyncTab:
         )
         return BrowserObserveResult.model_validate({"elements": resp.get("elements") or []})
 
-    async def act(self, instruction: str, *, model: Optional[str] = None) -> BrowserActResult:
-        """Resolve and execute one natural-language action on this tab (metered)."""
-        body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
-        if model:
-            body["model"] = model
+    async def act(
+        self,
+        instruction: Union[str, BrowserObserveElement, BrowserActAction],
+        *,
+        model: Optional[str] = None,
+    ) -> BrowserActResult:
+        """Resolve and execute one action on this tab.
+
+        Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
+        action to replay it with no LLM call and no key (``model`` ignored).
+        """
+        if isinstance(instruction, str):
+            body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+            if model:
+                body["model"] = model
+        else:
+            body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
         resp = await self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",

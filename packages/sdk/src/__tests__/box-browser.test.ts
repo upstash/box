@@ -162,6 +162,46 @@ describe("Box browser operations", () => {
     });
   });
 
+  it("replays a pre-resolved action deterministically (posts action, not instruction)", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock
+      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://example.com/login" }))
+      .mockResolvedValueOnce(
+        mockResponse({
+          success: true,
+          message: "done",
+          action_description: "Sign in",
+          actions: [
+            {
+              selector: "xpath=/html/body/button",
+              description: "Sign in",
+              method: "click",
+              arguments: [],
+            },
+          ],
+          input_tokens: 0,
+          output_tokens: 0,
+        }),
+      );
+
+    const tab = await box.browser.tab.create("https://example.com/login");
+    const action = {
+      selector: "xpath=/html/body/button",
+      description: "Sign in",
+      method: "click",
+      arguments: [],
+    };
+    const result = await tab.act(action);
+
+    expect(result.success).toBe(true);
+    expect(result.inputTokens).toBe(0);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/act");
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
+      action,
+      tab: "tab-2",
+    });
+  });
+
   it("runs a multi-step task with schema-validated structured output", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock
@@ -384,14 +424,27 @@ describe("Box browser operations", () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(
       mockResponse({
-        elements: [{ description: "Sign in button", selector: "xpath=/html/body/button" }],
+        elements: [
+          {
+            description: "Sign in button",
+            selector: "xpath=/html/body/button",
+            method: "click",
+            arguments: [],
+          },
+        ],
       }),
     );
 
     const result = await box.browser.getTab("tab-1").observe("the sign in button");
 
+    // method/arguments pass through so the element can be replayed via act(action).
     expect(result.elements).toEqual([
-      { description: "Sign in button", selector: "xpath=/html/body/button" },
+      {
+        description: "Sign in button",
+        selector: "xpath=/html/body/button",
+        method: "click",
+        arguments: [],
+      },
     ]);
     expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
       instruction: "the sign in button",
