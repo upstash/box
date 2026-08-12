@@ -202,6 +202,17 @@ describe("Box browser operations", () => {
     });
   });
 
+  it("rejects an action with no selector before any request", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ id: "tab-2", url: "https://example.com/login" }),
+    );
+    const tab = await box.browser.tab.create("https://example.com/login");
+    await expect(tab.act({ description: "unresolved element" })).rejects.toThrow(
+      "requires a selector",
+    );
+  });
+
   it("runs a multi-step task with schema-validated structured output", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock

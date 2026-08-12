@@ -261,6 +261,16 @@ async def test_act_executes_one_action():
 
 
 @respx.mock
+async def test_act_rejects_action_without_selector():
+    from upstash_box import BrowserObserveElement
+
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError):
+        await box.browser.get_tab("tab-2").act(BrowserObserveElement(description="unresolved"))
+    await box.aclose()
+
+
+@respx.mock
 async def test_act_replays_pre_resolved_action():
     from upstash_box import BrowserActAction
 

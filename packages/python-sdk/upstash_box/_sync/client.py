@@ -600,6 +600,8 @@ class Tab:
             if model:
                 body["model"] = model
         else:
+            if not instruction.selector:
+                raise BoxError("act(action) requires a selector; observe() did not resolve one")
             body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
         resp = self._box._request(
             "POST",

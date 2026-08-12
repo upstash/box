@@ -520,6 +520,9 @@ export class Tab {
     instructionOrAction: string | BrowserAction,
     options?: BrowserExtractOptions,
   ): Promise<BrowserActResult> {
+    if (typeof instructionOrAction !== "string" && !instructionOrAction.selector) {
+      throw new BoxError("act(action) requires a selector; observe() did not resolve one");
+    }
     const body =
       typeof instructionOrAction === "string"
         ? {
