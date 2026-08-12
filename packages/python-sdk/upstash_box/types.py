@@ -871,6 +871,8 @@ class BrowserRecording(_Model):
     duration_ms: Optional[int] = None
     size_bytes: Optional[int] = None
     segment_count: Optional[int] = None
+    # Size of the downloadable MP4 in bytes; absent when the download falls back to MPEG-TS.
+    mp4_size_bytes: Optional[int] = None
     # Why the recording ended: "requested" | "max_duration" | "idle" |
     # "browser_disconnected" | "lost".
     stopped_reason: Optional[str] = None

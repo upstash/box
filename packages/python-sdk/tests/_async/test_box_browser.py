@@ -4,6 +4,7 @@ Mirrors packages/sdk/src/__tests__/box-browser.test.ts.
 """
 
 import base64
+import os
 
 import httpx
 import pytest
@@ -451,6 +452,117 @@ async def test_recording_start_stop_and_mapping():
     )
     assert last_json_body(start) == {"max_duration_seconds": 60}
     assert stop.called
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_mp4(tmp_path):
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        return_value=httpx.Response(
+            # Content-type parameters must not defeat the MP4 detection.
+            200,
+            content=b"mp4-bytes",
+            headers={"content-type": "video/mp4; some=param"},
+        )
+    )
+
+    # Parent directories are created as needed.
+    dest = await box.browser.recordings.download(
+        "recording-1", path=str(tmp_path / "recordings" / "nested" / "demo.mp4")
+    )
+
+    assert dest == str(tmp_path / "recordings" / "nested" / "demo.mp4")
+    with open(dest, "rb") as fh:
+        assert fh.read() == b"mp4-bytes"
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_default_extension_follows_content_type(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        return_value=httpx.Response(
+            200, content=b"ts-bytes", headers={"content-type": "video/mp2t"}
+        )
+    )
+
+    # Legacy recordings without an MP4 remux stream raw MPEG-TS.
+    dest = await box.browser.recordings.download("recording-1")
+
+    assert dest == "./box-recording-recording-1.ts"
+    with open(dest, "rb") as fh:
+        assert fh.read() == b"ts-bytes"
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_rejects_unexpected_content_type(tmp_path):
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        return_value=httpx.Response(
+            200, content=b"<html>nope</html>", headers={"content-type": "text/html"}
+        )
+    )
+
+    dest = str(tmp_path / "demo.mp4")
+    with pytest.raises(BoxError, match="Unexpected recording content type: text/html"):
+        await box.browser.recordings.download("recording-1", path=dest)
+    assert not os.path.exists(dest)
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_surfaces_backend_error(tmp_path):
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        return_value=httpx.Response(409, json={"error": "recording is not ready for download"})
+    )
+
+    with pytest.raises(BoxError, match="recording is not ready for download"):
+        await box.browser.recordings.download("recording-1", path=str(tmp_path / "demo.mp4"))
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_preserves_existing_file_on_failure(tmp_path):
+    box = await make_async_box(respx.mock)
+    dest = tmp_path / "demo.mp4"
+    dest.write_bytes(b"existing-recording")
+
+    # Headers arrive, then the body aborts mid-stream after a partial chunk.
+    async def _partial_then_error():
+        yield b"partial"
+        raise httpx.ReadError("connection reset")
+
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        return_value=httpx.Response(
+            200,
+            headers={"content-type": "video/mp4"},
+            content=_partial_then_error(),
+        )
+    )
+
+    # Interrupted streams surface as BoxError, like _request().
+    with pytest.raises(BoxError, match="connection reset"):
+        await box.browser.recordings.download("recording-1", path=str(dest))
+
+    # The existing file at dest must survive intact, and no temp file is left behind.
+    assert dest.read_bytes() == b"existing-recording"
+    assert [p.name for p in tmp_path.iterdir()] == ["demo.mp4"]
+    await box.aclose()
+
+
+@respx.mock
+async def test_recording_download_wraps_transport_timeout(tmp_path):
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/browser/recordings/recording-1/download").mock(
+        side_effect=httpx.ConnectTimeout("timed out")
+    )
+
+    with pytest.raises(BoxError, match="Request timeout"):
+        await box.browser.recordings.download("recording-1", path=str(tmp_path / "demo.mp4"))
     await box.aclose()
 
 
