@@ -253,63 +253,6 @@ describe("Box browser operations", () => {
     );
   });
 
-  it("runs a multi-step task with schema-validated structured output", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock
-      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://linkedin.com" }))
-      .mockResolvedValueOnce(
-        mockResponse({
-          result: "Found five people",
-          data: {
-            people: Array.from({ length: 5 }, (_, index) => ({
-              name: `Founder ${index + 1}`,
-              headline: "AI founder in Berlin",
-              profileUrl: `https://linkedin.com/in/founder-${index + 1}`,
-            })),
-          },
-          completed: true,
-          steps: [{ step: 1, action: "search", url: "https://linkedin.com/search" }],
-          step_count: 1,
-          input_tokens: 100,
-          output_tokens: 25,
-        }),
-      );
-
-    const tab = await box.browser.tab.create("https://linkedin.com");
-    const result = await tab.run("Find five AI founders in Berlin", {
-      schema: z.object({
-        people: z
-          .array(
-            z.object({
-              name: z.string(),
-              headline: z.string(),
-              profileUrl: z.string(),
-            }),
-          )
-          .length(5),
-      }),
-      maxSteps: 25,
-    });
-
-    const typedPeople: Array<{ name: string; headline: string; profileUrl: string }> =
-      result.data.people;
-    expect(typedPeople).toHaveLength(5);
-    expect(result.completed).toBe(true);
-
-    const body = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
-    expect(body).toMatchObject({
-      prompt: "Find five AI founders in Berlin",
-      tab: "tab-2",
-      max_steps: 25,
-      schema: {
-        type: "object",
-        properties: {
-          people: { type: "array", minItems: 5, maxItems: 5 },
-        },
-      },
-    });
-  });
-
   it("starts and stops a recording and maps its playback metadata", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock
@@ -665,34 +608,6 @@ describe("Box browser operations", () => {
     });
   });
 
-  it("runs without a schema and supports the deprecated options form", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock
-      .mockResolvedValueOnce(
-        mockResponse({ result: "done", completed: true, steps: [], step_count: 3 }),
-      )
-      .mockResolvedValueOnce(
-        mockResponse({ result: "done again", completed: false, steps: [], step_count: 15 }),
-      );
-
-    const tab = box.browser.getTab("tab-1");
-    const plain = await tab.run("Do the thing");
-    const deprecated = await tab.run({ prompt: "Do the thing again", maxSteps: 20 });
-
-    expect(plain.data).toBeUndefined();
-    expect(plain.completed).toBe(true);
-    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
-      prompt: "Do the thing",
-      tab: "tab-1",
-    });
-    expect(deprecated.result).toBe("done again");
-    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
-      prompt: "Do the thing again",
-      tab: "tab-1",
-      max_steps: 20,
-    });
-  });
-
   it("sends timeout: 0 through to disable the navigation deadline", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(mockResponse({ id: "tab-1", url: "about:blank" }));
@@ -705,16 +620,13 @@ describe("Box browser operations", () => {
     });
   });
 
-  it("rejects non-Zod schemas for extract and run", async () => {
+  it("rejects non-Zod schemas for extract", async () => {
     const { box } = await createTestBox();
     const tab = box.browser.getTab("tab-1");
     const fake = { parse: (d: unknown) => d };
 
     await expect(tab.extract("get data", fake)).rejects.toThrow(
       "extract requires a Zod object schema",
-    );
-    await expect(tab.run("go", { schema: fake })).rejects.toThrow(
-      "run requires a Zod object schema",
     );
   });
 

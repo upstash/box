@@ -51,7 +51,6 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `goto`, `content`, `observe`, `act`, `close` | same |
 | `screenshot({type, fullPage})` | `screenshot(encoding=, full_page=)` — see drift table |
 | `extract(instruction, schema, options?)` | `extract(instruction, schema, *, model=None)` |
-| `run(prompt, options?)` | `run(prompt, *, schema=None, max_steps=None, model=None)` |
 | `liveViewUrl` | `live_view_url` |
 | `id`, `url`, `title` | `id`, `url`, `title` |
 
@@ -94,7 +93,6 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | timeouts in **milliseconds** | Matches the JS SDK units. |
 | agent `options` keys are **snake_case** (Python) vs camelCase (JS) | Pythonic public API; the SDK converts to the backend's per-harness casing (Claude Code / OpenCode → camelCase, Codex → snake_case). |
 | `StreamRun.aclose()` needed for `detached` on early break | Python doesn't run generator `finally` on `break` (JS `for await` does). |
-| `BrowserRunOptions.prompt` (JS, deprecated) | Legacy `run({prompt})` overload — not ported; Python takes the prompt as the first argument only. |
 | Browser `schema` = Pydantic model or raw dict (Python) vs Zod (JS) | Same `ResponseSchema` contract as `agent.run`; raw dicts skip client-side validation. |
 | `screenshot` `type: "png"\|"base64"` (JS) → `encoding: "bytes"\|"base64"` (Python) | Python returns native `bytes`; `encoding` matches `files.read` naming. |
 | `browser` on `from_snapshot` (Python) | Python's shared create-body builder forwards `browser=True` on `from_snapshot`; JS `fromSnapshot` currently omits it (JS gap). |

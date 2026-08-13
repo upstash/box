@@ -48,7 +48,6 @@ from ..types import (
     BrowserObserveElement,
     BrowserObserveResult,
     BrowserRecording,
-    BrowserRunResult,
     Chunk,
     CodeLanguage,
     CustomHarnessConfig,
@@ -617,43 +616,6 @@ class AsyncTab:
             timeout=180000,
         )
         return BrowserActResult.model_validate(resp)
-
-    async def run(
-        self,
-        prompt: str,
-        *,
-        schema: Optional[ResponseSchema] = None,
-        max_steps: Optional[int] = None,
-        model: Optional[str] = None,
-    ) -> BrowserRunResult:
-        """Autonomously complete a multi-step task on this tab (metered).
-
-        Runs a DOM-aware browser agent (Stagehand) inside the box: it reads the
-        page, acts, and repeats until done. ``max_steps`` defaults to 15
-        (max 30). Needs a key for the model's provider on the box or account.
-        """
-        json_schema = common.to_json_schema(schema) if schema is not None else None
-        if schema is not None and json_schema is None:
-            raise BoxError("run requires a pydantic model class or a JSON-schema dict")
-        body: Dict[str, Any] = {"prompt": prompt, "tab": self.id}
-        if json_schema is not None:
-            body["schema"] = json_schema
-        if max_steps:
-            body["max_steps"] = max_steps
-        if model:
-            body["model"] = model
-        resp = await self._box._request(
-            "POST",
-            f"/v2/box/{self._box.id}/browser/run",
-            body=body,
-            timeout=600000,
-        )
-        data = (
-            common.validate_structured_data(schema, resp.get("data"))
-            if schema is not None
-            else None
-        )
-        return BrowserRunResult.model_validate({**resp, "data": data})
 
     async def live_view_url(self) -> str:
         """Live-view URL for this tab (authenticated via a token in the URL).

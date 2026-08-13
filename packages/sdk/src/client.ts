@@ -56,9 +56,6 @@ import {
   type BrowserObserveResult,
   type BrowserActResult,
   type BrowserAction,
-  type BrowserRunOptions,
-  type BrowserRunResult,
-  type BrowserRunStep,
   type BrowserRecording,
   type BrowserRecordingHandle,
   type BrowserRecordingMarker,
@@ -549,56 +546,6 @@ export class Tab {
       actionDescription: resp.action_description ?? "",
       actions: resp.actions ?? [],
       cacheStatus: resp.cache_status,
-      inputTokens: resp.input_tokens ?? 0,
-      outputTokens: resp.output_tokens ?? 0,
-    };
-  }
-
-  /**
-   * Autonomously complete a multi-step task on this tab. Runs a DOM-aware
-   * browser agent (Stagehand) inside the box: it reads the page, acts, and
-   * repeats until done. Metered — needs a key for the model's provider on the
-   * box or account (Anthropic, OpenAI, OpenRouter, Vercel, or OpenCode).
-   */
-  async run<T>(
-    prompt: string,
-    options: BrowserRunOptions<T> & { schema: BrowserExtractSchema<T> },
-  ): Promise<BrowserRunResult<T>>;
-  async run(prompt: string, options?: BrowserRunOptions): Promise<BrowserRunResult>;
-  /** @deprecated Pass the prompt as the first argument. */
-  async run(options: BrowserRunOptions & { prompt: string }): Promise<BrowserRunResult>;
-  async run<T>(
-    promptOrOptions: string | (BrowserRunOptions<T> & { prompt: string }),
-    runOptions: BrowserRunOptions<T> = {},
-  ): Promise<BrowserRunResult<T | undefined>> {
-    const prompt = typeof promptOrOptions === "string" ? promptOrOptions : promptOrOptions.prompt;
-    const options = typeof promptOrOptions === "string" ? runOptions : promptOrOptions;
-    const jsonSchema = options.schema ? toJsonSchema(options.schema) : undefined;
-    if (options.schema && !jsonSchema) throw new BoxError("run requires a Zod object schema");
-    const resp = await this.box._request<{
-      result?: string;
-      data?: unknown;
-      completed?: boolean;
-      steps?: BrowserRunStep[];
-      step_count?: number;
-      input_tokens?: number;
-      output_tokens?: number;
-    }>("POST", `/v2/box/${this.box.id}/browser/run`, {
-      body: {
-        prompt,
-        tab: this.id,
-        ...(jsonSchema ? { schema: jsonSchema } : {}),
-        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
-        ...(options.model ? { model: options.model } : {}),
-      },
-      timeout: 600000,
-    });
-    return {
-      data: options.schema ? options.schema.parse(resp.data) : undefined,
-      result: resp.result ?? "",
-      completed: Boolean(resp.completed),
-      steps: resp.steps ?? [],
-      stepCount: resp.step_count ?? 0,
       inputTokens: resp.input_tokens ?? 0,
       outputTokens: resp.output_tokens ?? 0,
     };

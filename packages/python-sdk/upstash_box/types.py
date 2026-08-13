@@ -815,43 +815,16 @@ class BrowserActResult(_Model):
     output_tokens: int = 0
 
 
-class BrowserRunStep(_Model):
-    """One turn of a ``tab.run()`` loop."""
-
-    step: int
-    action: Optional[str] = None
-    reasoning: Optional[str] = None
-    url: Optional[str] = None
-
-
-class BrowserRunResult(_Model):
-    """Result of ``tab.run()`` — the agent's outcome after the loop.
-
-    ``data`` holds the structured output: an instance of the schema when a
-    pydantic model class was supplied, the raw value for a dict schema, or
-    ``None`` when no schema was given.
-    """
-
-    data: Any = None
-    result: str = ""
-    # Whether the agent reported the task complete (vs. hit max_steps).
-    completed: bool = False
-    steps: List[BrowserRunStep] = []
-    step_count: int = 0
-    input_tokens: int = 0
-    output_tokens: int = 0
-
-
 class BrowserRecordingMarker(_Model):
     """A labeled point (or span) on a recording's timeline."""
 
-    # "tab_switch" (recorder-observed) or "run" (a ``tab.run`` chapter).
-    type: Literal["tab_switch", "run"] = "tab_switch"
+    # "tab_switch" (recorder-observed).
+    type: Literal["tab_switch"] = "tab_switch"
     # Offset from the start of the recording, in milliseconds.
     at_ms: int = 0
-    # For spans (runs): end offset in milliseconds.
+    # End offset in milliseconds, for span markers.
     end_ms: Optional[int] = None
-    # Tab title/URL for switches; the prompt for runs.
+    # Tab title/URL for switches.
     label: Optional[str] = None
     tab_id: Optional[str] = None
 
