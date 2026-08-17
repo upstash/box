@@ -55,9 +55,7 @@ import {
   type BrowserTabCreateOptions,
   type BrowserObserveResult,
   type BrowserActResult,
-  type BrowserRunOptions,
-  type BrowserRunResult,
-  type BrowserRunStep,
+  type BrowserAction,
   type BrowserRecording,
   type BrowserRecordingHandle,
   type BrowserRecordingMarker,
@@ -512,7 +510,24 @@ export class Tab {
   }
 
   /** Resolve and execute one natural-language action on this tab (metered). */
-  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult> {
+  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult>;
+  /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
+  async act(action: BrowserAction): Promise<BrowserActResult>;
+  async act(
+    instructionOrAction: string | BrowserAction,
+    options?: BrowserExtractOptions,
+  ): Promise<BrowserActResult> {
+    if (typeof instructionOrAction !== "string" && !instructionOrAction.selector) {
+      throw new BoxError("act(action) requires a selector; observe() did not resolve one");
+    }
+    const body =
+      typeof instructionOrAction === "string"
+        ? {
+            instruction: instructionOrAction,
+            tab: this.id,
+            ...(options?.model ? { model: options.model } : {}),
+          }
+        : { action: instructionOrAction, tab: this.id };
     const resp = await this.box._request<{
       success?: boolean;
       message?: string;
@@ -522,7 +537,7 @@ export class Tab {
       input_tokens?: number;
       output_tokens?: number;
     }>("POST", `/v2/box/${this.box.id}/browser/act`, {
-      body: { instruction, tab: this.id, ...(options?.model ? { model: options.model } : {}) },
+      body,
       timeout: 180000,
     });
     return {
@@ -531,56 +546,6 @@ export class Tab {
       actionDescription: resp.action_description ?? "",
       actions: resp.actions ?? [],
       cacheStatus: resp.cache_status,
-      inputTokens: resp.input_tokens ?? 0,
-      outputTokens: resp.output_tokens ?? 0,
-    };
-  }
-
-  /**
-   * Autonomously complete a multi-step task on this tab. Runs a DOM-aware
-   * browser agent (Stagehand) inside the box: it reads the page, acts, and
-   * repeats until done. Metered — needs a key for the model's provider on the
-   * box or account (Anthropic, OpenAI, OpenRouter, Vercel, or OpenCode).
-   */
-  async run<T>(
-    prompt: string,
-    options: BrowserRunOptions<T> & { schema: BrowserExtractSchema<T> },
-  ): Promise<BrowserRunResult<T>>;
-  async run(prompt: string, options?: BrowserRunOptions): Promise<BrowserRunResult>;
-  /** @deprecated Pass the prompt as the first argument. */
-  async run(options: BrowserRunOptions & { prompt: string }): Promise<BrowserRunResult>;
-  async run<T>(
-    promptOrOptions: string | (BrowserRunOptions<T> & { prompt: string }),
-    runOptions: BrowserRunOptions<T> = {},
-  ): Promise<BrowserRunResult<T | undefined>> {
-    const prompt = typeof promptOrOptions === "string" ? promptOrOptions : promptOrOptions.prompt;
-    const options = typeof promptOrOptions === "string" ? runOptions : promptOrOptions;
-    const jsonSchema = options.schema ? toJsonSchema(options.schema) : undefined;
-    if (options.schema && !jsonSchema) throw new BoxError("run requires a Zod object schema");
-    const resp = await this.box._request<{
-      result?: string;
-      data?: unknown;
-      completed?: boolean;
-      steps?: BrowserRunStep[];
-      step_count?: number;
-      input_tokens?: number;
-      output_tokens?: number;
-    }>("POST", `/v2/box/${this.box.id}/browser/run`, {
-      body: {
-        prompt,
-        tab: this.id,
-        ...(jsonSchema ? { schema: jsonSchema } : {}),
-        ...(options.maxSteps ? { max_steps: options.maxSteps } : {}),
-        ...(options.model ? { model: options.model } : {}),
-      },
-      timeout: 600000,
-    });
-    return {
-      data: options.schema ? options.schema.parse(resp.data) : undefined,
-      result: resp.result ?? "",
-      completed: Boolean(resp.completed),
-      steps: resp.steps ?? [],
-      stepCount: resp.step_count ?? 0,
       inputTokens: resp.input_tokens ?? 0,
       outputTokens: resp.output_tokens ?? 0,
     };

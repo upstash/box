@@ -5,24 +5,15 @@ self-contained: paste it, run it, read the output.
 
 ```bash
 export UPSTASH_BOX_API_KEY=...   # or use: node --env-file=.env <file>
-node agents/01-search-with-fallback.ts
+node retrieval/01-catalog-extraction.ts
 ```
 
 ## Prerequisites
 
 - All examples need `UPSTASH_BOX_API_KEY`.
-- Examples marked **AI** below use metered browser AI (`run`, `act`,
-  `extract`) and need a model provider key configured on the box or account.
+- Examples marked **AI** below use metered browser AI (`act`, `extract`,
+  `observe`) and need a model provider key configured on the box or account.
 - Everything else runs with the Box key alone.
-
-## agents/ — goal-driven browsing with `tab.run()`
-
-| File | AI | What it shows |
-| --- | --- | --- |
-| `01-search-with-fallback.ts` | yes | Constrained search with a fallback category; the agent evaluates, rejects with reasons, and switches on its own |
-| `02-playwright-vs-act-vs-run.ts` | yes | The same task via Playwright, `act`+`extract`, and `run` — pick your autonomy level by token cost |
-| `03-observe-record-audit.ts` | yes | The search again with live view, session recording, decision log, and token accounting |
-| `04-multisite-feed.ts` | yes | One prompt + one schema across three differently structured sites |
 
 ## automation/ — forms, files, and durable sessions
 
@@ -48,7 +39,6 @@ node agents/01-search-with-fallback.ts
 | --- | --- | --- |
 | `01-playwright-migration.ts` | no | An existing Playwright test where only the launch line changes |
 | `02-test-your-own-app.ts` | no | The box hosts the app under test and browses it on its own localhost |
-| `03-ai-smoke-tests.ts` | yes | Agent-driven smoke flow, cross-checked by deterministic DOM assertions, recorded on video |
 | `04-visual-regression.ts` | no | Pixelmatch diffs against baselines stored on the box. Run twice. **Leaves a box** holding baselines (`.box-visual-regression`) |
 
 ## Cleanup

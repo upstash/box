@@ -42,11 +42,12 @@ from ..types import (
     BoxData,
     BoxGetOptions,
     BoxRunData,
+    BrowserActAction,
     BrowserActResult,
     BrowserContent,
+    BrowserObserveElement,
     BrowserObserveResult,
     BrowserRecording,
-    BrowserRunResult,
     Chunk,
     CodeLanguage,
     CustomHarnessConfig,
@@ -589,11 +590,25 @@ class AsyncTab:
         )
         return BrowserObserveResult.model_validate({"elements": resp.get("elements") or []})
 
-    async def act(self, instruction: str, *, model: Optional[str] = None) -> BrowserActResult:
-        """Resolve and execute one natural-language action on this tab (metered)."""
-        body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
-        if model:
-            body["model"] = model
+    async def act(
+        self,
+        instruction: Union[str, BrowserObserveElement, BrowserActAction],
+        *,
+        model: Optional[str] = None,
+    ) -> BrowserActResult:
+        """Resolve and execute one action on this tab.
+
+        Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
+        action to replay it with no LLM call and no key (``model`` ignored).
+        """
+        if isinstance(instruction, str):
+            body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
+            if model:
+                body["model"] = model
+        else:
+            if not instruction.selector:
+                raise BoxError("act(action) requires a selector; observe() did not resolve one")
+            body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
         resp = await self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",
@@ -601,43 +616,6 @@ class AsyncTab:
             timeout=180000,
         )
         return BrowserActResult.model_validate(resp)
-
-    async def run(
-        self,
-        prompt: str,
-        *,
-        schema: Optional[ResponseSchema] = None,
-        max_steps: Optional[int] = None,
-        model: Optional[str] = None,
-    ) -> BrowserRunResult:
-        """Autonomously complete a multi-step task on this tab (metered).
-
-        Runs a DOM-aware browser agent (Stagehand) inside the box: it reads the
-        page, acts, and repeats until done. ``max_steps`` defaults to 15
-        (max 30). Needs a key for the model's provider on the box or account.
-        """
-        json_schema = common.to_json_schema(schema) if schema is not None else None
-        if schema is not None and json_schema is None:
-            raise BoxError("run requires a pydantic model class or a JSON-schema dict")
-        body: Dict[str, Any] = {"prompt": prompt, "tab": self.id}
-        if json_schema is not None:
-            body["schema"] = json_schema
-        if max_steps:
-            body["max_steps"] = max_steps
-        if model:
-            body["model"] = model
-        resp = await self._box._request(
-            "POST",
-            f"/v2/box/{self._box.id}/browser/run",
-            body=body,
-            timeout=600000,
-        )
-        data = (
-            common.validate_structured_data(schema, resp.get("data"))
-            if schema is not None
-            else None
-        )
-        return BrowserRunResult.model_validate({**resp, "data": data})
 
     async def live_view_url(self) -> str:
         """Live-view URL for this tab (authenticated via a token in the URL).

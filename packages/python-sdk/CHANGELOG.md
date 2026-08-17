@@ -4,6 +4,17 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- **Removed** `tab.run()` (the autonomous multi-step browser agent) and the
+  `BrowserRunResult` / `BrowserRunStep` types. Stagehand v4 removed the agent
+  primitive, so the browser exposes `observe` / `act` / `extract` only. For
+  multi-step goals, drive `act` / `observe` from your own loop (replay a
+  resolved step with `act(action)`), or drive Playwright / Puppeteer over CDP.
+  Mirrors `@upstash/box`.
+- `tab.act(action)` — replay a pre-resolved action from `observe()`
+  deterministically, with no LLM call, no tokens, and no model provider key
+  required (pass a `BrowserObserveElement` or `BrowserActAction` instead of a
+  string; `model` is ignored in that form). `BrowserObserveElement` now also
+  carries `method` and `arguments`. Mirrors `act(action)` in `@upstash/box`.
 - `browser.recordings.download(recording_id, path=...)` — save a recording's
   video to a local file (streamed to disk, parent directories created as
   needed) and return the path written. Recordings download as MP4; recordings

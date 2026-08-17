@@ -38,22 +38,6 @@ try {
   const action = await tab.act("click the Files tab");
   console.log("acted:", action.actionDescription);
 
-  // Complete a multi-step task and return schema-validated structured data.
-  const run = await tab.run("Collect five useful repository navigation links from this page", {
-    schema: z.object({
-      links: z
-        .array(
-          z.object({
-            title: z.string(),
-            url: z.string(),
-          }),
-        )
-        .length(5),
-    }),
-    maxSteps: 25,
-  });
-  console.log("run:", run.completed, run.data.links);
-
   // Open a second tab, screenshot it, then list and close tabs.
   const search = await box.browser.tab.create("https://html.duckduckgo.com/html/");
   const shot = await search.screenshot({ fullPage: true });

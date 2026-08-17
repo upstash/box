@@ -261,87 +261,62 @@ async def test_act_executes_one_action():
     await box.aclose()
 
 
-class Person(BaseModel):
-    name: str
-    headline: str
-    profile_url: str
+@respx.mock
+async def test_act_rejects_action_without_selector():
+    from upstash_box import BrowserObserveElement
 
-
-class People(BaseModel):
-    people: list[Person]
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError):
+        await box.browser.get_tab("tab-2").act(BrowserObserveElement(description="unresolved"))
+    await box.aclose()
 
 
 @respx.mock
-async def test_run_with_schema_validated_structured_output():
+async def test_act_replays_pre_resolved_action():
+    from upstash_box import BrowserActAction
+
     box = await make_async_box(respx.mock)
-    run = respx.post(f"{BASE}/browser/run").mock(
+    act = respx.post(f"{BASE}/browser/act").mock(
         return_value=httpx.Response(
             200,
             json={
-                "result": "Found five people",
-                "data": {
-                    "people": [
-                        {
-                            "name": f"Founder {i + 1}",
-                            "headline": "AI founder in Berlin",
-                            "profile_url": f"https://linkedin.com/in/founder-{i + 1}",
-                        }
-                        for i in range(5)
-                    ]
-                },
-                "completed": True,
-                "steps": [{"step": 1, "action": "search", "url": "https://linkedin.com/search"}],
-                "step_count": 1,
-                "input_tokens": 100,
-                "output_tokens": 25,
+                "success": True,
+                "message": "done",
+                "action_description": "Sign in",
+                "actions": [],
+                "input_tokens": 0,
+                "output_tokens": 0,
             },
         )
     )
 
-    result = await box.browser.get_tab("tab-2").run(
-        "Find five AI founders in Berlin", schema=People, max_steps=25
+    action = BrowserActAction(
+        selector="xpath=/html/body/button", description="Sign in", method="click", arguments=[]
     )
+    result = await box.browser.get_tab("tab-2").act(action)
 
-    assert isinstance(result.data, People)
-    assert len(result.data.people) == 5
-    assert result.completed is True
-    assert result.steps[0].action == "search"
-    body = last_json_body(run)
-    assert body["prompt"] == "Find five AI founders in Berlin"
-    assert body["tab"] == "tab-2"
-    assert body["max_steps"] == 25
-    assert body["schema"]["type"] == "object"
+    assert result.success is True
+    assert result.input_tokens == 0
+    # Posts a pre-resolved action, never an instruction.
+    assert last_json_body(act) == {
+        "action": {
+            "selector": "xpath=/html/body/button",
+            "description": "Sign in",
+            "method": "click",
+            "arguments": [],
+        },
+        "tab": "tab-2",
+    }
     await box.aclose()
 
 
 @respx.mock
-async def test_run_without_schema():
-    box = await make_async_box(respx.mock)
-    run = respx.post(f"{BASE}/browser/run").mock(
-        return_value=httpx.Response(
-            200, json={"result": "done", "completed": True, "steps": [], "step_count": 3}
-        )
-    )
-
-    result = await box.browser.get_tab("tab-1").run("Do the thing")
-
-    assert result.data is None
-    assert result.result == "done"
-    assert result.completed is True
-    assert result.step_count == 3
-    assert last_json_body(run) == {"prompt": "Do the thing", "tab": "tab-1"}
-    await box.aclose()
-
-
-@respx.mock
-async def test_rejects_non_schema_for_extract_and_run():
+async def test_rejects_non_schema_for_extract():
     box = await make_async_box(respx.mock)
     tab = box.browser.get_tab("tab-1")
 
     with pytest.raises(BoxError, match="extract requires"):
         await tab.extract("get data", "not-a-schema")  # type: ignore[arg-type]
-    with pytest.raises(BoxError, match="run requires"):
-        await tab.run("go", schema="not-a-schema")  # type: ignore[arg-type]
     await box.aclose()
 
 

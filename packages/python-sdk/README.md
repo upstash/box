@@ -260,7 +260,6 @@ class Headline(BaseModel):
 data = await tab.extract("Get the top headline", Headline)
 actions = await tab.observe("What can I click?")
 await tab.act("Click the first headline")
-result = await tab.run("Find the top comment and summarize it", max_steps=10)
 
 print(await tab.live_view_url())  # watch the tab live
 print(await box.browser.cdp_url())  # connect Playwright/Puppeteer over CDP

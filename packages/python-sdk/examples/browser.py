@@ -1,7 +1,7 @@
 """Headless browser — box.browser.* on a lightweight box.
 
 Creating a box with ``browser=True`` provisions Chromium; all page operations
-(content, screenshots, AI extract/act/run) work headless. Mirrors the JS
+(content, screenshots, AI extract/act) work headless. Mirrors the JS
 examples ``browser.ts`` / ``headless-browser.ts``.
 
 Run: python examples/browser.py  (needs UPSTASH_BOX_API_KEY)

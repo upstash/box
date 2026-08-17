@@ -202,61 +202,55 @@ describe("Box browser operations", () => {
     });
   });
 
-  it("runs a multi-step task with schema-validated structured output", async () => {
+  it("replays a pre-resolved action deterministically (posts action, not instruction)", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock
-      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://linkedin.com" }))
+      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://example.com/login" }))
       .mockResolvedValueOnce(
         mockResponse({
-          result: "Found five people",
-          data: {
-            people: Array.from({ length: 5 }, (_, index) => ({
-              name: `Founder ${index + 1}`,
-              headline: "AI founder in Berlin",
-              profileUrl: `https://linkedin.com/in/founder-${index + 1}`,
-            })),
-          },
-          completed: true,
-          steps: [{ step: 1, action: "search", url: "https://linkedin.com/search" }],
-          step_count: 1,
-          input_tokens: 100,
-          output_tokens: 25,
+          success: true,
+          message: "done",
+          action_description: "Sign in",
+          actions: [
+            {
+              selector: "xpath=/html/body/button",
+              description: "Sign in",
+              method: "click",
+              arguments: [],
+            },
+          ],
+          input_tokens: 0,
+          output_tokens: 0,
         }),
       );
 
-    const tab = await box.browser.tab.create("https://linkedin.com");
-    const result = await tab.run("Find five AI founders in Berlin", {
-      schema: z.object({
-        people: z
-          .array(
-            z.object({
-              name: z.string(),
-              headline: z.string(),
-              profileUrl: z.string(),
-            }),
-          )
-          .length(5),
-      }),
-      maxSteps: 25,
-    });
+    const tab = await box.browser.tab.create("https://example.com/login");
+    const action = {
+      selector: "xpath=/html/body/button",
+      description: "Sign in",
+      method: "click",
+      arguments: [],
+    };
+    const result = await tab.act(action);
 
-    const typedPeople: Array<{ name: string; headline: string; profileUrl: string }> =
-      result.data.people;
-    expect(typedPeople).toHaveLength(5);
-    expect(result.completed).toBe(true);
-
-    const body = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string);
-    expect(body).toMatchObject({
-      prompt: "Find five AI founders in Berlin",
+    expect(result.success).toBe(true);
+    expect(result.inputTokens).toBe(0);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("browser/act");
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
+      action,
       tab: "tab-2",
-      max_steps: 25,
-      schema: {
-        type: "object",
-        properties: {
-          people: { type: "array", minItems: 5, maxItems: 5 },
-        },
-      },
     });
+  });
+
+  it("rejects an action with no selector before any request", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({ id: "tab-2", url: "https://example.com/login" }),
+    );
+    const tab = await box.browser.tab.create("https://example.com/login");
+    await expect(tab.act({ description: "unresolved element" })).rejects.toThrow(
+      "requires a selector",
+    );
   });
 
   it("starts and stops a recording and maps its playback metadata", async () => {
@@ -586,46 +580,31 @@ describe("Box browser operations", () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockResolvedValueOnce(
       mockResponse({
-        elements: [{ description: "Sign in button", selector: "xpath=/html/body/button" }],
+        elements: [
+          {
+            description: "Sign in button",
+            selector: "xpath=/html/body/button",
+            method: "click",
+            arguments: [],
+          },
+        ],
       }),
     );
 
     const result = await box.browser.getTab("tab-1").observe("the sign in button");
 
+    // method/arguments pass through so the element can be replayed via act(action).
     expect(result.elements).toEqual([
-      { description: "Sign in button", selector: "xpath=/html/body/button" },
+      {
+        description: "Sign in button",
+        selector: "xpath=/html/body/button",
+        method: "click",
+        arguments: [],
+      },
     ]);
     expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
       instruction: "the sign in button",
       tab: "tab-1",
-    });
-  });
-
-  it("runs without a schema and supports the deprecated options form", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock
-      .mockResolvedValueOnce(
-        mockResponse({ result: "done", completed: true, steps: [], step_count: 3 }),
-      )
-      .mockResolvedValueOnce(
-        mockResponse({ result: "done again", completed: false, steps: [], step_count: 15 }),
-      );
-
-    const tab = box.browser.getTab("tab-1");
-    const plain = await tab.run("Do the thing");
-    const deprecated = await tab.run({ prompt: "Do the thing again", maxSteps: 20 });
-
-    expect(plain.data).toBeUndefined();
-    expect(plain.completed).toBe(true);
-    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).toEqual({
-      prompt: "Do the thing",
-      tab: "tab-1",
-    });
-    expect(deprecated.result).toBe("done again");
-    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
-      prompt: "Do the thing again",
-      tab: "tab-1",
-      max_steps: 20,
     });
   });
 
@@ -641,16 +620,13 @@ describe("Box browser operations", () => {
     });
   });
 
-  it("rejects non-Zod schemas for extract and run", async () => {
+  it("rejects non-Zod schemas for extract", async () => {
     const { box } = await createTestBox();
     const tab = box.browser.getTab("tab-1");
     const fake = { parse: (d: unknown) => d };
 
     await expect(tab.extract("get data", fake)).rejects.toThrow(
       "extract requires a Zod object schema",
-    );
-    await expect(tab.run("go", { schema: fake })).rejects.toThrow(
-      "run requires a Zod object schema",
     );
   });
 

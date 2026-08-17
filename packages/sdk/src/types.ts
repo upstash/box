@@ -1146,6 +1146,9 @@ export interface BrowserObserveElement {
   /** A selector for the element (Stagehand-resolved), when available. */
   selector?: string;
   url?: string;
+  /** Suggested method and args, for replay via `act(action)`. */
+  method?: string;
+  arguments?: string[];
 }
 
 /** Result of `box.browser.observe()`. */
@@ -1161,6 +1164,9 @@ export interface BrowserActAction {
   arguments?: string[];
 }
 
+/** A pre-resolved action from `observe()`, passable to `act()` for a no-LLM replay. */
+export type BrowserAction = BrowserObserveElement | BrowserActAction;
+
 /** Result of one natural-language `tab.act()` call. */
 export interface BrowserActResult {
   success: boolean;
@@ -1172,57 +1178,15 @@ export interface BrowserActResult {
   outputTokens: number;
 }
 
-/** Options for `tab.run()`. */
-export interface BrowserRunOptions<T = unknown> {
-  /**
-   * Zod object schema for data the agent must return when it completes. The
-   * inferred schema output becomes `BrowserRunResult.data`.
-   */
-  schema?: { parse(data: unknown): T };
-  /** @deprecated Pass the prompt as the first `tab.run()` argument. */
-  prompt?: string;
-  /** Max agent steps. Default 15, max 30. */
-  maxSteps?: number;
-  /**
-   * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5`,
-   * `openai/gpt-4o`, `openrouter/...`, `vercel/...`, `opencode/...`. The box or
-   * account must have a key for that provider. Defaults to the Box's configured
-   * model, or `anthropic/claude-sonnet-4-5` when the Box has no model.
-   */
-  model?: string;
-}
-
-/** One turn of a `tab.run()` loop. */
-export interface BrowserRunStep {
-  step: number;
-  action?: string;
-  reasoning?: string;
-  url?: string;
-}
-
-/** Result of `tab.run()` — the agent's outcome after the loop. */
-export interface BrowserRunResult<T = undefined> {
-  /** Structured output validated against the supplied schema. */
-  data: T;
-  /** The agent's answer/summary when finished. */
-  result: string;
-  /** Whether the agent reported the task complete (vs. hit maxSteps). */
-  completed: boolean;
-  steps: BrowserRunStep[];
-  stepCount: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
 /** A labeled point (or span) on a recording's timeline. */
 export interface BrowserRecordingMarker {
-  /** "tab_switch" (recorder-observed) or "run" (a `tab.run` chapter). */
-  type: "tab_switch" | "run";
+  /** "tab_switch" (recorder-observed). */
+  type: "tab_switch";
   /** Offset from the start of the recording, in milliseconds. */
   atMs: number;
-  /** For spans (runs): end offset in milliseconds. */
+  /** End offset in milliseconds, for span markers. */
   endMs?: number;
-  /** Tab title/URL for switches; the prompt for runs. */
+  /** Tab title/URL for switches. */
   label?: string;
   tabId?: string;
 }
