@@ -13,7 +13,20 @@ node retrieval/01-catalog-extraction.ts
 - All examples need `UPSTASH_BOX_API_KEY`.
 - Examples marked **AI** below use metered browser AI (`act`, `extract`,
   `observe`) and need a model provider key configured on the box or account.
+- `agentic/01-in-box-agent.ts` is different: it drives the browser through the
+  box's coding agent, so it needs an agent harness + key and bills coding-agent
+  tokens, not browser-AI metering.
 - Everything else runs with the Box key alone.
+
+## agentic/ — goal-driven browsing (replacing the removed agent loop)
+
+Stagehand v4 removed the built-in agent loop. Two replacements, matching v4's
+guidance:
+
+| File | AI | What it shows |
+| --- | --- | --- |
+| `01-in-box-agent.ts` | coding agent | Hand a goal to the box's in-sandbox agent; `browser: true` wires the chrome-devtools MCP, so it drives the browser itself and writes results to the box. Needs an agent harness + key |
+| `02-build-your-own-loop.ts` | yes | A live `observe` then `act(action)` then `extract` loop you own, bounded by a step budget with `extract` as the stop check. Model in the loop |
 
 ## automation/ — forms, files, and durable sessions
 
