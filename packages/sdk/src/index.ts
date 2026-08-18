@@ -87,6 +87,8 @@ export type {
   BrowserObserveResult,
   BrowserActAction,
   BrowserActResult,
+  BrowserActOptions,
+  BrowserCaptchaOutcome,
   BrowserAction,
   BrowserRecording,
   BrowserRecordingHandle,

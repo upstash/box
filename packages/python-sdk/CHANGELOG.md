@@ -4,6 +4,11 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- `tab.act(..., solve_captchas=True)` — opt into built-in captcha solving
+  (reCAPTCHA v2 checkbox) before the action, on the natural-language and replay
+  forms. The result carries a `captcha` outcome (`BrowserCaptchaOutcome` with
+  `attempted` / `solved` / `skipped`). Best-effort and act-only. Beta (reCAPTCHA
+  v2 checkbox only). Mirrors `solveCaptchas` in `@upstash/box`.
 - **Removed** `tab.run()` (the autonomous multi-step browser agent) and the
   `BrowserRunResult` / `BrowserRunStep` types. Stagehand v4 removed the agent
   primitive, so the browser exposes `observe` / `act` / `extract` only. For
