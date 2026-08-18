@@ -595,15 +595,11 @@ class AsyncTab:
         instruction: Union[str, BrowserObserveElement, BrowserActAction],
         *,
         model: Optional[str] = None,
-        solve_captchas: bool = False,
     ) -> BrowserActResult:
         """Resolve and execute one action on this tab.
 
         Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
         action to replay it with no LLM call and no key (``model`` ignored).
-
-        Set ``solve_captchas=True`` to opt into built-in captcha solving
-        (reCAPTCHA v2 checkbox) before the action. Best-effort and act-only. Beta.
         """
         if isinstance(instruction, str):
             body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
@@ -613,8 +609,6 @@ class AsyncTab:
             if not instruction.selector:
                 raise BoxError("act(action) requires a selector; observe() did not resolve one")
             body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
-        if solve_captchas:
-            body["solve_captchas"] = True
         resp = await self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",

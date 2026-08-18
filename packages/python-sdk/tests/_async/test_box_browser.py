@@ -262,37 +262,6 @@ async def test_act_executes_one_action():
 
 
 @respx.mock
-async def test_act_solve_captchas_opts_in_and_maps_outcome():
-    box = await make_async_box(respx.mock)
-    act = respx.post(f"{BASE}/browser/act").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "success": True,
-                "message": "Submitted",
-                "action_description": "Submit the form",
-                "actions": [],
-                "input_tokens": 20,
-                "output_tokens": 4,
-                "captcha": {"attempted": True, "solved": True},
-            },
-        )
-    )
-
-    result = await box.browser.get_tab("tab-2").act("submit the form", solve_captchas=True)
-
-    assert result.captcha is not None
-    assert result.captcha.attempted is True
-    assert result.captcha.solved is True
-    assert last_json_body(act) == {
-        "instruction": "submit the form",
-        "tab": "tab-2",
-        "solve_captchas": True,
-    }
-    await box.aclose()
-
-
-@respx.mock
 async def test_act_rejects_action_without_selector():
     from upstash_box import BrowserObserveElement
 

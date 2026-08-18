@@ -55,8 +55,6 @@ import {
   type BrowserTabCreateOptions,
   type BrowserObserveResult,
   type BrowserActResult,
-  type BrowserActOptions,
-  type BrowserCaptchaOutcome,
   type BrowserAction,
   type BrowserRecording,
   type BrowserRecordingHandle,
@@ -512,12 +510,12 @@ export class Tab {
   }
 
   /** Resolve and execute one natural-language action on this tab (metered). */
-  async act(instruction: string, options?: BrowserActOptions): Promise<BrowserActResult>;
+  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult>;
   /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
-  async act(action: BrowserAction, options?: BrowserActOptions): Promise<BrowserActResult>;
+  async act(action: BrowserAction): Promise<BrowserActResult>;
   async act(
     instructionOrAction: string | BrowserAction,
-    options?: BrowserActOptions,
+    options?: BrowserExtractOptions,
   ): Promise<BrowserActResult> {
     if (typeof instructionOrAction !== "string" && !instructionOrAction.selector) {
       throw new BoxError("act(action) requires a selector; observe() did not resolve one");
@@ -528,13 +526,8 @@ export class Tab {
             instruction: instructionOrAction,
             tab: this.id,
             ...(options?.model ? { model: options.model } : {}),
-            ...(options?.solveCaptchas ? { solve_captchas: true } : {}),
           }
-        : {
-            action: instructionOrAction,
-            tab: this.id,
-            ...(options?.solveCaptchas ? { solve_captchas: true } : {}),
-          };
+        : { action: instructionOrAction, tab: this.id };
     const resp = await this.box._request<{
       success?: boolean;
       message?: string;
@@ -543,7 +536,6 @@ export class Tab {
       cache_status?: "HIT" | "MISS";
       input_tokens?: number;
       output_tokens?: number;
-      captcha?: BrowserCaptchaOutcome;
     }>("POST", `/v2/box/${this.box.id}/browser/act`, {
       body,
       timeout: 180000,
@@ -556,7 +548,6 @@ export class Tab {
       cacheStatus: resp.cache_status,
       inputTokens: resp.input_tokens ?? 0,
       outputTokens: resp.output_tokens ?? 0,
-      ...(resp.captcha ? { captcha: resp.captcha } : {}),
     };
   }
 

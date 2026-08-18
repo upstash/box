@@ -48,10 +48,9 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 
 | JS | Python |
 | -- | ------ |
-| `goto`, `content`, `observe`, `close` | same |
+| `goto`, `content`, `observe`, `act`, `close` | same |
 | `screenshot({type, fullPage})` | `screenshot(encoding=, full_page=)` — see drift table |
 | `extract(instruction, schema, options?)` | `extract(instruction, schema, *, model=None)` |
-| `act(instruction, options?)` (`model`, `solveCaptchas`) | `act(instruction, *, model=None, solve_captchas=False)` |
 | `liveViewUrl` | `live_view_url` |
 | `id`, `url`, `title` | `id`, `url`, `title` |
 

@@ -803,14 +803,6 @@ class BrowserActAction(_Model):
     arguments: Optional[List[str]] = None
 
 
-class BrowserCaptchaOutcome(_Model):
-    """Built-in captcha solving outcome for an ``act`` (telemetry)."""
-
-    attempted: bool = False
-    solved: bool = False
-    skipped: Optional[str] = None
-
-
 class BrowserActResult(_Model):
     """Result of one natural-language ``tab.act()`` call."""
 
@@ -821,7 +813,6 @@ class BrowserActResult(_Model):
     cache_status: Optional[Literal["HIT", "MISS"]] = None
     input_tokens: int = 0
     output_tokens: int = 0
-    captcha: Optional[BrowserCaptchaOutcome] = None
 
 
 class BrowserRecordingMarker(_Model):

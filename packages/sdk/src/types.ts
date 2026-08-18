@@ -1098,7 +1098,7 @@ export type Preview = PublicURL;
 
 // ==================== Browser ====================
 
-/** Options for `box.browser.extract()` / `observe()`. */
+/** Options for `box.browser.extract()` / `observe()` / `act()`. */
 export interface BrowserExtractOptions {
   /**
    * Provider-prefixed model override, e.g. `anthropic/claude-sonnet-4-5` or
@@ -1106,15 +1106,6 @@ export interface BrowserExtractOptions {
    * `anthropic/claude-sonnet-4-5` when the Box has no model.
    */
   model?: string;
-}
-
-/** Options for `tab.act()`. */
-export interface BrowserActOptions extends BrowserExtractOptions {
-  /**
-   * Opt into built-in captcha solving (reCAPTCHA v2 checkbox) before the action.
-   * Best-effort and act-only; defaults to `false`. Beta.
-   */
-  solveCaptchas?: boolean;
 }
 
 /** A link on the page. */
@@ -1176,14 +1167,6 @@ export interface BrowserActAction {
 /** A pre-resolved action from `observe()`, passable to `act()` for a no-LLM replay. */
 export type BrowserAction = BrowserObserveElement | BrowserActAction;
 
-/** Built-in captcha solving outcome for an `act` (telemetry). */
-export interface BrowserCaptchaOutcome {
-  attempted: boolean;
-  solved: boolean;
-  /** Reason solving was skipped, e.g. `"unconfigured"` or `"monthly_cap"`. */
-  skipped?: string;
-}
-
 /** Result of one natural-language `tab.act()` call. */
 export interface BrowserActResult {
   success: boolean;
@@ -1193,8 +1176,6 @@ export interface BrowserActResult {
   cacheStatus?: "HIT" | "MISS";
   inputTokens: number;
   outputTokens: number;
-  /** Present only when `solveCaptchas` was requested. */
-  captcha?: BrowserCaptchaOutcome;
 }
 
 /** A labeled point (or span) on a recording's timeline. */

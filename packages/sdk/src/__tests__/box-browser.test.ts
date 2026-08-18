@@ -202,33 +202,6 @@ describe("Box browser operations", () => {
     });
   });
 
-  it("opts into captcha solving and maps the captcha outcome", async () => {
-    const { box, fetchMock } = await createTestBox();
-    fetchMock
-      .mockResolvedValueOnce(mockResponse({ id: "tab-2", url: "https://example.com/login" }))
-      .mockResolvedValueOnce(
-        mockResponse({
-          success: true,
-          message: "Submitted",
-          action_description: "Submit the form",
-          actions: [],
-          input_tokens: 20,
-          output_tokens: 4,
-          captcha: { attempted: true, solved: true },
-        }),
-      );
-
-    const tab = await box.browser.tab.create("https://example.com/login");
-    const result = await tab.act("submit the form", { solveCaptchas: true });
-
-    expect(result.captcha).toEqual({ attempted: true, solved: true });
-    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)).toEqual({
-      instruction: "submit the form",
-      tab: "tab-2",
-      solve_captchas: true,
-    });
-  });
-
   it("replays a pre-resolved action deterministically (posts action, not instruction)", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock
