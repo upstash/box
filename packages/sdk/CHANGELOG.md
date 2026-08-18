@@ -1,5 +1,39 @@
 # @upstash/box
 
+## 0.7.0
+
+### Minor Changes
+
+- b91e466: feat: replay a resolved browser action with `tab.act(action)` (no LLM, no key)
+
+  `observe()` now returns each element's suggested `method` and `arguments`
+  alongside `selector`, and `act()` accepts a pre-resolved action
+  (`BrowserObserveElement` or `BrowserActAction`) in addition to a natural-language
+  string. Passing an action replays it deterministically: no LLM call, no tokens,
+  and no model provider key required. Resolve a step once with `observe()`, cache
+  the returned action, and replay it across pages or runs. A new `BrowserAction`
+  type (`BrowserObserveElement | BrowserActAction`) is exported.
+
+- b91e466: **Breaking:** remove `tab.run()` (the autonomous multi-step browser agent) and the `BrowserRunOptions` / `BrowserRunResult` / `BrowserRunStep` types.
+
+  Stagehand v4 removed the underlying agent primitive, so the DOM-aware browser now exposes `observe`, `act`, and `extract` only. For multi-step goals, drive `act` / `observe` from your own loop (replay a resolved step with `act(action)` for no-LLM, no-key execution), or connect over CDP with Playwright / Puppeteer.
+
+### Patch Changes
+
+- 677ca08: Add `box.browser.recordings.download(recordingId, { path? })` to save a
+  recording's video to a local file (streamed to disk, parent directories
+  created as needed) and expose `mp4SizeBytes` on recording metadata.
+  Recordings are downloaded as MP4; recordings captured before MP4 support
+  (or whose remux failed) download as raw MPEG-TS with a `.ts` extension.
+- e81759e: fix: send git userName/userEmail in Box.fromSnapshot
+
+  `Box.fromSnapshot` forwarded only `git.token` and silently dropped
+  `git.userName` and `git.userEmail`, so boxes restored from a snapshot fell
+  back to the server's default git identity (`Upstash Box <box@upstash.com>`)
+  even when the caller configured one. The from-snapshot endpoint already
+  accepts `git_user_name`/`git_user_email`; the SDK now sends them like
+  `Box.create` does.
+
 ## 0.6.3
 
 ### Patch Changes
