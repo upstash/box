@@ -15,6 +15,7 @@ Each release records the JS feature level it reached parity with:
 | 0.1.3              | 0.5.4                       |
 | 0.1.4              | 0.5.5                       |
 | 0.2.0              | 0.6.0 (browser API)         |
+| 0.3.0              | 0.7.1 (browser `act` replay, file metadata ops) |
 
 When a JS feature is mirrored, bump the Python patch/minor version and update the
 row above (and `__version__` in `upstash_box/_version.py` + `version` in

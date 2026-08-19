@@ -2,7 +2,7 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
-## Unreleased
+## 0.3.0
 
 - `files.stat(path, follow=...)`, `files.mkdir(path, parents=...)`,
   `files.rename(from_path, to_path)`, and `files.remove(path, recursive=...)` —
