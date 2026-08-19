@@ -165,7 +165,9 @@ describe("Box file operations", () => {
 
     it("sends follow=true when requested", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({ type: "file", size: 0, mod_time: "", inode: 1, version: "1" }));
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ type: "file", size: 0, mod_time: "", inode: 1, version: "1" }),
+      );
 
       await box.files.stat("/link", { follow: true });
       const [url] = fetchMock.mock.calls[1]!;

@@ -2,6 +2,7 @@ import httpx
 import pytest
 import respx
 from helpers import TEST_BASE_URL, last_json_body, make_async_box
+from pydantic import ValidationError
 
 from upstash_box import BoxError
 
@@ -296,6 +297,6 @@ async def test_stat_file_rejects_unknown_type():
             json={"type": "socket", "size": 0, "mod_time": "", "inode": 1, "version": "1"},
         )
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         await box.files.stat("weird")
     await box.aclose()
