@@ -49,6 +49,7 @@ export type {
   McpServerConfig,
   UploadFileEntry,
   FileEntry,
+  FileStat,
   GitCloneOptions,
   GitExecOptions,
   GitExecResult,

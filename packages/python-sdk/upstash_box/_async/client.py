@@ -56,6 +56,7 @@ from ..types import (
     ExecOutputChunk,
     ExecStreamChunk,
     FileEntry,
+    FileStat,
     FinishChunk,
     FinishUsage,
     GitCommitResult,
@@ -300,14 +301,41 @@ class AsyncFilesNamespace:
     def __init__(self, box: "AsyncBox") -> None:
         self._box = box
 
-    async def read(self, path: str, *, encoding: Optional[str] = None) -> str:
-        return await self._box._read_file(path, encoding)
+    async def read(
+        self,
+        path: str,
+        *,
+        encoding: Optional[str] = None,
+        offset: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> str:
+        """Read a file. Supplying ``length`` reads a bounded byte range starting
+        at ``offset`` (default 0) instead of the whole file. The server rejects a
+        ``length`` above 8 MiB."""
+        return await self._box._read_file(path, encoding, offset, length)
 
     async def write(self, *, path: str, content: str, encoding: Optional[str] = None) -> None:
         await self._box._write_file(path, content, encoding)
 
     async def list(self, path: Optional[str] = None) -> List[FileEntry]:
         return await self._box._list_files(path)
+
+    async def stat(self, path: str, *, follow: bool = False) -> FileStat:
+        """Return filesystem metadata for a path. ``follow`` dereferences a
+        final symlink; the default is lstat, which reports it as ``symlink``."""
+        return await self._box._stat_file(path, follow)
+
+    async def mkdir(self, path: str, *, parents: bool = False) -> None:
+        """Create a directory. ``parents`` mirrors ``mkdir -p``."""
+        await self._box._make_dir(path, parents)
+
+    async def rename(self, from_path: str, to_path: str) -> None:
+        """Move/rename a path."""
+        await self._box._rename_file(from_path, to_path)
+
+    async def remove(self, path: str, *, recursive: bool = False) -> None:
+        """Remove a path. ``recursive`` is required to remove a directory."""
+        await self._box._remove_file(path, recursive)
 
     async def upload(self, files: List[UploadFileEntry]) -> None:
         await self._box._upload_files(files)
@@ -1250,13 +1278,52 @@ class AsyncBox(Generic[T]):
 
     # ==================== Files ====================
 
-    async def _read_file(self, path: str, encoding: Optional[str]) -> str:
+    async def _read_file(
+        self,
+        path: str,
+        encoding: Optional[str],
+        offset: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> str:
         resolved = self._resolve_path(path)
         url = f"/v2/box/{self.id}/files/read?path={_q(resolved)}"
         if encoding:
             url += f"&encoding={_q(encoding)}"
+        # Presence of length (not its value) selects a bounded range, so an
+        # explicit length=0 reads zero bytes rather than the whole file.
+        if length is not None:
+            url += f"&offset={offset or 0}&length={length}"
         data = await self._request("GET", url)
         return data.get("content", "")
+
+    async def _stat_file(self, path: str, follow: bool) -> FileStat:
+        resolved = self._resolve_path(path)
+        url = f"/v2/box/{self.id}/files/stat?path={_q(resolved)}"
+        if follow:
+            url += "&follow=true"
+        data = await self._request("GET", url)
+        return FileStat.model_validate(data)
+
+    async def _make_dir(self, path: str, parents: bool) -> None:
+        resolved = self._resolve_path(path)
+        await self._request(
+            "POST", f"/v2/box/{self.id}/files/mkdir", body={"path": resolved, "parents": parents}
+        )
+
+    async def _rename_file(self, from_path: str, to_path: str) -> None:
+        await self._request(
+            "POST",
+            f"/v2/box/{self.id}/files/rename",
+            body={"from": self._resolve_path(from_path), "to": self._resolve_path(to_path)},
+        )
+
+    async def _remove_file(self, path: str, recursive: bool) -> None:
+        resolved = self._resolve_path(path)
+        await self._request(
+            "POST",
+            f"/v2/box/{self.id}/files/remove",
+            body={"path": resolved, "recursive": recursive},
+        )
 
     async def _write_file(self, path, content, encoding) -> None:
         resolved = self._resolve_path(path)

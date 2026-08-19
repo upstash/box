@@ -4,6 +4,16 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- `files.stat(path, follow=...)`, `files.mkdir(path, parents=...)`,
+  `files.rename(from_path, to_path)`, and `files.remove(path, recursive=...)` —
+  filesystem metadata and mutation operations. `stat` returns the entry type
+  (`file`/`directory`/`symlink`/`other`), size, mtime, inode, and an opaque
+  `version` token for optimistic-concurrency guards; it defaults to lstat, so a
+  symlink is reported as one unless `follow=True`.
+- `files.read(path, offset=..., length=...)` — bounded byte-range read. Passing
+  `length` selects the range (an explicit `length=0` reads zero bytes); the
+  server rejects a length above 8 MiB. Mirrors `@upstash/box`.
+
 - **Removed** `tab.run()` (the autonomous multi-step browser agent) and the
   `BrowserRunResult` / `BrowserRunStep` types. Stagehand v4 removed the agent
   primitive, so the browser exposes `observe` / `act` / `extract` only. For

@@ -26,6 +26,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `agent.run` / `agent.stream` | `agent.run` / `agent.stream` |
 | `exec.command` / `code` / `stream` / `streamCode` | `exec.command` / `code` / `stream` / `stream_code` |
 | `files.read/write/list/upload/download` | `files.read/write/list/upload/download` |
+| `files.stat/mkdir/rename/remove` | `files.stat/mkdir/rename/remove` |
 | `git.clone/diff/status/commit/updateConfig/push/createPR/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/exec/checkout` |
 | `schedule.exec/agent/list/get/update/pause/resume/delete` | same (snake) |
 | `skills.add/remove/list` | `skills.add/remove/list` |

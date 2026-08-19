@@ -899,6 +899,26 @@ export interface FileEntry {
   mod_time: string;
 }
 
+/**
+ * Filesystem metadata for a single path, returned by `files.stat`.
+ *
+ * `version` is an opaque freshness token (derived from inode, mtime, and size)
+ * for optimistic-concurrency guards — compare it for equality, but do not parse
+ * it.
+ */
+export interface FileStat {
+  /** Kind of entry at the path. */
+  type: "file" | "directory" | "symlink" | "other";
+  /** Size in bytes. */
+  size: number;
+  /** Last-modification time, RFC 3339. */
+  mod_time: string;
+  /** Inode number. */
+  inode: number;
+  /** Opaque freshness token; compare for equality, do not parse. */
+  version: string;
+}
+
 export interface GitCloneOptions {
   repo: string;
   branch?: string;

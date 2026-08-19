@@ -516,6 +516,22 @@ class FileEntry(_Model):
     mod_time: str
 
 
+class FileStat(_Model):
+    """Filesystem metadata for a single path, returned by ``files.stat``.
+
+    ``version`` is an opaque freshness token (derived from inode, mtime, and
+    size) for optimistic-concurrency guards. Compare it for equality; do not
+    parse it.
+    """
+
+    type: Literal["file", "directory", "symlink", "other"]
+    """Kind of entry. ``other`` is the server's catch-all, so the set is closed."""
+    size: int
+    mod_time: str
+    inode: int
+    version: str
+
+
 class GitConfigResult(_Model):
     git_user_name: str
     git_user_email: str
