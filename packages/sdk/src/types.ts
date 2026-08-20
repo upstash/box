@@ -900,6 +900,65 @@ export interface FileEntry {
 }
 
 /**
+ * Options for {@link Box.exec}`.session()` — one live, interactive command over
+ * a WebSocket. Provide `argv` for an exact program (no shell) or `cmd` for a
+ * `bash -lc` string. This is a Node-only API (it sets an auth header on the
+ * WebSocket handshake, which browsers cannot do).
+ */
+export interface ExecSessionOptions {
+  /** Command run via `bash -lc`. Ignored when `argv` is set. */
+  cmd?: string;
+  /** Exact program and arguments, run without a shell. Takes precedence over `cmd`. */
+  argv?: string[];
+  /** Allocate a PTY: resizable, with stdout and stderr merged onto stdout. */
+  tty?: boolean;
+  /** Working directory; defaults to the box workspace. */
+  cwd?: string;
+  /** Initial PTY row count (TTY sessions). */
+  rows?: number;
+  /** Initial PTY column count (TTY sessions). */
+  cols?: number;
+  /** Extra environment entries as `KEY=VALUE`, overlaid on the box environment. */
+  env?: string[];
+  /** Called with decoded stdout bytes as they arrive. */
+  onStdout?: (data: Uint8Array) => void;
+  /** Called with decoded stderr bytes as they arrive (non-TTY sessions). */
+  onStderr?: (data: Uint8Array) => void;
+}
+
+/**
+ * A live command session. `session()` resolves this once the process has
+ * started; output flows to the `onStdout`/`onStderr` callbacks passed to
+ * `session()`.
+ */
+export interface ExecSessionHandle {
+  /** In-box (container-namespace) PID. May be 0 for a brief moment after start. */
+  readonly pid: number;
+  /** Server-side exec id. */
+  readonly execId: string;
+  /** Write bytes to the process stdin. */
+  write(data: string | Uint8Array): void;
+  /**
+   * Close stdin (send EOF). A command that reads until EOF (e.g. `cat`, `sort`)
+   * then exits on its own; stdout/stderr keep flowing until it does.
+   */
+  endStdin(): void;
+  /** Resize the PTY (TTY sessions). */
+  resize(rows: number, cols: number): void;
+  /** Send a signal to the process tree. Defaults to `TERM`. */
+  kill(signal?: string): void;
+  /**
+   * Graceful stop driven server-side: SIGTERM now, then SIGKILL after `graceMs`
+   * (default is the server's grace) if the process has not exited.
+   */
+  terminate(graceMs?: number): void;
+  /** Resolve with the process exit code (`-1` if still running after a forced teardown). */
+  wait(): Promise<number>;
+  /** Close the connection, terminating the process if still running. */
+  close(): void;
+}
+
+/**
  * Filesystem metadata for a single path, returned by `files.stat`.
  *
  * `version` is an opaque freshness token (derived from inode, mtime, and size)

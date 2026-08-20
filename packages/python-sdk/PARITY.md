@@ -27,6 +27,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `exec.command` / `code` / `stream` / `streamCode` | `exec.command` / `code` / `stream` / `stream_code` |
 | `files.read/write/list/upload/download` | `files.read/write/list/upload/download` |
 | `files.stat/mkdir/rename/remove` | `files.stat/mkdir/rename/remove` |
+| `exec.session` (live WebSocket session) | _not implemented_ — see below |
 | `git.clone/diff/status/commit/updateConfig/push/createPR/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/exec/checkout` |
 | `schedule.exec/agent/list/get/update/pause/resume/delete` | same (snake) |
 | `skills.add/remove/list` | `skills.add/remove/list` |
@@ -122,3 +123,15 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 `helpers` → covered by `tests/helpers.py`; `box-instance` → `test_box_instance`;
 models → `test_models`; helpers/common → `test_common`. Sync coverage:
 `tests/_sync/test_sync_client` + `test_sse_golden`.
+
+## Known gap: `exec.session`
+
+`@upstash/box` exposes `box.exec.session()`, a live command session (stdin, PTY,
+signals, streaming) over a WebSocket. The Python SDK has no counterpart yet: it
+is built on `httpx`, so a session client would add a WebSocket dependency
+(`websockets`) and an async/sync pair of handle types.
+
+Note that `scripts/check_parity.py` does **not** catch this. Its extractor walks
+one level deep — it sees `Box.exec` and `Box.files`, not `exec.session` or
+`files.stat` — so nested namespace methods are outside the gate. Treat this file
+as the source of truth for namespace-level parity until the extractor recurses.

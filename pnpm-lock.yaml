@@ -67,6 +67,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
       zod:
         specifier: ^3.25.0 || ^4.0.0
         version: 4.3.6
@@ -89,9 +92,6 @@ importers:
       typescript:
         specifier: ^5.3.0
         version: 5.9.3
-      ws:
-        specifier: ^8.20.0
-        version: 8.20.0
 
 packages:
 
