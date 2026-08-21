@@ -33,5 +33,14 @@ def test_sync_create_exec_agent_stream_delete(opts, tmp_path):
             chunks += 1
         assert chunks > 0
         assert stream.status == "completed"
+
+        # Live session on the sync handle: reader thread, stdin, EOF, exit code.
+        chunks_out = []
+        session = box.exec.session(argv=["sort"], on_stdout=chunks_out.append)
+        assert session.pid > 0
+        session.write("pear\napple\n")
+        session.end_stdin()
+        assert session.wait(30) == 0
+        assert b"".join(chunks_out).decode() == "apple\npear\n"
     finally:
         box.delete()
