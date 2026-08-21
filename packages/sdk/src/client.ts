@@ -1978,6 +1978,10 @@ export class Box<TProvider = unknown> {
             // Before start: reject session(). After start: end wait() with -1.
             if (!started) failStart(`exec-session error: ${String(frame.message)}`);
             else settleExit(-1);
+            // Hang up either way. A rejected session must not leak its socket,
+            // and once wait() has settled the caller considers the session over,
+            // so leaving the connection open would keep the process alive.
+            socket.close();
             break;
         }
       });

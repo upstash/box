@@ -26,6 +26,10 @@ def start_replies(start: Dict[str, Any]) -> List[Dict[str, Any]]:
         return [{"type": "exit", "code": 7}]
     if cmd == "__close__":
         return []
+    if cmd == "__late_error__":
+        # Starts cleanly, then fails. The server stays connected on purpose, so
+        # a test can prove the client is the one that hangs up.
+        return [STARTED, {"type": "error", "message": "late boom"}]
     if cmd == "__zero_pid__":
         return [{"type": "started", "pid": 0, "execId": "exec-abc"}]
     if cmd == "__no_pid__":

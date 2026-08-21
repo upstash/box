@@ -126,6 +126,15 @@ def test_handshake_error_frame_raises(ws_url):
         open_session(ws_url, cmd="__error__")
 
 
+def test_error_frame_after_start_ends_wait_and_hangs_up(ws_url):
+    handle = open_session(ws_url, cmd="__late_error__")
+    assert handle.wait(5) == -1
+    # Once wait() has settled the caller considers the session over, so the
+    # client hangs up rather than leaving the process alive behind a live socket.
+    handle._reader.join(timeout=5)
+    assert handle._conn.protocol.state.name == "CLOSED"
+
+
 def test_handshake_close_before_start_raises(ws_url):
     with pytest.raises(BoxError, match="closed before start"):
         open_session(ws_url, cmd="__close__")

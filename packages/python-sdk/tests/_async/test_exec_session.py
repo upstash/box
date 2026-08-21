@@ -205,6 +205,15 @@ async def test_handshake_error_frame_raises(ws_url):
         await open_session(ws_url, cmd="__error__")
 
 
+async def test_error_frame_after_start_ends_wait_and_hangs_up(ws_url):
+    handle = await open_session(ws_url, cmd="__late_error__")
+    assert await handle.wait() == -1
+    # Once wait() has settled the caller considers the session over, so the
+    # client hangs up rather than leaving the process alive behind a live socket.
+    await asyncio.wait_for(handle._reader, 5)
+    assert handle._conn.state.name == "CLOSED"
+
+
 async def test_handshake_exit_before_start_raises(ws_url):
     with pytest.raises(BoxError, match="exited before start"):
         await open_session(ws_url, cmd="__exit__")

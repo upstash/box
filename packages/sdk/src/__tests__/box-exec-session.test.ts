@@ -133,13 +133,42 @@ describe("Box exec.session (WebSocket)", () => {
     }
   });
 
-  it("rejects when the server sends an error frame before start", async () => {
+  it("rejects when the server sends an error frame before start, and hangs up", async () => {
+    let closed!: () => void;
+    const serverSawClose = new Promise<void>((r) => (closed = r));
     const { wss, port } = await startMockExecServer((ws) => {
+      ws.on("close", () => closed());
       ws.on("message", () => ws.send(JSON.stringify({ type: "error", message: "boom" })));
     });
     try {
       const box = await boxForPort(port);
       await expect(box.exec.session({ cmd: "x" })).rejects.toThrow(/boom/);
+      // A rejected session must not leak its socket.
+      await serverSawClose;
+    } finally {
+      wss.close();
+    }
+  });
+
+  it("ends wait() and hangs up on an error frame after start", async () => {
+    let closed!: () => void;
+    const serverSawClose = new Promise<void>((r) => (closed = r));
+    const { wss, port } = await startMockExecServer((ws) => {
+      ws.on("close", () => closed());
+      ws.on("message", (raw) => {
+        if (JSON.parse(raw.toString()).type === "start") {
+          ws.send(JSON.stringify({ type: "started", pid: 5, execId: "e" }));
+          ws.send(JSON.stringify({ type: "error", message: "late boom" }));
+        }
+      });
+    });
+    try {
+      const box = await boxForPort(port);
+      const session = await box.exec.session({ cmd: "x" });
+      expect(await session.wait()).toBe(-1);
+      // Once wait() settles the caller considers the session over, so leaving
+      // the connection open would keep the process alive in the box.
+      await serverSawClose;
     } finally {
       wss.close();
     }
