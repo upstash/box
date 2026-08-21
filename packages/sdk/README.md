@@ -154,6 +154,41 @@ const run = await box.exec.command("node index.js");
 console.log(run.result);
 ```
 
+#### `box.exec.session(options): Promise<ExecSessionHandle>`
+
+Start a live command session. `exec.command` resolves once the command has
+finished; `session` resolves as soon as it starts, so you can write to stdin,
+resize a PTY, and signal the process while it runs.
+
+```ts
+let out = "";
+const session = await box.exec.session({
+  argv: ["sort"], // exact program + args, no shell
+  onStdout: (b) => (out += Buffer.from(b).toString()),
+});
+session.write("banana\napple\n");
+session.endStdin(); // EOF, so sort finishes
+await session.wait(); // 0
+```
+
+Pass `cmd` instead of `argv` to run through `bash -lc`, `tty: true` (with
+`rows` / `cols`) to allocate a PTY sized correctly from the first read, and
+`cwd` / `env` to place the process. `env` entries are `KEY=VALUE` strings
+overlaid on the box environment.
+
+The handle exposes `pid` and `execId`, plus `write`, `endStdin`, `resize`,
+`kill(signal)`, `terminate(graceMs)`, `wait`, and `close`. It owns the process:
+`close()`, a dropped connection, or exiting your program all terminate the
+command rather than leaving it running in the box, and sessions cannot be
+reattached.
+
+```ts
+const dev = await box.exec.session({ cmd: "npm run dev", tty: true, rows: 24, cols: 80 });
+dev.write("rs\n"); // restart
+dev.resize(50, 120);
+dev.terminate(2000); // SIGTERM, then SIGKILL after 2s
+```
+
 ### Files
 
 ```ts
