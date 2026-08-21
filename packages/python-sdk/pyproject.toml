@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "upstash-box"
-version = "0.3.0"
+version = "0.4.0"
 description = "Upstash Box SDK - Python client for async and parallel AI coding agents"
 readme = "README.md"
 license = { text = "MIT" }
@@ -36,6 +36,7 @@ classifiers = [
 ]
 dependencies = [
     "httpx>=0.27",
+    "websockets>=13",
     "pydantic>=2",
     "typing-extensions>=4.7",
 ]

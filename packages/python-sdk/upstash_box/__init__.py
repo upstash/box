@@ -22,6 +22,7 @@ from ._async import (
     AsyncTab,
 )
 from ._common import infer_default_provider
+from ._exec_session import AsyncExecSessionHandle, ExecSessionHandle
 from ._sync import (
     AgentNamespace,
     Box,
@@ -126,6 +127,8 @@ from .types import (
 )
 
 __all__ = [
+    "AsyncExecSessionHandle",
+    "ExecSessionHandle",
     "__version__",
     # Clients (sync canonical + async variants)
     "Box",

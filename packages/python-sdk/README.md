@@ -162,6 +162,39 @@ print(run.result)  # stdout on success, stderr on failure
 print(run.stdout, run.stderr, run.exit_code)  # raw streams + exit code
 ```
 
+### Live sessions
+
+`exec.command` returns after the command finishes. `exec.session` returns as soon
+as it starts, so you can write to stdin, resize a PTY, and signal the process
+while it runs.
+
+```python
+chunks = []
+session = await box.exec.session(
+    argv=["sort"],  # exact program + args, no shell
+    on_stdout=chunks.append,  # receives bytes as they arrive
+)
+await session.write("banana\napple\n")
+await session.end_stdin()  # EOF, so sort finishes
+assert await session.wait() == 0
+```
+
+Use `cmd="..."` instead of `argv` to go through `bash -lc`, `tty=True` (with
+`rows`/`cols`) for a PTY, and `cwd`/`env` to place the process. Control it with
+`resize`, `kill(signal)`, `terminate(grace_ms)`, and `close`.
+
+The session owns the process: closing the handle or losing the connection kills
+the command, and sessions cannot be reattached. A context manager makes that
+teardown explicit.
+
+```python
+async with await box.exec.session(cmd="npm run dev", tty=True, rows=24, cols=80) as dev:
+    await dev.write("rs\n")
+```
+
+The sync client mirrors this without `await`; its `wait(timeout=None)` blocks and
+raises `TimeoutError` if the timeout elapses.
+
 ### Files
 
 ```python

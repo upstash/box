@@ -27,7 +27,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `exec.command` / `code` / `stream` / `streamCode` | `exec.command` / `code` / `stream` / `stream_code` |
 | `files.read/write/list/upload/download` | `files.read/write/list/upload/download` |
 | `files.stat/mkdir/rename/remove` | `files.stat/mkdir/rename/remove` |
-| `exec.session` (live WebSocket session) | _not implemented_ — see below |
+| `exec.session` (live WebSocket session) | `exec.session` |
 | `git.clone/diff/status/commit/updateConfig/push/createPR/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/exec/checkout` |
 | `schedule.exec/agent/list/get/update/pause/resume/delete` | same (snake) |
 | `skills.add/remove/list` | `skills.add/remove/list` |
@@ -124,14 +124,28 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 models → `test_models`; helpers/common → `test_common`. Sync coverage:
 `tests/_sync/test_sync_client` + `test_sse_golden`.
 
-## Known gap: `exec.session`
+## `exec.session`
 
-`@upstash/box` exposes `box.exec.session()`, a live command session (stdin, PTY,
-signals, streaming) over a WebSocket. The Python SDK has no counterpart yet: it
-is built on `httpx`, so a session client would add a WebSocket dependency
-(`websockets`) and an async/sync pair of handle types.
+`exec.session()` is a live command session (stdin, PTY, signals, streaming) over
+a WebSocket, so it is the one feature not carried by `httpx`. It adds a
+`websockets` dependency, imported lazily so it only loads when a session is
+opened.
 
-Note that `scripts/check_parity.py` does **not** catch this. Its extractor walks
-one level deep — it sees `Box.exec` and `Box.files`, not `exec.session` or
+Both handles are hand-written in `upstash_box/_exec_session.py` rather than
+generated: the async handle pumps frames with an asyncio task and the sync
+handle with a reader thread, an asymmetry `scripts/generate_sync.py` cannot
+produce by token substitution. Frame construction, signal validation, and
+decoding are shared between them so the wire protocol has one definition.
+`generate_sync.py` maps `AsyncExecSessionHandle`/`open_async_exec_session` to
+the sync pair by name.
+
+Naming follows the SDK's snake_case convention, so the handle is
+`end_stdin`/`exec_id` where JS is `endStdin`/`execId`, and callbacks are
+`on_stdout`/`on_stderr` taking `bytes`. The sync `wait()` additionally accepts a
+`timeout`, since blocking forever on a thread has no async equivalent to
+cancellation.
+
+Note that `scripts/check_parity.py` does **not** gate any of this. Its extractor
+walks one level deep — it sees `Box.exec` and `Box.files`, not `exec.session` or
 `files.stat` — so nested namespace methods are outside the gate. Treat this file
 as the source of truth for namespace-level parity until the extractor recurses.
