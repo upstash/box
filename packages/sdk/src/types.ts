@@ -938,9 +938,10 @@ export interface ExecSessionOptions {
  */
 export interface ExecSessionHandle {
   /**
-   * In-box (container-namespace) PID of the running process. Always non-zero:
-   * the server fails the handshake rather than starting a session it cannot
-   * signal, so there is no need to guard on this.
+   * In-box (container-namespace) PID of the running process. Always non-zero,
+   * so there is no need to guard on this: the server fails the handshake rather
+   * than starting a session it cannot signal, and `session()` rejects a
+   * `started` frame that carries no usable pid.
    */
   readonly pid: number;
   /** Server-side exec id. */

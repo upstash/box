@@ -13,7 +13,13 @@ from websockets.sync.server import serve
 from upstash_box import BoxError
 from upstash_box._exec_session import build_start_frame, open_exec_session
 
-_HANDSHAKE_FAILURES = ("__error__", "__exit__", "__close__")
+_HANDSHAKE_FAILURES = (
+    "__error__",
+    "__exit__",
+    "__close__",
+    "__zero_pid__",
+    "__no_pid__",
+)
 
 
 @pytest.fixture
@@ -105,6 +111,14 @@ def test_start_frame_reaches_the_server_verbatim(ws_url):
         }
     finally:
         handle.close()
+
+
+@pytest.mark.parametrize("mode", ["__zero_pid__", "__no_pid__"])
+def test_started_without_a_usable_pid_raises(ws_url, mode):
+    # A handle whose kill()/terminate() cannot reach the process is worse
+    # than no handle, so the handshake fails instead.
+    with pytest.raises(BoxError, match="without a usable pid"):
+        open_session(ws_url, cmd=mode)
 
 
 def test_handshake_error_frame_raises(ws_url):

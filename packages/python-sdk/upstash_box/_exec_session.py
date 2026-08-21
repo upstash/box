@@ -110,9 +110,14 @@ def _handshake_error(frame: Dict[str, Any]) -> BoxError:
 
 
 def _started_fields(frame: Dict[str, Any]) -> "tuple[int, str]":
+    """Read the started frame. A session whose process cannot be signaled is
+    useless, so a missing or non-positive pid fails the handshake rather than
+    producing a handle whose ``kill``/``terminate`` would go nowhere."""
     pid = frame.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        raise BoxError("exec-session started without a usable pid")
     exec_id = frame.get("execId")
-    return (pid if isinstance(pid, int) else 0, exec_id if isinstance(exec_id, str) else "")
+    return (pid, exec_id if isinstance(exec_id, str) else "")
 
 
 # ==================== Async ====================
@@ -128,7 +133,18 @@ class AsyncExecSessionHandle:
     dropped network link, or exiting the program all terminate the command
     rather than leaving it running in the box, and sessions cannot be
     reattached. Use ``wait()`` to run something to completion.
+
+    Callbacks run on the task pumping the socket, so a slow callback delays
+    later output. An ``async`` callback is awaited, so it can do I/O without
+    blocking the loop.
     """
+
+    pid: int
+    """In-box (container-namespace) PID, always non-zero: a session whose
+    process cannot be signaled fails the handshake instead."""
+
+    exec_id: str
+    """Server-side exec id."""
 
     def __init__(
         self,
@@ -139,8 +155,6 @@ class AsyncExecSessionHandle:
         on_stderr: Optional[StdoutCallback],
     ) -> None:
         self.pid = pid
-        """In-box (container-namespace) PID. Always non-zero: the server fails
-        the handshake rather than starting a session it cannot signal."""
         self.exec_id = exec_id
         self._conn = conn
         self._on_stdout = on_stdout
@@ -304,7 +318,20 @@ class ExecSessionHandle:
     dropped network link, or exiting the program all terminate the command
     rather than leaving it running in the box, and sessions cannot be
     reattached. Use ``wait()`` to run something to completion.
+
+    Callbacks run on the background reader thread, which is also what delivers
+    the exit frame. Keep them short: blocking there stalls the stream, and
+    calling ``wait()`` from inside one deadlocks, because the exit it waits for
+    can only arrive on the thread it is blocking. Hand work to your own queue
+    instead.
     """
+
+    pid: int
+    """In-box (container-namespace) PID, always non-zero: a session whose
+    process cannot be signaled fails the handshake instead."""
+
+    exec_id: str
+    """Server-side exec id."""
 
     def __init__(
         self,
@@ -315,8 +342,6 @@ class ExecSessionHandle:
         on_stderr: Optional[StdoutCallback],
     ) -> None:
         self.pid = pid
-        """In-box (container-namespace) PID. Always non-zero: the server fails
-        the handshake rather than starting a session it cannot signal."""
         self.exec_id = exec_id
         self._conn = conn
         self._on_stdout = on_stdout

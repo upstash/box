@@ -145,6 +145,25 @@ describe("Box exec.session (WebSocket)", () => {
     }
   });
 
+  it.each([
+    ["a zero pid", { type: "started", pid: 0, execId: "e" }],
+    ["no pid at all", { type: "started", execId: "e" }],
+  ])("rejects a started frame with %s", async (_label, startedFrame) => {
+    const { wss, port } = await startMockExecServer((ws) => {
+      ws.on("message", (raw) => {
+        if (JSON.parse(raw.toString()).type === "start") ws.send(JSON.stringify(startedFrame));
+      });
+    });
+    try {
+      const box = await boxForPort(port);
+      // A handle whose kill()/terminate() cannot reach the process is worse
+      // than no handle, so the handshake fails instead.
+      await expect(box.exec.session({ cmd: "x" })).rejects.toThrow(/without a usable pid/);
+    } finally {
+      wss.close();
+    }
+  });
+
   it("rejects locally (no socket) when neither cmd nor argv is given", async () => {
     const box = await boxForPort(0); // port unused; must reject before connecting
     await expect(box.exec.session({})).rejects.toThrow(/requires cmd or argv/);

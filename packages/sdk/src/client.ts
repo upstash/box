@@ -1908,10 +1908,23 @@ export class Box<TProvider = unknown> {
         }
         switch (frame.type) {
           case "started": {
+            // A session whose process cannot be signaled is useless, so a
+            // missing or non-positive pid fails the handshake rather than
+            // handing back a handle whose kill()/terminate() go nowhere.
+            const pid = typeof frame.pid === "number" ? frame.pid : 0;
+            if (pid <= 0) {
+              failStart("exec-session started without a usable pid");
+              try {
+                socket.close();
+              } catch {
+                // already closing
+              }
+              break;
+            }
             started = true;
             clearTimeout(timer);
             const handle: ExecSessionHandle = {
-              pid: typeof frame.pid === "number" ? frame.pid : 0,
+              pid,
               execId: typeof frame.execId === "string" ? frame.execId : "",
               write: (data) => {
                 if (exited) return;

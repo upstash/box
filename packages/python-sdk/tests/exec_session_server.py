@@ -26,6 +26,10 @@ def start_replies(start: Dict[str, Any]) -> List[Dict[str, Any]]:
         return [{"type": "exit", "code": 7}]
     if cmd == "__close__":
         return []
+    if cmd == "__zero_pid__":
+        return [{"type": "started", "pid": 0, "execId": "exec-abc"}]
+    if cmd == "__no_pid__":
+        return [{"type": "started", "execId": "exec-abc"}]
     return [STARTED, {"type": "stdout", "data": b64(json.dumps(start, sort_keys=True))}]
 
 
