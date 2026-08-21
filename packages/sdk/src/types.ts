@@ -900,7 +900,7 @@ export interface FileEntry {
 }
 
 /**
- * Options for {@link Box.exec}`.session()` — one live, interactive command over
+ * Options for {@link Box} `exec.session()` — one live, interactive command over
  * a WebSocket. Provide `argv` for an exact program (no shell) or `cmd` for a
  * `bash -lc` string. This is a Node-only API (it sets an auth header on the
  * WebSocket handshake, which browsers cannot do).
@@ -930,9 +930,18 @@ export interface ExecSessionOptions {
  * A live command session. `session()` resolves this once the process has
  * started; output flows to the `onStdout`/`onStderr` callbacks passed to
  * `session()`.
+ *
+ * The session owns the process: losing the connection kills it. `close()`, a
+ * dropped network link, or exiting the program all terminate the command rather
+ * than leaving it running in the box, and sessions cannot be reattached. Use
+ * `wait()` to run something to completion.
  */
 export interface ExecSessionHandle {
-  /** In-box (container-namespace) PID. May be 0 for a brief moment after start. */
+  /**
+   * In-box (container-namespace) PID of the running process. Always non-zero:
+   * the server fails the handshake rather than starting a session it cannot
+   * signal, so there is no need to guard on this.
+   */
   readonly pid: number;
   /** Server-side exec id. */
   readonly execId: string;
