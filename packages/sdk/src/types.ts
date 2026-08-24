@@ -960,6 +960,10 @@ export interface ExecSessionHandle {
   /**
    * Graceful stop driven server-side: SIGTERM now, then SIGKILL after `graceMs`
    * (default is the server's grace) if the process has not exited.
+   *
+   * Only the first call starts the sequence; later ones are ignored, so the
+   * grace cannot be extended or shortened once it is running. Send
+   * `kill("KILL")` to stop the process immediately instead.
    */
   terminate(graceMs?: number): void;
   /** Resolve with the process exit code (`-1` if still running after a forced teardown). */

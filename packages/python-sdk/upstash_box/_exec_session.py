@@ -230,7 +230,11 @@ class AsyncExecSessionHandle:
 
     async def terminate(self, grace_ms: Optional[int] = None) -> None:
         """Graceful stop driven server-side: SIGTERM now, then SIGKILL after
-        ``grace_ms`` (default is the server's grace) if still running."""
+        ``grace_ms`` (default is the server's grace) if still running.
+
+        Only the first call starts the sequence; later ones are ignored, so the
+        grace cannot be changed once it is running. Use ``kill("KILL")`` to stop
+        the process immediately instead."""
         if self._exit.done():
             return
         await self._send(terminate_frame(grace_ms))
@@ -419,7 +423,11 @@ class ExecSessionHandle:
 
     def terminate(self, grace_ms: Optional[int] = None) -> None:
         """Graceful stop driven server-side: SIGTERM now, then SIGKILL after
-        ``grace_ms`` (default is the server's grace) if still running."""
+        ``grace_ms`` (default is the server's grace) if still running.
+
+        Only the first call starts the sequence; later ones are ignored, so the
+        grace cannot be changed once it is running. Use ``kill("KILL")`` to stop
+        the process immediately instead."""
         if self._exited.is_set():
             return
         self._send(terminate_frame(grace_ms))
