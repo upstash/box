@@ -21,6 +21,7 @@ import {
   type ExecStreamChunk,
   type ErrorResponse,
   type FileEntry,
+  type FileStat,
   type GitCloneOptions,
   type GitExecOptions,
   type GitExecResult,
@@ -593,9 +594,25 @@ export class Box<TProvider = unknown> {
 
   /** File operations namespace */
   readonly files: {
-    read: (path: string, options?: { encoding?: "base64" }) => Promise<string>;
+    /**
+     * Read a file. Passing `length` reads a bounded byte range starting at
+     * `offset` (default 0) instead of the whole file; the server rejects a
+     * `length` above 8 MiB.
+     */
+    read: (
+      path: string,
+      options?: { encoding?: "base64"; offset?: number; length?: number },
+    ) => Promise<string>;
     write: (options: { path: string; content: string; encoding?: "base64" }) => Promise<void>;
     list: (path?: string) => Promise<FileEntry[]>;
+    /** Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat). */
+    stat: (path: string, options?: { follow?: boolean }) => Promise<FileStat>;
+    /** Create a directory. `parents` mirrors `mkdir -p`. */
+    mkdir: (path: string, options?: { parents?: boolean }) => Promise<void>;
+    /** Move/rename a path. */
+    rename: (from: string, to: string) => Promise<void>;
+    /** Remove a path. `recursive` is required to remove a directory. */
+    remove: (path: string, options?: { recursive?: boolean }) => Promise<void>;
     upload: (files: UploadFileEntry[]) => Promise<void>;
     /**
      * Download files from the box to the local filesystem.
@@ -807,9 +824,13 @@ export class Box<TProvider = unknown> {
     };
 
     this.files = {
-      read: (path, options) => this._readFile(path, options?.encoding),
+      read: (path, options) => this._readFile(path, options),
       write: (opts) => this._writeFile(opts.path, opts.content, opts.encoding),
       list: (path) => this._listFiles(path),
+      stat: (path, options) => this._statFile(path, options?.follow),
+      mkdir: (path, options) => this._makeDir(path, options?.parents),
+      rename: (from, to) => this._renameFile(from, to),
+      remove: (path, options) => this._removeFile(path, options?.recursive),
       upload: (files) => this._uploadFiles(files),
       download: (opts) => this._downloadFiles(opts?.folder),
     };
@@ -2028,10 +2049,18 @@ export class Box<TProvider = unknown> {
     return `${this._cwd}/${p}`;
   }
 
-  private async _readFile(path: string, encoding?: "base64"): Promise<string> {
+  private async _readFile(
+    path: string,
+    options?: { encoding?: "base64"; offset?: number; length?: number },
+  ): Promise<string> {
     const resolved = this._resolvePath(path);
     let url = `/v2/box/${this.id}/files/read?path=${encodeURIComponent(resolved)}`;
-    if (encoding) url += `&encoding=${encodeURIComponent(encoding)}`;
+    if (options?.encoding) url += `&encoding=${encodeURIComponent(options.encoding)}`;
+    // Presence of `length` (not its value) selects a bounded range starting at
+    // offset, so an explicit length: 0 reads zero bytes rather than the whole file.
+    if (options?.length !== undefined) {
+      url += `&offset=${options.offset ?? 0}&length=${options.length}`;
+    }
     const data = await this._request<{ content: string }>("GET", url);
     return data.content;
   }
@@ -2057,6 +2086,33 @@ export class Box<TProvider = unknown> {
       `/v2/box/${this.id}/files/list${qs}`,
     );
     return data.files ?? [];
+  }
+
+  private async _statFile(path: string, follow?: boolean): Promise<FileStat> {
+    const resolved = this._resolvePath(path);
+    let url = `/v2/box/${this.id}/files/stat?path=${encodeURIComponent(resolved)}`;
+    if (follow) url += `&follow=true`;
+    return this._request<FileStat>("GET", url);
+  }
+
+  private async _makeDir(path: string, parents?: boolean): Promise<void> {
+    const resolved = this._resolvePath(path);
+    await this._request("POST", `/v2/box/${this.id}/files/mkdir`, {
+      body: { path: resolved, parents: parents ?? false },
+    });
+  }
+
+  private async _renameFile(from: string, to: string): Promise<void> {
+    await this._request("POST", `/v2/box/${this.id}/files/rename`, {
+      body: { from: this._resolvePath(from), to: this._resolvePath(to) },
+    });
+  }
+
+  private async _removeFile(path: string, recursive?: boolean): Promise<void> {
+    const resolved = this._resolvePath(path);
+    await this._request("POST", `/v2/box/${this.id}/files/remove`, {
+      body: { path: resolved, recursive: recursive ?? false },
+    });
   }
 
   private async _uploadFiles(files: UploadFileEntry[]): Promise<void> {
@@ -2905,15 +2961,21 @@ export class EphemeralBox {
   /** File operations namespace */
   readonly files: {
     /**
-     * Read a file from the box.
+     * Read a file from the box. Passing `length` reads a bounded byte range
+     * starting at `offset` (default 0) instead of the whole file; the server
+     * rejects a `length` above 8 MiB.
      *
      * @example
      * ```ts
      * const content = await box.files.read("index.js");
      * const b64 = await box.files.read("image.png", { encoding: "base64" });
+     * const head = await box.files.read("big.log", { length: 64 * 1024 });
      * ```
      */
-    read: (path: string, options?: { encoding?: "base64" }) => Promise<string>;
+    read: (
+      path: string,
+      options?: { encoding?: "base64"; offset?: number; length?: number },
+    ) => Promise<string>;
     /**
      * Write a file to the box.
      *
@@ -2932,6 +2994,14 @@ export class EphemeralBox {
      * ```
      */
     list: (path?: string) => Promise<FileEntry[]>;
+    /** Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat). */
+    stat: (path: string, options?: { follow?: boolean }) => Promise<FileStat>;
+    /** Create a directory. `parents` mirrors `mkdir -p`. */
+    mkdir: (path: string, options?: { parents?: boolean }) => Promise<void>;
+    /** Move/rename a path. */
+    rename: (from: string, to: string) => Promise<void>;
+    /** Remove a path. `recursive` is required to remove a directory. */
+    remove: (path: string, options?: { recursive?: boolean }) => Promise<void>;
     /**
      * Upload local files to the box.
      *
