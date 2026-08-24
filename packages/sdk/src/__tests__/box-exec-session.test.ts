@@ -193,6 +193,35 @@ describe("Box exec.session (WebSocket)", () => {
     }
   });
 
+  it.each(["stdout", "stderr"] as const)(
+    "contains a throwing on%s callback instead of crashing the process",
+    async (stream) => {
+      const { wss, port } = await startMockExecServer((ws) => {
+        ws.on("message", (raw) => {
+          if (JSON.parse(raw.toString()).type === "start") {
+            ws.send(JSON.stringify({ type: "started", pid: 3, execId: "e" }));
+            ws.send(JSON.stringify({ type: stream, data: b64("boom\n") }));
+          }
+        });
+      });
+      try {
+        const box = await boxForPort(port);
+        const thrower = () => {
+          throw new Error("callback blew up");
+        };
+        const session = await box.exec.session({
+          cmd: "x",
+          ...(stream === "stdout" ? { onStdout: thrower } : { onStderr: thrower }),
+        });
+        // The throw must not escape the ws listener as an uncaught exception;
+        // the session ends instead so the host process survives.
+        expect(await session.wait()).toBe(-1);
+      } finally {
+        wss.close();
+      }
+    },
+  );
+
   it("rejects locally (no socket) when neither cmd nor argv is given", async () => {
     const box = await boxForPort(0); // port unused; must reject before connecting
     await expect(box.exec.session({})).rejects.toThrow(/requires cmd or argv/);

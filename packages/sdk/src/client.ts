@@ -1871,6 +1871,19 @@ export class Box<TProvider = unknown> {
 
     const send = (obj: unknown) => socket.send(JSON.stringify(obj));
 
+    // Output callbacks run inside the socket's "message" listener, so a throw
+    // would escape the emitter as an uncaught exception and could take down the
+    // host process. End the session instead, matching the Python handles.
+    const dispatch = (cb: ((data: Uint8Array) => void) | undefined, data: unknown) => {
+      if (!cb) return;
+      try {
+        cb(new Uint8Array(Buffer.from(String(data), "base64")));
+      } catch {
+        settleExit(-1);
+        socket.close();
+      }
+    };
+
     return await new Promise<ExecSessionHandle>((resolve, reject) => {
       let started = false;
       const timer = setTimeout(() => {
@@ -1965,10 +1978,10 @@ export class Box<TProvider = unknown> {
             break;
           }
           case "stdout":
-            options.onStdout?.(new Uint8Array(Buffer.from(String(frame.data), "base64")));
+            dispatch(options.onStdout, frame.data);
             break;
           case "stderr":
-            options.onStderr?.(new Uint8Array(Buffer.from(String(frame.data), "base64")));
+            dispatch(options.onStderr, frame.data);
             break;
           case "exit":
             settleExit(typeof frame.code === "number" ? frame.code : -1);
