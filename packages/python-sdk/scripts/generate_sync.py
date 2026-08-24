@@ -63,6 +63,10 @@ _RULES = [
             "AsyncSkillsNamespace": "SkillsNamespace",
             "AsyncLabelsNamespace": "LabelsNamespace",
             "AsyncClient": "Client",
+            # Live-exec handles are hand-written in upstash_box/_exec_session.py
+            # (asyncio task vs reader thread); swap in the sync pair by name.
+            "AsyncExecSessionHandle": "ExecSessionHandle",
+            "open_async_exec_session": "open_exec_session",
             "AsyncIterator": "Iterator",
             "aiter_bytes": "iter_bytes",
             "aclose": "close",

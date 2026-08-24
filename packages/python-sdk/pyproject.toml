@@ -36,6 +36,7 @@ classifiers = [
 ]
 dependencies = [
     "httpx>=0.27",
+    "websockets>=13",
     "pydantic>=2",
     "typing-extensions>=4.7",
 ]

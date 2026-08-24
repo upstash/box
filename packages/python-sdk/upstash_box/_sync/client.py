@@ -32,6 +32,13 @@ import httpx
 from typing_extensions import Unpack
 
 from .. import _common as common
+from .._exec_session import (
+    ExecSessionHandle,
+    StdoutCallback,
+    build_start_frame,
+    open_exec_session,
+    session_url,
+)
 from ..errors import BoxError
 from ..types import (
     Agent,
@@ -290,6 +297,46 @@ class ExecNamespace:
         self, *, code: str, lang: CodeLanguage, timeout: Optional[float] = None
     ) -> StreamRun[str]:
         return self._box._exec_stream_code(code, lang, timeout)
+
+    def session(
+        self,
+        *,
+        cmd: Optional[str] = None,
+        argv: Optional[List[str]] = None,
+        tty: bool = False,
+        cwd: Optional[str] = None,
+        rows: Optional[int] = None,
+        cols: Optional[int] = None,
+        env: Optional[List[str]] = None,
+        on_stdout: Optional[StdoutCallback] = None,
+        on_stderr: Optional[StdoutCallback] = None,
+    ) -> ExecSessionHandle:
+        """Start a live command session and return once the process is running.
+
+        Unlike ``command``, which returns after the command finishes, a session
+        stays open: write to stdin, resize a PTY, signal the process tree, and
+        receive output as it is produced.
+
+        ``argv`` is the exact program and arguments, run without a shell, and
+        takes precedence over ``cmd``, which is run via ``bash -lc``. ``tty``
+        allocates a PTY, which merges stderr into stdout. ``env`` entries are
+        ``KEY=VALUE`` strings overlaid on the box environment. ``on_stdout`` and
+        ``on_stderr`` receive raw ``bytes`` as they arrive.
+
+        The returned handle owns the process: closing it, or losing the
+        connection, kills the command.
+        """
+        return self._box._exec_session(
+            cmd=cmd,
+            argv=argv,
+            tty=tty,
+            cwd=cwd,
+            rows=rows,
+            cols=cols,
+            env=env,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
 
 
 class FilesNamespace:
@@ -1190,6 +1237,38 @@ class Box(Generic[T]):
         if folder:
             body["folder"] = folder
         return self._exec_stream_request(f"/v2/box/{self.id}/code-stream", body, "code")
+
+    def _exec_session(
+        self,
+        *,
+        cmd: Optional[str] = None,
+        argv: Optional[List[str]] = None,
+        tty: bool = False,
+        cwd: Optional[str] = None,
+        rows: Optional[int] = None,
+        cols: Optional[int] = None,
+        env: Optional[List[str]] = None,
+        on_stdout: Optional[StdoutCallback] = None,
+        on_stderr: Optional[StdoutCallback] = None,
+    ) -> ExecSessionHandle:
+        start = build_start_frame(
+            cmd=cmd,
+            argv=argv,
+            tty=tty,
+            # Default to the box's current directory (honoring cd()), matching exec.command.
+            cwd=self._resolve_path(cwd) if cwd else self._cwd,
+            rows=rows,
+            cols=cols,
+            env=env,
+        )
+        return open_exec_session(
+            url=session_url(self._base_url, self.id),
+            headers=dict(self._headers),
+            timeout_s=_ms_to_seconds(self._timeout_ms),
+            start=start,
+            on_stdout=on_stdout,
+            on_stderr=on_stderr,
+        )
 
     def _exec_stream_request(self, path, body, type_) -> StreamRun[str]:
         start = time.time() * 1000

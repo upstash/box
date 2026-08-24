@@ -900,6 +900,79 @@ export interface FileEntry {
 }
 
 /**
+ * Options for {@link Box} `exec.session()` — one live, interactive command over
+ * a WebSocket. Provide `argv` for an exact program (no shell) or `cmd` for a
+ * `bash -lc` string. This is a Node-only API (it sets an auth header on the
+ * WebSocket handshake, which browsers cannot do).
+ */
+export interface ExecSessionOptions {
+  /** Command run via `bash -lc`. Ignored when `argv` is set. */
+  cmd?: string;
+  /** Exact program and arguments, run without a shell. Takes precedence over `cmd`. */
+  argv?: string[];
+  /** Allocate a PTY: resizable, with stdout and stderr merged onto stdout. */
+  tty?: boolean;
+  /** Working directory; defaults to the box workspace. */
+  cwd?: string;
+  /** Initial PTY row count (TTY sessions). */
+  rows?: number;
+  /** Initial PTY column count (TTY sessions). */
+  cols?: number;
+  /** Extra environment entries as `KEY=VALUE`, overlaid on the box environment. */
+  env?: string[];
+  /** Called with decoded stdout bytes as they arrive. */
+  onStdout?: (data: Uint8Array) => void;
+  /** Called with decoded stderr bytes as they arrive (non-TTY sessions). */
+  onStderr?: (data: Uint8Array) => void;
+}
+
+/**
+ * A live command session. `session()` resolves this once the process has
+ * started; output flows to the `onStdout`/`onStderr` callbacks passed to
+ * `session()`.
+ *
+ * The session owns the process: losing the connection kills it. `close()`, a
+ * dropped network link, or exiting the program all terminate the command rather
+ * than leaving it running in the box, and sessions cannot be reattached. Use
+ * `wait()` to run something to completion.
+ */
+export interface ExecSessionHandle {
+  /**
+   * In-box (container-namespace) PID of the running process. Always non-zero,
+   * so there is no need to guard on this: the server fails the handshake rather
+   * than starting a session it cannot signal, and `session()` rejects a
+   * `started` frame that carries no usable pid.
+   */
+  readonly pid: number;
+  /** Server-side exec id. */
+  readonly execId: string;
+  /** Write bytes to the process stdin. */
+  write(data: string | Uint8Array): void;
+  /**
+   * Close stdin (send EOF). A command that reads until EOF (e.g. `cat`, `sort`)
+   * then exits on its own; stdout/stderr keep flowing until it does.
+   */
+  endStdin(): void;
+  /** Resize the PTY (TTY sessions). */
+  resize(rows: number, cols: number): void;
+  /** Send a signal to the process tree. Defaults to `TERM`. */
+  kill(signal?: string): void;
+  /**
+   * Graceful stop driven server-side: SIGTERM now, then SIGKILL after `graceMs`
+   * (default is the server's grace) if the process has not exited.
+   *
+   * Only the first call starts the sequence; later ones are ignored, so the
+   * grace cannot be extended or shortened once it is running. Send
+   * `kill("KILL")` to stop the process immediately instead.
+   */
+  terminate(graceMs?: number): void;
+  /** Resolve with the process exit code (`-1` if still running after a forced teardown). */
+  wait(): Promise<number>;
+  /** Close the connection, terminating the process if still running. */
+  close(): void;
+}
+
+/**
  * Filesystem metadata for a single path, returned by `files.stat`.
  *
  * `version` is an opaque freshness token (derived from inode, mtime, and size)

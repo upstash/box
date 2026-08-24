@@ -45,8 +45,7 @@
     "@types/ws": "^8.18.1",
     "prettier": "^3.8.1",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.0",
-    "ws": "^8.20.0"
+    "typescript": "^5.3.0"
   },
   "publishConfig": {
     "access": "public"
@@ -59,6 +58,7 @@
   },
   "homepage": "https://upstash.com/docs/box",
   "dependencies": {
+    "ws": "^8.20.0",
     "zod-to-json-schema": "^3.25.1"
   },
   "peerDependencies": {

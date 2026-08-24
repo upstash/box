@@ -4,6 +4,16 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## 0.3.0
 
+- `exec.session(...)` — live command sessions over a WebSocket, matching
+  `@upstash/box`. Returns a handle once the process is running, with `pid`,
+  `exec_id`, `write`, `end_stdin`, `resize`, `kill`, `terminate`, `wait`, and
+  `close`. Pass `argv` to run a program without a shell or `cmd` to go through
+  `bash -lc`, `tty=True` for a PTY (with `rows`/`cols`), plus `cwd` and `env`
+  overlays. `on_stdout`/`on_stderr` receive `bytes` as they arrive. The handle
+  owns the process: closing it, or losing the connection, kills the command.
+  Available on both clients and usable as a context manager.
+- Adds a `websockets>=13` dependency, imported lazily so it only loads when a
+  session is opened.
 - `files.stat(path, follow=...)`, `files.mkdir(path, parents=...)`,
   `files.rename(from_path, to_path)`, and `files.remove(path, recursive=...)` —
   filesystem metadata and mutation operations. `stat` returns the entry type

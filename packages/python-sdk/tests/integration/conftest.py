@@ -27,9 +27,20 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip)
 
 
-@pytest.fixture
-def opts() -> dict:
+def _opts() -> dict:
     kwargs = {"api_key": API_KEY}
     if BASE_URL:
         kwargs["base_url"] = BASE_URL
     return kwargs
+
+
+@pytest.fixture
+def opts() -> dict:
+    return _opts()
+
+
+@pytest.fixture(scope="module")
+def module_opts() -> dict:
+    """Same credentials, module-scoped, for suites that share one box across
+    tests instead of creating one per test."""
+    return _opts()

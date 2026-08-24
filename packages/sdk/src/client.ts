@@ -22,6 +22,8 @@ import {
   type ErrorResponse,
   type FileEntry,
   type FileStat,
+  type ExecSessionOptions,
+  type ExecSessionHandle,
   type GitCloneOptions,
   type GitExecOptions,
   type GitExecResult,
@@ -152,6 +154,31 @@ function safeExecOutputLength(buffer: string): number {
 
   return buffer.length;
 }
+
+/**
+ * Minimal structural type for a `ws` WebSocket, so the public API and its
+ * generated `.d.ts` do not depend on `@types/ws`.
+ */
+interface WsLike {
+  send(data: string): void;
+  close(): void;
+  on(event: "open", cb: () => void): void;
+  on(event: "message", cb: (data: { toString(): string }) => void): void;
+  on(event: "close", cb: () => void): void;
+  on(event: "error", cb: (err: Error) => void): void;
+}
+
+/** Signals an exec session accepts, mirroring the backend allowlist. */
+const EXEC_SESSION_SIGNALS = new Set([
+  "TERM",
+  "KILL",
+  "INT",
+  "HUP",
+  "TSTP",
+  "QUIT",
+  "USR1",
+  "USR2",
+]);
 
 /**
  * Error thrown by the Box SDK
@@ -638,6 +665,12 @@ export class Box<TProvider = unknown> {
     code: (options: CodeExecutionOptions) => Promise<Run<string>>;
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
+    /**
+     * Open a live, interactive command session over a WebSocket: stdin,
+     * streamed stdout/stderr, resize, and signals. Node-only. See
+     * {@link ExecSessionOptions}.
+     */
+    session: (options: ExecSessionOptions) => Promise<ExecSessionHandle>;
   };
 
   /** Schedule operations namespace */
@@ -821,6 +854,7 @@ export class Box<TProvider = unknown> {
       code: (options) => this._execCode(options),
       stream: (command) => this._execStream(command),
       streamCode: (options) => this._execStreamCode(options),
+      session: (options) => this._execSession(options),
     };
 
     this.files = {
@@ -1791,6 +1825,180 @@ export class Box<TProvider = unknown> {
 
     StreamRun._setIterator(run, iterate());
     return run;
+  }
+
+  /**
+   * Open a live, interactive command session over a WebSocket. Resolves once the
+   * process has started (so {@link ExecSessionHandle.pid} is available); output
+   * flows to the `onStdout`/`onStderr` callbacks. Node-only: the auth header is
+   * set on the WebSocket handshake, which browsers cannot do.
+   */
+  private async _execSession(options: ExecSessionOptions): Promise<ExecSessionHandle> {
+    const hasArgv = !!options.argv && options.argv.length > 0;
+    if (!hasArgv && !options.cmd) {
+      throw new BoxError("exec.session requires cmd or argv");
+    }
+
+    const start: Record<string, unknown> = { type: "start" };
+    if (hasArgv) start.argv = options.argv;
+    else start.cmd = options.cmd;
+    if (options.tty) start.tty = true;
+    // Default to the box's current directory (honoring cd()), matching exec.command.
+    start.cwd = options.cwd ? this._resolvePath(options.cwd) : this._cwd;
+    if (options.rows) start.rows = options.rows;
+    if (options.cols) start.cols = options.cols;
+    if (options.env) start.env = options.env;
+
+    const wsModule = await import("ws");
+    const WsCtor = (wsModule.default ??
+      (wsModule as unknown as { WebSocket: unknown }).WebSocket) as new (
+      url: string,
+      opts: { headers: Record<string, string> },
+    ) => WsLike;
+
+    const wsUrl = this._baseUrl.replace(/^http/, "ws") + `/v2/box/${this.id}/exec-session`;
+    const socket = new WsCtor(wsUrl, { headers: { ...this._headers } });
+
+    let resolveExit!: (code: number) => void;
+    const exitPromise = new Promise<number>((r) => (resolveExit = r));
+    let exited = false;
+    const settleExit = (code: number) => {
+      if (!exited) {
+        exited = true;
+        resolveExit(code);
+      }
+    };
+
+    const send = (obj: unknown) => socket.send(JSON.stringify(obj));
+
+    // Output callbacks run inside the socket's "message" listener, so a throw
+    // would escape the emitter as an uncaught exception and could take down the
+    // host process. End the session instead, matching the Python handles.
+    const dispatch = (cb: ((data: Uint8Array) => void) | undefined, data: unknown) => {
+      if (!cb) return;
+      try {
+        cb(new Uint8Array(Buffer.from(String(data), "base64")));
+      } catch {
+        settleExit(-1);
+        socket.close();
+      }
+    };
+
+    return await new Promise<ExecSessionHandle>((resolve, reject) => {
+      let started = false;
+      const timer = setTimeout(() => {
+        if (!started) {
+          reject(new BoxError("exec.session handshake timed out"));
+          try {
+            socket.close();
+          } catch {
+            // already closing
+          }
+        }
+      }, this._timeout);
+      const failStart = (message: string) => {
+        if (!started) {
+          clearTimeout(timer);
+          reject(new BoxError(message));
+        }
+      };
+
+      socket.on("open", () => send(start));
+      socket.on("error", (err: Error) => {
+        failStart(`exec-session connection failed: ${err.message}`);
+        settleExit(-1);
+      });
+      socket.on("close", () => {
+        failStart("exec-session closed before start");
+        settleExit(-1);
+      });
+      socket.on("message", (raw) => {
+        let frame: Record<string, unknown>;
+        try {
+          frame = JSON.parse(raw.toString()) as Record<string, unknown>;
+        } catch {
+          return;
+        }
+        switch (frame.type) {
+          case "started": {
+            // A session whose process cannot be signaled is useless, so a
+            // missing or non-positive pid fails the handshake rather than
+            // handing back a handle whose kill()/terminate() go nowhere.
+            const pid = typeof frame.pid === "number" ? frame.pid : 0;
+            if (pid <= 0) {
+              failStart("exec-session started without a usable pid");
+              try {
+                socket.close();
+              } catch {
+                // already closing
+              }
+              break;
+            }
+            started = true;
+            clearTimeout(timer);
+            const handle: ExecSessionHandle = {
+              pid,
+              execId: typeof frame.execId === "string" ? frame.execId : "",
+              write: (data) => {
+                if (exited) return;
+                const bytes =
+                  typeof data === "string" ? Buffer.from(data, "utf8") : Buffer.from(data);
+                send({ type: "stdin", data: bytes.toString("base64") });
+              },
+              endStdin: () => {
+                if (exited) return;
+                send({ type: "stdin_close" });
+              },
+              resize: (rows, cols) => {
+                if (exited) return;
+                send({ type: "resize", rows, cols });
+              },
+              kill: (signal) => {
+                if (exited) return;
+                const sig = (signal ?? "TERM").trim().toUpperCase().replace(/^SIG/, "");
+                if (!EXEC_SESSION_SIGNALS.has(sig)) {
+                  throw new BoxError(`unsupported signal: ${signal}`);
+                }
+                send({ type: "signal", signal: sig });
+              },
+              terminate: (graceMs) => {
+                if (exited) return;
+                send({ type: "terminate", ...(graceMs && graceMs > 0 ? { graceMs } : {}) });
+              },
+              wait: () => exitPromise,
+              close: () => {
+                try {
+                  socket.close();
+                } catch {
+                  // already closing
+                }
+              },
+            };
+            resolve(handle);
+            break;
+          }
+          case "stdout":
+            dispatch(options.onStdout, frame.data);
+            break;
+          case "stderr":
+            dispatch(options.onStderr, frame.data);
+            break;
+          case "exit":
+            settleExit(typeof frame.code === "number" ? frame.code : -1);
+            socket.close();
+            break;
+          case "error":
+            // Before start: reject session(). After start: end wait() with -1.
+            if (!started) failStart(`exec-session error: ${String(frame.message)}`);
+            else settleExit(-1);
+            // Hang up either way. A rejected session must not leak its socket,
+            // and once wait() has settled the caller considers the session over,
+            // so leaving the connection open would keep the process alive.
+            socket.close();
+            break;
+        }
+      });
+    });
   }
 
   /**
@@ -3028,6 +3236,12 @@ export class EphemeralBox {
     code: (options: CodeExecutionOptions) => Promise<Run<string>>;
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
+    /**
+     * Open a live, interactive command session over a WebSocket: stdin,
+     * streamed stdout/stderr, resize, and signals. Node-only. See
+     * {@link ExecSessionOptions}.
+     */
+    session: (options: ExecSessionOptions) => Promise<ExecSessionHandle>;
   };
 
   /** Schedule operations namespace */

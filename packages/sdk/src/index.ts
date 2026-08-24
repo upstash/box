@@ -50,6 +50,8 @@ export type {
   UploadFileEntry,
   FileEntry,
   FileStat,
+  ExecSessionOptions,
+  ExecSessionHandle,
   GitCloneOptions,
   GitExecOptions,
   GitExecResult,
