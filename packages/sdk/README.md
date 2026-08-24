@@ -160,6 +160,9 @@ Start a live command session. `exec.command` resolves once the command has
 finished; `session` resolves as soon as it starts, so you can write to stdin,
 resize a PTY, and signal the process while it runs.
 
+This one is Node-only. Authentication travels in a request header, and browsers
+cannot set headers on a WebSocket handshake.
+
 ```ts
 let out = "";
 const session = await box.exec.session({
