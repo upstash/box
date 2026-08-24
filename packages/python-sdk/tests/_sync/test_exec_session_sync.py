@@ -3,8 +3,10 @@ not generated), driven against the same scripted server as the async suite so
 the two flavors are held to identical wire behavior.
 """
 
+import contextlib
 import json
 import threading
+import time
 
 import pytest
 from exec_session_server import replies, start_replies
@@ -28,6 +30,14 @@ def ws_url():
         start = json.loads(ws.recv())
         for frame in start_replies(start):
             ws.send(json.dumps(frame))
+        if start.get("cmd") == "__junk__":
+            # See the async suite: junk frames, then hang up.
+            with contextlib.suppress(Exception):
+                for _ in range(60):
+                    ws.send("not json")
+                    time.sleep(0.05)
+                ws.close()
+            return
         if start.get("cmd") in _HANDSHAKE_FAILURES:
             ws.close()
             return
@@ -65,7 +75,7 @@ class Collector:
         self._arrived.clear()
 
 
-def open_session(url, *, cmd="run", collector=None, **overrides):
+def open_session(url, *, cmd="run", collector=None, timeout_s=5, **overrides):
     fields = {
         "argv": None,
         "tty": False,
@@ -78,7 +88,7 @@ def open_session(url, *, cmd="run", collector=None, **overrides):
     return open_exec_session(
         url=url,
         headers={},
-        timeout_s=5,
+        timeout_s=timeout_s,
         start=build_start_frame(cmd=cmd, **fields),
         on_stdout=collector.on_stdout if collector else None,
         on_stderr=collector.on_stderr if collector else None,
@@ -119,6 +129,14 @@ def test_started_without_a_usable_pid_raises(ws_url, mode):
     # than no handle, so the handshake fails instead.
     with pytest.raises(BoxError, match="without a usable pid"):
         open_session(ws_url, cmd=mode)
+
+
+def test_handshake_deadline_survives_ignored_frames(ws_url):
+    # The deadline covers the whole handshake, so junk frames cannot extend it.
+    started_at = time.monotonic()
+    with pytest.raises(BoxError, match="handshake timed out"):
+        open_session(ws_url, cmd="__junk__", timeout_s=0.6)
+    assert time.monotonic() - started_at < 2.0
 
 
 def test_handshake_error_frame_raises(ws_url):

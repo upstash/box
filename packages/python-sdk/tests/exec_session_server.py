@@ -24,7 +24,9 @@ def start_replies(start: Dict[str, Any]) -> List[Dict[str, Any]]:
         return [{"type": "error", "message": "boom"}]
     if cmd == "__exit__":
         return [{"type": "exit", "code": 7}]
-    if cmd == "__close__":
+    if cmd in ("__close__", "__junk__"):
+        # __junk__ sends nothing here; the fixture then streams unparseable
+        # frames so a per-receive handshake timeout would never fire.
         return []
     if cmd == "__late_error__":
         # Starts cleanly, then fails. The server stays connected on purpose, so

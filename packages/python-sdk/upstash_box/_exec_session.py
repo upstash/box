@@ -16,6 +16,7 @@ import inspect
 import json
 import re
 import threading
+import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from .errors import BoxError
@@ -282,9 +283,15 @@ async def open_async_exec_session(
     handshake_failed = True
     try:
         await conn.send(json.dumps(start))
+        # One deadline for the whole handshake. Frames that are not "started"
+        # are skipped below, so a per-receive timeout would restart on every
+        # ignored frame and a chatty peer could keep session() pending forever.
+        loop = asyncio.get_running_loop()
+        deadline = None if timeout_s is None else loop.time() + timeout_s
         while True:
             try:
-                raw = await asyncio.wait_for(conn.recv(), timeout_s)
+                remaining = None if deadline is None else max(0.0, deadline - loop.time())
+                raw = await asyncio.wait_for(conn.recv(), remaining)
             except asyncio.TimeoutError as exc:
                 raise BoxError("exec.session handshake timed out") from exc
             except Exception as exc:
@@ -477,9 +484,12 @@ def open_exec_session(
     handshake_failed = True
     try:
         conn.send(json.dumps(start))
+        # One deadline for the whole handshake; see the async note above.
+        deadline = None if timeout_s is None else time.monotonic() + timeout_s
         while True:
             try:
-                raw = conn.recv(timeout=timeout_s)
+                remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+                raw = conn.recv(timeout=remaining)
             except TimeoutError as exc:
                 raise BoxError("exec.session handshake timed out") from exc
             except Exception as exc:

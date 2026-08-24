@@ -6,7 +6,9 @@ than mocked.
 """
 
 import asyncio
+import contextlib
 import json
+import time
 
 import pytest
 from exec_session_server import replies, start_replies
@@ -35,6 +37,15 @@ async def ws_url():
         start = json.loads(await ws.recv())
         for frame in start_replies(start):
             await ws.send(json.dumps(frame))
+        if start.get("cmd") == "__junk__":
+            # Unparseable frames, faster than the handshake timeout, then hang
+            # up so a client that never times out still ends (and fails loudly).
+            with contextlib.suppress(Exception):
+                for _ in range(60):
+                    await ws.send("not json")
+                    await asyncio.sleep(0.05)
+                await ws.close()
+            return
         if start.get("cmd") in _HANDSHAKE_FAILURES:
             await ws.close()
             return
@@ -69,7 +80,7 @@ class Collector:
         self._arrived.clear()
 
 
-async def open_session(url, *, cmd="run", collector=None, **overrides):
+async def open_session(url, *, cmd="run", collector=None, timeout_s=5, **overrides):
     fields = {
         "argv": None,
         "tty": False,
@@ -82,7 +93,7 @@ async def open_session(url, *, cmd="run", collector=None, **overrides):
     return await open_async_exec_session(
         url=url,
         headers={},
-        timeout_s=5,
+        timeout_s=timeout_s,
         start=build_start_frame(cmd=cmd, **fields),
         on_stdout=collector.on_stdout if collector else None,
         on_stderr=collector.on_stderr if collector else None,
@@ -198,6 +209,14 @@ async def test_started_without_a_usable_pid_raises(ws_url, mode):
     # than no handle, so the handshake fails instead.
     with pytest.raises(BoxError, match="without a usable pid"):
         await open_session(ws_url, cmd=mode)
+
+
+async def test_handshake_deadline_survives_ignored_frames(ws_url):
+    # The deadline covers the whole handshake, so junk frames cannot extend it.
+    started_at = time.monotonic()
+    with pytest.raises(BoxError, match="handshake timed out"):
+        await open_session(ws_url, cmd="__junk__", timeout_s=0.6)
+    assert time.monotonic() - started_at < 2.0
 
 
 async def test_handshake_error_frame_raises(ws_url):
