@@ -109,6 +109,8 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private exited = false;
   private terminateRequested = false;
   private abandoned = false;
+  /** Inherit-mode streams whose backlog passed the ceiling; copying stops there. */
+  private readonly inheritOverflowed = new Set<"stdout" | "stderr">();
   /** Resolves with the open session, so stdin writes can wait for it. */
   private readonly sessionReady: Deferred<ExecSessionHandle>;
   private readonly settled: Deferred<SubprocessOutcome>;
@@ -203,21 +205,43 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   /**
    * Fail fast rather than buffer without bound.
    *
-   * Ending the stream instead of destroying it is deliberate: by definition
-   * nothing is reading here, so an `error` event would very likely have no
-   * listener and take the host process down. `done` is always observed, so the
-   * real reason travels there, and the process filling the buffer is stopped.
+   * The seam rejects `done` only for spawn-level failures and requires
+   * `waitForExit()` to mean the tree exited, so settlement stays tied to
+   * `session.wait()` and this must not mark the handle exited: the TERM to KILL
+   * escalation is still running. The reason travels on the stream the caller
+   * owns, which is the seam's channel for a piped stream that failed, and
+   * stopping the process is what actually bounds the backlog.
    */
   private pushPiped(stream: Readable, data: Uint8Array, name: "stdout" | "stderr"): void {
-    if (this.exited) return;
+    if (this.exited || stream.destroyed) return;
     stream.push(Buffer.from(data));
     if (stream.readableLength <= MAX_UNREAD_OUTPUT_BYTES) return;
-    this.terminate();
-    this.finish(
+    stream.destroy(
       new Error(
         `subprocess-box: ${name} buffered more than ${MAX_UNREAD_OUTPUT_BYTES} bytes that nothing read; the session transport cannot slow the process down`,
       ),
     );
+    this.terminate();
+  }
+
+  /**
+   * The same ceiling for `inherit`, which writes to the harness's own stream.
+   *
+   * `write()` returning false cannot slow the box either, so a redirected
+   * stdout that drains slower than the box produces would grow Node's writable
+   * buffer without bound. The harness's stream is never ended here (it does not
+   * belong to this handle); copying stops and the producer is terminated.
+   */
+  private pushInherited(
+    inherited: NodeJS.WriteStream,
+    data: Uint8Array,
+    name: "stdout" | "stderr",
+  ): void {
+    if (this.exited || this.inheritOverflowed.has(name)) return;
+    inherited.write(Buffer.from(data));
+    if (inherited.writableLength <= MAX_UNREAD_OUTPUT_BYTES) return;
+    this.inheritOverflowed.add(name);
+    this.terminate();
   }
 
   private deliver(
@@ -233,7 +257,7 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     // A remote process has no descriptor to inherit, so `inherit` copies its
     // bytes onto the harness's own stream. Output lands in the same place a
     // local inherit would put it; the child cannot detect a TTY through it.
-    else if (mode === "inherit") inherited.write(Buffer.from(data));
+    else if (mode === "inherit") this.pushInherited(inherited, data, name);
   }
 
   private async start(): Promise<void> {
@@ -312,8 +336,9 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     if (this.exited) return;
     this.exited = true;
     this.spec.signal?.removeEventListener("abort", this.onAbort);
-    this.stdout?.push(null);
-    this.stderr?.push(null);
+    // A stream the ceiling already destroyed must not be pushed to again.
+    if (this.stdout?.destroyed === false) this.stdout.push(null);
+    if (this.stderr?.destroyed === false) this.stderr.push(null);
     if (error !== undefined) {
       this.settled.reject(error instanceof Error ? error : new Error(inspect(error)));
       return;

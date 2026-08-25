@@ -593,7 +593,7 @@ describe("unread output is bounded", () => {
   /** One chunk past the ceiling, so a single frame trips it. */
   const oversized = () => new Uint8Array(MAX_UNREAD_OUTPUT_BYTES + 1024);
 
-  it("fails the handle instead of buffering a pipe nothing reads", async () => {
+  it("fails the pipe and stops the process, without faking an exit", async () => {
     const session = fakeSession();
     const handle = new BoxSubprocessHandle(
       ownerFor(session),
@@ -602,22 +602,59 @@ describe("unread output is bounded", () => {
     await flush();
 
     // Nothing is attached to handle.stdout: the transport keeps delivering.
+    const streamError = new Promise<Error>((resolve) => {
+      handle.stdout?.on("error", resolve);
+    });
     session.emitStdoutBytes(oversized());
-    await expect(handle.done).rejects.toThrow(/buffered more than .* nothing read/);
+
+    // The reason travels on the caller's stream, since the seam rejects `done`
+    // only for spawn-level failures.
+    expect((await streamError).message).toMatch(/buffered more than .* nothing read/);
     // The process filling the buffer is stopped rather than left running.
     expect(session.terminated()).toBe(500);
-    // Ended, not destroyed: an "error" event on a stream nobody is reading
-    // would very likely be unhandled and take the host process down.
-    const onError = vi.fn();
-    handle.stdout?.on("error", onError);
-    const ended = new Promise<void>((resolve) => {
-      handle.stdout?.on("end", () => {
-        resolve();
-      });
+
+    // The tree has NOT exited yet: the TERM-to-KILL grace is still running, so
+    // claiming otherwise would let the runtime drop the handle mid-escalation.
+    const early = await Promise.race([
+      handle.waitForExit().then(() => "reported exited"),
+      new Promise((resolve) => setTimeout(() => resolve("still running"), 200)),
+    ]);
+    expect(early).toBe("still running");
+
+    // Settlement stays tied to the real exit, with real exit facts.
+    session.exit(143);
+    await expect(handle.done).resolves.toEqual({ exitCode: 143, signal: null });
+    await expect(handle.waitForExit()).resolves.toBe(true);
+  });
+
+  it("bounds inherit mode, which writes to the harness's own stream", async () => {
+    const session = fakeSession();
+    // A backlog past the ceiling without actually buffering 32 MiB of writes.
+    const write = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    const original = Object.getOwnPropertyDescriptor(process.stdout, "writableLength");
+    Object.defineProperty(process.stdout, "writableLength", {
+      configurable: true,
+      get: () => MAX_UNREAD_OUTPUT_BYTES + 1,
     });
-    handle.stdout?.resume();
-    await ended;
-    expect(onError).not.toHaveBeenCalled();
+    try {
+      const handle = new BoxSubprocessHandle(
+        ownerFor(session),
+        spec({ stdio: { stdin: "ignore", stdout: "inherit", stderr: "ignore" } }),
+      );
+      await flush();
+      session.emitStdoutBytes(new Uint8Array(16));
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(session.terminated()).toBe(500);
+
+      // Copying stops instead of growing Node's writable buffer further.
+      session.emitStdoutBytes(new Uint8Array(16));
+      expect(write).toHaveBeenCalledTimes(1);
+      session.exit(143);
+      await expect(handle.done).resolves.toEqual({ exitCode: 143, signal: null });
+    } finally {
+      write.mockRestore();
+      if (original !== undefined) Object.defineProperty(process.stdout, "writableLength", original);
+    }
   });
 
   it("does not trip for a consumer that keeps up", async () => {
@@ -679,7 +716,7 @@ describe("abandoned handshake releases piped stdin", () => {
 });
 
 describe("terminal output is bounded", () => {
-  it("fails the terminal instead of buffering what nothing reads", async () => {
+  it("fails the terminal only once the session is actually quiescent", async () => {
     const session = fakeSession();
     const box = {
       exec: {
@@ -698,20 +735,24 @@ describe("terminal output is bounded", () => {
       graceMs: 500,
       env: {},
     });
+    void terminal.done.catch(() => undefined);
 
     session.emitStdoutBytes(new Uint8Array(MAX_UNREAD_OUTPUT_BYTES + 1024));
-    await expect(terminal.done).rejects.toThrow(/buffered more than .* nothing read/);
     expect(session.terminated()).toBe(500);
 
-    const onError = vi.fn();
-    terminal.output.on("error", onError);
-    const ended = new Promise<void>((resolve) => {
-      terminal.output.on("end", () => {
-        resolve();
-      });
-    });
-    terminal.output.resume();
-    await ended;
-    expect(onError).not.toHaveBeenCalled();
+    // terminate() must await real quiescence; settling on the overflow alone
+    // would let it return while the escalation was still running.
+    const teardown = terminal.terminate();
+    const early = await Promise.race([
+      teardown.then(() => "returned"),
+      new Promise((resolve) => setTimeout(() => resolve("awaiting quiescence"), 200)),
+    ]);
+    expect(early).toBe("awaiting quiescence");
+
+    session.exit(143);
+    await teardown;
+    // The contract allows the terminal to reject for a live transport failure.
+    await expect(terminal.done).rejects.toThrow(/buffered more than .* nothing read/);
+    expect(session.closed()).toBe(true);
   });
 });

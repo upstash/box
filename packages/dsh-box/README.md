@@ -79,6 +79,11 @@ DeepSeek Harness supplies `@deepseek-ai/cordis`, `@deepseek-ai/dsh-subprocess`, 
   input wait only when the kernel parks a member in a tty read. `inputWaiting` is therefore `false` when the substrate
   offers no evidence, not only when the group is busy.
 - **Collect output has no spill file.** Overflowing output keeps a bounded tail and reports truncation without a recovery path.
+- **Output a consumer stops reading is capped at 32 MiB.** A local child blocks when the pipe it writes to fills, but the
+  session transport has no pause, so the box keeps sending and the backlog is host memory. Past the cap the adapter stops
+  the command rather than grow without bound: a piped stream is destroyed with an error explaining why, `inherit` stops
+  copying, and a terminal's `done` rejects. A consumer that keeps up never reaches it. Real flow control needs
+  pause/resume in the session protocol itself.
 - **Sessions cannot be reattached.** A dropped connection ends the command, so this is the wrong tool for work that must outlive the harness.
 - **`pid` is `-1` briefly.** `spawn()` returns before the session handshake finishes, so a consumer needing a positive pid immediately cannot use this provider unchanged.
 - **The seam is pre-1.0.** It is pinned to `0.1.1-rc.2`; expect breaking changes as DeepSeek Harness evolves.

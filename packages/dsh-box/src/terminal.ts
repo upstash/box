@@ -91,6 +91,9 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
 
   private exited = false;
   private closing = false;
+  private outputEnded = false;
+  /** Set when the host-side backlog passed its ceiling; replaces the exit code. */
+  private outputFailure: Error | undefined;
   private readonly inFlight = new Set<Promise<unknown>>();
   private settlement: Promise<void> | undefined;
   private readonly settled: Deferred<SubprocessOutcome>;
@@ -122,26 +125,39 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
   /**
    * Bounded failure for terminal output nothing is reading.
    *
-   * The session transport has no pause, so the backlog is host memory. Ends the
-   * stream rather than destroying it: nothing is reading, so an `error` event
-   * would likely be unhandled and take the host down, while `done` is observed.
+   * The session transport has no pause, so the backlog is host memory. Only the
+   * failure is recorded here: marking the terminal exited would let
+   * `terminate()` skip awaiting `session.wait()` and report quiescence while the
+   * TERM to KILL escalation is still running. Settlement stays where the seam
+   * puts it, and this reason replaces the exit code when it arrives, which the
+   * contract allows for a live transport failure.
    */
   overflowed(bytes: number): void {
-    if (this.exited) return;
-    this.session.terminate(this.graceMs);
-    this.exited = true;
-    this.output.push(null);
-    this.settled.reject(
-      new Error(
-        `dsh-box: terminal buffered more than ${bytes} bytes that nothing read; the session transport cannot slow the terminal down`,
-      ),
+    if (this.exited || this.outputFailure !== undefined) return;
+    this.outputFailure = new Error(
+      `dsh-box: terminal buffered more than ${bytes} bytes that nothing read; the session transport cannot slow the terminal down`,
     );
+    this.endOutput();
+    this.session.terminate(this.graceMs);
+  }
+
+  /** End the output stream exactly once, whichever path gets there first. */
+  private endOutput(): void {
+    if (this.outputEnded) return;
+    this.outputEnded = true;
+    this.output.push(null);
   }
 
   private finish(code: number): void {
     if (this.exited) return;
     this.exited = true;
-    this.output.push(null);
+    this.endOutput();
+    // The transport failed even if the process then exited with a code, so the
+    // code would be reporting a terminal whose output was already truncated.
+    if (this.outputFailure !== undefined) {
+      this.settled.reject(this.outputFailure);
+      return;
+    }
     // The SDK reports -1 when a live session's connection closes or errors; a
     // real exit always carries its code. Reporting that as a successful outcome
     // would make a lost terminal indistinguishable from a clean one.
