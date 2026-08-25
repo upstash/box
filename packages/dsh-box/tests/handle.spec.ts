@@ -429,3 +429,39 @@ describe("service disposal", () => {
     expect(slow.closed()).toBe(true);
   });
 });
+
+describe("terminal setup cancellation", () => {
+  it("does not wait out a stalled handshake during disposal", async () => {
+    const { Context } = await import("@deepseek-ai/cordis");
+    const BoxSubprocessRuntime = (await import("../src/subprocess.js")).default;
+
+    // A handshake that never settles: without cancellation, disposal would
+    // block on it for the whole request timeout.
+    const stalled = new Promise<never>(() => {});
+    const ctx = new Context();
+    ctx.provide("box", {
+      cwd: "/workspace/home",
+      getBox: () => Promise.resolve({ exec: { session: () => stalled } }),
+    } as never);
+    const fiber = await ctx.plugin(BoxSubprocessRuntime, {});
+
+    const pending = ctx.subprocess
+      .spawnTerminal({
+        argv: ["/bin/bash"],
+        cwd: "/workspace/home",
+        rows: 24,
+        cols: 80,
+        graceMs: 500,
+        env: {},
+      })
+      .catch((error: unknown) => error);
+    await flush();
+
+    const disposed = await Promise.race([
+      fiber.dispose().then(() => "disposed"),
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 500)),
+    ]);
+    expect(disposed).toBe("disposed");
+    expect(String(await pending)).toMatch(/disposed during terminal setup/);
+  });
+});

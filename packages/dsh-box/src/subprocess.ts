@@ -59,6 +59,8 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
   private readonly terminals = new Set<SubprocessTerminalHandle>();
   /** Allocations not yet in `terminals`; disposal must not race past them. */
   private readonly terminalSetups = new Set<Promise<unknown>>();
+  /** Cancels a setup's allocation, so disposal does not wait out a stalled handshake. */
+  private readonly setupCancels = new Set<AbortController>();
   private disposing = false;
 
   /** Create the Box subprocess service and bind its disposal policy. */
@@ -69,7 +71,12 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
         this.disposing = true;
         // A setup still awaiting getBox()/spawnBoxTerminal is not in `terminals`
         // yet, so snapshotting first would let the owner delete the box out from
-        // under an allocation that is still running.
+        // under an allocation that is still running. Cancel before waiting: the
+        // SDK handshake has no abort of its own, so a stalled one would
+        // otherwise hold teardown for the whole request timeout.
+        for (const cancel of this.setupCancels) {
+          cancel.abort(new Error("subprocess-box: service disposed during terminal setup"));
+        }
         await Promise.allSettled([...this.terminalSetups]);
         const handles = [...this.live];
         const terminals = [...this.terminals];
@@ -191,9 +198,14 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     // publish or tear down. Tracking only the allocation would let it settle
     // while the disposal branch below was still awaiting terminate(), so
     // disposal could finish and the owner delete the box mid-teardown.
+    // Combined so either the caller's cancellation or disposal stops the wait.
+    const cancel = new AbortController();
+    this.setupCancels.add(cancel);
+    const allocationSignal =
+      spec.signal === undefined ? cancel.signal : AbortSignal.any([spec.signal, cancel.signal]);
     const setup = (async (): Promise<SubprocessTerminalHandle> => {
       const box = await this.ctx.box.getBox();
-      const allocated = await spawnBoxTerminal(box, spec);
+      const allocated = await spawnBoxTerminal(box, { ...spec, signal: allocationSignal });
       // Remote allocation yields to disposal, so a terminal published after
       // teardown began is torn down rather than leaked.
       if (this.disposing) {
@@ -209,6 +221,7 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
       terminal = await setup;
     } finally {
       this.terminalSetups.delete(setup);
+      this.setupCancels.delete(cancel);
     }
     const release = (): void => {
       this.terminals.delete(terminal);
