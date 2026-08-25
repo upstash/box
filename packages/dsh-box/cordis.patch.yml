@@ -1,0 +1,26 @@
+# The @upstash/dsh-box bundle: relocate the execution world into one Upstash Box.
+#
+# Applied over a profile that already carries dsh-base. The local subprocess
+# provider is disabled by id first: cordis allows one implementation per service,
+# so leaving it enabled would make two providers race to register ctx.subprocess
+# and the profile would fail to boot.
+#
+# Bash and every other consumer is untouched. They resolve execution-world
+# operations through ctx.subprocess, so swapping the provider is the whole
+# integration.
+#
+# One-world note: box.cwd and any sandbox-policy workspaceRoot must name the
+# same remote directory, which is also bash-local's default workdir.
+
+- id: subprocess
+  name: "@deepseek-ai/dsh-subprocess-local"
+  disabled: true
+
+- insert:
+    - id: box
+      name: "@upstash/dsh-box"
+      config:
+        cwd: /workspace/home
+
+    - id: subprocess-box
+      name: "@upstash/dsh-box/subprocess"
