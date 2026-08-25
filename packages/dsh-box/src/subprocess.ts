@@ -19,6 +19,7 @@ import type {
 } from "@deepseek-ai/dsh-subprocess";
 import { quoteBoxShellArg } from "./index.js";
 import { BoxSubprocessHandle } from "./process.js";
+import { anySignal } from "./signal.js";
 import { spawnBoxTerminal } from "./terminal.js";
 
 /** Configuration for the Upstash Box subprocess adapter. */
@@ -77,6 +78,10 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
         for (const cancel of this.setupCancels) {
           cancel.abort(new Error("subprocess-box: service disposed during terminal setup"));
         }
+        // Same hazard on the process path: a handle whose session has not
+        // arrived cannot be terminated, and waitForExit() below would block on
+        // it. This no-ops for every handle that already holds a session.
+        for (const handle of this.live) handle.abandon();
         await Promise.allSettled([...this.terminalSetups]);
         const handles = [...this.live];
         const terminals = [...this.terminals];
@@ -201,11 +206,13 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     // Combined so either the caller's cancellation or disposal stops the wait.
     const cancel = new AbortController();
     this.setupCancels.add(cancel);
-    const allocationSignal =
-      spec.signal === undefined ? cancel.signal : AbortSignal.any([spec.signal, cancel.signal]);
+    const allocation =
+      spec.signal === undefined
+        ? { signal: cancel.signal, dispose: () => {} }
+        : anySignal([spec.signal, cancel.signal]);
     const setup = (async (): Promise<SubprocessTerminalHandle> => {
       const box = await this.ctx.box.getBox();
-      const allocated = await spawnBoxTerminal(box, { ...spec, signal: allocationSignal });
+      const allocated = await spawnBoxTerminal(box, { ...spec, signal: allocation.signal });
       // Remote allocation yields to disposal, so a terminal published after
       // teardown began is torn down rather than leaked.
       if (this.disposing) {
@@ -222,6 +229,9 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     } finally {
       this.terminalSetups.delete(setup);
       this.setupCancels.delete(cancel);
+      // A caller signal outliving this call would otherwise retain the combined
+      // signal and its listener for as long as the caller holds it.
+      allocation.dispose();
     }
     const release = (): void => {
       this.terminals.delete(terminal);

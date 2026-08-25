@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExecSessionHandle, ExecSessionOptions } from "@upstash/box";
 import type { SubprocessSpawnSpec } from "@deepseek-ai/dsh-subprocess";
 import { BoxSubprocessHandle } from "../src/process.js";
+import { anySignal } from "../src/signal.js";
 
 /**
  * State transitions of a live handle, driven by a fake session.
@@ -463,5 +464,124 @@ describe("terminal setup cancellation", () => {
     ]);
     expect(disposed).toBe("disposed");
     expect(String(await pending)).toMatch(/disposed during terminal setup/);
+  });
+});
+
+/** An owner whose handshake only resolves once `release()` is called. */
+function stalledOwner(session: FakeSession) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const owner = {
+    getBox: () =>
+      Promise.resolve({
+        exec: {
+          session: async (options: ExecSessionOptions) => {
+            await gate;
+            (session as unknown as { attach: (o: ExecSessionOptions) => void }).attach(options);
+            return session as unknown as ExecSessionHandle;
+          },
+        },
+      }),
+  } as never;
+  return { owner, release: () => release() };
+}
+
+describe("process setup cancellation", () => {
+  it("abandon() releases a wait blocked on an unfinished handshake", async () => {
+    const { owner } = stalledOwner(fakeSession());
+    const handle = new BoxSubprocessHandle(owner, spec());
+    await flush();
+
+    // terminate() alone cannot help: there is no session to send it to.
+    handle.terminate();
+    handle.abandon();
+    const waited = await Promise.race([
+      handle.waitForExit().then(() => "returned"),
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 300)),
+    ]);
+    expect(waited).toBe("returned");
+    await expect(handle.done).rejects.toThrow(/disposed before the session was established/);
+  });
+
+  it("stops a session that lands after it was abandoned", async () => {
+    const session = fakeSession();
+    const { owner, release } = stalledOwner(session);
+    const handle = new BoxSubprocessHandle(owner, spec());
+    await flush();
+    handle.abandon();
+    await expect(handle.done).rejects.toThrow(/disposed before the session/);
+
+    // The late session has no owner left, so it must not be left running.
+    release();
+    await flush();
+    await flush();
+    expect(session.terminated()).toBe(500);
+    expect(session.closed()).toBe(true);
+  });
+
+  it("abandon() does not disturb a handle that already holds a session", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    await flush();
+    handle.abandon();
+    session.exit(0);
+    await expect(handle.done).resolves.toEqual({ exitCode: 0, signal: null });
+  });
+
+  it("does not wait out a stalled process handshake during disposal", async () => {
+    const { Context } = await import("@deepseek-ai/cordis");
+    const BoxSubprocessRuntime = (await import("../src/subprocess.js")).default;
+    const { owner } = stalledOwner(fakeSession());
+
+    const ctx = new Context();
+    ctx.provide("box", { cwd: "/workspace/home", ...(owner as object) } as never);
+    const fiber = await ctx.plugin(BoxSubprocessRuntime, {});
+    const handle = ctx.subprocess.spawn(spec());
+    void handle.done.catch(() => undefined);
+    await flush();
+
+    const disposed = await Promise.race([
+      fiber.dispose().then(() => "disposed"),
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 500)),
+    ]);
+    expect(disposed).toBe("disposed");
+  });
+});
+
+describe("anySignal", () => {
+  it("aborts from either source and carries the reason", async () => {
+    const first = new AbortController();
+    const second = new AbortController();
+    const fromSecond = anySignal([first.signal, second.signal]);
+    expect(fromSecond.signal.aborted).toBe(false);
+    second.abort(new Error("second won"));
+    expect(fromSecond.signal.aborted).toBe(true);
+    expect(String(fromSecond.signal.reason)).toMatch(/second won/);
+
+    const other = new AbortController();
+    const fromFirst = anySignal([other.signal, new AbortController().signal]);
+    other.abort(new Error("first won"));
+    expect(String(fromFirst.signal.reason)).toMatch(/first won/);
+  });
+
+  it("is already aborted when a source is", () => {
+    const done = new AbortController();
+    done.abort(new Error("before the call"));
+    const combined = anySignal([done.signal, new AbortController().signal]);
+    expect(combined.signal.aborted).toBe(true);
+    expect(String(combined.signal.reason)).toMatch(/before the call/);
+  });
+
+  it("dispose() detaches listeners so a long-lived signal retains nothing", () => {
+    const caller = new AbortController();
+    const added = vi.spyOn(caller.signal, "removeEventListener");
+    const combined = anySignal([caller.signal, new AbortController().signal]);
+    combined.dispose();
+    expect(added).toHaveBeenCalled();
+    // Detached: a later abort of the caller's signal no longer propagates.
+    caller.abort(new Error("too late"));
+    expect(combined.signal.aborted).toBe(false);
   });
 });

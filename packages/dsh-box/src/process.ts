@@ -108,6 +108,7 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private session: ExecSessionHandle | undefined;
   private exited = false;
   private terminateRequested = false;
+  private abandoned = false;
   /** Resolves with the open session, so stdin writes can wait for it. */
   private readonly sessionReady: Deferred<ExecSessionHandle>;
   private readonly settled: Deferred<SubprocessOutcome>;
@@ -230,6 +231,20 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     this.session = session;
     this.pid = session.pid;
 
+    // Disposal already stopped waiting for this handshake, so this session has
+    // no owner left to terminate it. Stop it here rather than leave a process
+    // running in a box the owner is about to delete.
+    if (this.abandoned) {
+      try {
+        session.terminate(this.spec.graceMs);
+        session.close();
+      } catch (_alreadyClosing) {
+        // The socket is already going away, which is the desired end state.
+      }
+      this.sessionReady.reject(new Error("subprocess-box: session abandoned during disposal"));
+      return;
+    }
+
     // A short command can exit while the handshake is still settling, which
     // closes the socket underneath these calls. Losing stdin to a process that
     // has already gone is not a spawn failure, so it must not reject `done`.
@@ -291,6 +306,23 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     // Idempotent server-side: the agent guards the escalation with a sync.Once,
     // so repeat calls do not start a second TERM/KILL sequence.
     this.session?.terminate(this.spec.graceMs);
+  }
+
+  /**
+   * Give up on a handshake that has not produced a session yet.
+   *
+   * `terminate()` can only set a flag while `box.exec.session()` is still in
+   * flight, and `waitForExit()` then blocks on `done`, which only settles when
+   * that handshake does. A stalled one would hold service disposal for the whole
+   * request timeout. A session that lands afterwards is stopped by `start()`.
+   *
+   * No-op once a session exists: that handle terminates and exits normally.
+   */
+  abandon(): void {
+    if (this.exited || this.session !== undefined) return;
+    this.abandoned = true;
+    this.terminateRequested = true;
+    this.finish(new Error("subprocess-box: service disposed before the session was established"));
   }
 
   /** @inheritdoc */
