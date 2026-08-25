@@ -7,6 +7,7 @@
 import { posix } from "node:path";
 import { Context, Service } from "@deepseek-ai/cordis";
 import z from "@deepseek-ai/schemastery";
+import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import { Box } from "@upstash/box";
 
 export { Box, BoxError } from "@upstash/box";
@@ -160,8 +161,17 @@ export class BoxRuntime extends Service {
     if (!posix.isAbsolute(this.config.cwd)) {
       throw new Error(`dsh-box: cwd must be an absolute Linux path: ${this.config.cwd}`);
     }
-    if (!Number.isFinite(this.config.requestTimeoutMs) || this.config.requestTimeoutMs <= 0) {
-      throw new Error("dsh-box: requestTimeoutMs must be a positive finite number");
+    // Node clamps a setTimeout delay above the maximum to 1ms, and the SDK uses
+    // this value for its request and handshake timers, so an over-large timeout
+    // would abort almost immediately instead of waiting as configured.
+    if (
+      !Number.isFinite(this.config.requestTimeoutMs) ||
+      this.config.requestTimeoutMs <= 0 ||
+      this.config.requestTimeoutMs > MAX_TIMER_DELAY_MS
+    ) {
+      throw new Error(
+        `dsh-box: requestTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`,
+      );
     }
   }
 

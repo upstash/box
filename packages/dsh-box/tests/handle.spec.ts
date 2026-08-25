@@ -274,3 +274,45 @@ describe("BoxSubprocessHandle", () => {
     await handle.done;
   });
 });
+
+describe("BoxRuntime config validation", () => {
+  it("rejects a timeout Node's timers cannot represent", async () => {
+    const { Context } = await import("@deepseek-ai/cordis");
+    const BoxRuntime = (await import("../src/index.js")).default;
+    const ctx = new Context();
+    // Node clamps a delay above the maximum to 1ms, so an over-large timeout
+    // would abort requests immediately instead of waiting.
+    await expect(
+      ctx.plugin(BoxRuntime, { apiKey: "box_test", requestTimeoutMs: 2_147_483_648 }),
+    ).rejects.toThrow(/no greater than 2147483647/);
+    await expect(
+      ctx.plugin(BoxRuntime, { apiKey: "box_test", requestTimeoutMs: 0 }),
+    ).rejects.toThrow(/positive finite number/);
+  });
+});
+
+describe("terminal spawn validation", () => {
+  it("rejects dimensions that are not positive safe integers", async () => {
+    const { Context } = await import("@deepseek-ai/cordis");
+    const BoxSubprocessRuntime = (await import("../src/subprocess.js")).default;
+    const ctx = new Context();
+    ctx.provide("box", { cwd: "/workspace/home", getBox: () => Promise.resolve({}) } as never);
+    await ctx.plugin(BoxSubprocessRuntime, {});
+    const base = {
+      argv: ["/bin/bash"],
+      cwd: "/workspace/home",
+      graceMs: 500,
+      env: {},
+    };
+    for (const dims of [
+      { rows: Number.NaN, cols: 80 },
+      { rows: Number.POSITIVE_INFINITY, cols: 80 },
+      { rows: 24.5, cols: 80 },
+      { rows: 24, cols: 0 },
+    ]) {
+      await expect(ctx.subprocess.spawnTerminal({ ...base, ...dims })).rejects.toThrow(
+        /positive integers/,
+      );
+    }
+  });
+});

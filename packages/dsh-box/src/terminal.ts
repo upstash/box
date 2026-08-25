@@ -53,6 +53,40 @@ function foregroundProbe(pid: number): string {
   ].join("\n");
 }
 
+/**
+ * Await `pending`, but stop waiting if `signal` aborts first.
+ *
+ * The abort does not cancel the underlying request, so a value that arrives
+ * afterwards is handed to `cleanup` rather than leaked.
+ * @param pending - the operation to await.
+ * @param signal - the caller's cancellation, when supplied.
+ * @param cleanup - disposes a value that arrives after the abort.
+ * @returns the value, when it wins the race.
+ */
+async function raceAbort<T>(
+  pending: Promise<T>,
+  signal: AbortSignal | undefined,
+  cleanup: (value: T) => void,
+): Promise<T> {
+  if (signal === undefined) return await pending;
+  let onAbort!: () => void;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => {
+      reject(signal.reason ?? new Error("dsh-box: terminal allocation aborted"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+  try {
+    return await Promise.race([pending, aborted]);
+  } catch (error: unknown) {
+    void pending.then(cleanup, () => undefined);
+    throw error;
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+
 /** A live Box-backed terminal exposed through the subprocess seam. */
 export class BoxTerminalHandle implements SubprocessTerminalHandle {
   /** @inheritdoc */
@@ -160,9 +194,17 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
     // The signal union is closed, so this is not injectable today; quoting keeps
     // that from depending on the union staying closed.
     const name = quoteBoxShellArg(signal.replace(/^SIG/, ""));
-    await this.operation(() =>
+    const delivery = await this.operation(() =>
       this.box.exec.command(`kill -s ${name} -- -${foreground.processGroupId}`),
     );
+    // exec.command resolves for a nonzero exit, so the exit code is the only
+    // evidence of delivery. A group that exited between inspection and the
+    // signal must not be reported as having received it.
+    if (delivery.exitCode !== 0) {
+      throw new Error(
+        `dsh-box: failed to signal foreground process group ${foreground.processGroupId}: ${delivery.result.trim()}`,
+      );
+    }
     return foreground.processGroupId;
   }
 
@@ -196,7 +238,7 @@ export async function spawnBoxTerminal(
   spec: SubprocessTerminalSpawnSpec,
 ): Promise<SubprocessTerminalHandle> {
   const output = new Readable({ read() {} });
-  const session = await box.exec.session({
+  const opening = box.exec.session({
     argv: argvWithRemovals(spec.argv, removedEnvNames(spec.env)),
     cwd: spec.cwd,
     env: sessionEnv(spec.env),
@@ -208,12 +250,12 @@ export async function spawnBoxTerminal(
       output.push(Buffer.from(data));
     },
   });
-  const terminal = new BoxTerminalHandle(box, session, spec.graceMs, output);
-  // `signal` cancels allocation, and allocation spans the awaits above. A signal
-  // that fired in that window must not leave a published terminal running.
-  if (spec.signal?.aborted === true) {
-    await terminal.terminate();
-    spec.signal.throwIfAborted();
-  }
-  return terminal;
+  // `signal` cancels allocation. The SDK's handshake takes no abort, so waiting
+  // on it alone would ignore an abort for the whole request timeout; race it
+  // instead and tear down a session that lands after we stop waiting.
+  const session = await raceAbort(opening, spec.signal, (late) => {
+    late.terminate(spec.graceMs);
+    late.close();
+  });
+  return new BoxTerminalHandle(box, session, spec.graceMs, output);
 }

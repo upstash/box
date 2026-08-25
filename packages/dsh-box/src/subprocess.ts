@@ -47,6 +47,8 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
 
   private readonly live = new Set<BoxSubprocessHandle>();
   private readonly terminals = new Set<SubprocessTerminalHandle>();
+  /** Allocations not yet in `terminals`; disposal must not race past them. */
+  private readonly terminalSetups = new Set<Promise<unknown>>();
   private disposing = false;
 
   /** Create the Box subprocess service and bind its disposal policy. */
@@ -55,6 +57,10 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     ctx.effect(
       () => async () => {
         this.disposing = true;
+        // A setup still awaiting getBox()/spawnBoxTerminal is not in `terminals`
+        // yet, so snapshotting first would let the owner delete the box out from
+        // under an allocation that is still running.
+        await Promise.allSettled([...this.terminalSetups]);
         const handles = [...this.live];
         const terminals = [...this.terminals];
         await Promise.all([
@@ -159,8 +165,17 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     }
     spec.signal?.throwIfAborted();
 
-    const box = await this.ctx.box.getBox();
-    const terminal = await spawnBoxTerminal(box, spec);
+    const setup = (async (): Promise<SubprocessTerminalHandle> => {
+      const box = await this.ctx.box.getBox();
+      return await spawnBoxTerminal(box, spec);
+    })();
+    this.terminalSetups.add(setup);
+    let terminal: SubprocessTerminalHandle;
+    try {
+      terminal = await setup;
+    } finally {
+      this.terminalSetups.delete(setup);
+    }
     // Remote allocation yields to disposal, so a terminal published after
     // teardown began is torn down rather than leaked.
     if (this.disposing) {
