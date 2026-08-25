@@ -46,6 +46,20 @@ The bundle's defaults work as-is. To override, edit the rows in your profile:
 
 If you also set a sandbox policy, point its `workspaceRoot` at the same `cwd`, since that is bash's default working directory too.
 
+### Two profile settings a stock profile gets wrong
+
+A stock profile assumes the execution world is the machine it runs on. Two of those assumptions have to be corrected, or every bash call fails:
+
+**The working directory must be a path inside the box.** The bash tool defaults to the session's own working directory, which is a path on your machine. Nothing creates it in the box, and macOS paths (`/Users/...`, `/private/...`) cannot be created there at all, since the box's exec user does not own `/`. Either run the harness from a directory the box also has, or pass a box-side `workdir`. A session that fails this way now says so by name rather than reporting a missing pid.
+
+**The local confinement runner cannot run in the box.** `dsh-bash-sandbox` prepends a host binary to every command (`sandbox-exec` on macOS, `bwrap` on Linux). Sent into the box that argv is just a missing executable, so the command exits 127. The box is already the isolation boundary, so run with `DSH_PERMISSION_MODE=danger-full-access` and let it be the boundary:
+
+```bash
+DSH_PERMISSION_MODE=danger-full-access dsh --profile <name> "your task"
+```
+
+That name is about the _host_ policy, and what it turns off is host confinement of a command that no longer runs on the host. Your machine is protected because the work is in the box, not because a seatbelt profile wraps it.
+
 ## How it behaves
 
 - **One box per profile.** The owner creates it at load and deletes it at disposal, so a box does not outlive the fiber that owns it.

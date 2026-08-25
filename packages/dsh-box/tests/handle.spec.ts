@@ -786,3 +786,51 @@ describe("terminal output is bounded", () => {
     expect(session.closed()).toBe(true);
   });
 });
+
+describe("session failure diagnosis", () => {
+  const serverError = new Error("exec-session error: could not determine session pid");
+
+  /** A box whose session always fails and whose `test -d` answers `answer`. */
+  function boxProbing(answer: string) {
+    return {
+      exec: {
+        session: () => Promise.reject(serverError),
+        command: () => Promise.resolve({ result: answer, exitCode: 0 }),
+      },
+    } as never;
+  }
+
+  it("names a working directory that does not exist in the box", async () => {
+    const handle = new BoxSubprocessHandle(
+      { getBox: () => Promise.resolve(boxProbing("missing")) } as never,
+      spec({ cwd: "/Users/dev/project" }),
+    );
+    // The server error alone says nothing about the cwd, which is the cause.
+    await expect(handle.done).rejects.toThrow(/"\/Users\/dev\/project" does not exist in the box/);
+    await expect(handle.done).rejects.toThrow(/could not determine session pid/);
+  });
+
+  it("leaves an unrelated failure untouched", async () => {
+    const handle = new BoxSubprocessHandle(
+      { getBox: () => Promise.resolve(boxProbing("present")) } as never,
+      spec({ cwd: "/workspace/home" }),
+    );
+    const error = await handle.done.catch((reason: unknown) => reason);
+    expect(String(error)).toMatch(/could not determine session pid/);
+    expect(String(error)).not.toMatch(/does not exist in the box/);
+  });
+
+  it("keeps the original failure when the probe itself fails", async () => {
+    const box = {
+      exec: {
+        session: () => Promise.reject(serverError),
+        command: () => Promise.reject(new Error("probe unreachable")),
+      },
+    } as never;
+    const handle = new BoxSubprocessHandle(
+      { getBox: () => Promise.resolve(box) } as never,
+      spec({ cwd: "/workspace/home" }),
+    );
+    await expect(handle.done).rejects.toThrow(/could not determine session pid/);
+  });
+});

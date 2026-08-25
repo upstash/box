@@ -11,8 +11,8 @@
 import { Buffer } from "node:buffer";
 import { inspect } from "node:util";
 import { Readable, Writable } from "node:stream";
-import type { ExecSessionHandle } from "@upstash/box";
-import type { BoxRuntime } from "./index.js";
+import type { Box, ExecSessionHandle } from "@upstash/box";
+import { explainSessionFailure, type BoxRuntime } from "./index.js";
 import type {
   SubprocessCollect,
   SubprocessCollectedOutputs,
@@ -260,33 +260,50 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     else if (mode === "inherit") this.pushInherited(inherited, data, name);
   }
 
+  /**
+   * Open the session, explaining the failure a new integration hits first.
+   *
+   * The server answers a working directory that does not exist in the box with
+   * "could not determine session pid", which names neither the cwd nor the
+   * cause. A harness drives this seam with its own session cwd, which is a path
+   * on the host, so one probe on the failure path turns a dead end into the
+   * fact. The probe is best effort: the original failure still surfaces.
+   */
+  private async openSession(box: Box): Promise<ExecSessionHandle> {
+    try {
+      return await box.exec.session({
+        argv: argvWithRemovals(this.spec.argv, removedEnvNames(this.spec.env)),
+        cwd: this.spec.cwd,
+        env: sessionEnv(this.spec.env),
+        onStdout: (data) => {
+          this.deliver(
+            this.spec.stdio.stdout,
+            this.stdoutReader,
+            this.stdout,
+            data,
+            process.stdout,
+            "stdout",
+          );
+        },
+        onStderr: (data) => {
+          this.deliver(
+            this.spec.stdio.stderr,
+            this.stderrReader,
+            this.stderr,
+            data,
+            process.stderr,
+            "stderr",
+          );
+        },
+      });
+    } catch (error: unknown) {
+      throw await explainSessionFailure(box, this.spec.cwd, error);
+    }
+  }
+
   private async start(): Promise<void> {
     const box = await this.owner.getBox();
-    const session = await box.exec.session({
-      argv: argvWithRemovals(this.spec.argv, removedEnvNames(this.spec.env)),
-      cwd: this.spec.cwd,
-      env: sessionEnv(this.spec.env),
-      onStdout: (data) => {
-        this.deliver(
-          this.spec.stdio.stdout,
-          this.stdoutReader,
-          this.stdout,
-          data,
-          process.stdout,
-          "stdout",
-        );
-      },
-      onStderr: (data) => {
-        this.deliver(
-          this.spec.stdio.stderr,
-          this.stderrReader,
-          this.stderr,
-          data,
-          process.stderr,
-          "stderr",
-        );
-      },
-    });
+    const session = await this.openSession(box);
     this.session = session;
     this.pid = session.pid;
 

@@ -5,6 +5,7 @@
  */
 
 import { posix } from "node:path";
+import { inspect } from "node:util";
 import { Context, Service } from "@deepseek-ai/cordis";
 import z from "@deepseek-ai/schemastery";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
@@ -12,6 +13,36 @@ import { Box } from "@upstash/box";
 
 export { Box, BoxError } from "@upstash/box";
 export type { ExecSessionHandle, ExecSessionOptions, FileStat } from "@upstash/box";
+
+/**
+ * Turn a failed session handshake into a diagnosis when the cause is knowable.
+ *
+ * A working directory that does not exist in the box fails server-side as
+ * "could not determine session pid", which names neither the path nor the
+ * reason. This is the first wall a new integration hits, because a harness
+ * drives the seam with its own session cwd and that is a path on the host, so
+ * the probe is worth one round trip on a path that has already failed.
+ * @param box - the box the session was opened against.
+ * @param cwd - the working directory the spawn asked for.
+ * @param error - the original handshake failure.
+ * @returns the diagnosed error, or the original when the probe proves nothing.
+ */
+export async function explainSessionFailure(box: Box, cwd: string, error: unknown): Promise<Error> {
+  const original = error instanceof Error ? error : new Error(inspect(error));
+  try {
+    const probe = await box.exec.command(
+      `test -d ${quoteBoxShellArg(cwd)} && echo present || echo missing`,
+    );
+    if (probe.result.trim() !== "missing") return original;
+  } catch (_probeFailed) {
+    // Best effort only: the handshake failure is the diagnostic that matters.
+    return original;
+  }
+  return new Error(
+    `dsh-box: working directory ${JSON.stringify(cwd)} does not exist in the box, so the session could not start. A harness passes its own session cwd, which is a path on your machine; point it at a path inside the box. (${original.message})`,
+    { cause: original },
+  );
+}
 
 /**
  * Quote one opaque argument for the control-shell layer this owner and its
