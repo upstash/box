@@ -21,6 +21,7 @@ import type {
   SubprocessOutputMode,
   SubprocessSpawnSpec,
 } from "@deepseek-ai/dsh-subprocess";
+import { deferred, type Deferred } from "./deferred.js";
 import { BoxOutputReader } from "./output.js";
 
 /** Exit codes the shell reports for a signalled death. */
@@ -46,7 +47,8 @@ function isCollect(mode: SubprocessOutputMode): mode is SubprocessCollect {
  * boundary. The box keeps its own environment; only `spec.env` crosses.
  *
  * The server drops its own blocked names (`PATH`, `HOME`, `LD_PRELOAD`,
- * `LD_LIBRARY_PATH`, `NODE_OPTIONS`) on top of this.
+ * `LD_LIBRARY_PATH`, `NODE_OPTIONS`) on top of this, which is a deliberate
+ * server-side control this adapter does not route around.
  * @param specEnv - Explicit entries from the spawn spec.
  * @returns `KEY=VALUE` strings for the session.
  */
@@ -59,11 +61,38 @@ export function sessionEnv(specEnv: NodeJS.ProcessEnv | undefined): string[] {
     if (value?.includes("\0") === true) {
       throw new Error(`subprocess-box: environment value for ${key} contains NUL`);
     }
-    // A tombstone cannot unset a box-owned name over this protocol, so it
-    // blanks the name instead: `KEY=` leaves the entry present but empty.
-    entries.push(`${key}=${value ?? ""}`);
+    // A tombstone carries no value to transport; removal is applied by the
+    // wrapper below, which is the only way to actually unset a name.
+    if (value !== undefined) entries.push(`${key}=${value}`);
   }
   return entries;
+}
+
+/**
+ * Names the caller asked to remove.
+ * @param specEnv - Explicit entries from the spawn spec.
+ * @returns the tombstoned names, in spec order.
+ */
+export function removedEnvNames(specEnv: NodeJS.ProcessEnv | undefined): string[] {
+  return Object.entries(specEnv ?? {})
+    .filter(([, value]) => value === undefined)
+    .map(([key]) => key);
+}
+
+/**
+ * Apply removals inside the launched process.
+ *
+ * The session protocol overlays `KEY=VALUE` entries and has no removal verb, so
+ * a tombstone can only take effect in the child itself. `env -u NAME -- argv`
+ * does exactly that and nothing else: it does not carry values, so the server's
+ * blocked-name policy still applies to everything this adapter sends.
+ * @param argv - the caller's exact program and arguments.
+ * @param removed - names to unset for the child.
+ * @returns argv to launch, wrapped only when there is something to remove.
+ */
+export function argvWithRemovals(argv: readonly string[], removed: readonly string[]): string[] {
+  if (removed.length === 0) return [...argv];
+  return ["/usr/bin/env", ...removed.flatMap((name) => ["-u", name]), "--", ...argv];
 }
 
 /** A live Box-backed process exposed through the subprocess seam. */
@@ -88,7 +117,8 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private terminateRequested = false;
   private readonly pendingStdin: Buffer[] = [];
   private stdinEnded = false;
-  private readonly settled: PromiseWithResolvers<SubprocessOutcome>;
+  private readonly settled: Deferred<SubprocessOutcome>;
+  private readonly onAbort: () => void;
 
   constructor(
     private readonly owner: BoxRuntime,
@@ -110,16 +140,15 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     this.stderr = spec.stdio.stderr === "pipe" ? new Readable({ read() {} }) : undefined;
     this.stdin = spec.stdio.stdin === "pipe" ? this.createStdin() : undefined;
 
-    this.settled = Promise.withResolvers<SubprocessOutcome>();
+    this.settled = deferred<SubprocessOutcome>();
     this.done = this.settled.promise;
 
-    spec.signal?.addEventListener(
-      "abort",
-      () => {
-        this.terminate();
-      },
-      { once: true },
-    );
+    // A long-lived controller shared across spawns would otherwise retain every
+    // completed handle, so the listener is removed when this one settles.
+    this.onAbort = () => {
+      this.terminate();
+    };
+    spec.signal?.addEventListener("abort", this.onAbort, { once: true });
 
     void this.start().catch((error: unknown) => {
       this.finish(error);
@@ -155,7 +184,7 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private async start(): Promise<void> {
     const box = await this.owner.getBox();
     const session = await box.exec.session({
-      argv: [...this.spec.argv],
+      argv: argvWithRemovals(this.spec.argv, removedEnvNames(this.spec.env)),
       cwd: this.spec.cwd,
       env: sessionEnv(this.spec.env),
       onStdout: (data) => {
@@ -196,6 +225,7 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private finish(error?: unknown, code?: number): void {
     if (this.exited) return;
     this.exited = true;
+    this.spec.signal?.removeEventListener("abort", this.onAbort);
     this.stdout?.push(null);
     this.stderr?.push(null);
     if (error !== undefined) {

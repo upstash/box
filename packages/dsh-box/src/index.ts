@@ -91,6 +91,8 @@ export class BoxRuntime extends Service {
 
   private readonly config: ResolvedConfig;
   private readonly ready: Promise<Box>;
+  /** Set as soon as a box exists, so teardown can delete one whose setup failed. */
+  private acquired: Box | undefined;
   private disposed = false;
 
   constructor(ctx: Context, config: Config) {
@@ -116,13 +118,11 @@ export class BoxRuntime extends Service {
     ctx.effect(
       () => async () => {
         this.disposed = true;
-        let box: Box;
-        try {
-          box = await this.ready;
-        } catch (_boxSetupFailure) {
-          // open() either acquired no box or already made the POC's one rollback attempt.
-          return;
-        }
+        // Prefer the resolved handle, but fall back to a box whose setup failed
+        // after allocation: open()'s rollback may itself have failed, and this
+        // is the only remaining chance to delete it.
+        const box = await this.ready.catch(() => this.acquired);
+        if (box === undefined) return;
         try {
           await box.delete();
         } catch (error: unknown) {
@@ -175,6 +175,7 @@ export class BoxRuntime extends Service {
       // open exec session, so an idle-pause cannot land under a running process,
       // and a paused box auto-resumes on the next call.
     });
+    this.acquired = box;
     try {
       await box.files.mkdir(this.cwd, { parents: true });
       await box.files.mkdir(this.runtimeRoot, { parents: true });
@@ -188,9 +189,10 @@ export class BoxRuntime extends Service {
       try {
         await box.delete();
       } catch (_boxSetupRollbackFailure) {
-        // Deliberate: the open failure below is the diagnostic worth keeping, and
-        // rethrowing here would replace it with a teardown error. Disposal owns
-        // the delete path that matters and reports its own failures.
+        // Deliberate: the open failure below is the diagnostic worth keeping,
+        // and rethrowing here would replace it with a teardown error. The box
+        // stays in `acquired`, so disposal retries the delete rather than
+        // leaking it.
       }
       throw error;
     }

@@ -32,7 +32,7 @@ The bundle's defaults work as-is. To override, edit the rows in your profile:
     cwd: /workspace/home
     runtime: node
 
-- id: subprocess
+- id: subprocess-box
   name: "@upstash/dsh-box/subprocess"
 ```
 
@@ -49,7 +49,10 @@ If you also set a sandbox policy, point its `workspaceRoot` at the same `cwd`, s
 ## How it behaves
 
 - **One box per profile.** The owner creates it at load and deletes it at disposal, so a box does not outlive the fiber that owns it.
-- **The environment does not leak.** Only the environment entries a spawn explicitly asks for cross into the box. Your machine's `PATH`, `HOME`, `USER`, `SSH_AUTH_SOCK`, and CI variables stay on your machine.
+- **The environment does not leak.** Only the environment entries a spawn explicitly asks for cross into the box. Your
+  machine's `PATH`, `HOME`, `USER`, `SSH_AUTH_SOCK`, and CI variables stay on your machine. Asking to remove a name
+  unsets it in the child rather than blanking it, and the box's own blocked names (`PATH`, `HOME`, `LD_PRELOAD`,
+  `LD_LIBRARY_PATH`, `NODE_OPTIONS`) stay under the server's control.
 - **Termination is tree-scoped.** Stopping a command sends SIGTERM to the whole process tree, then SIGKILL after the grace period, so background children cannot outlive the command that started them.
 - **The session owns the process.** Losing the connection stops the command rather than orphaning it in the box.
 

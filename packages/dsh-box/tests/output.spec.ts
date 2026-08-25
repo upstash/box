@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
 import { BoxOutputReader } from "../src/output.js";
-import { sessionEnv } from "../src/process.js";
+import { argvWithRemovals, removedEnvNames, sessionEnv } from "../src/process.js";
 
 const bytes = (text: string): Uint8Array => new Uint8Array(Buffer.from(text, "utf8"));
 
@@ -75,8 +75,11 @@ describe("sessionEnv", () => {
     }
   });
 
-  it("blanks a tombstone, since the protocol cannot unset a box-owned name", () => {
-    expect(sessionEnv({ GONE: undefined })).toEqual(["GONE="]);
+  it("does not transport a tombstone as a value", () => {
+    // A blank `GONE=` would leave the name present but empty, which is not what
+    // the seam means by removal; the wrapper below unsets it instead.
+    expect(sessionEnv({ GONE: undefined })).toEqual([]);
+    expect(sessionEnv({ GONE: undefined, KEPT: "yes" })).toEqual(["KEPT=yes"]);
   });
 
   it("rejects names and values the transport cannot carry", () => {
@@ -88,5 +91,30 @@ describe("sessionEnv", () => {
 
   it("carries a newline, which the server accepts", () => {
     expect(sessionEnv({ MULTI: "a\nb" })).toEqual(["MULTI=a\nb"]);
+  });
+});
+
+describe("environment removals", () => {
+  it("collects tombstoned names in spec order", () => {
+    expect(removedEnvNames({ A: undefined, B: "set", C: undefined })).toEqual(["A", "C"]);
+    expect(removedEnvNames({ B: "set" })).toEqual([]);
+    expect(removedEnvNames(undefined)).toEqual([]);
+  });
+
+  it("leaves argv untouched when nothing is removed", () => {
+    expect(argvWithRemovals(["/bin/echo", "hi"], [])).toEqual(["/bin/echo", "hi"]);
+  });
+
+  it("unsets names in the child rather than blanking them", () => {
+    expect(argvWithRemovals(["/bin/echo", "hi"], ["A", "B"])).toEqual([
+      "/usr/bin/env",
+      "-u",
+      "A",
+      "-u",
+      "B",
+      "--",
+      "/bin/echo",
+      "hi",
+    ]);
   });
 });
