@@ -119,8 +119,8 @@ export class BoxSubprocessHandle implements SubprocessHandle {
   private session: ExecSessionHandle | undefined;
   private exited = false;
   private terminateRequested = false;
-  private readonly pendingStdin: Buffer[] = [];
-  private stdinEnded = false;
+  /** Resolves with the open session, so stdin writes can wait for it. */
+  private readonly sessionReady: Deferred<ExecSessionHandle>;
   private readonly settled: Deferred<SubprocessOutcome>;
   private readonly onAbort: () => void;
 
@@ -146,6 +146,11 @@ export class BoxSubprocessHandle implements SubprocessHandle {
 
     this.settled = deferred<SubprocessOutcome>();
     this.done = this.settled.promise;
+    void this.done.catch(() => undefined);
+    this.sessionReady = deferred<ExecSessionHandle>();
+    // Observed so a failed handshake cannot surface as an unhandled rejection
+    // when nothing is writing to stdin.
+    void this.sessionReady.promise.catch(() => undefined);
 
     // A long-lived controller shared across spawns would otherwise retain every
     // completed handle, so the listener is removed when this one settles.
@@ -155,22 +160,40 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     spec.signal?.addEventListener("abort", this.onAbort, { once: true });
 
     void this.start().catch((error: unknown) => {
+      this.sessionReady.reject(error);
       this.finish(error);
     });
   }
 
   private createStdin(): Writable {
+    // Each callback waits for the session rather than completing straight into
+    // a private array. Holding it pending is what applies the Writable's high
+    // water mark, so a producer cannot enqueue unbounded input into host memory
+    // while a slow handshake is still in flight.
     return new Writable({
       write: (chunk: Buffer | string, _encoding, callback) => {
         const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        if (this.session === undefined) this.pendingStdin.push(bytes);
-        else this.session.write(bytes);
-        callback();
+        this.sessionReady.promise.then(
+          (session) => {
+            if (!this.exited) session.write(bytes);
+            callback();
+          },
+          (error: unknown) => {
+            callback(error instanceof Error ? error : new Error(inspect(error)));
+          },
+        );
       },
       final: (callback) => {
-        this.stdinEnded = true;
-        this.session?.endStdin();
-        callback();
+        this.sessionReady.promise.then(
+          (session) => {
+            if (!this.exited) session.endStdin();
+            callback();
+          },
+          () => {
+            // The spawn already failed; `done` carries that outcome.
+            callback();
+          },
+        );
       },
     });
   }
@@ -210,22 +233,25 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     // closes the socket underneath these calls. Losing stdin to a process that
     // has already gone is not a spawn failure, so it must not reject `done`.
     try {
-      for (const chunk of this.pendingStdin) session.write(chunk);
-      this.pendingStdin.length = 0;
-
-      const stdinMode = this.spec.stdio.stdin;
-      if (typeof stdinMode === "object") {
-        session.write(stdinMode.data);
-        session.endStdin();
-      } else if (stdinMode === "ignore" || this.stdinEnded) {
-        session.endStdin();
+      if (this.terminateRequested) {
+        // Cancellation arrived during the handshake. Delivering queued input
+        // first would let the command do work after it was already cancelled,
+        // so the stop goes out and the input is dropped.
+        session.terminate(this.spec.graceMs);
+      } else {
+        const stdinMode = this.spec.stdio.stdin;
+        if (typeof stdinMode === "object") {
+          session.write(stdinMode.data);
+          session.endStdin();
+        } else if (stdinMode === "ignore") {
+          session.endStdin();
+        }
+        // Piped writes are released by resolving sessionReady below.
       }
-
-      // Termination requested during the handshake still has to reach the process.
-      if (this.terminateRequested) session.terminate(this.spec.graceMs);
     } catch (_raceWithProcessExit) {
       // The exit code below is the authoritative outcome.
     }
+    this.sessionReady.resolve(session);
 
     const code = await session.wait();
     this.finish(undefined, code);
@@ -242,6 +268,13 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       return;
     }
     const exitCode = code ?? -1;
+    // The SDK reports -1 when a live session loses its connection or ends
+    // without an exit frame; a real exit always carries its code. Resolving it
+    // would misreport a transport failure as a process that exited with -1.
+    if (exitCode === -1) {
+      this.settled.reject(new Error("dsh-box: process session ended without an exit code"));
+      return;
+    }
     // The server reports an exit code, not a signal fact, so a 128+n code is
     // only nameable as a signal when this adapter asked for the stop. The
     // escalation TERMs then KILLs, so the requested stop can surface as either

@@ -144,18 +144,66 @@ describe("BoxSubprocessHandle", () => {
     await handle.done;
   });
 
-  it("queues piped stdin written before the handshake completes", async () => {
+  it("holds piped stdin until the handshake completes, then delivers it", async () => {
     const session = fakeSession();
     const handle = new BoxSubprocessHandle(
       ownerFor(session),
       spec({ stdio: { stdin: "pipe", stdout: { maxBytes: 16 }, stderr: { maxBytes: 16 } } }),
     );
-    handle.stdin?.write("early");
+    let acknowledged = false;
+    handle.stdin?.write("early", () => {
+      acknowledged = true;
+    });
+    // The write callback stays pending, which is what applies the stream's high
+    // water mark: without it a producer could enqueue unbounded input during a
+    // slow handshake.
+    expect(acknowledged).toBe(false);
     expect(session.writes).toEqual([]);
     await flush();
+    await flush();
     expect(session.writes).toEqual(["early"]);
+    expect(acknowledged).toBe(true);
     session.exit(0);
     await handle.done;
+  });
+
+  it("fails pending stdin writes when the handshake fails", async () => {
+    const handle = new BoxSubprocessHandle(
+      ownerFor(undefined, new Error("handshake refused")),
+      spec({ stdio: { stdin: "pipe", stdout: { maxBytes: 16 }, stderr: { maxBytes: 16 } } }),
+    );
+    const failed = new Promise<Error | null | undefined>((resolve) => {
+      handle.stdin?.write("doomed", resolve);
+    });
+    await expect(failed).resolves.toBeInstanceOf(Error);
+    await expect(handle.done).rejects.toThrow(/handshake refused/);
+  });
+
+  it("rejects done when the session ends without an exit code", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    await flush();
+    // -1 is the SDK's lost-connection signal, not a process outcome.
+    session.exit(-1);
+    await expect(handle.done).rejects.toThrow(/without an exit code/);
+  });
+
+  it("cancels without replaying queued input", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(
+      ownerFor(session),
+      spec({
+        stdio: { stdin: { data: "work" }, stdout: { maxBytes: 16 }, stderr: { maxBytes: 16 } },
+      }),
+    );
+    handle.terminate();
+    await flush();
+    // Delivering the batch first would let the command act on input it was
+    // already cancelled for.
+    expect(session.writes).toEqual([]);
+    expect(session.terminated()).toBe(500);
+    session.exit(143);
+    await expect(handle.done).resolves.toEqual({ exitCode: null, signal: "SIGTERM" });
   });
 
   it("terminates when the spec's signal aborts, and drops the listener after exit", async () => {

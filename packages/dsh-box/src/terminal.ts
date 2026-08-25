@@ -37,7 +37,9 @@ const SIGNAL_EXIT_CODES: Readonly<Record<number, NodeJS.Signals>> = {
  * `/proc/<pid>/stat` holds `tpgid` after the comm field, which can itself
  * contain spaces and parentheses, so the comm is stripped before the fields are
  * split. `wchan` names the kernel function a process is parked in, which is the
- * only stdin-wait evidence the substrate exposes.
+ * only stdin-wait evidence the substrate exposes. Only a tty *read* counts: a
+ * process parked in a tty write is blocked on output backpressure, which is not
+ * what the seam means by waiting for input.
  */
 function foregroundProbe(pid: number): string {
   return [
@@ -47,7 +49,7 @@ function foregroundProbe(pid: number): string {
     "for d in /proc/[0-9]*; do",
     '  pg=$(awk \'{sub(/.*\\) /, ""); print $3}\' "$d/stat" 2>/dev/null)',
     '  [ "$pg" = "$tp" ] || continue',
-    '  case "$(cat "$d/wchan" 2>/dev/null)" in *tty_read*|*tty_write*) w=1 ;; esac',
+    '  case "$(cat "$d/wchan" 2>/dev/null)" in *tty_read*) w=1 ;; esac',
     "done",
     'echo "$tp $w"',
   ].join("\n");
