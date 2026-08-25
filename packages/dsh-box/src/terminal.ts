@@ -21,9 +21,12 @@ import type {
 import { deferred, type Deferred } from "./deferred.js";
 import { argvWithRemovals, removedEnvNames, sessionEnv } from "./process.js";
 
-/** Exit codes a shell reports for a signalled death. */
+/**
+ * Exit codes that name a signal teardown can actually deliver. Terminate only
+ * sends TERM then KILL, so 130 is absent: a TERM handler exiting 130 would
+ * otherwise be reported as an interrupt this adapter never sent.
+ */
 const SIGNAL_EXIT_CODES: Readonly<Record<number, NodeJS.Signals>> = {
-  130: "SIGINT",
   137: "SIGKILL",
   143: "SIGTERM",
 };
@@ -61,6 +64,8 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
 
   private exited = false;
   private terminateRequested = false;
+  private closing = false;
+  private readonly inFlight = new Set<Promise<unknown>>();
   private settlement: Promise<void> | undefined;
   private readonly settled: Deferred<SubprocessOutcome>;
 
@@ -74,6 +79,9 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
     this.output = output;
     this.settled = deferred<SubprocessOutcome>();
     this.done = this.settled.promise;
+    // A transport failure rejects `done`; keep that observed so an unwatched
+    // terminal cannot take the process down with an unhandled rejection.
+    void this.done.catch(() => undefined);
 
     void session
       .wait()
@@ -89,6 +97,13 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
     if (this.exited) return;
     this.exited = true;
     this.output.push(null);
+    // The SDK reports -1 when a live session's connection closes or errors; a
+    // real exit always carries its code. Reporting that as a successful outcome
+    // would make a lost terminal indistinguishable from a clean one.
+    if (code === -1) {
+      this.settled.reject(new Error("dsh-box: terminal session ended without an exit code"));
+      return;
+    }
     // A 128+n code names a signal only when this adapter asked for the stop; the
     // escalation TERMs then KILLs, so either 143 or 137 is that requested stop.
     const signal = this.terminateRequested ? SIGNAL_EXIT_CODES[code] : undefined;
@@ -97,17 +112,35 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
     );
   }
 
+  /**
+   * Run one terminal operation, unless teardown has begun.
+   *
+   * The seam requires that no write, inspection, or signal remains in flight
+   * once `terminate()` settles, so operations are both gated and tracked.
+   */
+  private async operation<T>(run: () => Promise<T>): Promise<T> {
+    if (this.closing) throw new Error("dsh-box: terminal session is terminating");
+    const pending = run();
+    this.inFlight.add(pending);
+    try {
+      return await pending;
+    } finally {
+      this.inFlight.delete(pending);
+    }
+  }
+
   /** @inheritdoc */
   async write(data: string): Promise<void> {
     if (this.exited) return;
-    this.session.write(data);
-    return Promise.resolve();
+    await this.operation(async () => {
+      this.session.write(data);
+    });
   }
 
   /** @inheritdoc */
   async inspectForeground(): Promise<SubprocessTerminalForeground | undefined> {
-    if (this.exited) return undefined;
-    const probe = await this.box.exec.command(foregroundProbe(this.pid));
+    if (this.exited || this.closing) return undefined;
+    const probe = await this.operation(() => this.box.exec.command(foregroundProbe(this.pid)));
     const [group, waiting] = probe.result.trim().split(/\s+/);
     if (group === undefined || group === "none") return undefined;
     const processGroupId = Number(group);
@@ -127,7 +160,9 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
     // The signal union is closed, so this is not injectable today; quoting keeps
     // that from depending on the union staying closed.
     const name = quoteBoxShellArg(signal.replace(/^SIG/, ""));
-    await this.box.exec.command(`kill -s ${name} -- -${foreground.processGroupId}`);
+    await this.operation(() =>
+      this.box.exec.command(`kill -s ${name} -- -${foreground.processGroupId}`),
+    );
     return foreground.processGroupId;
   }
 
@@ -139,8 +174,13 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
 
   private async stop(): Promise<void> {
     this.terminateRequested = true;
+    // Gate first: nothing new may start once teardown has begun.
+    this.closing = true;
     if (!this.exited) this.session.terminate(this.graceMs);
     await this.done.catch(() => undefined);
+    // Drain what was already running, so the contract's "nothing in flight
+    // after settlement" holds and no probe races the owner deleting the box.
+    await Promise.allSettled([...this.inFlight]);
     this.session.close();
   }
 }

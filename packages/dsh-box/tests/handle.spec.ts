@@ -172,6 +172,42 @@ describe("BoxSubprocessHandle", () => {
     expect(remove).toHaveBeenCalled();
   });
 
+  it("does not name a signal termination never delivered", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    handle.terminate();
+    await flush();
+    // Terminate sends TERM then KILL. A TERM handler that exits 130 is an exit
+    // code, not an interrupt this adapter delivered.
+    session.exit(130);
+    await expect(handle.done).resolves.toEqual({ exitCode: 130, signal: null });
+  });
+
+  it("removes the waitForExit listener once its race settles", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    await flush();
+    const controller = new AbortController();
+    const remove = vi.spyOn(controller.signal, "removeEventListener");
+    const waiting = handle.waitForExit(controller.signal);
+    session.exit(0);
+    await expect(waiting).resolves.toBe(true);
+    // `done` won the race, so the listener has to come off anyway: a long-lived
+    // signal reused across bounded waits would otherwise retain one per call.
+    expect(remove).toHaveBeenCalled();
+  });
+
+  it("resolves waitForExit false when the signal is already aborted", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    await flush();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(handle.waitForExit(controller.signal)).resolves.toBe(false);
+    session.exit(0);
+    await handle.done;
+  });
+
   it("carries a requested termination raised before the handshake", async () => {
     const session = fakeSession();
     const handle = new BoxSubprocessHandle(ownerFor(session), spec());

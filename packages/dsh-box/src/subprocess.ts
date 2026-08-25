@@ -146,8 +146,16 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
       throw new Error("subprocess-box: terminal argv must contain a program");
     }
     requireRepresentableGrace(spec.graceMs);
-    if (spec.rows <= 0 || spec.cols <= 0) {
-      throw new Error("subprocess-box: terminal rows and cols must be positive");
+    // Non-finite or fractional dimensions do not survive the exec-session
+    // request intact, so the PTY would be created at a size the spec never
+    // asked for.
+    if (
+      !Number.isSafeInteger(spec.rows) ||
+      spec.rows <= 0 ||
+      !Number.isSafeInteger(spec.cols) ||
+      spec.cols <= 0
+    ) {
+      throw new Error("subprocess-box: terminal rows and cols must be positive integers");
     }
     spec.signal?.throwIfAborted();
 

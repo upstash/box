@@ -24,9 +24,13 @@ import type {
 import { deferred, type Deferred } from "./deferred.js";
 import { BoxOutputReader } from "./output.js";
 
-/** Exit codes the shell reports for a signalled death. */
+/**
+ * Exit codes that name a signal this adapter can actually deliver during
+ * termination. The escalation only sends TERM then KILL, so 130 is absent: a
+ * process that handles TERM and exits 130 would otherwise be reported as killed
+ * by an interrupt nothing sent.
+ */
 const SIGNAL_EXIT_CODES: Readonly<Record<number, NodeJS.Signals>> = {
-  130: "SIGINT",
   137: "SIGKILL",
   143: "SIGTERM",
 };
@@ -264,24 +268,29 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       await this.done.catch(() => undefined);
       return true;
     }
+    let onAbort!: () => void;
     const aborted = new Promise<false>((resolve) => {
+      onAbort = () => {
+        resolve(false);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      // Re-check behind registration: an abort between the caller's check and
+      // this listener would otherwise never resolve the race.
       if (signal.aborted) resolve(false);
-      else
-        signal.addEventListener(
-          "abort",
-          () => {
-            resolve(false);
-          },
-          { once: true },
-        );
     });
-    return await Promise.race([
-      this.done.then(
-        () => true,
-        () => true,
-      ),
-      aborted,
-    ]);
+    try {
+      return await Promise.race([
+        this.done.then(
+          () => true,
+          () => true,
+        ),
+        aborted,
+      ]);
+    } finally {
+      // Repeated bounded waits on one long-lived signal would otherwise retain
+      // a listener per call.
+      signal.removeEventListener("abort", onAbort);
+    }
   }
 
   /** Stop the session outright; used by service disposal after termination. */
