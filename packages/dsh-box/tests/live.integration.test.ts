@@ -150,4 +150,92 @@ describe.skipIf(!process.env.UPSTASH_BOX_API_KEY)("dsh-box against a live box", 
     const remaining = await Box.list({ apiKey: process.env.UPSTASH_BOX_API_KEY! });
     expect(remaining.map((box) => box.id)).not.toContain(boxId);
   }, 180_000);
+
+  it("runs a terminal session with a real PTY, foreground signals, and teardown", async () => {
+    const ctx = new Context();
+    const ownerFiber = await ctx.plugin(BoxRuntime, { cwd: CWD });
+    const subprocessFiber = await ctx.plugin(BoxSubprocessRuntime, {});
+
+    try {
+      const terminal = await ctx.subprocess.spawnTerminal({
+        argv: ["/bin/bash", "--noprofile", "--norc", "-i"],
+        cwd: CWD,
+        rows: 24,
+        cols: 80,
+        graceMs: 1_000,
+        env: { PS1: "READY> " },
+      });
+
+      let seen = "";
+      terminal.output.on("data", (chunk: Buffer) => {
+        seen += chunk.toString();
+      });
+      expect(terminal.pid).toBeGreaterThan(0);
+
+      // A real PTY: `tty` names a pts device and the size is right from the
+      // first read, not applied after the shell starts. Both lines are polled;
+      // the size bytes can arrive after the device name.
+      await terminal.write("tty; stty size\n");
+      await expect.poll(() => seen, { interval: 100, timeout: 20_000 }).toContain("/dev/pts/");
+      await expect.poll(() => seen, { interval: 100, timeout: 20_000 }).toContain("24 80");
+
+      // The foreground group is the shell itself while it waits for input.
+      const idle = await terminal.inspectForeground();
+      expect(idle?.processGroupId).toBeGreaterThan(1);
+
+      // Start a foreground child and wait for the foreground group to actually
+      // MOVE off the shell. Polling for `> 1` would pass instantly against the
+      // idle shell, and the interrupt would then hit bash rather than the child.
+      await terminal.write("sleep 55311\n");
+      await expect
+        .poll(async () => (await terminal.inspectForeground())?.processGroupId, {
+          interval: 200,
+          timeout: 20_000,
+        })
+        .not.toBe(idle?.processGroupId);
+
+      const child = await terminal.inspectForeground();
+      expect(child?.processGroupId).not.toBe(idle?.processGroupId);
+      const signalled = await terminal.signalForeground("SIGINT");
+      expect(signalled).toBe(child?.processGroupId);
+
+      // The child is gone right after the interrupt, before any teardown runs,
+      // so the survivor check below cannot be satisfied by terminate() instead.
+      await expect
+        .poll(
+          async () =>
+            (
+              await (
+                await ctx.box.getBox()
+              ).exec.command(
+                'c=0; for d in /proc/[0-9]*; do [ "$(cat "$d/comm" 2>/dev/null)" = "sleep" ] ' +
+                  '&& grep -qs 55311 "$d/cmdline" && c=$((c+1)); done; echo $c',
+              )
+            ).result.trim(),
+          { interval: 250, timeout: 20_000 },
+        )
+        .toBe("0");
+
+      // The interrupt killed the child, not the shell: it still answers.
+      await terminal.write("echo STILL-ALIVE\n");
+      await expect.poll(() => seen, { interval: 100, timeout: 20_000 }).toContain("STILL-ALIVE");
+
+      // Teardown is idempotent and leaves nothing running.
+      await terminal.terminate();
+      await terminal.terminate();
+      const outcome = await terminal.done;
+      expect(outcome.exitCode === 0 || outcome.signal !== null).toBe(true);
+
+      const survivors = await (
+        await ctx.box.getBox()
+      ).exec.command(
+        'c=0; for d in /proc/[0-9]*; do [ "$(cat "$d/comm" 2>/dev/null)" = "sleep" ] ' +
+          '&& grep -qs 55311 "$d/cmdline" && c=$((c+1)); done; echo $c',
+      );
+      expect(survivors.result.trim()).toBe("0");
+    } finally {
+      await subprocessFiber.dispose();
+      await ownerFiber.dispose();
+    }
+  }, 180_000);
 });

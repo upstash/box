@@ -12,8 +12,7 @@ lifecycle as `ctx.box`, and `@upstash/dsh-box/subprocess` implements the seam as
 `ctx.subprocess`. `dsh plugin add @upstash/dsh-box` mounts both.
 
 Covers `spawn`, `resolveExecutable`, bounded collect readers, and tree-scoped
-termination. `spawnTerminal`, `inherit` output, spill files, and a filesystem
-adapter are not implemented yet.
+termination. Spill files and a filesystem adapter are not implemented yet.
 
 Environment entries cross into the box only when a spawn asks for them
 explicitly, so host ambient values never reach a remote process implicitly.

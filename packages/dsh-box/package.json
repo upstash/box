@@ -64,13 +64,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-subprocess": "^0.0.1-rc.1",
-    "@deepseek-ai/dsh-timeout": "^0.0.1-rc.1"
+    "@deepseek-ai/dsh-subprocess": "^0.1.1-rc.2",
+    "@deepseek-ai/dsh-timeout": "^0.1.1-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-subprocess": "^0.0.1-rc.1",
-    "@deepseek-ai/dsh-timeout": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.1-rc.2",
+    "@deepseek-ai/dsh-timeout": "^0.1.1-rc.2",
     "@types/node": "^20.10.0",
     "prettier": "^3.8.1",
     "typescript": "^5.3.0",

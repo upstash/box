@@ -8,10 +8,7 @@
 import { posix } from "node:path";
 import { Context } from "@deepseek-ai/cordis";
 import z from "@deepseek-ai/schemastery";
-// The published 0.0.1-rc.1 exports this base class as SubprocessService; the
-// harness renamed it to SubprocessRuntime after that release. Alias it so the
-// rename is one line to change when a newer rc lands.
-import { SubprocessService as SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
+import { SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import type {
   SubprocessHandle,
@@ -21,6 +18,7 @@ import type {
 } from "@deepseek-ai/dsh-subprocess";
 import { quoteBoxShellArg } from "./index.js";
 import { BoxSubprocessHandle } from "./process.js";
+import { spawnBoxTerminal } from "./terminal.js";
 
 /** Configuration for the Upstash Box subprocess adapter. */
 export interface Config {
@@ -48,6 +46,7 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
   static Config: z<Config> = z.object({});
 
   private readonly live = new Set<BoxSubprocessHandle>();
+  private readonly terminals = new Set<SubprocessTerminalHandle>();
   private disposing = false;
 
   /** Create the Box subprocess service and bind its disposal policy. */
@@ -57,14 +56,19 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
       () => async () => {
         this.disposing = true;
         const handles = [...this.live];
-        await Promise.all(
-          handles.map(async (handle) => {
+        const terminals = [...this.terminals];
+        await Promise.all([
+          ...handles.map(async (handle) => {
             handle.terminate();
             await handle.waitForExit();
             handle.close();
             this.live.delete(handle);
           }),
-        );
+          ...terminals.map(async (terminal) => {
+            await terminal.terminate();
+            this.terminals.delete(terminal);
+          }),
+        ]);
       },
       "box subprocess teardown",
     );
@@ -125,11 +129,6 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     if (spec.signal?.aborted === true) {
       throw new Error(`aborted before spawn: ${String(spec.signal.reason)}`);
     }
-    if (spec.stdio.stdout === "inherit" || spec.stdio.stderr === "inherit") {
-      throw new Error(
-        "subprocess-box: inherit output is not implemented in this phase; use pipe or collect",
-      );
-    }
     const handle = new BoxSubprocessHandle(this.ctx.box, spec);
     this.live.add(handle);
     const release = (): void => {
@@ -140,12 +139,32 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
   }
 
   /** @inheritdoc */
-  spawnTerminal(_spec: SubprocessTerminalSpawnSpec): Promise<SubprocessTerminalHandle> {
-    // exec.session already carries tty/rows/cols and the PTY was verified end to
-    // end; wiring it to the terminal seam is the next phase, not a missing primitive.
-    return Promise.reject(
-      new Error("subprocess-box: spawnTerminal is not implemented in this phase"),
-    );
+  async spawnTerminal(spec: SubprocessTerminalSpawnSpec): Promise<SubprocessTerminalHandle> {
+    if (this.disposing) throw new Error("subprocess-box: service is disposing");
+    const program = spec.argv[0];
+    if (program === undefined || program.length === 0) {
+      throw new Error("subprocess-box: terminal argv must contain a program");
+    }
+    requireRepresentableGrace(spec.graceMs);
+    if (spec.rows <= 0 || spec.cols <= 0) {
+      throw new Error("subprocess-box: terminal rows and cols must be positive");
+    }
+    spec.signal?.throwIfAborted();
+
+    const box = await this.ctx.box.getBox();
+    const terminal = await spawnBoxTerminal(box, spec);
+    // Remote allocation yields to disposal, so a terminal published after
+    // teardown began is torn down rather than leaked.
+    if (this.disposing) {
+      await terminal.terminate();
+      throw new Error("subprocess-box: service disposed during terminal setup");
+    }
+    this.terminals.add(terminal);
+    const release = (): void => {
+      this.terminals.delete(terminal);
+    };
+    void terminal.done.then(release, release);
+    return terminal;
   }
 }
 

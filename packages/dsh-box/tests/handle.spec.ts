@@ -199,6 +199,33 @@ describe("BoxSubprocessHandle", () => {
     expect(chunks.join("")).toBe("streamed");
   });
 
+  it("writes inherit output to the harness streams without touching CI logs", async () => {
+    const session = fakeSession();
+    // Spying rather than letting it through keeps the bytes out of the test log
+    // while still proving where they were routed.
+    const out = vi.spyOn(process.stdout, "write").mockReturnValue(true);
+    const err = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    try {
+      const handle = new BoxSubprocessHandle(
+        ownerFor(session),
+        spec({ stdio: { stdin: "ignore", stdout: "inherit", stderr: "inherit" } }),
+      );
+      await flush();
+      session.emitStdout("to-stdout");
+      session.emitStderr("to-stderr");
+      session.exit(0);
+      await handle.done;
+
+      expect(out.mock.calls.map(([chunk]) => String(chunk)).join("")).toBe("to-stdout");
+      expect(err.mock.calls.map(([chunk]) => String(chunk)).join("")).toBe("to-stderr");
+      // inherit is not collected, so no reader is exposed for it.
+      expect(handle.collected.stdout).toBeUndefined();
+    } finally {
+      out.mockRestore();
+      err.mockRestore();
+    }
+  });
+
   it("waitForExit resolves false when its signal aborts first", async () => {
     const session = fakeSession();
     const handle = new BoxSubprocessHandle(ownerFor(session), spec());

@@ -55,6 +55,9 @@ If you also set a sandbox policy, point its `workspaceRoot` at the same `cwd`, s
   `LD_LIBRARY_PATH`, `NODE_OPTIONS`) stay under the server's control.
 - **Termination is tree-scoped.** Stopping a command sends SIGTERM to the whole process tree, then SIGKILL after the grace period, so background children cannot outlive the command that started them.
 - **The session owns the process.** Losing the connection stops the command rather than orphaning it in the box.
+- **Terminals get a real PTY.** `spawnTerminal()` allocates one sized by `rows`/`cols` at creation, so a shell reports the
+  right size on its first read. Signals go to the foreground process group, so interrupting a running command leaves the
+  shell alive.
 
 ## Requirements
 
@@ -63,15 +66,16 @@ DeepSeek Harness supplies `@deepseek-ai/cordis`, `@deepseek-ai/dsh-subprocess`, 
 ## Limitations
 
 - **No filesystem adapter.** Only the process world moves, so `ctx.fs` still resolves against your local machine. Use bash for anything that touches the workspace.
-- **No terminal sessions.** `spawnTerminal()` is not implemented, so PTY-backed tools are unavailable.
-- **No `inherit` output.** Use `pipe` or collect.
+- **`inherit` copies rather than inherits.** A remote process has no descriptor to hand over, so its bytes are written to
+  the harness's own stdout/stderr. Output lands where a local `inherit` would put it, but the child cannot detect a TTY
+  through it.
+- **Terminal stdin-wait is best effort.** `inspectForeground()` reads the foreground group from `/proc`, and proves an
+  input wait only when the kernel parks a member in a tty read. `inputWaiting` is therefore `false` when the substrate
+  offers no evidence, not only when the group is busy.
 - **Collect output has no spill file.** Overflowing output keeps a bounded tail and reports truncation without a recovery path.
 - **Sessions cannot be reattached.** A dropped connection ends the command, so this is the wrong tool for work that must outlive the harness.
 - **`pid` is `-1` briefly.** `spawn()` returns before the session handshake finishes, so a consumer needing a positive pid immediately cannot use this provider unchanged.
-- **The seam is pre-1.0.** It is pinned to `0.0.1-rc.1`; expect breaking changes as DeepSeek Harness evolves.
-  That release exports the subprocess base class as `SubprocessService`, which the harness has since renamed to
-  `SubprocessRuntime`, so this package aliases it at the import and will need a one-line update when a newer
-  release lands.
+- **The seam is pre-1.0.** It is pinned to `0.1.1-rc.2`; expect breaking changes as DeepSeek Harness evolves.
 
 ## License
 

@@ -176,9 +176,14 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     reader: BoxOutputReader | undefined,
     stream: Readable | undefined,
     data: Uint8Array,
+    inherited: NodeJS.WriteStream,
   ): void {
     if (isCollect(mode)) reader?.push(data);
     else if (mode === "pipe") stream?.push(Buffer.from(data));
+    // A remote process has no descriptor to inherit, so `inherit` copies its
+    // bytes onto the harness's own stream. Output lands in the same place a
+    // local inherit would put it; the child cannot detect a TTY through it.
+    else if (mode === "inherit") inherited.write(Buffer.from(data));
   }
 
   private async start(): Promise<void> {
@@ -188,10 +193,10 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       cwd: this.spec.cwd,
       env: sessionEnv(this.spec.env),
       onStdout: (data) => {
-        this.deliver(this.spec.stdio.stdout, this.stdoutReader, this.stdout, data);
+        this.deliver(this.spec.stdio.stdout, this.stdoutReader, this.stdout, data, process.stdout);
       },
       onStderr: (data) => {
-        this.deliver(this.spec.stdio.stderr, this.stderrReader, this.stderr, data);
+        this.deliver(this.spec.stdio.stderr, this.stderrReader, this.stderr, data, process.stderr);
       },
     });
     this.session = session;
