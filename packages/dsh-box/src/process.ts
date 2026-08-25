@@ -22,7 +22,7 @@ import type {
   SubprocessSpawnSpec,
 } from "@deepseek-ai/dsh-subprocess";
 import { deferred, type Deferred } from "./deferred.js";
-import { BoxOutputReader } from "./output.js";
+import { BoxOutputReader, MAX_UNREAD_OUTPUT_BYTES } from "./output.js";
 
 function isCollect(mode: SubprocessOutputMode): mode is SubprocessCollect {
   return typeof mode === "object";
@@ -200,15 +200,36 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     });
   }
 
+  /**
+   * Fail fast rather than buffer without bound.
+   *
+   * Ending the stream instead of destroying it is deliberate: by definition
+   * nothing is reading here, so an `error` event would very likely have no
+   * listener and take the host process down. `done` is always observed, so the
+   * real reason travels there, and the process filling the buffer is stopped.
+   */
+  private pushPiped(stream: Readable, data: Uint8Array, name: "stdout" | "stderr"): void {
+    if (this.exited) return;
+    stream.push(Buffer.from(data));
+    if (stream.readableLength <= MAX_UNREAD_OUTPUT_BYTES) return;
+    this.terminate();
+    this.finish(
+      new Error(
+        `subprocess-box: ${name} buffered more than ${MAX_UNREAD_OUTPUT_BYTES} bytes that nothing read; the session transport cannot slow the process down`,
+      ),
+    );
+  }
+
   private deliver(
     mode: SubprocessOutputMode,
     reader: BoxOutputReader | undefined,
     stream: Readable | undefined,
     data: Uint8Array,
     inherited: NodeJS.WriteStream,
+    name: "stdout" | "stderr",
   ): void {
     if (isCollect(mode)) reader?.push(data);
-    else if (mode === "pipe") stream?.push(Buffer.from(data));
+    else if (mode === "pipe" && stream !== undefined) this.pushPiped(stream, data, name);
     // A remote process has no descriptor to inherit, so `inherit` copies its
     // bytes onto the harness's own stream. Output lands in the same place a
     // local inherit would put it; the child cannot detect a TTY through it.
@@ -222,10 +243,24 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       cwd: this.spec.cwd,
       env: sessionEnv(this.spec.env),
       onStdout: (data) => {
-        this.deliver(this.spec.stdio.stdout, this.stdoutReader, this.stdout, data, process.stdout);
+        this.deliver(
+          this.spec.stdio.stdout,
+          this.stdoutReader,
+          this.stdout,
+          data,
+          process.stdout,
+          "stdout",
+        );
       },
       onStderr: (data) => {
-        this.deliver(this.spec.stdio.stderr, this.stderrReader, this.stderr, data, process.stderr);
+        this.deliver(
+          this.spec.stdio.stderr,
+          this.stderrReader,
+          this.stderr,
+          data,
+          process.stderr,
+          "stderr",
+        );
       },
     });
     this.session = session;
@@ -322,7 +357,11 @@ export class BoxSubprocessHandle implements SubprocessHandle {
     if (this.exited || this.session !== undefined) return;
     this.abandoned = true;
     this.terminateRequested = true;
-    this.finish(new Error("subprocess-box: service disposed before the session was established"));
+    const error = new Error("subprocess-box: service disposed before the session was established");
+    // A piped stdin write parked on the handshake would otherwise never get its
+    // callback, wedging the Writable and its backpressure for good.
+    this.sessionReady.reject(error);
+    this.finish(error);
   }
 
   /** @inheritdoc */

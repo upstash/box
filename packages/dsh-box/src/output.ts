@@ -9,6 +9,19 @@
 import { Buffer } from "node:buffer";
 import type { SubprocessOutputRead, SubprocessOutputReader } from "@deepseek-ai/dsh-subprocess";
 
+/**
+ * Host-side ceiling for `pipe` output that nothing has read yet.
+ *
+ * A local child writes into an OS pipe, so a consumer that stops reading fills
+ * the pipe and the child blocks. This session has no such path: the transport
+ * pushes stdout frames unconditionally and exposes no pause, so `push()`
+ * returning false cannot slow the box down and the backlog is host memory. A
+ * consumer keeping up never approaches this; only one that has stopped does.
+ *
+ * Collect mode is already bounded by its own `maxBytes`.
+ */
+export const MAX_UNREAD_OUTPUT_BYTES = 32 * 1024 * 1024;
+
 /** Offset reader over one collect-mode Box stream. */
 export class BoxOutputReader implements SubprocessOutputReader {
   private chunks: Buffer[] = [];

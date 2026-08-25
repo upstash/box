@@ -4,6 +4,7 @@ import type { ExecSessionHandle, ExecSessionOptions } from "@upstash/box";
 import type { SubprocessSpawnSpec } from "@deepseek-ai/dsh-subprocess";
 import { BoxSubprocessHandle } from "../src/process.js";
 import { anySignal } from "../src/signal.js";
+import { MAX_UNREAD_OUTPUT_BYTES } from "../src/output.js";
 
 /**
  * State transitions of a live handle, driven by a fake session.
@@ -15,6 +16,7 @@ import { anySignal } from "../src/signal.js";
 
 interface FakeSession extends ExecSessionHandle {
   emitStdout(text: string): void;
+  emitStdoutBytes(bytes: Uint8Array): void;
   emitStderr(text: string): void;
   exit(code: number): void;
   readonly writes: string[];
@@ -54,6 +56,7 @@ function fakeSession(pid = 4242): FakeSession {
       closedFlag = true;
     },
     emitStdout: (text: string) => onStdout?.(new Uint8Array(Buffer.from(text))),
+    emitStdoutBytes: (bytes: Uint8Array) => onStdout?.(bytes),
     emitStderr: (text: string) => onStderr?.(new Uint8Array(Buffer.from(text))),
     exit: (code: number) => settle?.(code),
     writes,
@@ -583,5 +586,132 @@ describe("anySignal", () => {
     // Detached: a later abort of the caller's signal no longer propagates.
     caller.abort(new Error("too late"));
     expect(combined.signal.aborted).toBe(false);
+  });
+});
+
+describe("unread output is bounded", () => {
+  /** One chunk past the ceiling, so a single frame trips it. */
+  const oversized = () => new Uint8Array(MAX_UNREAD_OUTPUT_BYTES + 1024);
+
+  it("fails the handle instead of buffering a pipe nothing reads", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(
+      ownerFor(session),
+      spec({ stdio: { stdin: "ignore", stdout: "pipe", stderr: "ignore" } }),
+    );
+    await flush();
+
+    // Nothing is attached to handle.stdout: the transport keeps delivering.
+    session.emitStdoutBytes(oversized());
+    await expect(handle.done).rejects.toThrow(/buffered more than .* nothing read/);
+    // The process filling the buffer is stopped rather than left running.
+    expect(session.terminated()).toBe(500);
+    // Ended, not destroyed: an "error" event on a stream nobody is reading
+    // would very likely be unhandled and take the host process down.
+    const onError = vi.fn();
+    handle.stdout?.on("error", onError);
+    const ended = new Promise<void>((resolve) => {
+      handle.stdout?.on("end", () => {
+        resolve();
+      });
+    });
+    handle.stdout?.resume();
+    await ended;
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("does not trip for a consumer that keeps up", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(
+      ownerFor(session),
+      spec({ stdio: { stdin: "ignore", stdout: "pipe", stderr: "ignore" } }),
+    );
+    await flush();
+    let seen = 0;
+    handle.stdout?.on("data", (chunk: Buffer) => {
+      seen += chunk.length;
+    });
+    // Well past the ceiling in total, but drained as it arrives.
+    for (let i = 0; i < 8; i++) {
+      session.emitStdoutBytes(new Uint8Array(8 * 1024 * 1024));
+      await flush();
+    }
+    session.exit(0);
+    await expect(handle.done).resolves.toEqual({ exitCode: 0, signal: null });
+    expect(seen).toBe(64 * 1024 * 1024);
+  });
+
+  it("bounds collect mode by its own maxBytes, not this ceiling", async () => {
+    const session = fakeSession();
+    const handle = new BoxSubprocessHandle(ownerFor(session), spec());
+    await flush();
+    session.emitStdoutBytes(oversized());
+    session.exit(0);
+    // Collect mode drops from the head, so a large stream is not a failure.
+    await expect(handle.done).resolves.toEqual({ exitCode: 0, signal: null });
+  });
+});
+
+describe("abandoned handshake releases piped stdin", () => {
+  it("errors a pending write instead of wedging the writable forever", async () => {
+    const { owner } = stalledOwner(fakeSession());
+    const handle = new BoxSubprocessHandle(
+      owner,
+      spec({ stdio: { stdin: "pipe", stdout: "ignore", stderr: "ignore" } }),
+    );
+    await flush();
+
+    // Parked on the handshake: the callback only runs once sessionReady settles.
+    const written = new Promise<Error | undefined>((resolve) => {
+      handle.stdin?.write("queued before the session", (error) => {
+        resolve(error ?? undefined);
+      });
+    });
+    handle.stdin?.on("error", () => {});
+    handle.abandon();
+
+    const settled = await Promise.race([
+      written,
+      new Promise<string>((resolve) => setTimeout(() => resolve("still pending"), 300)),
+    ]);
+    expect(String(settled)).toMatch(/disposed before the session was established/);
+  });
+});
+
+describe("terminal output is bounded", () => {
+  it("fails the terminal instead of buffering what nothing reads", async () => {
+    const session = fakeSession();
+    const box = {
+      exec: {
+        session: (options: ExecSessionOptions) => {
+          (session as unknown as { attach: (o: ExecSessionOptions) => void }).attach(options);
+          return Promise.resolve(session as unknown as ExecSessionHandle);
+        },
+      },
+    } as never;
+    const { spawnBoxTerminal } = await import("../src/terminal.js");
+    const terminal = await spawnBoxTerminal(box, {
+      argv: ["/bin/bash"],
+      cwd: "/workspace/home",
+      rows: 24,
+      cols: 80,
+      graceMs: 500,
+      env: {},
+    });
+
+    session.emitStdoutBytes(new Uint8Array(MAX_UNREAD_OUTPUT_BYTES + 1024));
+    await expect(terminal.done).rejects.toThrow(/buffered more than .* nothing read/);
+    expect(session.terminated()).toBe(500);
+
+    const onError = vi.fn();
+    terminal.output.on("error", onError);
+    const ended = new Promise<void>((resolve) => {
+      terminal.output.on("end", () => {
+        resolve();
+      });
+    });
+    terminal.output.resume();
+    await ended;
+    expect(onError).not.toHaveBeenCalled();
   });
 });

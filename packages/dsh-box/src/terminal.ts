@@ -19,6 +19,7 @@ import type {
   SubprocessTerminalSpawnSpec,
 } from "@deepseek-ai/dsh-subprocess";
 import { deferred, type Deferred } from "./deferred.js";
+import { MAX_UNREAD_OUTPUT_BYTES } from "./output.js";
 import { argvWithRemovals, removedEnvNames, sessionEnv } from "./process.js";
 
 /**
@@ -116,6 +117,25 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
       .catch(() => {
         this.finish(-1);
       });
+  }
+
+  /**
+   * Bounded failure for terminal output nothing is reading.
+   *
+   * The session transport has no pause, so the backlog is host memory. Ends the
+   * stream rather than destroying it: nothing is reading, so an `error` event
+   * would likely be unhandled and take the host down, while `done` is observed.
+   */
+  overflowed(bytes: number): void {
+    if (this.exited) return;
+    this.session.terminate(this.graceMs);
+    this.exited = true;
+    this.output.push(null);
+    this.settled.reject(
+      new Error(
+        `dsh-box: terminal buffered more than ${bytes} bytes that nothing read; the session transport cannot slow the terminal down`,
+      ),
+    );
   }
 
   private finish(code: number): void {
@@ -227,6 +247,9 @@ export async function spawnBoxTerminal(
   spec: SubprocessTerminalSpawnSpec,
 ): Promise<SubprocessTerminalHandle> {
   const output = new Readable({ read() {} });
+  // The handle does not exist while the handshake runs, so an overflow that
+  // trips first is recorded and applied once there is a handle to fail.
+  const overflow: { tripped: boolean; apply?: () => void } = { tripped: false };
   const opening = box.exec.session({
     argv: argvWithRemovals(spec.argv, removedEnvNames(spec.env)),
     cwd: spec.cwd,
@@ -236,7 +259,11 @@ export async function spawnBoxTerminal(
     cols: spec.cols,
     // A TTY merges stderr into stdout, so one callback carries the terminal.
     onStdout: (data) => {
+      if (overflow.tripped) return;
       output.push(Buffer.from(data));
+      if (output.readableLength <= MAX_UNREAD_OUTPUT_BYTES) return;
+      overflow.tripped = true;
+      overflow.apply?.();
     },
   });
   // `signal` cancels allocation. The SDK's handshake takes no abort, so waiting
@@ -246,5 +273,11 @@ export async function spawnBoxTerminal(
     late.terminate(spec.graceMs);
     late.close();
   });
-  return new BoxTerminalHandle(box, session, spec.graceMs, output);
+  const handle = new BoxTerminalHandle(box, session, spec.graceMs, output);
+  overflow.apply = () => {
+    handle.overflowed(MAX_UNREAD_OUTPUT_BYTES);
+  };
+  // An overflow during the handshake had no handle to fail; apply it now.
+  if (overflow.tripped) overflow.apply();
+  return handle;
 }
