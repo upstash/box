@@ -6,6 +6,7 @@
  */
 
 import { posix } from "node:path";
+import { inspect } from "node:util";
 import { Context } from "@deepseek-ai/cordis";
 import z from "@deepseek-ai/schemastery";
 import { SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
@@ -39,6 +40,15 @@ function requireRepresentableGrace(graceMs: number): void {
   }
 }
 
+/**
+ * Coerce a rejection into an Error without risking a useless "[object Object]".
+ * @param value - The rejection reason.
+ * @returns an Error carrying the reason.
+ */
+function asError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(inspect(value));
+}
+
 /** Upstash Box process manager registered as `ctx.subprocess`. */
 export class BoxSubprocessRuntime extends SubprocessRuntime {
   static inject = ["box"];
@@ -63,7 +73,12 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
         await Promise.allSettled([...this.terminalSetups]);
         const handles = [...this.live];
         const terminals = [...this.terminals];
-        await Promise.all([
+        // allSettled, not all: `all` rejects on the first failure while the
+        // other cleanups are still running, so disposal would return early and
+        // the owner could delete the shared box out from under a handle that is
+        // still terminating. Every attempt settles first, then the failures are
+        // reported together.
+        const outcomes = await Promise.allSettled([
           ...handles.map(async (handle) => {
             handle.terminate();
             await handle.waitForExit();
@@ -75,6 +90,13 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
             this.terminals.delete(terminal);
           }),
         ]);
+        const failures = outcomes.flatMap<unknown>((outcome) =>
+          outcome.status === "rejected" ? [outcome.reason as unknown] : [],
+        );
+        if (failures.length === 1) throw asError(failures[0]);
+        if (failures.length > 1) {
+          throw new AggregateError(failures.map(asError), "subprocess-box: teardown failed");
+        }
       },
       "box subprocess teardown",
     );

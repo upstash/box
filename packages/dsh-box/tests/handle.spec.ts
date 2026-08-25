@@ -371,3 +371,60 @@ describe("terminal spawn validation", () => {
     }
   });
 });
+
+describe("service disposal", () => {
+  it("waits for every cleanup even when one of them throws", async () => {
+    const { Context } = await import("@deepseek-ai/cordis");
+    const BoxSubprocessRuntime = (await import("../src/subprocess.js")).default;
+
+    const failing = fakeSession(11);
+    const slow = fakeSession(22);
+    // The failing handle rejects immediately; the sibling takes a moment to
+    // exit. Promise.all would settle on the rejection and let disposal return
+    // while the sibling was still terminating, so the timing is the test.
+    const failFast = failing.terminate.bind(failing);
+    (failing as unknown as { terminate: (graceMs?: number) => void }).terminate = (graceMs) => {
+      failFast(graceMs);
+      failing.exit(143);
+    };
+    (failing as unknown as { close: () => void }).close = () => {
+      throw new Error("close blew up");
+    };
+    const recordSlow = slow.terminate.bind(slow);
+    (slow as unknown as { terminate: (graceMs?: number) => void }).terminate = (graceMs) => {
+      recordSlow(graceMs);
+      setTimeout(() => {
+        slow.exit(143);
+      }, 25);
+    };
+
+    const sessions = [failing, slow];
+    const ctx = new Context();
+    ctx.provide("box", {
+      cwd: "/workspace/home",
+      getBox: () =>
+        Promise.resolve({
+          exec: {
+            session: (options: ExecSessionOptions) => {
+              const next = sessions.shift();
+              if (next === undefined) throw new Error("no session left");
+              (next as unknown as { attach: (o: ExecSessionOptions) => void }).attach(options);
+              return Promise.resolve(next as unknown as ExecSessionHandle);
+            },
+          },
+        }),
+    } as never);
+    const fiber = await ctx.plugin(BoxSubprocessRuntime, {});
+
+    ctx.subprocess.spawn(spec());
+    ctx.subprocess.spawn(spec());
+    await flush();
+
+    await fiber.dispose().catch(() => undefined);
+
+    // Disposal returned only after the slow sibling finished. If it had
+    // returned early, the owner could delete the shared box while this handle
+    // was still terminating.
+    expect(slow.closed()).toBe(true);
+  });
+});
