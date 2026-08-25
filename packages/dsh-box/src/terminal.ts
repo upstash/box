@@ -22,16 +22,6 @@ import { deferred, type Deferred } from "./deferred.js";
 import { argvWithRemovals, removedEnvNames, sessionEnv } from "./process.js";
 
 /**
- * Exit codes that name a signal teardown can actually deliver. Terminate only
- * sends TERM then KILL, so 130 is absent: a TERM handler exiting 130 would
- * otherwise be reported as an interrupt this adapter never sent.
- */
-const SIGNAL_EXIT_CODES: Readonly<Record<number, NodeJS.Signals>> = {
-  137: "SIGKILL",
-  143: "SIGTERM",
-};
-
-/**
  * Read the terminal's foreground process group from the session leader.
  *
  * `/proc/<pid>/stat` holds `tpgid` after the comm field, which can itself
@@ -99,7 +89,6 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
   readonly done: Promise<SubprocessOutcome>;
 
   private exited = false;
-  private terminateRequested = false;
   private closing = false;
   private readonly inFlight = new Set<Promise<unknown>>();
   private settlement: Promise<void> | undefined;
@@ -140,12 +129,11 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
       this.settled.reject(new Error("dsh-box: terminal session ended without an exit code"));
       return;
     }
-    // A 128+n code names a signal only when this adapter asked for the stop; the
-    // escalation TERMs then KILLs, so either 143 or 137 is that requested stop.
-    const signal = this.terminateRequested ? SIGNAL_EXIT_CODES[code] : undefined;
-    this.settled.resolve(
-      signal === undefined ? { exitCode: code, signal: null } : { exitCode: null, signal },
-    );
+    // Same as the process handle: a requested teardown does not prove which
+    // signal produced this code, since an application can catch SIGTERM and
+    // exit 143 or 137 itself. Preserve the server's exit code rather than
+    // inventing a signal fact the protocol never supplied.
+    this.settled.resolve({ exitCode: code, signal: null });
   }
 
   /**
@@ -217,7 +205,6 @@ export class BoxTerminalHandle implements SubprocessTerminalHandle {
   }
 
   private async stop(): Promise<void> {
-    this.terminateRequested = true;
     // Gate first: nothing new may start once teardown has begun.
     this.closing = true;
     if (!this.exited) this.session.terminate(this.graceMs);

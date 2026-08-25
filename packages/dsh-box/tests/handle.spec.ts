@@ -210,7 +210,7 @@ describe("BoxSubprocessHandle", () => {
     expect(session.writes).toEqual([]);
     expect(session.terminated()).toBe(500);
     session.exit(143);
-    await expect(handle.done).resolves.toEqual({ exitCode: null, signal: "SIGTERM" });
+    await expect(handle.done).resolves.toEqual({ exitCode: 143, signal: null });
   });
 
   it("terminates when the spec's signal aborts, and drops the listener after exit", async () => {
@@ -227,15 +227,16 @@ describe("BoxSubprocessHandle", () => {
     expect(remove).toHaveBeenCalled();
   });
 
-  it("does not name a signal termination never delivered", async () => {
+  it("reports the server's exit code rather than inferring a signal", async () => {
     const session = fakeSession();
     const handle = new BoxSubprocessHandle(ownerFor(session), spec());
     handle.terminate();
     await flush();
-    // Terminate sends TERM then KILL. A TERM handler that exits 130 is an exit
-    // code, not an interrupt this adapter delivered.
-    session.exit(130);
-    await expect(handle.done).resolves.toEqual({ exitCode: 130, signal: null });
+    // A requested stop does not prove which signal produced the code: an
+    // application can catch SIGTERM and exit 143 itself, so naming a signal
+    // would fabricate a fact and throw away the real exit code.
+    session.exit(143);
+    await expect(handle.done).resolves.toEqual({ exitCode: 143, signal: null });
   });
 
   it("removes the waitForExit listener once its race settles", async () => {
@@ -270,7 +271,7 @@ describe("BoxSubprocessHandle", () => {
     await flush();
     expect(session.terminated()).toBe(500);
     session.exit(137);
-    await expect(handle.done).resolves.toEqual({ exitCode: null, signal: "SIGKILL" });
+    await expect(handle.done).resolves.toEqual({ exitCode: 137, signal: null });
   });
 
   it("ends piped streams when the process exits", async () => {

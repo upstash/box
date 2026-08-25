@@ -187,9 +187,21 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     }
     spec.signal?.throwIfAborted();
 
+    // The tracked promise covers the whole transaction: allocate, then either
+    // publish or tear down. Tracking only the allocation would let it settle
+    // while the disposal branch below was still awaiting terminate(), so
+    // disposal could finish and the owner delete the box mid-teardown.
     const setup = (async (): Promise<SubprocessTerminalHandle> => {
       const box = await this.ctx.box.getBox();
-      return await spawnBoxTerminal(box, spec);
+      const allocated = await spawnBoxTerminal(box, spec);
+      // Remote allocation yields to disposal, so a terminal published after
+      // teardown began is torn down rather than leaked.
+      if (this.disposing) {
+        await allocated.terminate();
+        throw new Error("subprocess-box: service disposed during terminal setup");
+      }
+      this.terminals.add(allocated);
+      return allocated;
     })();
     this.terminalSetups.add(setup);
     let terminal: SubprocessTerminalHandle;
@@ -198,13 +210,6 @@ export class BoxSubprocessRuntime extends SubprocessRuntime {
     } finally {
       this.terminalSetups.delete(setup);
     }
-    // Remote allocation yields to disposal, so a terminal published after
-    // teardown began is torn down rather than leaked.
-    if (this.disposing) {
-      await terminal.terminate();
-      throw new Error("subprocess-box: service disposed during terminal setup");
-    }
-    this.terminals.add(terminal);
     const release = (): void => {
       this.terminals.delete(terminal);
     };

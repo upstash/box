@@ -66,6 +66,10 @@ DeepSeek Harness supplies `@deepseek-ai/cordis`, `@deepseek-ai/dsh-subprocess`, 
 ## Limitations
 
 - **No filesystem adapter.** Only the process world moves, so `ctx.fs` still resolves against your local machine. Use bash for anything that touches the workspace.
+- **Exit outcomes carry a code, never a signal.** The session protocol reports an exit code and nothing else, so a
+  terminated process comes back as `143` or `137` with `signal: null`. Requesting a stop does not prove which signal
+  produced the code, since a process can catch `SIGTERM` and exit `143` itself, so the adapter passes the server's code
+  through instead of inferring one.
 - **A piped stdin errors if the session never opens.** Failing the write callback destroys the stream and emits
   `error`, so a consumer using `stdin: "pipe"` should attach a listener the way it would for any Node writable.
 - **`inherit` copies rather than inherits.** A remote process has no descriptor to hand over, so its bytes are written to

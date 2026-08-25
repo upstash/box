@@ -122,8 +122,11 @@ describe.skipIf(!process.env.UPSTASH_BOX_API_KEY)("dsh-box against a live box", 
         longRunning.terminate(); // idempotent server-side
         await expect(longRunning.waitForExit()).resolves.toBe(true);
         const outcome = await longRunning.done;
-        expect(["SIGTERM", "SIGKILL"]).toContain(outcome.signal);
-        expect(outcome.exitCode).toBeNull();
+        // The escalation TERMs then KILLs, so the box reports 143 or 137. The
+        // adapter passes that through: the protocol carries no signal fact, and
+        // inferring one would discard the code the server actually gave.
+        expect([143, 137]).toContain(outcome.exitCode);
+        expect(outcome.signal).toBeNull();
 
         // Count only real `sleep` processes: the probe's own cmdline holds the
         // marker, so an unfiltered scan would always find itself.
@@ -224,7 +227,11 @@ describe.skipIf(!process.env.UPSTASH_BOX_API_KEY)("dsh-box against a live box", 
       await terminal.terminate();
       await terminal.terminate();
       const outcome = await terminal.done;
-      expect(outcome.exitCode === 0 || outcome.signal !== null).toBe(true);
+      // Teardown TERMs then KILLs the shell, so the box reports 143 or 137.
+      // The adapter passes the code through rather than naming a signal the
+      // protocol never supplied.
+      expect([0, 143, 137]).toContain(outcome.exitCode);
+      expect(outcome.signal).toBeNull();
 
       const survivors = await (
         await ctx.box.getBox()

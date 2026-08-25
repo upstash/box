@@ -24,17 +24,6 @@ import type {
 import { deferred, type Deferred } from "./deferred.js";
 import { BoxOutputReader } from "./output.js";
 
-/**
- * Exit codes that name a signal this adapter can actually deliver during
- * termination. The escalation only sends TERM then KILL, so 130 is absent: a
- * process that handles TERM and exits 130 would otherwise be reported as killed
- * by an interrupt nothing sent.
- */
-const SIGNAL_EXIT_CODES: Readonly<Record<number, NodeJS.Signals>> = {
-  137: "SIGKILL",
-  143: "SIGTERM",
-};
-
 function isCollect(mode: SubprocessOutputMode): mode is SubprocessCollect {
   return typeof mode === "object";
 }
@@ -175,8 +164,16 @@ export class BoxSubprocessHandle implements SubprocessHandle {
         const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         this.sessionReady.promise.then(
           (session) => {
-            if (!this.exited) session.write(bytes);
-            callback();
+            // write() throws synchronously if the socket closed between
+            // readiness and here. Inside an unobserved then() that would skip
+            // the callback, wedging the Writable forever, and surface as an
+            // unhandled rejection instead of a stream error.
+            try {
+              if (!this.exited) session.write(bytes);
+              callback();
+            } catch (error: unknown) {
+              callback(error instanceof Error ? error : new Error(inspect(error)));
+            }
           },
           (error: unknown) => {
             callback(error instanceof Error ? error : new Error(inspect(error)));
@@ -186,8 +183,12 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       final: (callback) => {
         this.sessionReady.promise.then(
           (session) => {
-            if (!this.exited) session.endStdin();
-            callback();
+            try {
+              if (!this.exited) session.endStdin();
+              callback();
+            } catch (error: unknown) {
+              callback(error instanceof Error ? error : new Error(inspect(error)));
+            }
           },
           () => {
             // The spawn already failed; `done` carries that outcome.
@@ -275,14 +276,12 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       this.settled.reject(new Error("dsh-box: process session ended without an exit code"));
       return;
     }
-    // The server reports an exit code, not a signal fact, so a 128+n code is
-    // only nameable as a signal when this adapter asked for the stop. The
-    // escalation TERMs then KILLs, so the requested stop can surface as either
-    // 143 or 137; report whichever the server actually delivered.
-    const signal = this.terminateRequested ? SIGNAL_EXIT_CODES[exitCode] : undefined;
-    this.settled.resolve(
-      signal === undefined ? { exitCode, signal: null } : { exitCode: null, signal },
-    );
+    // The server reports an exit code and nothing else. Requesting termination
+    // does not prove which signal produced that code: a process can catch
+    // SIGTERM and exit 143 or 137 on its own, so naming a signal here would
+    // fabricate a fact and discard the real exit code. Report what the server
+    // actually said until the protocol carries a signal of its own.
+    this.settled.resolve({ exitCode, signal: null });
   }
 
   /** @inheritdoc */
