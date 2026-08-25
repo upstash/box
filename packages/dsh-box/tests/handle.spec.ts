@@ -508,6 +508,36 @@ describe("process setup cancellation", () => {
     await expect(handle.done).rejects.toThrow(/disposed before the session was established/);
   });
 
+  it("observes the late session's exit so a rejection cannot go unhandled", async () => {
+    const session = fakeSession();
+    // The SDK resolves wait() with -1 today; this is the guard for if it ever
+    // starts rejecting, since nothing else awaits an abandoned session.
+    (session as unknown as { wait: () => Promise<number> }).wait = () =>
+      Promise.reject(new Error("transport died after abandonment"));
+    const { owner, release } = stalledOwner(session);
+
+    // Observed directly: an unhandled rejection does not fail a vitest run on
+    // its own, so asserting on the process event is what actually pins this.
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const handle = new BoxSubprocessHandle(owner, spec());
+      await flush();
+      handle.abandon();
+      await expect(handle.done).rejects.toThrow(/disposed before the session/);
+
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(session.terminated()).toBe(500);
+      expect(unhandled.map(String)).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
   it("stops a session that lands after it was abandoned", async () => {
     const session = fakeSession();
     const { owner, release } = stalledOwner(session);

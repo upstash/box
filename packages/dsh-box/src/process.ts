@@ -300,6 +300,10 @@ export class BoxSubprocessHandle implements SubprocessHandle {
       } catch (_alreadyClosing) {
         // The socket is already going away, which is the desired end state.
       }
+      // Nothing awaits this session's exit. The SDK resolves it with -1 on
+      // close today, so observing it keeps a future rejection from surfacing as
+      // an unhandled one.
+      void session.wait().catch(() => undefined);
       this.sessionReady.reject(new Error("subprocess-box: session abandoned during disposal"));
       return;
     }

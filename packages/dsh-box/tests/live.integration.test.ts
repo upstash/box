@@ -107,7 +107,8 @@ describe.skipIf(!process.env.UPSTASH_BOX_API_KEY)("dsh-box against a live box", 
         await unset.done;
         expect(unset.collected.stdout?.readFrom(0).text).toBe("[absent]\n");
 
-        // terminate() reaps the whole tree and reports the delivered signal.
+        // terminate() reaps the whole tree; the exit code below is the only
+        // termination fact the protocol carries.
         const longRunning = ctx.subprocess.spawn({
           argv: ["/bin/sh", "-c", "sleep 60177 & sleep 60178 & wait"],
           cwd: CWD,
