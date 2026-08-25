@@ -172,10 +172,17 @@ describe("BoxSubprocessHandle", () => {
       ownerFor(undefined, new Error("handshake refused")),
       spec({ stdio: { stdin: "pipe", stdout: { maxBytes: 16 }, stderr: { maxBytes: 16 } } }),
     );
+    // Failing a write callback destroys the Writable and emits "error", which
+    // is the stream contract a piped consumer has to honour; without a listener
+    // Node escalates it to an uncaught exception.
+    const streamError = new Promise<Error>((resolve) => {
+      handle.stdin?.on("error", resolve);
+    });
     const failed = new Promise<Error | null | undefined>((resolve) => {
       handle.stdin?.write("doomed", resolve);
     });
     await expect(failed).resolves.toBeInstanceOf(Error);
+    expect((await streamError).message).toMatch(/handshake refused/);
     await expect(handle.done).rejects.toThrow(/handshake refused/);
   });
 

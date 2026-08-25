@@ -66,6 +66,8 @@ DeepSeek Harness supplies `@deepseek-ai/cordis`, `@deepseek-ai/dsh-subprocess`, 
 ## Limitations
 
 - **No filesystem adapter.** Only the process world moves, so `ctx.fs` still resolves against your local machine. Use bash for anything that touches the workspace.
+- **A piped stdin errors if the session never opens.** Failing the write callback destroys the stream and emits
+  `error`, so a consumer using `stdin: "pipe"` should attach a listener the way it would for any Node writable.
 - **`inherit` copies rather than inherits.** A remote process has no descriptor to hand over, so its bytes are written to
   the harness's own stdout/stderr. Output lands where a local `inherit` would put it, but the child cannot detect a TTY
   through it.
