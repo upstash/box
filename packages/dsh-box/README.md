@@ -1,0 +1,107 @@
+# @upstash/dsh-box
+
+Run [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) shell work inside a remote [Upstash Box](https://upstash.com/docs/box).
+
+The harness keeps running locally: your agent, model calls, session state, and tools stay on your machine. Only the process world moves. Bash, and anything else built on the subprocess seam, executes in the box.
+
+## Install
+
+```bash
+dsh plugin --profile <name> add @upstash/dsh-box
+```
+
+That installs the package and appends its bundle, which mounts two plugins:
+
+| Plugin                        | `ctx` key        | Role                                                                        |
+| ----------------------------- | ---------------- | --------------------------------------------------------------------------- |
+| `@upstash/dsh-box`            | `ctx.box`        | Creates one box, prepares its working directory, and deletes it on disposal |
+| `@upstash/dsh-box/subprocess` | `ctx.subprocess` | Implements the subprocess seam over Box live exec sessions                  |
+
+Set `UPSTASH_BOX_API_KEY` in your environment, or pass `apiKey` in the profile.
+
+Nothing above the seam is forked. `dsh-bash-local` delegates every execution-world operation to `ctx.subprocess`, so mounting the adapter is the whole integration.
+
+## Configure
+
+The bundle's defaults work as-is. To override, edit the rows in your profile:
+
+```yaml
+- id: box
+  name: "@upstash/dsh-box"
+  config:
+    cwd: /workspace/home
+    runtime: node
+
+- id: subprocess-box
+  name: "@upstash/dsh-box/subprocess"
+```
+
+| Key                | Default                                      | Meaning                                                 |
+| ------------------ | -------------------------------------------- | ------------------------------------------------------- |
+| `apiKey`           | `UPSTASH_BOX_API_KEY`                        | Account credential. It is never forwarded into the box. |
+| `baseUrl`          | `UPSTASH_BOX_BASE_URL`, then the SDK default | API endpoint.                                           |
+| `cwd`              | `/workspace/home`                            | Shared remote working directory.                        |
+| `runtime`          | `node`                                       | Box base image.                                         |
+| `requestTimeoutMs` | `600000`                                     | Per-request HTTP timeout. Not a box lifetime.           |
+
+If you also set a sandbox policy, point its `workspaceRoot` at the same `cwd`, since that is bash's default working directory too.
+
+### Two profile settings a stock profile gets wrong
+
+A stock profile assumes the execution world is the machine it runs on. Two of those assumptions have to be corrected, or every bash call fails:
+
+**The working directory must be a path inside the box.** The bash tool defaults to the session's own working directory, which is a path on your machine. Nothing creates it in the box, and macOS paths (`/Users/...`, `/private/...`) cannot be created there at all, since the box's exec user does not own `/`. Either run the harness from a directory the box also has, or pass a box-side `workdir`. A session that fails this way now says so by name rather than reporting a missing pid.
+
+**The local confinement runner cannot run in the box.** `dsh-bash-sandbox` prepends a host binary to every command (`sandbox-exec` on macOS, `bwrap` on Linux). Sent into the box that argv is just a missing executable, so the command exits 127. The box is already the isolation boundary, so run with `DSH_PERMISSION_MODE=danger-full-access` and let it be the boundary:
+
+```bash
+DSH_PERMISSION_MODE=danger-full-access dsh --profile <name> "your task"
+```
+
+That name is about the _host_ policy, and what it turns off is host confinement of a command that no longer runs on the host. Your machine is protected because the work is in the box, not because a seatbelt profile wraps it.
+
+## How it behaves
+
+- **One box per profile.** The owner creates it at load and deletes it at disposal, so a box does not outlive the fiber that owns it.
+- **The environment does not leak.** Only the environment entries a spawn explicitly asks for cross into the box. Your
+  machine's `PATH`, `HOME`, `USER`, `SSH_AUTH_SOCK`, and CI variables stay on your machine. Asking to remove a name
+  unsets it in the child rather than blanking it, and the box's own blocked names (`PATH`, `HOME`, `LD_PRELOAD`,
+  `LD_LIBRARY_PATH`, `NODE_OPTIONS`) stay under the server's control.
+- **Termination is tree-scoped.** Stopping a command sends SIGTERM to the whole process tree, then SIGKILL after the grace period, so background children cannot outlive the command that started them.
+- **The session owns the process.** Losing the connection stops the command rather than orphaning it in the box.
+- **Terminals get a real PTY.** `spawnTerminal()` allocates one sized by `rows`/`cols` at creation, so a shell reports the
+  right size on its first read. Signals go to the foreground process group, so interrupting a running command leaves the
+  shell alive.
+
+## Requirements
+
+DeepSeek Harness supplies `@deepseek-ai/cordis`, `@deepseek-ai/dsh-subprocess`, and `@deepseek-ai/dsh-timeout` as peer dependencies. A dsh profile already has them.
+
+## Limitations
+
+- **No filesystem adapter.** Only the process world moves, so `ctx.fs` still resolves against your local machine. Use bash for anything that touches the workspace.
+- **Exit outcomes carry a code, never a signal.** The session protocol reports an exit code and nothing else, so a
+  terminated process comes back as `143` or `137` with `signal: null`. Requesting a stop does not prove which signal
+  produced the code, since a process can catch `SIGTERM` and exit `143` itself, so the adapter passes the server's code
+  through instead of inferring one.
+- **A piped stdin errors if the session never opens.** Failing the write callback destroys the stream and emits
+  `error`, so a consumer using `stdin: "pipe"` should attach a listener the way it would for any Node writable.
+- **`inherit` copies rather than inherits.** A remote process has no descriptor to hand over, so its bytes are written to
+  the harness's own stdout/stderr. Output lands where a local `inherit` would put it, but the child cannot detect a TTY
+  through it.
+- **Terminal stdin-wait is best effort.** `inspectForeground()` reads the foreground group from `/proc`, and proves an
+  input wait only when the kernel parks a member in a tty read. `inputWaiting` is therefore `false` when the substrate
+  offers no evidence, not only when the group is busy.
+- **Collect output has no spill file.** Overflowing output keeps a bounded tail and reports truncation without a recovery path.
+- **Output a consumer stops reading is capped at 32 MiB.** A local child blocks when the pipe it writes to fills, but the
+  session transport has no pause, so the box keeps sending and the backlog is host memory. Past the cap the adapter stops
+  the command rather than grow without bound: a piped stream is destroyed with an error explaining why, `inherit` stops
+  copying, and a terminal's `done` rejects. A consumer that keeps up never reaches it. Real flow control needs
+  pause/resume in the session protocol itself.
+- **Sessions cannot be reattached.** A dropped connection ends the command, so this is the wrong tool for work that must outlive the harness.
+- **`pid` is `-1` briefly.** `spawn()` returns before the session handshake finishes, so a consumer needing a positive pid immediately cannot use this provider unchanged.
+- **The seam is pre-1.0.** It is pinned to `0.1.1-rc.2`; expect breaking changes as DeepSeek Harness evolves.
+
+## License
+
+MIT
