@@ -2117,25 +2117,30 @@ export class Box<TProvider = unknown> {
           continue;
         }
 
-        // Yield any raw output before the exit event
+        // Yield any raw output before the exit event, keeping the marker at
+        // the head of the buffer in case the event itself is still arriving.
         if (exitIndex > 0) {
           yield { type: "output", data: buffer.slice(0, exitIndex) };
+          buffer = buffer.slice(exitIndex);
         }
 
-        // Parse the exit event
-        const afterEvent = buffer.slice(exitIndex + "event: exit\n".length);
-        const dataMatch = afterEvent.match(/^data:\s*(.+)/m);
-        if (dataMatch) {
-          try {
-            const parsed = JSON.parse(dataMatch[1]!);
-            yield {
-              type: "exit",
-              exitCode: parsed.exit_code ?? 0,
-              cpuNs: parsed.cpu_ns ?? 0,
-            };
-          } catch {
-            yield { type: "exit", exitCode: 0, cpuNs: 0 };
-          }
+        // The marker and its payload can land in separate network reads. A
+        // complete line is required here so that a half-arrived one is not
+        // parsed; returning at that point would end the stream with no exit
+        // chunk at all, which is what a caller uses to learn the exit status.
+        const afterEvent = buffer.slice("event: exit\n".length);
+        const dataMatch = afterEvent.match(/^data:\s*(.+)\r?\n/m);
+        if (!dataMatch) continue;
+
+        try {
+          const parsed = JSON.parse(dataMatch[1]!);
+          yield {
+            type: "exit",
+            exitCode: parsed.exit_code ?? 0,
+            cpuNs: parsed.cpu_ns ?? 0,
+          };
+        } catch {
+          yield { type: "exit", exitCode: 0, cpuNs: 0 };
         }
         return;
       }

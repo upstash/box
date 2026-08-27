@@ -38,6 +38,39 @@ function mockExecStreamResponse(
   } as Response;
 }
 
+
+/**
+ * A stream delivered in caller-chosen pieces, so a marker and its payload can
+ * be split the way the network splits them.
+ */
+function mockChunkedResponse(pieces: string[]): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const piece of pieces) controller.enqueue(encoder.encode(piece));
+      controller.close();
+    },
+  });
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: new Headers({ "content-type": "text/event-stream" }),
+    json: () => Promise.reject(new Error("stream response")),
+    text: () => Promise.resolve(pieces.join("")),
+    body: stream,
+    bodyUsed: false,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+    clone: () => mockChunkedResponse(pieces),
+    redirected: false,
+    type: "basic" as ResponseType,
+    url: "",
+    bytes: () => Promise.resolve(new Uint8Array()),
+  } as Response;
+}
+
 function mockExecStreamErrorResponse(errorMessage: string): Response {
   const raw = `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`;
   const encoder = new TextEncoder();
@@ -379,5 +412,57 @@ describe("exec.streamCode", () => {
 
     expect(run.status).toBe("failed");
     expect(run.cost.computeMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("exec stream split across network reads", () => {
+  async function collect(box: Awaited<ReturnType<typeof createTestBox>>["box"]) {
+    const chunks: ExecStreamChunk[] = [];
+    for await (const chunk of await box.exec.stream("true")) chunks.push(chunk);
+    return chunks;
+  }
+
+  it("still reports the exit status when the marker and payload arrive apart", async () => {
+    const { box, fetchMock } = await createTestBox();
+    // The marker completing one read and the payload starting the next is what
+    // happens on the wire; losing the exit chunk there leaves a caller with no
+    // way to know whether the command succeeded.
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["hello\n", "event: exit\n", 'data: {"exit_code":3,"cpu_ns":1}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    expect(chunks.filter((chunk) => chunk.type === "exit")).toEqual([
+      { type: "exit", exitCode: 3, cpuNs: 1 },
+    ]);
+  });
+
+  it("does not duplicate the output that preceded the exit event", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["hello\n", "event: exit\n", 'data: {"exit_code":0,"cpu_ns":0}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    const output = chunks
+      .filter((chunk) => chunk.type === "output")
+      .map((chunk) => (chunk as { data: string }).data)
+      .join("");
+    expect(output).toBe("hello\n");
+  });
+
+  it("survives the payload itself being split", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockChunkedResponse(["event: exit\n", 'data: {"exit_code":', '42,"cpu_ns":0}\n\n']),
+    );
+
+    const chunks = await collect(box);
+
+    expect(chunks.filter((chunk) => chunk.type === "exit")).toEqual([
+      { type: "exit", exitCode: 42, cpuNs: 0 },
+    ]);
   });
 });
