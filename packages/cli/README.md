@@ -84,6 +84,21 @@ box exec --json -- node -e 'console.log(1)'
 
 Put the remote command after `--`. Without it, flags such as `-la` are read as flags of `box` itself.
 
+A single argument is sent as a shell expression, exactly as written, which is how you
+pipe, redirect or background something:
+
+```bash
+box exec -- '( npm run dev > dev.log 2>&1 & )'
+box exec -- 'cd src && ls'
+```
+
+Several arguments are treated as argv and quoted individually, so quoting your own
+shell already resolved is not lost on the way:
+
+```bash
+box exec -- node -e 'console.log("hello world")'
+```
+
 | Flag              | Description                                                      |
 | ----------------- | ---------------------------------------------------------------- |
 | `-C, --cwd <dir>` | Working directory inside the box                                 |

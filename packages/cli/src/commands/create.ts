@@ -59,13 +59,17 @@ export interface CreateFlags {
  * A pipe or a CI job has no terminal to drive the REPL, so a create that ends
  * in one would hang with the box already billing. `--json` implies it too,
  * since the REPL's output is not machine-readable.
+ *
+ * Both streams have to be checked. `ID=$(box create --runtime node)` keeps
+ * stdin on the terminal but captures stdout, so a stdin-only test would open
+ * a REPL whose output nobody can see, holding a billing box open.
  * @param flags - the create flags as given.
  * @returns true when the REPL must be skipped.
  */
 export function isHeadlessCreate(flags: CreateFlags): boolean {
   if (flags.repl === false) return true;
   if (flags.json) return true;
-  return !process.stdin.isTTY;
+  return !process.stdin.isTTY || !process.stdout.isTTY;
 }
 
 /**
@@ -174,10 +178,27 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
 
   if (flags.cloneRepo) {
     if (headless) note(`Cloning ${flags.cloneRepo}...`);
-    await box.git.clone({
-      repo: flags.cloneRepo,
-      ...(flags.gitToken === undefined ? {} : { githubToken: flags.gitToken }),
-    });
+    try {
+      await box.git.clone({
+        repo: flags.cloneRepo,
+        ...(flags.gitToken === undefined ? {} : { githubToken: flags.gitToken }),
+      });
+    } catch (error) {
+      // The box exists and is billing. Failing here without naming it would
+      // leave the caller unable to reuse or delete it.
+      if (flags.use !== false) {
+        try {
+          writeBoxFile(box.id);
+        } catch {
+          // Reporting the id below is the part that matters.
+        }
+      }
+      note(`The box was created: ${box.id}`);
+      note(`Delete it with: box delete --yes ${box.id}`);
+      throw new CliError(`Created ${box.id}, but cloning ${flags.cloneRepo} failed`, {
+        cause: error,
+      });
+    }
   }
 
   if (!headless) {

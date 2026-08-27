@@ -1,5 +1,38 @@
 import { describe, it, expect, vi } from "vitest";
-import { execCollect, execStream, quoteShellArg, withCwd } from "../../core/exec.js";
+import { buildCommand, execCollect, execStream, quoteShellArg, withCwd } from "../../core/exec.js";
+
+describe("buildCommand", () => {
+  it("keeps a single argument as the shell expression it is", () => {
+    // The documented way to detach a server; quoting it would make the whole
+    // thing a command name.
+    expect(buildCommand(["( npm run dev > dev.log 2>&1 & )"])).toBe(
+      "( npm run dev > dev.log 2>&1 & )",
+    );
+  });
+
+  it("preserves boundaries the local shell already resolved", () => {
+    // Joined with spaces this becomes `node -e console.log("hello world")`,
+    // which the remote shell splits into different words.
+    expect(buildCommand(["node", "-e", 'console.log("hello world")'])).toBe(
+      `'node' '-e' 'console.log("hello world")'`,
+    );
+  });
+
+  it("quotes an argument containing spaces", () => {
+    expect(buildCommand(["grep", "-n", "two words", "file.txt"])).toBe(
+      `'grep' '-n' 'two words' 'file.txt'`,
+    );
+  });
+
+  it("leaves ordinary argv alone in meaning", () => {
+    expect(buildCommand(["ls", "-la"])).toBe("'ls' '-la'");
+  });
+
+  it("is empty for no arguments", () => {
+    expect(buildCommand([])).toBe("");
+    expect(buildCommand([""])).toBe("");
+  });
+});
 
 describe("withCwd", () => {
   it("leaves a command alone when no directory is given", () => {

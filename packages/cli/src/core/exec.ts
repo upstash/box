@@ -74,6 +74,28 @@ export function withCwd(command: string, cwd?: string): string {
 }
 
 /**
+ * Build the shell command line from the argv the local shell handed over.
+ *
+ * The SDK sends one string to `sh -c`, so argv has to be turned back into a
+ * command line. Joining with spaces loses the boundaries the local shell
+ * already resolved: `-e 'console.log("a b")'` becomes three words again and
+ * the remote shell splits it differently.
+ *
+ * A single argument is passed through untouched, because that is how a shell
+ * expression is written: `box exec -- '( npm run dev & )'` has to keep its
+ * parentheses and ampersand. Two or more arguments are argv, so each is quoted
+ * and the boundaries survive.
+ * @param parts - the remote command as the local shell split it.
+ * @returns the command line to send.
+ */
+export function buildCommand(parts: string[]): string {
+  const words = parts.filter((part) => part !== "");
+  if (words.length === 0) return "";
+  if (words.length === 1) return words[0]!.trim();
+  return words.map(quoteShellArg).join(" ");
+}
+
+/**
  * Quote one argument for the shell that runs it.
  * @param value - exact value to preserve.
  * @returns a single shell word.

@@ -89,12 +89,14 @@ describe("handleGit", () => {
       expect(events[0]).toMatchObject({ message: expect.stringContaining("Not a git repository") });
     });
 
-    it("falls back to clean when the check itself fails", async () => {
+    it("says it could not check rather than claiming clean", async () => {
       const box = createMockBox();
       box.git.status.mockResolvedValue("");
       box.git.exec.mockRejectedValue(new Error("network"));
       const events = await collectEvents(handleGit(box as any, "status"));
-      expect(events).toContainEqual({ type: "log", message: "(clean)" });
+      // Neither answer is supported by evidence, so claim neither.
+      expect(events[0]).toMatchObject({ message: expect.stringContaining("could not check") });
+      expect(events).not.toContainEqual({ type: "log", message: "(clean)" });
     });
   });
 

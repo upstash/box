@@ -53,7 +53,9 @@ describe("createCommand", () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
     const tty = process.stdin.isTTY;
+    const outTty = process.stdout.isTTY;
     process.stdin.isTTY = true;
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
 
     await createCommand({
       token: "my-key",
@@ -74,6 +76,7 @@ describe("createCommand", () => {
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
     process.stdin.isTTY = tty;
+    Object.defineProperty(process.stdout, "isTTY", { value: outTty, configurable: true });
   });
 
   it("sends undefined apiKey when --agent-api-key is omitted", async () => {
@@ -249,13 +252,18 @@ describe("createCommand", () => {
 
   describe("wizard delegation", () => {
     let origIsTTY: boolean | undefined;
+    let origOutTTY: boolean | undefined;
 
     beforeEach(() => {
       origIsTTY = process.stdin.isTTY;
+      origOutTTY = process.stdout.isTTY;
+      // The wizard only runs for a fully interactive create.
+      Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     });
 
     afterEach(() => {
       Object.defineProperty(process.stdin, "isTTY", { value: origIsTTY, configurable: true });
+      Object.defineProperty(process.stdout, "isTTY", { value: origOutTTY, configurable: true });
     });
 
     it("calls wizard when no config flags and TTY", async () => {
@@ -370,11 +378,26 @@ describe("createCommand", () => {
       expect(writeBoxFile).not.toHaveBeenCalled();
     });
 
-    it("goes headless when stdout is a pipe, even without --no-repl", async () => {
+    it("goes headless when stdin is a pipe, even without --no-repl", async () => {
       Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+      Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
       vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
       await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
       expect(startRepl).not.toHaveBeenCalled();
+    });
+
+    it("goes headless when only stdout is captured", async () => {
+      // ID=$(box create ...) keeps stdin on the terminal but captures stdout.
+      // Opening a REPL there hides its own output and holds a billing box open.
+      const stdoutTty = process.stdout.isTTY;
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+
+      await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
+
+      expect(startRepl).not.toHaveBeenCalled();
+      Object.defineProperty(process.stdout, "isTTY", { value: stdoutTty, configurable: true });
     });
 
     it("--json implies headless and emits one object", async () => {
@@ -391,6 +414,22 @@ describe("createCommand", () => {
       });
       out.mockRestore();
       Object.defineProperty(process.stdin, "isTTY", { value: undefined, configurable: true });
+    });
+
+    it("names the box it created when the clone fails", async () => {
+      const clone = vi.fn().mockRejectedValue(new Error("repo not found"));
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);
+      const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+      // The box exists and is billing; failing without naming it would leave
+      // the caller unable to reuse or delete it.
+      await expect(createCommand({ ...headlessFlags, cloneRepo: "owner/nope" })).rejects.toThrow(
+        /Created box-9/,
+      );
+
+      const warned = stderr.mock.calls.map((call) => String(call[0])).join("");
+      expect(warned).toContain("box delete --yes box-9");
+      expect(writeBoxFile).toHaveBeenCalledWith("box-9");
     });
 
     it("clones into the new box when asked", async () => {

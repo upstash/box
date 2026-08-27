@@ -1,7 +1,7 @@
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
-import { execCollect, execStream } from "../core/exec.js";
+import { buildCommand, execCollect, execStream } from "../core/exec.js";
 import { emit, requireToken, type GlobalFlags } from "../core/io.js";
 
 export type ExecFlags = GlobalFlags & { cwd?: string };
@@ -13,11 +13,14 @@ export type ExecFlags = GlobalFlags & { cwd?: string };
  * exit code is what this process exits with, so `box exec ... && next` behaves
  * the way it would locally; a failure of the CLI itself uses 125 instead, which
  * cannot be confused with a status the command produced.
+ * A single argument is treated as a shell expression and passed through as
+ * written; several are treated as argv and quoted, so quoting the local shell
+ * already resolved is not lost on the way.
  * @param parts - the remote command, already split by the shell.
  * @param flags - global flags plus --cwd.
  */
 export async function execCommand(parts: string[], flags: ExecFlags): Promise<void> {
-  const command = parts.join(" ").trim();
+  const command = buildCommand(parts);
   if (!command) {
     throw new CliError(
       "Usage: box exec [--cwd <dir>] -- <command>\n" +

@@ -40,14 +40,36 @@ function contentFrom(content: string | undefined): string {
   }
 }
 
+/** Largest ranged read the server will serve. */
+const MAX_READ_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Parse a byte count, rejecting anything the server would refuse.
+ *
+ * NaN is the dangerous one: sent as a range it produces a request the server
+ * cannot honour, with no hint that a flag was mistyped.
+ * @param value - the flag as given.
+ * @param flag - flag name, for the message.
+ * @param max - largest value allowed.
+ * @returns the parsed number, or undefined when the flag was not given.
+ */
+function byteCount(value: string | undefined, flag: string, max: number): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new CliError(`${flag} must be a whole number of bytes, not "${value}"`);
+  }
+  if (parsed > max) {
+    throw new CliError(`${flag} must be at most ${max} bytes`);
+  }
+  return parsed;
+}
+
 /** Read a file out of the box. */
 export async function filesReadCommand(path: string, flags: FilesFlags): Promise<void> {
   const box = await open(flags);
-  const offset = flags.offset === undefined ? undefined : Number(flags.offset);
-  const length = flags.length === undefined ? undefined : Number(flags.length);
-  if (length !== undefined && Number.isNaN(length)) {
-    throw new CliError("--length must be a number");
-  }
+  const offset = byteCount(flags.offset, "--offset", Number.MAX_SAFE_INTEGER);
+  const length = byteCount(flags.length, "--length", MAX_READ_BYTES);
   // The server selects a ranged read by the presence of length, so an unset
   // length must not be sent at all.
   const content = await box.files.read(path, {

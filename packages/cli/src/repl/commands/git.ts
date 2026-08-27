@@ -13,8 +13,9 @@ async function emptyGitMessage(box: Box, clean: string): Promise<string> {
   try {
     return (await isInsideRepo(box)) ? clean : notARepoMessage();
   } catch {
-    // A probe that could not run is no evidence; do not claim either answer.
-    return clean;
+    // Neither answer is supported by evidence, so claim neither. Saying
+    // "(clean)" here would be the same wrong answer this check exists to stop.
+    return "(no output; could not check whether this is a git repository)";
   }
 }
 

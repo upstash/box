@@ -9,7 +9,7 @@ import {
   resolveBoxId,
 } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
-import { emit, isInteractive, note, requireToken, type GlobalFlags } from "../core/io.js";
+import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
 
 export type LifecycleFlags = GlobalFlags & {
   /** Skip the confirmation prompt. Required when there is no terminal. */
@@ -53,7 +53,10 @@ export async function deleteCommand(
   announceBox(resolved);
 
   if (!flags.yes) {
-    if (!isInteractive() || !process.stdin.isTTY) {
+    // The prompt reads stdin and writes stderr, so those are the streams that
+    // decide whether it can be answered. Gating on stdout would refuse to ask
+    // for `box delete > delete.log`, where a terminal is still attached.
+    if (!process.stdin.isTTY || !process.stderr.isTTY) {
       throw new CliError(
         `Refusing to delete ${resolved.id} without confirmation. Pass --yes to proceed.`,
       );

@@ -37,7 +37,11 @@ export async function* handleSnapshot(box: Box, args: string): AsyncGenerator<Bo
     return;
   }
 
-  const name = args.trim() || `snapshot-${Date.now()}`;
+  // `create` is advertised as a subcommand, so strip it; without this
+  // `snapshot create release` names the snapshot "create release".
+  const rest = args.trim();
+  const withoutVerb = rest === "create" ? "" : rest.replace(/^create\s+/, "");
+  const name = withoutVerb || `snapshot-${Date.now()}`;
   const snapshot = await box.snapshot({ name });
   yield { type: "log", message: `Snapshot created: ${snapshot.id} (${snapshot.name})` };
 }

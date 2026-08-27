@@ -74,6 +74,35 @@ describe("box files", () => {
       );
     });
 
+    it("rejects a non-numeric offset too", async () => {
+      const read = vi.fn();
+      boxWith({ read });
+      // NaN reaching the API produces a request the server cannot honour, with
+      // no hint that a flag was mistyped.
+      await expect(
+        filesReadCommand("a.txt", { ...flags, length: "10", offset: "nope" }),
+      ).rejects.toThrow(CliError);
+      expect(read).not.toHaveBeenCalled();
+    });
+
+    it("rejects negative and fractional byte counts", async () => {
+      boxWith({ read: vi.fn() });
+      await expect(filesReadCommand("a.txt", { ...flags, length: "-1" })).rejects.toThrow(CliError);
+      await expect(filesReadCommand("a.txt", { ...flags, length: "1.5" })).rejects.toThrow(
+        CliError,
+      );
+      await expect(
+        filesReadCommand("a.txt", { ...flags, length: "10", offset: "-5" }),
+      ).rejects.toThrow(CliError);
+    });
+
+    it("rejects a length beyond what the server will serve", async () => {
+      boxWith({ read: vi.fn() });
+      await expect(
+        filesReadCommand("a.txt", { ...flags, length: String(8 * 1024 * 1024 + 1) }),
+      ).rejects.toThrow(/at most/);
+    });
+
     it("wraps content under --json", async () => {
       boxWith({ read: vi.fn().mockResolvedValue("hi") });
       await filesReadCommand("a.txt", { ...flags, json: true });

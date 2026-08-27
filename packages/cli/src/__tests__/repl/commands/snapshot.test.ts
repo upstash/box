@@ -72,4 +72,26 @@ describe("handleSnapshot", () => {
     expect(box.snapshot).toHaveBeenCalled();
     expect(String(events[0]?.message)).toContain("Snapshot created");
   });
+
+  describe("create verb", () => {
+    it("strips the create token instead of using it as the name", async () => {
+      const box = { snapshot: vi.fn().mockResolvedValue({ id: "s", name: "release" }) };
+      // Without this the snapshot is literally named "create release".
+      await collectEvents(handleSnapshot(box as any, "create release"));
+      expect(box.snapshot).toHaveBeenCalledWith({ name: "release" });
+    });
+
+    it("falls back to a generated name for a bare create", async () => {
+      const box = { snapshot: vi.fn().mockResolvedValue({ id: "s", name: "x" }) };
+      await collectEvents(handleSnapshot(box as any, "create"));
+      const name = box.snapshot.mock.calls[0]![0].name as string;
+      expect(name).toMatch(/^snapshot-\d+$/);
+    });
+
+    it("still accepts the bare-name form", async () => {
+      const box = { snapshot: vi.fn().mockResolvedValue({ id: "s", name: "release" }) };
+      await collectEvents(handleSnapshot(box as any, "release"));
+      expect(box.snapshot).toHaveBeenCalledWith({ name: "release" });
+    });
+  });
 });

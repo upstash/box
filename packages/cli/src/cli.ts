@@ -65,6 +65,19 @@ program
   .enablePositionalOptions()
   .passThroughOptions();
 
+/**
+ * A subcommand's own flags with the program-level ones filled in.
+ *
+ * The root accepts --box, --json and --token so both spellings work, which
+ * only holds if every action merges them; otherwise `box --token X create`
+ * silently drops the token that `box create --token X` accepts.
+ * @param local - the subcommand's parsed options.
+ * @returns the options to hand the command.
+ */
+function merged<T extends Record<string, unknown>>(local: T): T & GlobalFlags {
+  return { ...local, ...globals(local) };
+}
+
 /** Global flags merged with a subcommand's own, the subcommand winning. */
 function globals(local: Record<string, unknown> = {}): GlobalFlags {
   const root = program.opts<GlobalFlags>();
@@ -333,7 +346,7 @@ program
   .command("use")
   .argument("[box-id]", "Box to select for this directory")
   .description("Write a .box file so later commands need no --box")
-  .option("--unset", "Remove the nearest .box file instead")
+  .option("--unset", "Remove this directory's own .box (never a parent's)")
   .option("--json", "Emit machine-readable output")
   .action(async (boxId: string | undefined, flags: Record<string, unknown>) => {
     await runCommand(async () =>
@@ -382,14 +395,14 @@ program
   .option("--no-use", "Do not write a .box file for the new box")
   .option("--json", "Print the new box as one object (implies --no-repl)")
   .action(async (opts) => {
-    await runCommand(async () => createCommand(opts));
+    await runCommand(async () => createCommand(merged(opts)));
   });
 
 program
   .command("connect [box-id]")
   .description("Connect to an existing box (or most recent) and enter the REPL")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (boxId, opts) => runCommand(async () => connectCommand(boxId, opts)));
+  .action(async (boxId, opts) => runCommand(async () => connectCommand(boxId, merged(opts))));
 
 program
   .command("from-snapshot <snapshot-id>")
@@ -418,7 +431,7 @@ program
     [] as string[],
   )
   .action(async (snapshotId, opts) =>
-    runCommand(async () => fromSnapshotCommand(snapshotId, opts)),
+    runCommand(async () => fromSnapshotCommand(snapshotId, merged(opts))),
   );
 
 program
@@ -426,7 +439,7 @@ program
   .description("List all boxes")
   .option("--token <token>", "Upstash Box API token")
   .option("--label <label>", "Only show boxes carrying this label")
-  .action(async (opts) => runCommand(async () => listCommand(opts)));
+  .action(async (opts) => runCommand(async () => listCommand(merged(opts))));
 
 program
   .command("get <box-id>")
@@ -442,7 +455,7 @@ program
   .description("Create a snapshot of a box")
   .option("--token <token>", "Upstash Box API token")
   .option("--name <name>", "Snapshot name")
-  .action(async (boxId, opts) => runCommand(async () => snapshotCommand(boxId, opts)));
+  .action(async (boxId, opts) => runCommand(async () => snapshotCommand(boxId, merged(opts))));
 
 program
   .command("init-demo")
@@ -456,7 +469,7 @@ program
   .option("--runtime <runtime>", "Runtime environment", "node")
   .option("--git-token <token>", "GitHub personal access token")
   .option("--directory <dir>", "Output directory", "box-demo")
-  .action(async (opts) => runCommand(async () => initDemoCommand(opts)));
+  .action(async (opts) => runCommand(async () => initDemoCommand(merged(opts))));
 
 const envCmd = program.command("env").description("Manage user-level env vars");
 
@@ -464,26 +477,28 @@ envCmd
   .command("set <key> <value>")
   .description("Upsert a user-level env var")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (key, value, opts) => runCommand(async () => envSetCommand(key, value, opts)));
+  .action(async (key, value, opts) =>
+    runCommand(async () => envSetCommand(key, value, merged(opts))),
+  );
 
 envCmd
   .command("list")
   .description("List user-level env vars (values are masked)")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (opts) => runCommand(async () => envListCommand(opts)));
+  .action(async (opts) => runCommand(async () => envListCommand(merged(opts))));
 
 envCmd
   .command("delete <key>")
   .description("Delete a user-level env var")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (key, opts) => runCommand(async () => envDeleteCommand(key, opts)));
+  .action(async (key, opts) => runCommand(async () => envDeleteCommand(key, merged(opts))));
 
 envCmd
   .command("set-all")
   .description("Full-replace all user-level env vars (KEY=VALUE ...)")
   .option("--token <token>", "Upstash Box API token")
   .argument("<vars...>", "Key=value pairs")
-  .action(async (vars, opts) => runCommand(async () => envSetAllCommand(vars, opts)));
+  .action(async (vars, opts) => runCommand(async () => envSetAllCommand(vars, merged(opts))));
 
 const labelsCmd = program.command("labels").description("Manage labels on a box");
 
@@ -492,7 +507,7 @@ labelsCmd
   .description("Add a label to a box")
   .option("--token <token>", "Upstash Box API token")
   .action(async (boxId, label, opts) =>
-    runCommand(async () => labelAddCommand(boxId, label, opts)),
+    runCommand(async () => labelAddCommand(boxId, label, merged(opts))),
   );
 
 labelsCmd
@@ -500,14 +515,14 @@ labelsCmd
   .description("Remove a label from a box")
   .option("--token <token>", "Upstash Box API token")
   .action(async (boxId, label, opts) =>
-    runCommand(async () => labelRemoveCommand(boxId, label, opts)),
+    runCommand(async () => labelRemoveCommand(boxId, label, merged(opts))),
   );
 
 labelsCmd
   .command("list <box-id>")
   .description("List a box's labels")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (boxId, opts) => runCommand(async () => labelListCommand(boxId, opts)));
+  .action(async (boxId, opts) => runCommand(async () => labelListCommand(boxId, merged(opts))));
 
 program
   .command("completion")

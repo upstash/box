@@ -49,6 +49,26 @@ describe("box delete", () => {
     expect(del).not.toHaveBeenCalled();
   });
 
+  it("still asks when only stdout is redirected", async () => {
+    // The prompt reads stdin and writes stderr, so `box delete > log` can
+    // still be answered; gating on stdout would refuse to ask.
+    const stdoutTty = process.stdout.isTTY;
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stderr, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
+    const del = boxWith();
+    const real = process.stdin;
+    const fake = Readable.from(["y\n"]) as NodeJS.ReadStream;
+    fake.isTTY = true;
+    Object.defineProperty(process, "stdin", { value: fake, configurable: true });
+
+    await deleteCommand(undefined, { token: "box_test" });
+
+    expect(del).toHaveBeenCalled();
+    Object.defineProperty(process, "stdin", { value: real, configurable: true });
+    Object.defineProperty(process.stdout, "isTTY", { value: stdoutTty, configurable: true });
+  });
+
   it("deletes with --yes", async () => {
     const del = boxWith();
     await deleteCommand(undefined, { token: "box_test", yes: true });
