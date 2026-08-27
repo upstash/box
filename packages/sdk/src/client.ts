@@ -2967,7 +2967,9 @@ export class Box<TProvider = unknown> {
   // ==================== Git (private, exposed via this.git) ====================
 
   private async _gitClone(options: GitCloneOptions): Promise<void> {
-    const folder = this._getFolder();
+    // For clone the folder is the destination, so an explicit one wins over the
+    // current directory; the directory does not exist yet by definition.
+    const folder = options.folder ?? this._getFolder();
     await this._request("POST", `/v2/box/${this.id}/git/clone`, {
       body: {
         repo: options.repo,
@@ -3013,7 +3015,7 @@ export class Box<TProvider = unknown> {
       throw new BoxError("At least one of userName or userEmail is required");
     }
 
-    return this._request<GitConfig>("PUT", `/v2/box/${this.id}/git-config`, {
+    return this._request<GitConfig>("PUT", `/v2/box/${this.id}/config/git`, {
       body: {
         git_user_name: options.userName,
         git_user_email: options.userEmail,

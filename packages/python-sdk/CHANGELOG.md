@@ -2,6 +2,17 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## 0.3.1
+
+- Fix `git.update_config()` sending its request to `/v2/box/{id}/git-config`,
+  which the coordinator does not serve. The identity endpoint is
+  `/v2/box/{id}/config/git`, so every call returned 404 and no git identity was
+  ever set through the SDK.
+- Add `folder` to `git.clone()`, naming the directory the repository is cloned
+  into. Unlike every other git operation, where the folder is an existing
+  directory derived from `cd()`, clone's folder is the destination and does not
+  exist yet, so it could not be expressed at all.
+
 ## 0.3.0
 
 - `exec.session(...)` — live command sessions over a WebSocket, matching

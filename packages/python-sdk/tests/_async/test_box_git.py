@@ -33,6 +33,17 @@ async def test_clone_with_depth():
 
 
 @respx.mock
+async def test_clone_into_explicit_folder():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/git/clone").mock(return_value=httpx.Response(200, json={}))
+    # For clone the folder is the destination, so it does not exist yet and
+    # cd() cannot be used to express it.
+    await box.git.clone(repo="https://github.com/u/r", folder="my-app")
+    assert last_json_body(route)["folder"] == "my-app"
+    await box.aclose()
+
+
+@respx.mock
 async def test_diff_and_status():
     box = await make_async_box(respx.mock)
     respx.get(url__startswith=f"{BASE}/git/diff").mock(
@@ -69,7 +80,9 @@ async def test_update_config_requires_one_field():
 @respx.mock
 async def test_update_config():
     box = await make_async_box(respx.mock)
-    route = respx.put(f"{BASE}/git-config").mock(
+    # The coordinator serves this under config/git; the old spelling is what
+    # let the wrong path ship in both SDKs.
+    route = respx.put(f"{BASE}/config/git").mock(
         return_value=httpx.Response(
             200, json={"git_user_name": "Jane", "git_user_email": "j@e.com"}
         )
