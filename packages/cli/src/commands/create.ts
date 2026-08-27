@@ -197,7 +197,11 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
       }
       note(`The box was created: ${box.id}`);
       note(`Delete it with: box delete --yes ${box.id}`);
-      throw new CliError(`Created ${box.id}, but cloning ${flags.cloneRepo} failed`, {
+      // The cause is spelled out here because runCommand prints the message
+      // only, and the difference between a missing repo, a bad token and an
+      // unreachable network is what the caller has to act on.
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new CliError(`Created ${box.id}, but cloning ${flags.cloneRepo} failed: ${reason}`, {
         cause: error,
       });
     }

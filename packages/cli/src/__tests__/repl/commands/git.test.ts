@@ -243,6 +243,12 @@ describe("handleGit", () => {
       expect(events[0]).toMatchObject({ message: "git identity: (unset) <(unset)>" });
     });
 
+    it("does not treat a git failure as an unset key", async () => {
+      const box = createMockBox();
+      box.git.exec.mockResolvedValue({ output: "bad config", exit_code: 3 });
+      await expect(collectEvents(handleGit(box as any, "config"))).rejects.toThrow(/exited 3/);
+    });
+
     it("does not turn a failed lookup into an unset identity", async () => {
       // A network outage is not evidence that nothing is configured.
       const box = createMockBox();

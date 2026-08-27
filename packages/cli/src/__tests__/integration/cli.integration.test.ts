@@ -8,7 +8,13 @@ import {
   workingDirectory,
 } from "./setup.js";
 
-const runnable = Boolean(UPSTASH_BOX_API_KEY) && existsSync(CLI);
+// Without a key there is nothing to run against, which is a legitimate skip.
+// With a key but no build, silently skipping would report a passing
+// integration run that exercised nothing at all.
+if (UPSTASH_BOX_API_KEY && !existsSync(CLI)) {
+  throw new Error(`Build the CLI first: ${CLI} does not exist (npm run build)`);
+}
+const runnable = Boolean(UPSTASH_BOX_API_KEY);
 
 /**
  * These drive the built binary against a real box, which is the only place the

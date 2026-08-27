@@ -40,6 +40,22 @@ function contentFrom(content: string | undefined): string {
   }
 }
 
+/**
+ * Validate --encoding, which is either absent or "base64".
+ *
+ * A typo silently fell through to plain text, so `--encoding bas64` returned
+ * undecoded bytes and still reported success.
+ * @param value - the flag as given.
+ * @returns the encoding options to send.
+ */
+function encodingOption(value: string | undefined): { encoding?: "base64" } {
+  if (value === undefined) return {};
+  if (value !== "base64") {
+    throw new CliError(`--encoding must be base64 if given, not "${value}"`);
+  }
+  return { encoding: "base64" };
+}
+
 /** Largest ranged read the server will serve. */
 const MAX_READ_BYTES = 8 * 1024 * 1024;
 
@@ -73,7 +89,7 @@ export async function filesReadCommand(path: string, flags: FilesFlags): Promise
   // The server selects a ranged read by the presence of length, so an unset
   // length must not be sent at all.
   const content = await box.files.read(path, {
-    ...(flags.encoding === "base64" ? { encoding: "base64" as const } : {}),
+    ...encodingOption(flags.encoding),
     ...(length === undefined ? {} : { length, offset: offset ?? 0 }),
   });
   // Raw content, not JSON-wrapped: a caller redirecting this to a file wants
@@ -89,15 +105,15 @@ export async function filesWriteCommand(
   flags: FilesFlags,
 ): Promise<void> {
   const text = contentFrom(content);
+  const encoding = encodingOption(flags.encoding);
   const box = await open(flags);
-  await box.files.write({
-    path,
-    content: text,
-    ...(flags.encoding === "base64" ? { encoding: "base64" as const } : {}),
-  });
-  // Bytes, not JS characters: a file of accented text or emoji is longer on
-  // disk than its string length says.
-  const bytes = Buffer.byteLength(text, "utf8");
+  await box.files.write({ path, content: text, ...encoding });
+  // Bytes on disk, not JS characters: accented text and emoji are longer than
+  // their string length, and base64 content is shorter once decoded.
+  const bytes =
+    encoding.encoding === "base64"
+      ? Buffer.from(text, "base64").length
+      : Buffer.byteLength(text, "utf8");
   emit({ path, bytes }, `Wrote ${bytes} bytes to ${path}`, flags);
 }
 

@@ -423,8 +423,11 @@ describe("createCommand", () => {
 
       // The box exists and is billing; failing without naming it would leave
       // the caller unable to reuse or delete it.
+      // The reason matters as much as the id: a missing repo, a bad token and
+      // an unreachable network all need different responses, and runCommand
+      // prints only the message, never the cause.
       await expect(createCommand({ ...headlessFlags, cloneRepo: "owner/nope" })).rejects.toThrow(
-        /Created box-9/,
+        /Created box-9.*repo not found/s,
       );
 
       const warned = stderr.mock.calls.map((call) => String(call[0])).join("");

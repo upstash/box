@@ -96,7 +96,10 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
         // "(unset)": let it propagate, as the non-interactive path does.
         const read = async (key: string): Promise<string> => {
           const result = await box.git.exec({ args: ["config", "--get", key] });
-          return result.exit_code === 0 ? result.output.trim() : "";
+          if (result.exit_code === 0) return result.output.trim();
+          // git uses 1 for "not found"; anything else is a real failure.
+          if (result.exit_code === 1) return "";
+          throw new Error(`Could not read ${key}: git exited ${result.exit_code}`);
         };
         const [userName, userEmail] = await Promise.all([read("user.name"), read("user.email")]);
         const shown = (value: string) => value || "(unset)";

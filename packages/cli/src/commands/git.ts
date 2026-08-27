@@ -123,6 +123,9 @@ export async function gitStatusCommand(flags: GitFlags): Promise<void> {
   const box = await open(flags);
   const status = await box.git.status();
   if (!status) await assertRepo(box, flags);
+  // A clean tree is silent, so nothing is written at all: a stray newline is
+  // still a byte on a stdout that is meant to be pipeable.
+  if (!status && !flags.json) return;
   emit(status, typeof status === "string" ? status : JSON.stringify(status, undefined, 2), flags);
 }
 
@@ -131,6 +134,7 @@ export async function gitDiffCommand(flags: GitFlags): Promise<void> {
   const box = await open(flags);
   const diff = await box.git.diff();
   if (!diff) await assertRepo(box, flags);
+  if (!diff && !flags.json) return;
   emit(diff, typeof diff === "string" ? diff : JSON.stringify(diff, undefined, 2), flags);
 }
 
@@ -225,7 +229,15 @@ export async function gitConfigCommand(flags: GitFlags): Promise<void> {
     // "(unset)": the error is allowed to propagate.
     const read = async (key: string): Promise<string> => {
       const result = await box.git.exec({ args: ["config", "--get", key] });
-      return result.exit_code === 0 ? result.output.trim() : "";
+      if (result.exit_code === 0) return result.output.trim();
+      // git uses 1 for "not found"; other statuses mean an unreadable or
+      // invalid config, which is a failure rather than an empty answer.
+      if (result.exit_code === 1) return "";
+      throw new CliError(
+        `Could not read ${key}: git exited ${result.exit_code}${
+          result.output.trim() ? ` (${result.output.trim()})` : ""
+        }`,
+      );
     };
     const [name, email] = await Promise.all([read("user.name"), read("user.email")]);
     const shown = (value: string) => value || "(unset)";
@@ -255,7 +267,10 @@ export async function gitExecCommand(args: string[], flags: GitFlags): Promise<v
   }
   const box = await open(flags);
   const result = await box.git.exec({ args });
-  emit(result, result.output.trim(), flags);
+  // Written raw rather than through emit: this runs arbitrary git commands, and
+  // trimming would stop output like `cat-file` from round-tripping.
+  if (flags.json) emit(result, "", flags);
+  else process.stdout.write(result.output);
   // git's own status, so `box git exec -- diff --quiet` chains like it would
   // locally. 128 here usually means -C pointed somewhere that is not a repo.
   if (result.exit_code !== 0) process.exitCode = result.exit_code;

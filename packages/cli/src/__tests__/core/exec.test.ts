@@ -69,11 +69,13 @@ describe("execCollect", () => {
     expect(result).toEqual({ stdout: "out\n", stderr: "err\n", exit_code: 3 });
   });
 
-  it("treats a missing exit code as success", async () => {
+  it("refuses a response that never reported an exit status", async () => {
+    // Reporting 0 would let chained work proceed on a result that never said
+    // the command succeeded, which the streaming path already refuses.
     const box = {
       exec: { command: vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: null }) },
     };
-    expect((await execCollect(box as never, "cmd")).exit_code).toBe(0);
+    await expect(execCollect(box as never, "cmd")).rejects.toThrow(CliError);
   });
 
   it("applies the working directory", async () => {

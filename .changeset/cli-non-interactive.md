@@ -1,5 +1,5 @@
 ---
-"@upstash/box-cli": minor
+"@upstash/box-cli": patch
 ---
 
 Add a non-interactive command surface, so a script, a CI job or a coding agent can drive a box without a terminal.

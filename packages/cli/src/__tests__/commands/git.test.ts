@@ -118,6 +118,18 @@ describe("box git", () => {
     });
     await gitStatusCommand({ ...flags, folder: "my-repo" });
     expect(process.exitCode).toBeUndefined();
+    // Silent means nothing at all: a bare newline is still a byte on a stdout
+    // that is meant to be pipeable.
+    expect(written()).toBe("");
+  });
+
+  it("still emits the empty status under --json", async () => {
+    boxWith({
+      status: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockResolvedValue({ output: "true", exit_code: 0 }),
+    });
+    await gitStatusCommand({ ...flags, folder: "my-repo", json: true });
+    expect(JSON.parse(written())).toBe("");
   });
 
   it("applies the same check to an empty diff", async () => {
@@ -205,6 +217,23 @@ describe("box git", () => {
     boxWith({ exec: vi.fn().mockResolvedValue({ output: "", exit_code: 1 }) });
     await gitExecCommand(["diff", "--quiet"], { ...flags });
     expect(process.exitCode).toBe(1);
+  });
+
+  it("writes git's output unchanged, without trimming", async () => {
+    // git exec runs arbitrary commands; trimming stops output like cat-file
+    // from round-tripping.
+    boxWith({ exec: vi.fn().mockResolvedValue({ output: "  a\n\nb\n\n", exit_code: 0 }) });
+    await gitExecCommand(["cat-file", "-p", "HEAD"], { ...flags });
+    expect(written()).toBe("  a\n\nb\n\n");
+  });
+
+  it("fails when git config reports something other than a missing key", async () => {
+    // git uses 1 for "not found"; other statuses mean an unreadable config.
+    boxWith({
+      exec: vi.fn().mockResolvedValue({ output: "bad config line 3", exit_code: 3 }),
+      updateConfig: vi.fn(),
+    });
+    await expect(gitConfigCommand({ ...flags })).rejects.toThrow(/git exited 3/);
   });
 
   it("does not set an exit code for a successful command", async () => {

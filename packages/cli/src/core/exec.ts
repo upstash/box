@@ -24,12 +24,17 @@ export async function execCollect(
   options?: { cwd?: string | undefined },
 ): Promise<ExecResult> {
   const run = await box.exec.command(withCwd(command, options?.cwd));
+  if (run.exitCode === null || run.exitCode === undefined) {
+    // Reporting 0 here would let chained work proceed on a response that never
+    // said the command succeeded, which is what the streaming path refuses.
+    throw new CliError("The command finished without reporting an exit status");
+  }
   // Run exposes stdout and stderr separately, which is the reason --json can
   // hand back a structured result at all rather than one interleaved blob.
   return {
     stdout: run.stdout ?? "",
     stderr: run.stderr ?? "",
-    exit_code: run.exitCode ?? 0,
+    exit_code: run.exitCode,
   };
 }
 

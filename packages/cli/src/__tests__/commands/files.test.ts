@@ -103,6 +103,17 @@ describe("box files", () => {
       ).rejects.toThrow(/at most/);
     });
 
+    it("rejects an encoding it does not understand", async () => {
+      const read = vi.fn();
+      boxWith({ read });
+      // A typo used to fall through to plain text and return undecoded bytes
+      // while reporting success.
+      await expect(filesReadCommand("logo.png", { ...flags, encoding: "bas64" })).rejects.toThrow(
+        /--encoding must be base64/,
+      );
+      expect(read).not.toHaveBeenCalled();
+    });
+
     it("wraps content under --json", async () => {
       boxWith({ read: vi.fn().mockResolvedValue("hi") });
       await filesReadCommand("a.txt", { ...flags, json: true });
@@ -125,6 +136,26 @@ describe("box files", () => {
       await filesWriteCommand("a.txt", "é🙂", { ...flags, json: true });
       // 2 bytes + 4 bytes; string length would say 3.
       expect(JSON.parse(out())).toEqual({ path: "a.txt", bytes: 6 });
+    });
+
+    it("counts decoded bytes for base64 content", async () => {
+      boxWith({ write: vi.fn().mockResolvedValue(undefined) });
+      // "aGVsbG8=" is five bytes on disk, not eight.
+      await filesWriteCommand("a.bin", "aGVsbG8=", {
+        ...flags,
+        encoding: "base64",
+        json: true,
+      });
+      expect(JSON.parse(out())).toEqual({ path: "a.bin", bytes: 5 });
+    });
+
+    it("rejects an encoding it does not understand", async () => {
+      const write = vi.fn();
+      boxWith({ write });
+      await expect(
+        filesWriteCommand("a.bin", "data", { ...flags, encoding: "bas64" }),
+      ).rejects.toThrow(/--encoding must be base64/);
+      expect(write).not.toHaveBeenCalled();
     });
 
     it("requires content", async () => {
