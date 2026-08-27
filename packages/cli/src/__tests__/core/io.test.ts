@@ -113,3 +113,28 @@ describe("requireToken", () => {
     expect(() => requireToken()).toThrow(/UPSTASH_BOX_API_KEY/);
   });
 });
+
+describe("messageFor", () => {
+  it("uses an Error's message", () => {
+    expect(messageFor(new Error("boom"))).toBe("boom");
+  });
+
+  it("passes a string through", () => {
+    expect(messageFor("boom")).toBe("boom");
+  });
+
+  it("survives values JSON cannot serialise", () => {
+    // This runs inside the catch that turns any failure into a diagnostic and
+    // exit 125, so throwing from here would defeat the error boundary itself.
+    expect(() => messageFor(1n)).not.toThrow();
+    expect(messageFor(1n)).toContain("1");
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(() => messageFor(circular)).not.toThrow();
+  });
+
+  it("describes a value JSON turns into undefined", () => {
+    expect(messageFor(undefined)).toBe("undefined");
+    expect(() => messageFor(() => {})).not.toThrow();
+  });
+});

@@ -107,6 +107,18 @@ describe("box run", () => {
     expect(stream).toHaveBeenCalledWith({ prompt: "go" });
   });
 
+  it("rejects a timeout outside Node's timer range", async () => {
+    // The SDK arms this with setTimeout, and Node clamps an overflowing delay
+    // to about a millisecond, so the run would abort almost immediately.
+    boxStreaming([]);
+    await expect(runCommandAction(["go"], { ...flags, timeout: "Infinity" })).rejects.toThrow(
+      CliError,
+    );
+    await expect(runCommandAction(["go"], { ...flags, timeout: "999999999" })).rejects.toThrow(
+      /at most/,
+    );
+  });
+
   it("rejects a non-numeric timeout instead of sending NaN", async () => {
     boxStreaming([]);
     await expect(runCommandAction(["go"], { ...flags, timeout: "soon" })).rejects.toThrow(CliError);

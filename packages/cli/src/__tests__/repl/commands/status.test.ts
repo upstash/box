@@ -52,4 +52,33 @@ describe("handleStatus", () => {
     await collectEvents(handleStatus(box as any, "logs"));
     expect(box.logs).toHaveBeenCalledWith({ limit: 20 });
   });
+
+  describe("logs limit", () => {
+    function boxWithLogs() {
+      return {
+        logs: vi.fn().mockResolvedValue([]),
+        getStatus: vi.fn().mockResolvedValue({ status: "idle" }),
+        listRuns: vi.fn().mockResolvedValue([]),
+      };
+    }
+
+    it("reports usage instead of silently defaulting on a typo", async () => {
+      const box = boxWithLogs();
+      const events = await collectEvents(handleStatus(box as any, "logs nope"));
+      expect(String(events[0]?.message)).toContain("Usage: status logs");
+      expect(box.logs).not.toHaveBeenCalled();
+    });
+
+    it("refuses a negative count rather than passing it to the API", async () => {
+      const box = boxWithLogs();
+      await collectEvents(handleStatus(box as any, "logs -5"));
+      expect(box.logs).not.toHaveBeenCalled();
+    });
+
+    it("still accepts a real count", async () => {
+      const box = boxWithLogs();
+      await collectEvents(handleStatus(box as any, "logs 5"));
+      expect(box.logs).toHaveBeenCalledWith({ limit: 5 });
+    });
+  });
 });

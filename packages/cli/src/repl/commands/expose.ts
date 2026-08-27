@@ -29,7 +29,8 @@ export async function* handleExpose(box: Box, args: string): AsyncGenerator<BoxR
     case "delete":
     case "remove": {
       const port = Number(parts[1]);
-      if (!Number.isInteger(port) || port < 1) {
+      // Same bounds as the create form: 70000 is not a port either way.
+      if (!Number.isInteger(port) || port < 1 || port > 65_535) {
         yield { type: "log", message: "Usage: expose delete <port>" };
         return;
       }

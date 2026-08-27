@@ -50,3 +50,17 @@ export function readFlagValue(args: string, flag: string): string | undefined {
   const value = parts[index + 1];
   return value === undefined || value.startsWith("-") ? undefined : value;
 }
+
+/**
+ * Whether a flag token appears at all, regardless of its value.
+ *
+ * `readFlagValue` cannot tell a missing flag from one given without a value,
+ * and those mean different things: the first is "show me", the second is a
+ * mistake worth reporting.
+ * @param args - the raw argument string.
+ * @param flag - the flag to look for.
+ * @returns true when the token is present.
+ */
+export function hasFlagToken(args: string, flag: string): boolean {
+  return args.trim().split(/\s+/).filter(Boolean).includes(flag);
+}

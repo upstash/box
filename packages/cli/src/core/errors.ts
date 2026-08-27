@@ -51,5 +51,15 @@ export function exitCodeFor(error: unknown): number {
  */
 export function messageFor(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return typeof error === "string" ? error : JSON.stringify(error);
+  if (typeof error === "string") return error;
+  // Anything can be thrown. JSON.stringify throws on a BigInt or a circular
+  // object and returns undefined for a function, and this runs inside the
+  // catch that is supposed to turn any failure into a diagnostic and exit 125.
+  try {
+    const text = JSON.stringify(error);
+    if (text !== undefined) return text;
+  } catch {
+    // Fall through to the plain description below.
+  }
+  return String(error);
 }

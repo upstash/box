@@ -1,7 +1,7 @@
 import type { Box } from "@upstash/box";
 import type { BoxREPLEvent } from "../types.js";
 import { isInsideRepo, notARepoMessage } from "../../core/git-repo.js";
-import { readFlagValue } from "./args.js";
+import { hasFlagToken, readFlagValue } from "./args.js";
 
 /**
  * Explain empty git output, which means either a clean tree or no repository.
@@ -88,6 +88,16 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       // Setting the identity is what makes commits from the box attributable.
       const name = readFlagValue(args, "--name");
       const email = readFlagValue(args, "--email");
+      // A flag with no value is a mistake, not a request to read the identity.
+      for (const [flag, value] of [
+        ["--name", name],
+        ["--email", email],
+      ] as const) {
+        if (hasFlagToken(args, flag) && value === undefined) {
+          yield { type: "log", message: `Usage: git config ${flag} <value>` };
+          return;
+        }
+      }
       if (name === undefined && email === undefined) {
         // There is no GET for the identity, and status() returns porcelain, not
         // config. Ask git itself instead of printing something unrelated.

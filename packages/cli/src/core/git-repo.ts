@@ -13,7 +13,10 @@ import type { Box } from "@upstash/box";
  */
 export async function isInsideRepo(box: Box): Promise<boolean> {
   const probe = await box.git.exec({ args: ["rev-parse", "--is-inside-work-tree"] });
-  return probe.exit_code === 0;
+  // The answer is what git printed, not the exit code: a bare repository exits
+  // 0 and prints "false", and its empty status would otherwise read as a clean
+  // working tree, which is the ambiguity this exists to remove.
+  return probe.exit_code === 0 && probe.output.trim() === "true";
 }
 
 /**

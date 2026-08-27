@@ -27,7 +27,17 @@ export async function* handleStatus(box: Box, args: string): AsyncGenerator<BoxR
 
   if (sub === "logs") {
     // Newest last, so the tail reads in the order things happened.
-    const limit = Number(parts[1]) || 20;
+    // A given limit is checked rather than coerced: `status logs nope` used to
+    // become 20 silently, and a negative one reached the API unchanged.
+    let limit = 20;
+    if (parts[1] !== undefined) {
+      const asked = Number(parts[1]);
+      if (!Number.isInteger(asked) || asked < 1) {
+        yield { type: "log", message: "Usage: status logs [count]" };
+        return;
+      }
+      limit = asked;
+    }
     const logs = await box.logs({ limit });
     if (logs.length === 0) {
       yield { type: "log", message: "No logs." };

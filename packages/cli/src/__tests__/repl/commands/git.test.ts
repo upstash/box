@@ -12,7 +12,18 @@ describe("handleGit", () => {
         commit: vi.fn().mockResolvedValue({ sha: "abc123", message: "fix bug" }),
         push: vi.fn().mockResolvedValue(undefined),
         createPR: vi.fn().mockResolvedValue({ number: 42, url: "https://github.com/pr/42" }),
-        exec: vi.fn().mockResolvedValue({ output: "git exec output", exit_code: 0 }),
+        // The repository probe is answered the way git answers it: a working
+        // tree prints "true", and a bare repository prints "false" with the
+        // same exit code.
+        exec: vi
+          .fn()
+          .mockImplementation(({ args }: { args: string[] }) =>
+            Promise.resolve(
+              args.includes("--is-inside-work-tree")
+                ? { output: "true\n", exit_code: 0 }
+                : { output: "git exec output", exit_code: 0 },
+            ),
+          ),
         checkout: vi.fn().mockResolvedValue(undefined),
         updateConfig: vi
           .fn()
@@ -241,6 +252,15 @@ describe("handleGit", () => {
       box.git.exec.mockResolvedValue({ output: "", exit_code: 1 });
       const events = await collectEvents(handleGit(box as any, "config"));
       expect(events[0]).toMatchObject({ message: "git identity: (unset) <(unset)>" });
+    });
+
+    it("reports usage when a flag is given without a value", async () => {
+      // `--name` with nothing after it used to read as an absent flag, so this
+      // silently became a read, and `--name --email x` updated only the email.
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "config --name"));
+      expect(String(events[0]?.message)).toContain("Usage: git config --name");
+      expect(box.git.updateConfig).not.toHaveBeenCalled();
     });
 
     it("does not treat a git failure as an unset key", async () => {

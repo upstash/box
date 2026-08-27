@@ -100,6 +100,18 @@ describe("box git", () => {
     );
   });
 
+  it("does not call a bare repository a clean working tree", async () => {
+    // A bare repository exits 0 and prints "false", so the exit code alone
+    // misclassifies it and its empty status reads as clean.
+    boxWith({
+      status: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockResolvedValue({ output: "false\n", exit_code: 0 }),
+    });
+    await expect(gitStatusCommand({ ...flags, folder: "bare" })).rejects.toThrow(
+      /Not a git repository/,
+    );
+  });
+
   it("refuses to call an unreachable probe a clean tree", async () => {
     boxWith({
       status: vi.fn().mockResolvedValue(""),

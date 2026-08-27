@@ -70,4 +70,17 @@ describe("handleExpose", () => {
     }
     expect(box.getPublicURL).not.toHaveBeenCalled();
   });
+
+  describe("port bounds", () => {
+    it("refuses an impossible port on delete, as it does on create", async () => {
+      const box = {
+        deletePublicURL: vi.fn(),
+        getPublicURL: vi.fn(),
+        listPublicURLs: vi.fn(),
+      };
+      const events = await collectEvents(handleExpose(box as any, "delete 70000"));
+      expect(String(events[0]?.message)).toContain("Usage: expose delete");
+      expect(box.deletePublicURL).not.toHaveBeenCalled();
+    });
+  });
 });
