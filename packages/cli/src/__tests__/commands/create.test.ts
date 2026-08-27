@@ -432,6 +432,30 @@ describe("createCommand", () => {
       expect(writeBoxFile).toHaveBeenCalledWith("box-9");
     });
 
+    it("does not pin on clone failure during an interactive create", async () => {
+      // A successful interactive create does not pin, so pinning on failure
+      // could overwrite a project's existing .box.
+      const stdinTty = process.stdin.isTTY;
+      const stdoutTty = process.stdout.isTTY;
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+      const clone = vi.fn().mockRejectedValue(new Error("nope"));
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);
+
+      await expect(
+        createCommand({
+          token: "key",
+          agentModel: "model",
+          agentHarness: "claude-code",
+          cloneRepo: "owner/nope",
+        }),
+      ).rejects.toThrow(/Created box-9/);
+
+      expect(writeBoxFile).not.toHaveBeenCalled();
+      Object.defineProperty(process.stdin, "isTTY", { value: stdinTty, configurable: true });
+      Object.defineProperty(process.stdout, "isTTY", { value: stdoutTty, configurable: true });
+    });
+
     it("clones into the new box when asked", async () => {
       const clone = vi.fn().mockResolvedValue(undefined);
       vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);

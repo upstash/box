@@ -186,7 +186,9 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     } catch (error) {
       // The box exists and is billing. Failing here without naming it would
       // leave the caller unable to reuse or delete it.
-      if (flags.use !== false) {
+      // Only for a headless create. A successful interactive create does not
+      // pin, so pinning on failure could overwrite a project's existing .box.
+      if (headless && flags.use !== false) {
         try {
           writeBoxFile(box.id);
         } catch {

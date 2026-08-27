@@ -1,4 +1,5 @@
 import type { Box } from "@upstash/box";
+import { CliError } from "./errors.js";
 
 /** Result of running one command in a box. */
 export type ExecResult = {
@@ -50,10 +51,15 @@ export async function execStream(
   options?: { cwd?: string | undefined },
 ): Promise<number> {
   const run = await box.exec.stream(withCwd(command, options?.cwd));
-  let exitCode = 0;
+  let exitCode: number | undefined;
   for await (const chunk of run) {
     if (chunk.type === "output") onOutput(chunk.data);
     else if (chunk.type === "exit") exitCode = chunk.exitCode;
+  }
+  if (exitCode === undefined) {
+    // Defaulting to 0 would let `box exec ... && next` run next on a stream
+    // that was cut off before the remote status arrived.
+    throw new CliError("The command's output ended before its exit status arrived");
   }
   return exitCode;
 }
@@ -89,10 +95,12 @@ export function withCwd(command: string, cwd?: string): string {
  * @returns the command line to send.
  */
 export function buildCommand(parts: string[]): string {
-  const words = parts.filter((part) => part !== "");
-  if (words.length === 0) return "";
-  if (words.length === 1) return words[0]!.trim();
-  return words.map(quoteShellArg).join(" ");
+  if (parts.length === 0) return "";
+  // A lone argument is the shell expression form, and a lone empty one is just
+  // no command at all.
+  if (parts.length === 1) return parts[0]!.trim();
+  // Empty arguments are kept: `printf '<%s>' ''` means to pass one.
+  return parts.map(quoteShellArg).join(" ");
 }
 
 /**

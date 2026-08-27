@@ -46,7 +46,8 @@ import {
 import { exposeCommand, exposeListCommand, exposeDeleteCommand } from "./commands/expose.js";
 import { runCommandAction } from "./commands/run.js";
 import { deleteCommand, pauseCommand } from "./commands/lifecycle.js";
-import { runCommand } from "./core/io.js";
+import { note, runCommand } from "./core/io.js";
+import { CLI_FAILURE_EXIT_CODE } from "./core/errors.js";
 import type { GlobalFlags } from "./core/io.js";
 
 appendTelemetryIdentity(`@upstash/box-cli@${VERSION}`);
@@ -529,4 +530,30 @@ program
   .description('Output shell completion script (eval "$(box completion)")')
   .action(() => completionCommand());
 
-program.parse();
+// Commander reports usage errors (unknown option, missing argument) before any
+// action runs, and exits 1 by default. That is indistinguishable from a remote
+// command that exited 1, which is the whole reason CLI failures use 125.
+// exitOverride turns them into exceptions so they can be mapped.
+/** Apply the override to a command and everything nested under it. */
+function overrideExits(command: import("commander").Command): void {
+  command.exitOverride();
+  for (const child of command.commands) overrideExits(child);
+}
+overrideExits(program);
+
+try {
+  program.parse();
+} catch (error) {
+  const code = (error as { code?: string }).code ?? "";
+  // Help and version are successful outcomes that Commander also raises here.
+  if (
+    code === "commander.helpDisplayed" ||
+    code === "commander.help" ||
+    code === "commander.version"
+  ) {
+    process.exit(0);
+  }
+  const message = (error as { message?: string }).message;
+  if (message && !/^\(outputHelp\)/.test(message)) note(message.replace(/^error: /, "Error: "));
+  process.exit(CLI_FAILURE_EXIT_CODE);
+}

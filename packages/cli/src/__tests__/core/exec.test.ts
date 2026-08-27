@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildCommand, execCollect, execStream, quoteShellArg, withCwd } from "../../core/exec.js";
+import { CliError } from "../../core/errors.js";
 
 describe("buildCommand", () => {
   it("keeps a single argument as the shell expression it is", () => {
@@ -31,6 +32,12 @@ describe("buildCommand", () => {
   it("is empty for no arguments", () => {
     expect(buildCommand([])).toBe("");
     expect(buildCommand([""])).toBe("");
+  });
+
+  it("keeps an empty argument, which is a real argument", () => {
+    // printf '<%s>' '' passes one empty argument; dropping it changes the
+    // command, and this function's whole job is preserving argv.
+    expect(buildCommand(["printf", "<%s>", ""])).toBe(`'printf' '<%s>' ''`);
   });
 });
 
@@ -104,5 +111,12 @@ describe("execStream", () => {
   it("returns a non-zero exit code from the exit chunk", async () => {
     const box = streamOf([{ type: "exit", exitCode: 42, cpuNs: 0 }]);
     expect(await execStream(box as never, "cmd", () => {})).toBe(42);
+  });
+
+  it("refuses to call a truncated stream a success", async () => {
+    // Defaulting to 0 would let `box exec ... && next` run next on a stream
+    // that was cut off before the remote status arrived.
+    const box = streamOf([{ type: "output", data: "partial" }]);
+    await expect(execStream(box as never, "cmd", () => {})).rejects.toThrow(CliError);
   });
 });
