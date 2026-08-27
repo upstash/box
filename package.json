@@ -5,7 +5,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
-    "test:integration": "vitest run -c packages/sdk/vitest.integration.config.ts",
+    "test:integration": "pnpm -r --if-present test:integration",
     "changeset": "changeset",
     "ci:version": "changeset version && node packages/sdk/scripts/gen-version.mjs && node packages/cli/scripts/gen-version.mjs && pnpm install --lockfile-only",
     "ci:tag": "changeset tag",

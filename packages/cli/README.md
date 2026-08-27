@@ -57,7 +57,7 @@ Which box a command chose is printed to stderr, never stdout. When `BOX_ID` wins
 - Text output goes to stdout. Diagnostics, progress and the box banner go to stderr, so a pipe carries only data.
 - `--json` prints the result as JSON with no envelope. It works program-wide, either spelling: `box --json status` or `box status --json`.
 - The exit code of `box exec` and `box git exec` is the remote command's own exit code, so `box exec -- npm test && deploy` behaves the way it would locally.
-- A failure of the CLI itself is exit code **125**, which no ordinary command produces, so it can never be confused with a status the remote command returned.
+- A failure of the CLI itself is exit code **125**, following Docker and `timeout`. This is a convention rather than a guarantee: a remote command that genuinely exits 125 is indistinguishable from a CLI failure, because the remote status is passed through unchanged. Use `--json` when you need certainty, since it reports the command's `exit_code` separately from whether the CLI succeeded.
 
 ## Commands
 
@@ -103,6 +103,11 @@ box exec -- node -e 'console.log("hello world")'
 | ----------------- | ---------------------------------------------------------------- |
 | `-C, --cwd <dir>` | Working directory inside the box                                 |
 | `--json`          | Collect into `{stdout, stderr, exit_code}` rather than streaming |
+
+Streamed output is not byte-exact: the streaming endpoint appends a trailing
+newline, so `box exec -- printf abc` prints `abc` followed by a newline while
+`box exec --json -- printf abc` reports `"abc"`. Use `--json` when the exact
+bytes matter.
 
 ### `box files`
 

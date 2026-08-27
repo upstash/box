@@ -24,7 +24,8 @@
     "test": "vitest run",
     "lint": "prettier --check . --write",
     "ci:lint": "prettier --check .",
-    "prepublishOnly": "node scripts/gen-version.mjs && npm run build"
+    "prepublishOnly": "node scripts/gen-version.mjs && npm run build",
+    "test:integration": "vitest run -c vitest.integration.config.ts"
   },
   "keywords": [
     "upstash",

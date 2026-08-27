@@ -118,13 +118,34 @@ export async function gitCommitCommand(flags: GitFlags): Promise<void> {
   emit(commit, `Committed ${commit.sha ?? ""}`.trim(), flags);
 }
 
-/** Switch to a branch, creating it when it does not exist. */
+/**
+ * Switch to a branch, creating it when it does not exist.
+ *
+ * The endpoint runs `git checkout X || git checkout -b X` and reports success
+ * on either, which is also what happens when X is a path rather than a branch:
+ * `checkout README` restores that file and leaves HEAD where it was. Reporting
+ * a switch that did not happen would send a script on to work on the wrong
+ * branch, so the branch is read back before saying anything.
+ */
 export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promise<void> {
   const box = await open(flags);
   await box.git.checkout({ branch });
-  // The server falls back to creating the branch with stderr suppressed, so a
-  // real failure (dirty tree, bad ref) also arrives here as "created".
-  emit({ branch }, `Checked out ${branch} (created if it did not exist)`, flags);
+
+  const head = await box.git
+    .exec({ args: ["rev-parse", "--abbrev-ref", "HEAD"] })
+    .then((result) => (result.exit_code === 0 ? result.output.trim() : undefined))
+    .catch(() => undefined);
+
+  // "HEAD" means a detached head, which is a real checkout of a tag or commit.
+  if (head !== undefined && head !== "" && head !== "HEAD" && head !== branch) {
+    throw new CliError(
+      `Asked to switch to "${branch}", but the repository is on "${head}".\n` +
+        `If "${branch}" is a file rather than a branch, restore it with: ` +
+        `box git exec -- checkout -- ${branch}`,
+    );
+  }
+  const text = head === "HEAD" ? `Detached HEAD at ${branch}` : `On branch ${head || branch}`;
+  emit({ branch, head: head ?? null }, text, flags);
 }
 
 /** Push the current branch. */

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  gitCheckoutCommand,
   gitCloneCommand,
   gitConfigCommand,
   gitDiffCommand,
@@ -125,6 +126,44 @@ describe("box git", () => {
       exec: vi.fn().mockResolvedValue({ output: "", exit_code: 128 }),
     });
     await expect(gitDiffCommand({ ...flags })).rejects.toThrow(/the workspace root/);
+  });
+
+  describe("checkout", () => {
+    function boxOnBranch(head: string) {
+      const checkout = vi.fn().mockResolvedValue(undefined);
+      const exec = vi.fn().mockResolvedValue({ output: `${head}\n`, exit_code: 0 });
+      boxWith({ checkout, exec });
+      return { checkout, exec };
+    }
+
+    it("reports the branch it actually landed on", async () => {
+      boxOnBranch("feature/x");
+      await gitCheckoutCommand("feature/x", { ...flags });
+      expect(written()).toContain("On branch feature/x");
+    });
+
+    it("refuses to call restoring a file a branch switch", async () => {
+      // `git checkout README` succeeds and leaves HEAD alone; the endpoint
+      // reports success either way, so a script would carry on believing it
+      // had switched.
+      boxOnBranch("main");
+      await expect(gitCheckoutCommand("README", { ...flags })).rejects.toThrow(
+        /Asked to switch to "README", but the repository is on "main"/,
+      );
+    });
+
+    it("accepts a detached head as a real checkout", async () => {
+      boxOnBranch("HEAD");
+      await gitCheckoutCommand("abc1234", { ...flags });
+      expect(written()).toContain("Detached HEAD at abc1234");
+    });
+
+    it("still reports when the branch cannot be read back", async () => {
+      const checkout = vi.fn().mockResolvedValue(undefined);
+      boxWith({ checkout, exec: vi.fn().mockRejectedValue(new Error("network")) });
+      await gitCheckoutCommand("feature/x", { ...flags });
+      expect(written()).toContain("feature/x");
+    });
   });
 
   it("passes git's own exit code through", async () => {

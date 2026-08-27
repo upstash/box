@@ -2,9 +2,16 @@
  * Exit code for a failure of the CLI itself: bad usage, missing credentials,
  * an unreachable API.
  *
- * Chosen the way Docker and `timeout` choose it — a wrapper needs a code that
- * cannot be confused with one the wrapped command produced. A remote command
- * exiting 1 and the CLI failing must not look the same to `box exec cmd && next`.
+ * Chosen the way Docker and `timeout` choose it: a wrapper needs a code that a
+ * wrapped command is unlikely to produce, so that a remote command exiting 1
+ * and the CLI failing do not look the same to `box exec cmd && next`.
+ *
+ * It is a convention, not a guarantee. `box exec` and `box git exec` pass the
+ * remote status through unchanged, so a command that genuinely exits 125 is
+ * indistinguishable from a CLI failure. Remapping it would be worse: the
+ * remote status would then be a lie. A caller that needs certainty should use
+ * `--json`, where the command's own `exit_code` is a separate field from
+ * whether the CLI succeeded.
  */
 export const CLI_FAILURE_EXIT_CODE = 125;
 
