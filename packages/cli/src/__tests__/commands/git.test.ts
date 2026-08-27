@@ -158,11 +158,22 @@ describe("box git", () => {
       expect(written()).toContain("Detached HEAD at abc1234");
     });
 
-    it("still reports when the branch cannot be read back", async () => {
+    it("fails when the branch cannot be read back", async () => {
+      // Falling back to the requested branch would restore the false success
+      // the read-back exists to prevent, one step further along.
       const checkout = vi.fn().mockResolvedValue(undefined);
       boxWith({ checkout, exec: vi.fn().mockRejectedValue(new Error("network")) });
-      await gitCheckoutCommand("feature/x", { ...flags });
-      expect(written()).toContain("feature/x");
+      await expect(gitCheckoutCommand("feature/x", { ...flags })).rejects.toThrow(
+        /could not confirm the branch/,
+      );
+    });
+
+    it("fails when the read-back itself returns non-zero", async () => {
+      const checkout = vi.fn().mockResolvedValue(undefined);
+      boxWith({ checkout, exec: vi.fn().mockResolvedValue({ output: "", exit_code: 128 }) });
+      await expect(gitCheckoutCommand("feature/x", { ...flags })).rejects.toThrow(
+        /could not confirm the branch/,
+      );
     });
   });
 
@@ -204,12 +215,23 @@ describe("box git", () => {
   });
 
   it("reports an unset identity rather than an empty pair", async () => {
+    // git config --get exits non-zero when the key is unset, which is an answer.
     boxWith({
       exec: vi.fn().mockResolvedValue({ output: "", exit_code: 1 }),
       updateConfig: vi.fn(),
     });
     await gitConfigCommand({ ...flags });
     expect(written()).toContain("(unset) <(unset)>");
+  });
+
+  it("does not report a failed lookup as an unset identity", async () => {
+    // A request that could not run is not evidence that nothing is configured.
+    boxWith({
+      exec: vi.fn().mockRejectedValue(new Error("network")),
+      updateConfig: vi.fn(),
+    });
+    await expect(gitConfigCommand({ ...flags })).rejects.toThrow();
+    expect(written()).not.toContain("(unset)");
   });
 
   it("writes the identity when a flag is given", async () => {

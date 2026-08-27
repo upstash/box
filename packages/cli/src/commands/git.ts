@@ -131,21 +131,32 @@ export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promi
   const box = await open(flags);
   await box.git.checkout({ branch });
 
-  const head = await box.git
-    .exec({ args: ["rev-parse", "--abbrev-ref", "HEAD"] })
-    .then((result) => (result.exit_code === 0 ? result.output.trim() : undefined))
-    .catch(() => undefined);
+  // A read-back that could not run proves nothing. Falling back to the
+  // requested branch here would restore the false success this check exists
+  // to prevent, just one step further along.
+  let head;
+  try {
+    const probe = await box.git.exec({ args: ["rev-parse", "--abbrev-ref", "HEAD"] });
+    head = probe.exit_code === 0 ? probe.output.trim() : undefined;
+  } catch (error) {
+    throw new CliError(`Checked out "${branch}" but could not confirm the branch`, {
+      cause: error,
+    });
+  }
+  if (head === undefined || head === "") {
+    throw new CliError(`Checked out "${branch}" but could not confirm the branch`);
+  }
 
   // "HEAD" means a detached head, which is a real checkout of a tag or commit.
-  if (head !== undefined && head !== "" && head !== "HEAD" && head !== branch) {
+  if (head !== "HEAD" && head !== branch) {
     throw new CliError(
       `Asked to switch to "${branch}", but the repository is on "${head}".\n` +
         `If "${branch}" is a file rather than a branch, restore it with: ` +
         `box git exec -- checkout -- ${branch}`,
     );
   }
-  const text = head === "HEAD" ? `Detached HEAD at ${branch}` : `On branch ${head || branch}`;
-  emit({ branch, head: head ?? null }, text, flags);
+  const text = head === "HEAD" ? `Detached HEAD at ${branch}` : `On branch ${head}`;
+  emit({ branch, head }, text, flags);
 }
 
 /** Push the current branch. */
@@ -176,11 +187,15 @@ export async function gitCreatePrCommand(flags: GitFlags): Promise<void> {
 export async function gitConfigCommand(flags: GitFlags): Promise<void> {
   const box = await open(flags);
   if (flags.name === undefined && flags.email === undefined) {
-    const [name, email] = await Promise.all([
-      box.git.exec({ args: ["config", "--get", "user.name"] }).catch(() => undefined),
-      box.git.exec({ args: ["config", "--get", "user.email"] }).catch(() => undefined),
-    ]);
-    const shown = (result: { output?: string } | undefined) => result?.output?.trim() || "(unset)";
+    // `git config --get` exits non-zero when the key is simply unset, which is
+    // an answer. A request that fails is not, and must not be reported as
+    // "(unset)": the error is allowed to propagate.
+    const read = async (key: string): Promise<string> => {
+      const result = await box.git.exec({ args: ["config", "--get", key] });
+      return result.exit_code === 0 ? result.output.trim() : "";
+    };
+    const [name, email] = await Promise.all([read("user.name"), read("user.email")]);
+    const shown = (value: string) => value || "(unset)";
     emit(
       { git_user_name: shown(name), git_user_email: shown(email) },
       `git identity: ${shown(name)} <${shown(email)}>`,
