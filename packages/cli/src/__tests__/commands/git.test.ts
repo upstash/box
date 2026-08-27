@@ -1,0 +1,184 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  gitCloneCommand,
+  gitConfigCommand,
+  gitDiffCommand,
+  gitExecCommand,
+  gitStatusCommand,
+} from "../../commands/git.js";
+import { CliError } from "../../core/errors.js";
+
+const getBox = vi.hoisted(() => vi.fn());
+vi.mock("@upstash/box", () => ({ Box: { get: getBox } }));
+
+describe("box git", () => {
+  let stdout: ReturnType<typeof vi.spyOn>;
+  let stderr: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    process.exitCode = undefined;
+    process.env.UPSTASH_BOX_API_KEY = "box_test";
+    getBox.mockReset();
+  });
+  afterEach(() => {
+    stdout.mockRestore();
+    stderr.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
+
+  function boxWith(git: Record<string, unknown>) {
+    const cd = vi.fn().mockResolvedValue(undefined);
+    getBox.mockResolvedValue({ cd, git });
+    return cd;
+  }
+
+  const flags = { box: "b1", token: "box_test" };
+
+  it("changes directory before the call, since the SDK derives the folder from its cwd", async () => {
+    // cd resolves on a later tick, as a real request does. If the command does
+    // not await it, status runs while the SDK is still at the workspace root.
+    let arrived = false;
+    const cd = vi.fn().mockImplementation(async (target: string) => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      arrived = target === "my-repo";
+    });
+    const status = vi.fn().mockImplementation(async () => {
+      if (!arrived) throw new Error("status ran before cd finished");
+      return "?? a.txt";
+    });
+    getBox.mockResolvedValue({ cd, git: { status } });
+    await gitStatusCommand({ ...flags, folder: "my-repo" });
+    expect(cd).toHaveBeenCalledWith("my-repo");
+    expect(written()).toContain("?? a.txt");
+  });
+
+  it("leaves the working directory alone when no folder is given", async () => {
+    const cd = boxWith({ status: vi.fn().mockResolvedValue("?? a.txt") });
+    await gitStatusCommand({ ...flags });
+    expect(cd).not.toHaveBeenCalled();
+  });
+
+  it("sends the folder as the clone destination instead of cd-ing into it", async () => {
+    const clone = vi.fn().mockResolvedValue(undefined);
+    const cd = boxWith({ clone });
+    await gitCloneCommand("https://example.com/me/my-app", { ...flags, folder: "my-app" });
+    // cd would fail: the destination does not exist until the clone creates it.
+    expect(cd).not.toHaveBeenCalled();
+    expect(clone).toHaveBeenCalledWith({
+      repo: "https://example.com/me/my-app",
+      folder: "my-app",
+    });
+  });
+
+  it("omits the destination when none was given, so the repo name is used", async () => {
+    const clone = vi.fn().mockResolvedValue(undefined);
+    boxWith({ clone });
+    await gitCloneCommand("https://example.com/me/my-app", { ...flags });
+    expect(clone).toHaveBeenCalledWith({ repo: "https://example.com/me/my-app" });
+  });
+
+  it("rejects a depth that is not a positive number", async () => {
+    const clone = vi.fn();
+    boxWith({ clone });
+    await expect(gitCloneCommand("repo", { ...flags, depth: "deep" })).rejects.toThrow(CliError);
+    await expect(gitCloneCommand("repo", { ...flags, depth: "0" })).rejects.toThrow(CliError);
+    expect(clone).not.toHaveBeenCalled();
+  });
+
+  it("names the directory when empty output really means 'not a repository'", async () => {
+    boxWith({
+      status: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockResolvedValue({ output: "", exit_code: 128 }),
+    });
+    await expect(gitStatusCommand({ ...flags, folder: "my-repo" })).rejects.toThrow(
+      /Not a git repository: "my-repo"/,
+    );
+  });
+
+  it("refuses to call an unreachable probe a clean tree", async () => {
+    boxWith({
+      status: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockRejectedValue(new Error("network")),
+    });
+    // Empty output plus a failed check is not evidence of anything.
+    await expect(gitStatusCommand({ ...flags, folder: "my-repo" })).rejects.toThrow(
+      /Could not check whether "my-repo"/,
+    );
+  });
+
+  it("stays quiet when empty output means a clean tree", async () => {
+    boxWith({
+      status: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockResolvedValue({ output: "true", exit_code: 0 }),
+    });
+    await gitStatusCommand({ ...flags, folder: "my-repo" });
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("applies the same check to an empty diff", async () => {
+    boxWith({
+      diff: vi.fn().mockResolvedValue(""),
+      exec: vi.fn().mockResolvedValue({ output: "", exit_code: 128 }),
+    });
+    await expect(gitDiffCommand({ ...flags })).rejects.toThrow(/the workspace root/);
+  });
+
+  it("passes git's own exit code through", async () => {
+    boxWith({ exec: vi.fn().mockResolvedValue({ output: "", exit_code: 1 }) });
+    await gitExecCommand(["diff", "--quiet"], { ...flags });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("does not set an exit code for a successful command", async () => {
+    boxWith({ exec: vi.fn().mockResolvedValue({ output: "main", exit_code: 0 }) });
+    await gitExecCommand(["rev-parse", "--abbrev-ref", "HEAD"], { ...flags });
+    expect(process.exitCode).toBeUndefined();
+    expect(written()).toContain("main");
+  });
+
+  it("rejects a leading 'git', which the server adds itself", async () => {
+    const exec = vi.fn();
+    boxWith({ exec });
+    await expect(gitExecCommand(["git", "status"], { ...flags })).rejects.toThrow(CliError);
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty command", async () => {
+    boxWith({ exec: vi.fn() });
+    await expect(gitExecCommand([], { ...flags })).rejects.toThrow(CliError);
+  });
+
+  it("reads the identity from git when neither flag is given", async () => {
+    const exec = vi
+      .fn()
+      .mockResolvedValueOnce({ output: "Box CLI\n", exit_code: 0 })
+      .mockResolvedValueOnce({ output: "cli@upstash.com\n", exit_code: 0 });
+    const updateConfig = vi.fn();
+    boxWith({ exec, updateConfig });
+    await gitConfigCommand({ ...flags });
+    expect(updateConfig).not.toHaveBeenCalled();
+    expect(written()).toContain("Box CLI <cli@upstash.com>");
+  });
+
+  it("reports an unset identity rather than an empty pair", async () => {
+    boxWith({
+      exec: vi.fn().mockResolvedValue({ output: "", exit_code: 1 }),
+      updateConfig: vi.fn(),
+    });
+    await gitConfigCommand({ ...flags });
+    expect(written()).toContain("(unset) <(unset)>");
+  });
+
+  it("writes the identity when a flag is given", async () => {
+    const updateConfig = vi
+      .fn()
+      .mockResolvedValue({ git_user_name: "Box CLI", git_user_email: "cli@upstash.com" });
+    boxWith({ exec: vi.fn(), updateConfig });
+    await gitConfigCommand({ ...flags, name: "Box CLI" });
+    expect(updateConfig).toHaveBeenCalledWith({ userName: "Box CLI" });
+  });
+});

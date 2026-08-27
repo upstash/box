@@ -7,6 +7,8 @@ export type BoxREPLCommandName =
   | "files"
   | "git"
   | "snapshot"
+  | "expose"
+  | "status"
   | "model"
   | "pause"
   | "delete"

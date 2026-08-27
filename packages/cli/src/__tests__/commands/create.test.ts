@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createCommand } from "../../commands/create.js";
+import { CliError } from "../../core/errors.js";
 
 vi.mock("@upstash/box", () => ({
   Box: {
@@ -23,20 +24,27 @@ vi.mock("../../commands/create-wizard.js", () => ({
   createWizard: vi.fn(),
 }));
 
+// Never write a real .box into the package directory from a test.
+const writeBoxFile = vi.hoisted(() => vi.fn(() => "/tmp/.box"));
+vi.mock("../../core/box-ref.js", () => ({ writeBoxFile }));
+
 import { Box } from "@upstash/box";
 import { startRepl } from "../../repl/terminal.js";
 import { createWizard } from "../../commands/create-wizard.js";
 
 describe("createCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
-  let errorSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
-    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -44,6 +52,8 @@ describe("createCommand", () => {
   it("creates a box and starts REPL", async () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+    const tty = process.stdin.isTTY;
+    process.stdin.isTTY = true;
 
     await createCommand({
       token: "my-key",
@@ -63,13 +73,18 @@ describe("createCommand", () => {
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
+    process.stdin.isTTY = tty;
   });
 
   it("sends undefined apiKey when --agent-api-key is omitted", async () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
+    await createCommand({
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+    });
 
     expect(Box.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,11 +144,38 @@ describe("createCommand", () => {
   });
 
   it("errors when agentModel is set without a harness flag", async () => {
-    await createCommand({ token: "key", agentModel: "model" });
-    expect(errorSpy).toHaveBeenCalledWith(
-      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
+    // A CliError, not process.exit: create runs inside the same error boundary
+    // as every other command, so this exits 125 like any other CLI failure.
+    await expect(createCommand({ token: "key", agentModel: "model" })).rejects.toThrow(
+      /agent harness is required/,
     );
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown harness", async () => {
+    await expect(
+      createCommand({ token: "key", agentModel: "model", agentHarness: "nonesuch" }),
+    ).rejects.toThrow(CliError);
+    expect(Box.create).not.toHaveBeenCalled();
+  });
+
+  it("requires a token", async () => {
+    const key = process.env.UPSTASH_BOX_API_KEY;
+    delete process.env.UPSTASH_BOX_API_KEY;
+    await expect(createCommand({})).rejects.toThrow(CliError);
+    expect(exitSpy).not.toHaveBeenCalled();
+    if (key !== undefined) process.env.UPSTASH_BOX_API_KEY = key;
+  });
+
+  it("rejects --init-command without --keep-alive, which the backend would 400", async () => {
+    await expect(
+      createCommand({
+        token: "key",
+        initCommand: "npm start",
+        repl: false,
+      }),
+    ).rejects.toThrow(/keep-alive/);
+    expect(Box.create).not.toHaveBeenCalled();
   });
 
   it("passes runtime, git token, and env vars", async () => {
@@ -143,6 +185,7 @@ describe("createCommand", () => {
     await createCommand({
       token: "key",
       agentModel: "model",
+      agentHarness: "claude-code",
       agentApiKey: "agent-key",
       runtime: "python",
       gitToken: "gh-tok",
@@ -182,20 +225,26 @@ describe("createCommand", () => {
   it("omits labels when none provided", async () => {
     vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-1" } as any);
 
-    await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
+    await createCommand({
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+    });
 
     expect(Box.create).toHaveBeenCalledWith(expect.objectContaining({ labels: undefined }));
   });
 
-  it("exits on invalid env format", async () => {
-    await createCommand({
-      token: "key",
-      agentModel: "model",
-      agentApiKey: "agent-key",
-      env: ["INVALID"],
-    });
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid env format"));
+  it("rejects an invalid env format", async () => {
+    await expect(
+      createCommand({
+        token: "key",
+        agentModel: "model",
+        agentHarness: "claude-code",
+        agentApiKey: "agent-key",
+        env: ["INVALID"],
+      }),
+    ).rejects.toThrow(/Invalid env format/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   describe("wizard delegation", () => {
@@ -216,12 +265,46 @@ describe("createCommand", () => {
       vi.mocked(createWizard).mockResolvedValueOnce({
         runtime: "python",
         agentModel: "anthropic/claude-sonnet-4-5",
+        agentHarness: "claude-code",
       });
 
       await createCommand({ token: "key" });
 
       expect(createWizard).toHaveBeenCalled();
-      expect(Box.create).toHaveBeenCalledWith(expect.objectContaining({ runtime: "python" }));
+      // The wizard is where the harness comes from on a bare create; resolving
+      // it before the merge made the command reject its own answer.
+      expect(Box.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runtime: "python",
+          agent: expect.objectContaining({
+            harness: "claude-code",
+            model: "anthropic/claude-sonnet-4-5",
+          }),
+        }),
+      );
+    });
+
+    it("skips the wizard for a headless create, terminal or not", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      vi.mocked(Box.create).mockResolvedValueOnce({
+        id: "box-9",
+        git: { clone: vi.fn() },
+      } as any);
+
+      // The scripted path from a developer's own shell, which has a terminal.
+      await createCommand({ token: "key", repl: false, cloneRepo: "me/my-app" });
+
+      expect(createWizard).not.toHaveBeenCalled();
+      expect(startRepl).not.toHaveBeenCalled();
+    });
+
+    it("skips the wizard when a workspace flag already answered it", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+
+      await createCommand({ token: "key", name: "my-box" });
+
+      expect(createWizard).not.toHaveBeenCalled();
     });
 
     it("skips wizard when config flags are present", async () => {
@@ -229,7 +312,11 @@ describe("createCommand", () => {
       const mockBox = { id: "box-1" };
       vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
 
-      await createCommand({ token: "key", agentModel: "anthropic/claude-sonnet-4-5" });
+      await createCommand({
+        token: "key",
+        agentModel: "anthropic/claude-sonnet-4-5",
+        agentHarness: "claude-code",
+      });
 
       expect(createWizard).not.toHaveBeenCalled();
     });
@@ -253,6 +340,95 @@ describe("createCommand", () => {
       await createCommand({ token: "key" });
 
       expect(createWizard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("headless create", () => {
+    const headlessFlags = {
+      token: "key",
+      agentModel: "model",
+      agentHarness: "claude-code",
+      repl: false,
+    };
+
+    it("prints the id, pins the directory and never opens the REPL", async () => {
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+      await createCommand(headlessFlags);
+
+      // A pipe or a CI job has no terminal to drive the REPL.
+      expect(startRepl).not.toHaveBeenCalled();
+      expect(writeBoxFile).toHaveBeenCalledWith("box-9");
+      expect(out.mock.calls.map((call) => String(call[0])).join("")).toContain("box-9");
+      out.mockRestore();
+    });
+
+    it("skips the pin under --no-use", async () => {
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      await createCommand({ ...headlessFlags, use: false });
+      expect(writeBoxFile).not.toHaveBeenCalled();
+    });
+
+    it("goes headless when stdout is a pipe, even without --no-repl", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      await createCommand({ token: "key", agentModel: "model", agentHarness: "claude-code" });
+      expect(startRepl).not.toHaveBeenCalled();
+    });
+
+    it("--json implies headless and emits one object", async () => {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+      await createCommand({ ...headlessFlags, repl: undefined, json: true });
+
+      expect(startRepl).not.toHaveBeenCalled();
+      expect(JSON.parse(out.mock.calls.map((call) => String(call[0])).join(""))).toEqual({
+        id: "box-9",
+        pinned: "/tmp/.box",
+      });
+      out.mockRestore();
+      Object.defineProperty(process.stdin, "isTTY", { value: undefined, configurable: true });
+    });
+
+    it("clones into the new box when asked", async () => {
+      const clone = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);
+      await createCommand({ ...headlessFlags, cloneRepo: "owner/repo", gitToken: "gh-tok" });
+      expect(clone).toHaveBeenCalledWith({ repo: "owner/repo", githubToken: "gh-tok" });
+    });
+
+    it("passes the workspace flags through", async () => {
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      await createCommand({
+        ...headlessFlags,
+        name: "my-box",
+        size: "medium",
+        keepAlive: true,
+        initCommand: "npm start",
+        browser: true,
+      });
+      expect(Box.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "my-box",
+          size: "medium",
+          keepAlive: true,
+          initCommand: "npm start",
+          browser: true,
+        }),
+      );
+    });
+
+    it("omits the workspace flags that were not given", async () => {
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9" } as any);
+      await createCommand(headlessFlags);
+      const config = vi.mocked(Box.create).mock.calls[0]![0]!;
+      expect(config).not.toHaveProperty("name");
+      expect(config).not.toHaveProperty("size");
+      expect(config).not.toHaveProperty("keepAlive");
+      expect(config).not.toHaveProperty("browser");
     });
   });
 });

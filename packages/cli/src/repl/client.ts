@@ -6,6 +6,8 @@ import { handleAgent } from "./commands/agent.js";
 import { handleShell } from "./commands/shell.js";
 import { handleFiles } from "./commands/files.js";
 import { handleGit } from "./commands/git.js";
+import { handleExpose } from "./commands/expose.js";
+import { handleStatus } from "./commands/status.js";
 import { handleSnapshot } from "./commands/snapshot.js";
 import { handlePause } from "./commands/pause.js";
 import { handleDelete } from "./commands/delete.js";
@@ -22,14 +24,27 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   shell: { description: "Switch to shell mode", handler: handleShell },
   cd: { description: "Change working directory", handler: handleCd },
   files: {
-    description: "File operations (read, write, list, upload, download)",
+    description:
+      "File operations (read, write, list, stat, mkdir, rename, remove, upload, download)",
     handler: handleFiles,
   },
   git: {
-    description: "Git operations (clone, diff, status, commit, push, create-pr, exec, checkout)",
+    description:
+      "Git operations (clone, diff, status, commit, push, create-pr, exec, checkout, config)",
     handler: handleGit,
   },
-  snapshot: { description: "Create a snapshot of the current box", handler: handleSnapshot },
+  snapshot: {
+    description: "Snapshots (create, list, delete)",
+    handler: handleSnapshot,
+  },
+  expose: {
+    description: "Public URLs for ports in the box (expose <port>, list, delete)",
+    handler: handleExpose,
+  },
+  status: {
+    description: "Box state, recent runs and logs (status, status runs, status logs)",
+    handler: handleStatus,
+  },
   model: { description: "Switch the AI model", handler: handleModel },
   pause: { description: "Pause the box and exit", handler: handlePause },
   delete: { description: "Delete the box and exit", handler: handleDelete },

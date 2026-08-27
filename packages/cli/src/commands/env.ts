@@ -1,5 +1,6 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
+import { CliError } from "../core/errors.js";
 
 interface EnvFlags {
   token?: string;
@@ -37,8 +38,7 @@ export async function envSetAllCommand(vars: string[], flags: EnvFlags): Promise
   for (const entry of vars) {
     const eq = entry.indexOf("=");
     if (eq === -1) {
-      console.error(`Error: invalid format "${entry}", expected KEY=VALUE`);
-      process.exit(1);
+      throw new CliError(`Invalid format "${entry}", expected KEY=VALUE`);
     }
     parsed[entry.slice(0, eq)] = entry.slice(eq + 1);
   }

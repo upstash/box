@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import {
   envSetCommand,
   envListCommand,
@@ -119,12 +120,10 @@ describe("envSetAllCommand", () => {
     );
   });
 
-  it("exits with error on invalid format", async () => {
+  it("throws on an invalid format", async () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
 
-    await envSetAllCommand(["INVALID"], { token: "test-key" });
-
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('"INVALID"'));
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    await expect(envSetAllCommand(["INVALID"], { token: "test-key" })).rejects.toThrow(/INVALID/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

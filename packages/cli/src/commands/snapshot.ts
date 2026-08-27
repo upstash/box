@@ -2,6 +2,7 @@ import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
+import { CliError } from "../core/errors.js";
 
 interface SnapshotFlags {
   token?: string;
@@ -21,8 +22,7 @@ export async function snapshotCommand(
     const boxes = await Box.list({ apiKey });
     const active = boxes.filter((b) => b.status !== "deleted");
     if (active.length === 0) {
-      console.error("No boxes found.");
-      process.exit(1);
+      throw new CliError("No boxes found.");
     }
 
     if (process.stdin.isTTY && active.length > 1) {

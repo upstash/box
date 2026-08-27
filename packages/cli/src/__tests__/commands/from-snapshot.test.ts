@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import { fromSnapshotCommand } from "../../commands/from-snapshot.js";
 
 vi.mock("@upstash/box", () => ({
@@ -88,10 +89,9 @@ describe("fromSnapshotCommand", () => {
   });
 
   it("errors when agentModel is set without a harness flag", async () => {
-    await fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" });
-    expect(errorSpy).toHaveBeenCalledWith(
-      "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
-    );
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    await expect(
+      fromSnapshotCommand("snap-1", { token: "key", agentModel: "model" }),
+    ).rejects.toThrow(/agent harness is required/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

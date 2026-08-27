@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import { snapshotCommand } from "../../commands/snapshot.js";
 
 vi.mock("@upstash/box", () => ({
@@ -59,19 +60,15 @@ describe("snapshotCommand", () => {
   it("exits when no boxes found", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([]);
 
-    await snapshotCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(snapshotCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("filters out deleted boxes", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-deleted", status: "deleted" } as any]);
 
-    await snapshotCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(snapshotCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("generates default snapshot name when none provided", async () => {

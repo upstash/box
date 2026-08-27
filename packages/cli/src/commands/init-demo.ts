@@ -3,6 +3,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import readline from "node:readline";
 import { resolveToken } from "../auth.js";
+import { CliError } from "../core/errors.js";
 import { resolveAgentApiKey } from "../agent-key.js";
 import { bold, cyan, green, dim, red, yellow } from "../utils/ansi.js";
 
@@ -166,8 +167,7 @@ export async function initDemoCommand(flags: InitDemoFlags): Promise<void> {
   const absDir = path.resolve(dir);
 
   if (fs.existsSync(absDir)) {
-    console.error(red(`Error: Directory "${dir}" already exists.`));
-    process.exit(1);
+    throw new CliError(`Directory "${dir}" already exists.`);
   }
 
   // Confirmation prompt

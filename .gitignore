@@ -41,3 +41,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# pnpm's local content-addressable store, when one is configured in-repo
+.pnpm-store/
