@@ -91,12 +91,15 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       if (name === undefined && email === undefined) {
         // There is no GET for the identity, and status() returns porcelain, not
         // config. Ask git itself instead of printing something unrelated.
-        const [userName, userEmail] = await Promise.all([
-          box.git.exec({ args: ["config", "--get", "user.name"] }).catch(() => undefined),
-          box.git.exec({ args: ["config", "--get", "user.email"] }).catch(() => undefined),
-        ]);
-        const shown = (result: { output?: string } | undefined) =>
-          result?.output?.trim() || "(unset)";
+        // A non-zero `git config --get` means the key is unset, which is an
+        // answer. A request that failed is not, and must not be shown as
+        // "(unset)": let it propagate, as the non-interactive path does.
+        const read = async (key: string): Promise<string> => {
+          const result = await box.git.exec({ args: ["config", "--get", key] });
+          return result.exit_code === 0 ? result.output.trim() : "";
+        };
+        const [userName, userEmail] = await Promise.all([read("user.name"), read("user.email")]);
+        const shown = (value: string) => value || "(unset)";
         yield {
           type: "log",
           message: `git identity: ${shown(userName)} <${shown(userEmail)}>`,

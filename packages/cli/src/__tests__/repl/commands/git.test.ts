@@ -213,17 +213,18 @@ describe("handleGit", () => {
       const box = createMockBox();
       box.git.exec = vi
         .fn()
-        .mockResolvedValueOnce({ output: "Box\n" })
-        .mockResolvedValueOnce({ output: "box@upstash.com\n" });
+        .mockResolvedValueOnce({ output: "Box\n", exit_code: 0 })
+        .mockResolvedValueOnce({ output: "box@upstash.com\n", exit_code: 0 });
       const events = await collectEvents(handleGit(box as any, "config"));
       expect(box.git.status).not.toHaveBeenCalled();
       expect(box.git.exec).toHaveBeenCalledWith({ args: ["config", "--get", "user.name"] });
       expect(String(events[0]?.message)).toBe("git identity: Box <box@upstash.com>");
     });
 
-    it("reports an unset identity rather than failing", async () => {
+    it("reports an unset identity when git says the key is not configured", async () => {
+      // `git config --get` exits non-zero for an unset key, which is an answer.
       const box = createMockBox();
-      box.git.exec = vi.fn().mockRejectedValue(new Error("exit 1"));
+      box.git.exec = vi.fn().mockResolvedValue({ output: "", exit_code: 1 });
       const events = await collectEvents(handleGit(box as any, "config"));
       expect(String(events[0]?.message)).toBe("git identity: (unset) <(unset)>");
     });
@@ -232,5 +233,21 @@ describe("handleGit", () => {
   it("lists config in its usage", async () => {
     const events = await collectEvents(handleGit(createMockBox() as any, "bogus"));
     expect(String(events[0]?.message)).toContain("config");
+  });
+
+  describe("config identity lookup", () => {
+    it("shows unset for a key git says is not configured", async () => {
+      const box = createMockBox();
+      box.git.exec.mockResolvedValue({ output: "", exit_code: 1 });
+      const events = await collectEvents(handleGit(box as any, "config"));
+      expect(events[0]).toMatchObject({ message: "git identity: (unset) <(unset)>" });
+    });
+
+    it("does not turn a failed lookup into an unset identity", async () => {
+      // A network outage is not evidence that nothing is configured.
+      const box = createMockBox();
+      box.git.exec.mockRejectedValue(new Error("network"));
+      await expect(collectEvents(handleGit(box as any, "config"))).rejects.toThrow();
+    });
   });
 });

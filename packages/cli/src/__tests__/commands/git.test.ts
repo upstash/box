@@ -152,10 +152,34 @@ describe("box git", () => {
       );
     });
 
-    it("accepts a detached head as a real checkout", async () => {
-      boxOnBranch("HEAD");
+    it("accepts a detached head when it is the requested commit", async () => {
+      const checkout = vi.fn().mockResolvedValue(undefined);
+      const exec = vi.fn().mockImplementation(({ args }: { args: string[] }) => {
+        if (args[1] === "--abbrev-ref") return Promise.resolve({ output: "HEAD", exit_code: 0 });
+        // Both HEAD and the requested ref resolve to the same commit.
+        return Promise.resolve({ output: "abc1234\n", exit_code: 0 });
+      });
+      boxWith({ checkout, exec });
       await gitCheckoutCommand("abc1234", { ...flags });
       expect(written()).toContain("Detached HEAD at abc1234");
+    });
+
+    it("refuses a detached head that is not where it was asked to go", async () => {
+      // Already detached, and `checkout README` only restored a file: HEAD
+      // reads as "HEAD" either way, so only the commits tell them apart.
+      const checkout = vi.fn().mockResolvedValue(undefined);
+      const exec = vi.fn().mockImplementation(({ args }: { args: string[] }) => {
+        if (args[1] === "--abbrev-ref") return Promise.resolve({ output: "HEAD", exit_code: 0 });
+        if (args.some((arg) => arg.startsWith("HEAD^"))) {
+          return Promise.resolve({ output: "abc1234\n", exit_code: 0 });
+        }
+        // README is not a ref, so it resolves to nothing.
+        return Promise.resolve({ output: "", exit_code: 1 });
+      });
+      boxWith({ checkout, exec });
+      await expect(gitCheckoutCommand("README", { ...flags })).rejects.toThrow(
+        /Asked to switch to "README"/,
+      );
     });
 
     it("fails when the branch cannot be read back", async () => {

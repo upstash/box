@@ -68,6 +68,34 @@ async function assertRepo(box: Box, flags: GitFlags): Promise<void> {
 }
 
 /**
+ * Resolve a ref to the commit it names.
+ * @param box - the box, positioned at the repository.
+ * @param ref - branch, tag or commit.
+ * @returns the commit, or undefined when the ref does not name one.
+ */
+async function resolveCommit(box: Box, ref: string): Promise<string | undefined> {
+  const result = await box.git
+    .exec({ args: ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`] })
+    .catch(() => undefined);
+  if (result === undefined || result.exit_code !== 0) return undefined;
+  return result.output.trim() || undefined;
+}
+
+/**
+ * Explain that the checkout did not move to where it was asked to.
+ * @param branch - what was requested.
+ * @param where - where the repository actually is.
+ * @returns the message.
+ */
+function notASwitchMessage(branch: string, where: string): string {
+  return (
+    `Asked to switch to "${branch}", but the repository is on "${where}".\n` +
+    `If "${branch}" is a file rather than a branch, restore it with: ` +
+    `box git exec -- checkout -- ${branch}`
+  );
+}
+
+/**
  * Clone a repository into the box.
  *
  * Clone is the one verb where --folder names the destination rather than an
@@ -147,16 +175,21 @@ export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promi
     throw new CliError(`Checked out "${branch}" but could not confirm the branch`);
   }
 
-  // "HEAD" means a detached head, which is a real checkout of a tag or commit.
-  if (head !== "HEAD" && head !== branch) {
-    throw new CliError(
-      `Asked to switch to "${branch}", but the repository is on "${head}".\n` +
-        `If "${branch}" is a file rather than a branch, restore it with: ` +
-        `box git exec -- checkout -- ${branch}`,
-    );
+  if (head === "HEAD") {
+    // A detached head can mean the requested commit or tag was checked out, or
+    // that the repository was already detached and the request merely restored
+    // a file. Only comparing commits tells those apart.
+    const at = await resolveCommit(box, "HEAD");
+    const wanted = await resolveCommit(box, branch);
+    if (wanted === undefined || wanted !== at) {
+      throw new CliError(notASwitchMessage(branch, at === undefined ? "a detached head" : at));
+    }
+    emit({ branch, head, commit: at }, `Detached HEAD at ${at}`, flags);
+    return;
   }
-  const text = head === "HEAD" ? `Detached HEAD at ${branch}` : `On branch ${head}`;
-  emit({ branch, head }, text, flags);
+
+  if (head !== branch) throw new CliError(notASwitchMessage(branch, head));
+  emit({ branch, head }, `On branch ${head}`, flags);
 }
 
 /** Push the current branch. */

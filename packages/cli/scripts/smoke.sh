@@ -192,7 +192,9 @@ check_contains "get reports details, not just the id" "smoke-test" "$(box get "$
 check_contains "pause reports paused" "Paused" "$(box pause 2>/dev/null)"
 check "a paused box resumes on the next command" "back" "$(box exec -- echo back 2>/dev/null)"
 check "delete refuses without --yes in a script" "125" "$(box delete >/dev/null 2>&1; echo $?)"
-check "the box survives that refusal" "0" "$(box exec -- true >/dev/null 2>&1; echo $?)"
+# Asks whether the box still exists, rather than running a command in it: an
+# exec here has to wait out a resume and fails for reasons unrelated to delete.
+check_contains "the box survives that refusal" "$BOX_ID" "$(box get "$BOX_ID" 2>/dev/null)"
 DELETED=$(box delete --yes 2>/dev/null)
 check_contains "delete --yes removes it" "Deleted" "$DELETED"
 check "and clears the pin" "gone" "$([ -f .box ] && echo present || echo gone)"
