@@ -17,7 +17,7 @@ src/
 │       ├── git.ts        Git operations (clone, status, diff, commit,
 │       │                 checkout, push, create-pr, config, exec)
 │       ├── snapshot.ts   Snapshots (create, list, delete)
-│       ├── expose.ts     Public URLs for ports in the box
+│       ├── public-url.ts Public URLs for ports in the box
 │       ├── status.ts     Box state, runs and logs
 │       ├── args.ts       Flag/positional splitting for subcommands
 │       ├── pause.ts      Box pause (exits REPL)
@@ -35,7 +35,7 @@ src/
 │   │                     rename, remove, upload, download)
 │   ├── git.ts            Git operations (clone, status, diff, commit,
 │   │                     checkout, push, create-pr, config, exec)
-│   ├── expose.ts         Public URLs for ports in the box
+│   ├── public-url.ts     Public URLs for ports in the box
 │   ├── run.ts            Agent prompt, streamed
 │   ├── connect.ts        Connect to existing box (interactive selector if TTY)
 │   ├── create.ts         Create new box (REPL, or headless with --no-repl)

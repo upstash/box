@@ -31,7 +31,7 @@ describe("box completion", () => {
     completionCommand();
     // The non-interactive surface is the point of the CLI; leaving it out of
     // completion is how it stays invisible.
-    for (const command of ["status", "exec", "files", "git", "expose", "run", "use"]) {
+    for (const command of ["status", "exec", "files", "git", "public-url", "run", "use"]) {
       expect(script()).toContain(command);
     }
   });

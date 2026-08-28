@@ -3,7 +3,7 @@ import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
 
-export type ExposeFlags = GlobalFlags & {
+export type PublicUrlFlags = GlobalFlags & {
   basicAuth?: boolean;
   bearerToken?: boolean;
 };
@@ -34,7 +34,7 @@ function portFrom(value: string): number {
  * Credentials are printed once and are not retrievable afterwards, so a caller
  * that wants them should use `--json`.
  */
-export async function exposeCommand(portArg: string, flags: ExposeFlags): Promise<void> {
+export async function publicUrlCommand(portArg: string, flags: PublicUrlFlags): Promise<void> {
   const port = portFrom(portArg);
   const box = await open(flags);
   const created = await box.getPublicURL(port, {
@@ -50,11 +50,11 @@ export async function exposeCommand(portArg: string, flags: ExposeFlags): Promis
   note("Start the server detached — ( npm run dev & ) — or it stops with the command.");
 }
 
-/** List the ports currently exposed. */
-export async function exposeListCommand(flags: GlobalFlags): Promise<void> {
+/** List the box's public URLs. */
+export async function publicUrlListCommand(flags: GlobalFlags): Promise<void> {
   const box = await open(flags);
   const { publicURLs } = await box.listPublicURLs();
-  if (publicURLs.length === 0 && !flags.json) note("No exposed ports.");
+  if (publicURLs.length === 0 && !flags.json) note("No public URLs.");
   emit(
     publicURLs,
     publicURLs.map((entry) => `${String(entry.port).padEnd(6)}${entry.url}`),
@@ -63,7 +63,7 @@ export async function exposeListCommand(flags: GlobalFlags): Promise<void> {
 }
 
 /** Withdraw the public URL for a port. */
-export async function exposeDeleteCommand(portArg: string, flags: GlobalFlags): Promise<void> {
+export async function publicUrlDeleteCommand(portArg: string, flags: GlobalFlags): Promise<void> {
   const port = portFrom(portArg);
   const box = await open(flags);
   await box.deletePublicURL(port);

@@ -43,7 +43,11 @@ import {
   gitConfigCommand,
   gitExecCommand,
 } from "./commands/git.js";
-import { exposeCommand, exposeListCommand, exposeDeleteCommand } from "./commands/expose.js";
+import {
+  publicUrlCommand,
+  publicUrlListCommand,
+  publicUrlDeleteCommand,
+} from "./commands/public-url.js";
 import { runCommandAction } from "./commands/run.js";
 import { deleteCommand, pauseCommand } from "./commands/lifecycle.js";
 import { note, runCommand } from "./core/io.js";
@@ -265,36 +269,36 @@ withGitCommon(
   await runCommand(async () => gitExecCommand(args, { ...globals(flags), ...flags }));
 });
 
-const expose = program
-  .command("expose")
+const publicUrl = program
+  .command("public-url")
   .description("Public URLs for ports inside the box")
-  .argument("[port]", "Port to expose; omit to list")
+  .argument("[port]", "Port to publish; omit to list")
   .option("--basic-auth", "Protect the URL with generated basic-auth credentials")
   .option("--bearer-token", "Protect the URL with a generated bearer token")
   .option("--box <id>", "Box to act on")
   .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
   .action(async (port: string | undefined, flags: Record<string, unknown>) => {
-    // A bare `box expose` lists, matching the REPL, so the common
-    // `box expose 3000` stays a single word shorter than `expose create 3000`.
+    // A bare `box public-url` lists, matching the REPL, so the common
+    // `box public-url 3000` stays a word shorter than a `create` subcommand.
     await runCommand(async () =>
       port === undefined
-        ? exposeListCommand(globals(flags))
-        : exposeCommand(port, { ...globals(flags), ...flags }),
+        ? publicUrlListCommand(globals(flags))
+        : publicUrlCommand(port, { ...globals(flags), ...flags }),
     );
   });
 
-expose
+publicUrl
   .command("list")
-  .description("List exposed ports")
+  .description("List the box's public URLs")
   .option("--box <id>", "Box to act on")
   .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
   .action(async (flags: Record<string, unknown>) => {
-    await runCommand(async () => exposeListCommand(globals(flags)));
+    await runCommand(async () => publicUrlListCommand(globals(flags)));
   });
 
-expose
+publicUrl
   .command("delete")
   .argument("<port>")
   .description("Withdraw the public URL for a port")
@@ -302,7 +306,7 @@ expose
   .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
   .action(async (port: string, flags: Record<string, unknown>) => {
-    await runCommand(async () => exposeDeleteCommand(port, globals(flags)));
+    await runCommand(async () => publicUrlDeleteCommand(port, globals(flags)));
   });
 
 program

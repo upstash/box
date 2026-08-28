@@ -12,7 +12,7 @@ const COMMANDS: [name: string, description: string, subcommands: string][] = [
     "Git operations inside the box",
     "clone status diff commit checkout push create-pr config exec",
   ],
-  ["expose", "Public URLs for ports inside the box", "list delete"],
+  ["public-url", "Public URLs for ports inside the box", "list delete"],
   ["run", "Run the box's agent on a prompt", ""],
   ["use", "Pin a box to this directory", ""],
   ["delete", "Delete a box and everything in it", ""],

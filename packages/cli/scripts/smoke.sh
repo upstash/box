@@ -173,9 +173,9 @@ check "and reports the branch it is on" "smoke-branch" \
   "$(box git exec -C Hello-World -- rev-parse --abbrev-ref HEAD 2>/dev/null)"
 
 echo
-echo "expose"
+echo "public-url"
 box exec -- '( node -e "require(\"http\").createServer((_,r)=>r.end(\"alive\")).listen(3000)" > s.log 2>&1 & )' >/dev/null 2>&1
-URL=$(box expose 3000 --json 2>/dev/null | sed -n 's/.*"url": "\([^"]*\)".*/\1/p')
+URL=$(box public-url 3000 --json 2>/dev/null | sed -n 's/.*"url": "\([^"]*\)".*/\1/p')
 check_contains "returns a public URL" "https://" "$URL"
 
 # The server has to boot and the route has to propagate; how long that takes is
@@ -187,8 +187,8 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 3
 done
 check "the detached server answers on it" "alive" "$BODY"
-check_contains "lists the exposed port" "3000" "$(box expose list 2>/dev/null)"
-check "deletes the public URL" "0" "$(box expose delete 3000 >/dev/null 2>&1; echo $?)"
+check_contains "lists the public URL" "3000" "$(box public-url list 2>/dev/null)"
+check "deletes the public URL" "0" "$(box public-url delete 3000 >/dev/null 2>&1; echo $?)"
 
 echo
 echo "lifecycle"

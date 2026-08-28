@@ -5,10 +5,10 @@ import type { BoxREPLEvent } from "../types.js";
  * Public URL subcommands: create, list, delete.
  *
  * A server inside the box is not reachable from the outside until a port is
- * exposed, so this is the other half of running one — starting `npm run dev`
+ * published, so this is the other half of running one: starting `npm run dev`
  * and then having no way to look at it is the common dead end.
  */
-export async function* handleExpose(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
+export async function* handlePublicUrl(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
   const parts = args.trim().split(/\s+/).filter(Boolean);
   const sub = parts[0];
 
@@ -17,7 +17,7 @@ export async function* handleExpose(box: Box, args: string): AsyncGenerator<BoxR
     case "list": {
       const { publicURLs } = await box.listPublicURLs();
       if (publicURLs.length === 0) {
-        yield { type: "log", message: "No exposed ports." };
+        yield { type: "log", message: "No public URLs." };
         return;
       }
       for (const entry of publicURLs) {
@@ -31,7 +31,7 @@ export async function* handleExpose(box: Box, args: string): AsyncGenerator<BoxR
       const port = Number(parts[1]);
       // Same bounds as the create form: 70000 is not a port either way.
       if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-        yield { type: "log", message: "Usage: expose delete <port>" };
+        yield { type: "log", message: "Usage: public-url delete <port>" };
         return;
       }
       await box.deletePublicURL(port);
@@ -40,13 +40,13 @@ export async function* handleExpose(box: Box, args: string): AsyncGenerator<BoxR
     }
 
     default: {
-      // `expose 3000` is the common case, so a bare port is the create form.
+      // `public-url 3000` is the common case, so a bare port creates one.
       const port = Number(sub);
       if (!Number.isInteger(port) || port < 1 || port > 65_535) {
         yield {
           type: "log",
           message:
-            "Usage: expose <port> [--basic-auth|--bearer-token] | expose list | expose delete <port>",
+            "Usage: public-url <port> [--basic-auth|--bearer-token] | public-url list | public-url delete <port>",
         };
         return;
       }

@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { exposeCommand, exposeDeleteCommand, exposeListCommand } from "../../commands/expose.js";
+import {
+  publicUrlCommand,
+  publicUrlDeleteCommand,
+  publicUrlListCommand,
+} from "../../commands/public-url.js";
 import { CliError } from "../../core/errors.js";
 
 const getBox = vi.hoisted(() => vi.fn());
 vi.mock("@upstash/box", () => ({ Box: { get: getBox } }));
 
-describe("box expose", () => {
+describe("box public-url", () => {
   let stdout: ReturnType<typeof vi.spyOn>;
   let stderr: ReturnType<typeof vi.spyOn>;
 
@@ -27,7 +31,7 @@ describe("box expose", () => {
   it("prints the URL and how to keep the server alive", async () => {
     const getPublicURL = vi.fn().mockResolvedValue({ url: "https://b1-3000.example", port: 3000 });
     getBox.mockResolvedValue({ getPublicURL });
-    await exposeCommand("3000", { ...flags });
+    await publicUrlCommand("3000", { ...flags });
     expect(getPublicURL).toHaveBeenCalledWith(3000, {});
     expect(out()).toContain("https://b1-3000.example");
     // The detach hint is advice, not output, so it must not reach a pipe.
@@ -42,7 +46,7 @@ describe("box expose", () => {
       password: "p",
     });
     getBox.mockResolvedValue({ getPublicURL });
-    await exposeCommand("3000", { ...flags, basicAuth: true });
+    await publicUrlCommand("3000", { ...flags, basicAuth: true });
     expect(getPublicURL).toHaveBeenCalledWith(3000, { basicAuth: true });
     // Credentials are shown once and cannot be read back later.
     expect(out()).toContain("user: u  password: p");
@@ -51,8 +55,8 @@ describe("box expose", () => {
   it("rejects a port outside the valid range rather than calling the API", async () => {
     const getPublicURL = vi.fn();
     getBox.mockResolvedValue({ getPublicURL });
-    await expect(exposeCommand("99999", { ...flags })).rejects.toThrow(CliError);
-    await expect(exposeCommand("http", { ...flags })).rejects.toThrow(CliError);
+    await expect(publicUrlCommand("99999", { ...flags })).rejects.toThrow(CliError);
+    await expect(publicUrlCommand("http", { ...flags })).rejects.toThrow(CliError);
     expect(getPublicURL).not.toHaveBeenCalled();
   });
 
@@ -62,28 +66,28 @@ describe("box expose", () => {
         publicURLs: [{ port: 3000, url: "https://b1-3000.example" }],
       }),
     });
-    await exposeListCommand({ ...flags });
+    await publicUrlListCommand({ ...flags });
     expect(out()).toContain("3000  https://b1-3000.example");
   });
 
-  it("says so on stderr when nothing is exposed, leaving stdout empty", async () => {
+  it("says so on stderr when there are none, leaving stdout empty", async () => {
     getBox.mockResolvedValue({ listPublicURLs: vi.fn().mockResolvedValue({ publicURLs: [] }) });
-    await exposeListCommand({ ...flags });
-    expect(err()).toContain("No exposed ports.");
+    await publicUrlListCommand({ ...flags });
+    expect(err()).toContain("No public URLs.");
     expect(out()).toBe("");
   });
 
   it("emits an empty array under --json rather than a message", async () => {
     getBox.mockResolvedValue({ listPublicURLs: vi.fn().mockResolvedValue({ publicURLs: [] }) });
-    await exposeListCommand({ ...flags, json: true });
+    await publicUrlListCommand({ ...flags, json: true });
     expect(JSON.parse(out())).toEqual([]);
-    expect(err()).not.toContain("No exposed ports.");
+    expect(err()).not.toContain("No public URLs.");
   });
 
   it("deletes by port", async () => {
     const deletePublicURL = vi.fn().mockResolvedValue(undefined);
     getBox.mockResolvedValue({ deletePublicURL });
-    await exposeDeleteCommand("3000", { ...flags });
+    await publicUrlDeleteCommand("3000", { ...flags });
     expect(deletePublicURL).toHaveBeenCalledWith(3000);
   });
 });
