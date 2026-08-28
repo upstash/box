@@ -1,9 +1,22 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { COMPLETION_COMMANDS, completionCommand } from "../../commands/completion.js";
+
+/**
+ * zsh is the default shell on macOS but is not installed on the Linux CI
+ * runner, so its syntax check runs where the shell exists rather than failing
+ * where it does not. bash is present everywhere and is always checked.
+ */
+const hasZsh = ((): boolean => {
+  try {
+    return spawnSync("zsh", ["--version"], { encoding: "utf8" }).status === 0;
+  } catch {
+    return false;
+  }
+})();
 
 describe("box completion", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
@@ -42,7 +55,7 @@ describe("box completion", () => {
     expect(() => execFileSync("bash", ["-n", write(script(), "bash")])).not.toThrow();
   });
 
-  it("emits a script zsh can parse", () => {
+  it.skipIf(!hasZsh)("emits a script zsh can parse", () => {
     process.env.SHELL = "/bin/zsh";
     completionCommand();
     // An apostrophe in a description ("the box's agent") ends zsh's quoting and
