@@ -41,7 +41,7 @@ describe("handlePublicUrl", () => {
     expect(events.some((e) => String(e.message).includes("user: user"))).toBe(true);
   });
 
-  it("lists exposed ports, and with no argument", async () => {
+  it("lists the public URLs, and with no argument", async () => {
     const box = createMockBox();
     for (const args of ["list", ""]) {
       const events = await collectEvents(handlePublicUrl(box as any, args));

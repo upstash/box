@@ -60,7 +60,7 @@ describe("box public-url", () => {
     expect(getPublicURL).not.toHaveBeenCalled();
   });
 
-  it("lists exposed ports", async () => {
+  it("lists the box's public URLs", async () => {
     getBox.mockResolvedValue({
       listPublicURLs: vi.fn().mockResolvedValue({
         publicURLs: [{ port: 3000, url: "https://b1-3000.example" }],

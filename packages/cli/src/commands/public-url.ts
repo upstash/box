@@ -29,7 +29,7 @@ function portFrom(value: string): number {
 }
 
 /**
- * Expose a port and print its public URL.
+ * Publish a port and print its public URL.
  *
  * Credentials are printed once and are not retrievable afterwards, so a caller
  * that wants them should use `--json`.

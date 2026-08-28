@@ -25,7 +25,7 @@ describe.skipIf(!built)("exit codes at the program boundary", () => {
     ["an unknown command", ["no-such-command"]],
     ["an unknown subcommand", ["files", "no-such-verb"]],
     ["a missing required argument", ["files", "read"]],
-    ["a missing subcommand argument", ["expose", "delete"]],
+    ["a missing subcommand argument", ["public-url", "delete"]],
   ])("uses %s exits %i", (_what, args) => {
     // Commander's default is 1, which is indistinguishable from a remote
     // command that exited 1 — the ambiguity 125 exists to remove.

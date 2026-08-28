@@ -30,8 +30,8 @@ export async function labelListCommand(boxId: string, flags: LabelFlags): Promis
   const apiKey = resolveToken(flags.token);
   const box = await Box.get(boxId, { apiKey });
   const labels = await box.labels.list();
-  // Same shape as `box expose`: the note is for a reader, so it goes to stderr
-  // and leaves stdout holding only data.
+  // Same shape as `box public-url`: the note is for a reader, so it goes to
+  // stderr and leaves stdout holding only data.
   if (labels.length === 0 && !flags.json) note("No labels.");
   emit(labels, labels, flags);
 }
