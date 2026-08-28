@@ -997,6 +997,12 @@ export interface GitCloneOptions {
   branch?: string;
   /** History depth (git clone --depth N); depth: 1 = shallow clone. Omit for a full clone. */
   depth?: number;
+  /**
+   * Directory under the workspace to clone into. Defaults to the repository
+   * name. Unlike the other git operations, this names the destination rather
+   * than an existing directory, so it does not have to exist yet.
+   */
+  folder?: string;
 }
 
 export interface GitExecOptions {
@@ -1005,6 +1011,8 @@ export interface GitExecOptions {
 
 export interface GitExecResult {
   output: string;
+  /** git's own exit status; 128 when the folder is not a repository. */
+  exit_code: number;
 }
 
 export interface GitCheckoutOptions {

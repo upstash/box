@@ -27,6 +27,30 @@ describe("Box git operations", () => {
       expect(body.branch).toBe("dev");
     });
 
+    it("clones into an explicit destination folder", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      // For clone the folder is where the repo lands, so it does not exist yet
+      // and cd() cannot be used to express it.
+      await box.git.clone({ repo: "owner/repo", folder: "my-app" });
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.folder).toBe("my-app");
+    });
+
+    it("prefers the explicit destination over the current directory", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ exit_code: 0, output: "" }));
+      await box.cd("/workspace/home/elsewhere");
+      fetchMock.mockResolvedValueOnce(mockResponse({}));
+
+      await box.git.clone({ repo: "owner/repo", folder: "my-app" });
+
+      const body = JSON.parse(fetchMock.mock.calls.at(-1)![1]?.body as string);
+      expect(body.folder).toBe("my-app");
+    });
+
     it("clones a repo with depth", async () => {
       const { box, fetchMock } = await createTestBox();
       fetchMock.mockResolvedValueOnce(mockResponse({}));
@@ -113,7 +137,9 @@ describe("Box git operations", () => {
       });
 
       const [url, init] = fetchMock.mock.calls[1]!;
-      expect(url).toContain("/git-config");
+      // The coordinator serves this under config/git; asserting the old
+      // "/git-config" spelling is what let the wrong path ship.
+      expect(url).toContain("/config/git");
       expect(init?.method).toBe("PUT");
       const body = JSON.parse(init?.body as string);
       expect(body.git_user_name).toBe("John Doe");
@@ -174,15 +200,25 @@ describe("Box git operations", () => {
   describe("git.exec", () => {
     it("executes a git command", async () => {
       const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({ output: "abc123\ndef456" }));
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "abc123\ndef456", exit_code: 0 }));
 
       const result = await box.git.exec({ args: ["log", "--oneline", "-2"] });
       expect(result.output).toBe("abc123\ndef456");
+      expect(result.exit_code).toBe(0);
 
       const [url, init] = fetchMock.mock.calls[1]!;
       expect(url).toContain("/git/exec");
       const body = JSON.parse(init?.body as string);
       expect(body.args).toEqual(["log", "--oneline", "-2"]);
+    });
+
+    it("forwards git's exit code, so a failed command is distinguishable", async () => {
+      const { box, fetchMock } = await createTestBox();
+      // 128 is what git returns when the folder is not a repository.
+      fetchMock.mockResolvedValueOnce(mockResponse({ output: "", exit_code: 128 }));
+
+      const result = await box.git.exec({ args: ["rev-parse", "--is-inside-work-tree"] });
+      expect(result.exit_code).toBe(128);
     });
   });
 
