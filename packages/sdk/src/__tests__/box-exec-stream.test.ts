@@ -38,7 +38,6 @@ function mockExecStreamResponse(
   } as Response;
 }
 
-
 /**
  * A stream delivered in caller-chosen pieces, so a marker and its payload can
  * be split the way the network splits them.
