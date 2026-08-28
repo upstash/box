@@ -62,6 +62,11 @@ ${bashSubcommandCases()}
       COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
       return
     fi
+    # Past the subcommand, the argument is a path or an id, not a command name.
+    # Hand back to the shell's own completion rather than offering verbs.
+    compopt -o default 2>/dev/null
+    COMPREPLY=()
+    return
   fi
 
   COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
@@ -93,6 +98,13 @@ ${COMMANDS.map(([name, description]) => `    '${name}:${zshQuote(description)}'`
 
   if (( CURRENT == 2 )); then
     _describe 'command' commands
+    return
+  fi
+
+  # Only the position straight after the command names a subcommand; later
+  # positions are paths and ids, so fall through to zsh's file completion.
+  if (( CURRENT != 3 )); then
+    _files
     return
   fi
 

@@ -84,6 +84,7 @@ export async function runCommandAction(parts: string[], flags: RunFlags): Promis
   let output = "";
   let sessionId: string | undefined;
   let usage: Record<string, number> | undefined;
+  let finished = false;
   for await (const chunk of run) {
     if (chunk.type === "text-delta") {
       output += chunk.text;
@@ -91,10 +92,20 @@ export async function runCommandAction(parts: string[], flags: RunFlags): Promis
     } else if (chunk.type === "tool-call") {
       if (!flags.json && !flags.quiet) note(toolLine(chunk.toolName, chunk.input));
     } else if (chunk.type === "finish") {
-      if (chunk.output) output = chunk.output;
+      // Assigned unconditionally: the finish chunk is authoritative, and an
+      // empty answer is an answer. Guarding on truthiness kept the partial
+      // deltas instead.
+      finished = true;
+      output = chunk.output;
       sessionId = chunk.sessionId;
       usage = chunk.usage as unknown as Record<string, number>;
     }
+  }
+
+  if (!finished) {
+    // The iterator can end at EOF without the run ever reporting completion,
+    // and a partial answer consumed as a whole one is worse than a failure.
+    throw new CliError("The agent's output ended before the run reported finishing");
   }
 
   if (flags.json) {

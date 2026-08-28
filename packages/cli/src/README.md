@@ -12,6 +12,11 @@ src/
 │   ├── spinner.ts        Braille spinner with random messages
 │   └── commands/         REPL command handlers
 │       ├── run.ts        Agent prompt streaming
+│       ├── agent.ts      Agent mode toggle
+│       ├── shell.ts      Shell mode toggle (execution lives in client.ts)
+│       ├── cd.ts         Working directory for later commands
+│       ├── model.ts      Change the agent model
+│       ├── console.ts    Open the box in the Upstash console
 │       ├── files.ts      File operations (read, write, list, stat, mkdir,
 │       │                 rename, remove, upload, download)
 │       ├── git.ts        Git operations (clone, status, diff, commit,

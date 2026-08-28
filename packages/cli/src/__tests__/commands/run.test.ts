@@ -56,6 +56,7 @@ describe("box run", () => {
     boxStreaming([
       { type: "tool-call", toolName: "Read", input: { file_path: "/workspace/home/a.ts" } },
       { type: "text-delta", text: "answer" },
+      { type: "finish", output: "answer", sessionId: "s", usage: {} },
     ]);
     await runCommandAction(["read", "it"], { ...flags });
     expect(out()).toBe("answer\n");
@@ -66,6 +67,7 @@ describe("box run", () => {
     boxStreaming([
       { type: "tool-call", toolName: "Bash", input: { command: "ls" } },
       { type: "text-delta", text: "answer" },
+      { type: "finish", output: "answer", sessionId: "s", usage: {} },
     ]);
     await runCommandAction(["go"], { ...flags, quiet: true });
     expect(err()).not.toContain("Bash");
@@ -83,26 +85,38 @@ describe("box run", () => {
   });
 
   it("does not stream to stdout under --json", async () => {
-    boxStreaming([{ type: "text-delta", text: "partial" }]);
+    boxStreaming([
+      { type: "text-delta", text: "partial" },
+      { type: "finish", output: "partial", sessionId: null, usage: null },
+    ]);
     await runCommandAction(["go"], { ...flags, json: true });
     expect(JSON.parse(out())).toEqual({ output: "partial", session_id: null, usage: null });
   });
 
   it("reads the prompt from stdin on -", async () => {
     readFileSync.mockReturnValue("a prompt too long to quote\n");
-    const stream = boxStreaming([{ type: "text-delta", text: "ok" }]);
+    const stream = boxStreaming([
+      { type: "text-delta", text: "ok" },
+      { type: "finish", output: "ok", sessionId: "s", usage: {} },
+    ]);
     await runCommandAction(["-"], { ...flags });
     expect(stream).toHaveBeenCalledWith({ prompt: "a prompt too long to quote" });
   });
 
   it("sends the timeout in milliseconds", async () => {
-    const stream = boxStreaming([{ type: "text-delta", text: "ok" }]);
+    const stream = boxStreaming([
+      { type: "text-delta", text: "ok" },
+      { type: "finish", output: "ok", sessionId: "s", usage: {} },
+    ]);
     await runCommandAction(["go"], { ...flags, timeout: "30" });
     expect(stream).toHaveBeenCalledWith({ prompt: "go", timeout: 30_000 });
   });
 
   it("omits the timeout when it was not given", async () => {
-    const stream = boxStreaming([{ type: "text-delta", text: "ok" }]);
+    const stream = boxStreaming([
+      { type: "text-delta", text: "ok" },
+      { type: "finish", output: "ok", sessionId: "s", usage: {} },
+    ]);
     await runCommandAction(["go"], { ...flags });
     expect(stream).toHaveBeenCalledWith({ prompt: "go" });
   });
@@ -122,6 +136,24 @@ describe("box run", () => {
   it("rejects a non-numeric timeout instead of sending NaN", async () => {
     boxStreaming([]);
     await expect(runCommandAction(["go"], { ...flags, timeout: "soon" })).rejects.toThrow(CliError);
+  });
+
+  it("refuses a stream that never reported finishing", async () => {
+    // The iterator can end at EOF without the run completing, and a partial
+    // answer consumed as a whole one is worse than a failure.
+    boxStreaming([{ type: "text-delta", text: "half an ans" }]);
+    await expect(runCommandAction(["go"], { ...flags })).rejects.toThrow(CliError);
+  });
+
+  it("trusts an empty finish output over the deltas", async () => {
+    // Guarding on truthiness kept the partial deltas when the authoritative
+    // answer was the empty string.
+    boxStreaming([
+      { type: "text-delta", text: "scratch" },
+      { type: "finish", output: "", sessionId: "s", usage: {} },
+    ]);
+    await runCommandAction(["go"], { ...flags, json: true });
+    expect(JSON.parse(out()).output).toBe("");
   });
 
   it("rejects an empty prompt", async () => {

@@ -43,5 +43,6 @@ export async function envSetAllCommand(vars: string[], flags: EnvFlags): Promise
     parsed[entry.slice(0, eq)] = entry.slice(eq + 1);
   }
   await Box.setAllEnv(parsed, { apiKey });
-  console.log(`Set ${Object.keys(parsed).length} env var(s)`);
+  const keys = Object.keys(parsed);
+  emit({ keys, count: keys.length }, `Set ${keys.length} env var(s)`, flags);
 }

@@ -1,6 +1,6 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
-import { emit, type GlobalFlags } from "../core/io.js";
+import { emit, note, type GlobalFlags } from "../core/io.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
 import { CliError } from "../core/errors.js";
@@ -40,18 +40,18 @@ export async function snapshotCommand(
       });
 
       if (!selected) {
-        console.log(dim("Aborted."));
+        note(dim("Aborted."));
         return;
       }
       targetId = selected;
     } else {
-      console.log("Only one box found, using it...");
+      note("Only one box found, using it...");
       targetId = active[0]!.id;
     }
   }
 
   const snapshotName = flags.name ?? `snapshot-${Date.now()}`;
-  console.log(`\nCreating snapshot of box ${targetId}...`);
+  note(`Creating snapshot of box ${targetId}...`);
   const box = await Box.get(targetId, { apiKey });
   const snapshot = await box.snapshot({ name: snapshotName });
   emit(snapshot, `Snapshot created: ${snapshot.id} (${snapshot.name})`, flags);

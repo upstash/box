@@ -97,11 +97,14 @@ describe("envDeleteCommand", () => {
 
 describe("envSetAllCommand", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
   afterEach(() => vi.restoreAllMocks());
@@ -112,7 +115,7 @@ describe("envSetAllCommand", () => {
     await envSetAllCommand(["FOO=bar", "BAZ=qux"], { token: "test-key" });
 
     expect(Box.setAllEnv).toHaveBeenCalledWith({ FOO: "bar", BAZ: "qux" }, { apiKey: "test-key" });
-    expect(logSpy).toHaveBeenCalledWith("Set 2 env var(s)");
+    expect(written()).toContain("Set 2 env var(s)");
   });
 
   it("handles values that contain '='", async () => {

@@ -51,7 +51,7 @@ import {
 import { runCommandAction } from "./commands/run.js";
 import { deleteCommand, pauseCommand } from "./commands/lifecycle.js";
 import { note, runCommand } from "./core/io.js";
-import { CLI_FAILURE_EXIT_CODE } from "./core/errors.js";
+import { CLI_FAILURE_EXIT_CODE, CliError } from "./core/errors.js";
 import type { GlobalFlags } from "./core/io.js";
 
 appendTelemetryIdentity(`@upstash/box-cli@${VERSION}`);
@@ -81,6 +81,23 @@ program
  */
 function merged<T extends Record<string, unknown>>(local: T): T & GlobalFlags {
   return { ...local, ...globals(local) };
+}
+
+/**
+ * Refuse --json for a command that cannot produce it.
+ *
+ * The root advertises the flag program-wide, so it reaches commands that open
+ * a REPL or print a shell script. Accepting it there would answer an
+ * automation caller with a prompt, or with text it cannot parse.
+ * @param flags - the merged flags.
+ * @param command - the command name, for the message.
+ * @param instead - what to use instead, when there is something.
+ */
+function refuseJson(flags: GlobalFlags, command: string, instead?: string): void {
+  if (!flags.json) return;
+  throw new CliError(
+    `${command} has no machine-readable output${instead ? `; use ${instead}` : ""}`,
+  );
 }
 
 /** Global flags merged with a subcommand's own, the subcommand winning. */
@@ -407,7 +424,12 @@ program
   .command("connect [box-id]")
   .description("Connect to an existing box (or most recent) and enter the REPL")
   .option("--token <token>", "Upstash Box API token")
-  .action(async (boxId, opts) => runCommand(async () => connectCommand(boxId, merged(opts))));
+  .action(async (boxId, opts) =>
+    runCommand(async () => {
+      refuseJson(merged(opts), "box connect", "box create --no-repl --json");
+      return connectCommand(boxId, merged(opts));
+    }),
+  );
 
 program
   .command("from-snapshot <snapshot-id>")
@@ -436,7 +458,10 @@ program
     [] as string[],
   )
   .action(async (snapshotId, opts) =>
-    runCommand(async () => fromSnapshotCommand(snapshotId, merged(opts))),
+    runCommand(async () => {
+      refuseJson(merged(opts), "box from-snapshot", "box create --no-repl --json");
+      return fromSnapshotCommand(snapshotId, merged(opts));
+    }),
   );
 
 program
@@ -476,7 +501,12 @@ program
   .option("--runtime <runtime>", "Runtime environment", "node")
   .option("--git-token <token>", "GitHub personal access token")
   .option("--directory <dir>", "Output directory", "box-demo")
-  .action(async (opts) => runCommand(async () => initDemoCommand(merged(opts))));
+  .action(async (opts) =>
+    runCommand(async () => {
+      refuseJson(merged(opts), "box init-demo");
+      return initDemoCommand(merged(opts));
+    }),
+  );
 
 const envCmd = program.command("env").description("Manage user-level env vars");
 
@@ -541,7 +571,12 @@ labelsCmd
 program
   .command("completion")
   .description('Output shell completion script (eval "$(box completion)")')
-  .action(() => completionCommand());
+  .action(async (opts) =>
+    runCommand(async () => {
+      refuseJson(merged(opts as Record<string, unknown>), "box completion");
+      completionCommand();
+    }),
+  );
 
 // Commander reports usage errors (unknown option, missing argument) before any
 // action runs, and exits 1 by default. That is indistinguishable from a remote

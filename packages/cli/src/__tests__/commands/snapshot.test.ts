@@ -23,6 +23,7 @@ describe("snapshotCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let stdout: ReturnType<typeof vi.spyOn>;
+  let stderr: ReturnType<typeof vi.spyOn>;
   const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -31,6 +32,7 @@ describe("snapshotCommand", () => {
     exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -56,7 +58,9 @@ describe("snapshotCommand", () => {
 
     await snapshotCommand(undefined, { token: "key", name: "auto" });
 
-    expect(logSpy).toHaveBeenCalledWith("Only one box found, using it...");
+    // Progress goes to stderr so that --json leaves only the result on stdout.
+    const warned = stderr.mock.calls.map((call) => String(call[0])).join("");
+    expect(warned).toContain("Only one box found, using it...");
     expect(Box.get).toHaveBeenCalledWith("box-only", { apiKey: "key" });
   });
 

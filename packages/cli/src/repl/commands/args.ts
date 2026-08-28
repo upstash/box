@@ -20,8 +20,16 @@ export type SplitArgs = {
 export function splitArgs(args: string): SplitArgs {
   const positionals: string[] = [];
   const flags: string[] = [];
+  let literal = false;
   for (const part of args.trim().split(/\s+/).filter(Boolean)) {
-    if (part.startsWith("-")) flags.push(part);
+    // Everything after `--` is a positional, which is the only way to name a
+    // path that begins with a dash: without it, `files read -notes` loses its
+    // argument to the flag list and the verb sees no path at all.
+    if (!literal && part === "--") {
+      literal = true;
+      continue;
+    }
+    if (!literal && part.startsWith("-")) flags.push(part);
     else positionals.push(part);
   }
   return { positionals, flags };
