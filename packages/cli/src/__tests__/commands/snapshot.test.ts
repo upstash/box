@@ -22,12 +22,15 @@ import { Box } from "@upstash/box";
 describe("snapshotCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -42,7 +45,7 @@ describe("snapshotCommand", () => {
 
     expect(Box.get).toHaveBeenCalledWith("box-1", { apiKey: "key" });
     expect(mockBox.snapshot).toHaveBeenCalledWith({ name: "my-snap" });
-    expect(logSpy).toHaveBeenCalledWith("Snapshot created: snap-1 (my-snap)");
+    expect(written()).toContain("Snapshot created: snap-1 (my-snap)");
   });
 
   it("uses single box when only one exists", async () => {

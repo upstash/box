@@ -1,13 +1,13 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
+import { emit, type GlobalFlags } from "../core/io.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
 import { CliError } from "../core/errors.js";
 
-interface SnapshotFlags {
-  token?: string;
+type SnapshotFlags = GlobalFlags & {
   name?: string;
-}
+};
 
 export async function snapshotCommand(
   boxId: string | undefined,
@@ -54,5 +54,5 @@ export async function snapshotCommand(
   console.log(`\nCreating snapshot of box ${targetId}...`);
   const box = await Box.get(targetId, { apiKey });
   const snapshot = await box.snapshot({ name: snapshotName });
-  console.log(`Snapshot created: ${snapshot.id} (${snapshot.name})`);
+  emit(snapshot, `Snapshot created: ${snapshot.id} (${snapshot.name})`, flags);
 }

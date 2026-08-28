@@ -24,10 +24,13 @@ import { Box } from "@upstash/box";
 
 describe("envSetCommand", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
 
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -37,7 +40,7 @@ describe("envSetCommand", () => {
     await envSetCommand("MY_KEY", "my-value", { token: "test-key" });
 
     expect(Box.setEnv).toHaveBeenCalledWith("MY_KEY", "my-value", { apiKey: "test-key" });
-    expect(logSpy).toHaveBeenCalledWith("Set MY_KEY");
+    expect(written()).toContain("Set MY_KEY");
   });
 });
 
@@ -71,11 +74,14 @@ describe("envListCommand", () => {
 });
 
 describe("envDeleteCommand", () => {
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -85,7 +91,7 @@ describe("envDeleteCommand", () => {
     await envDeleteCommand("MY_KEY", { token: "test-key" });
 
     expect(Box.deleteEnv).toHaveBeenCalledWith("MY_KEY", { apiKey: "test-key" });
-    expect(logSpy).toHaveBeenCalledWith("Deleted MY_KEY");
+    expect(written()).toContain("Deleted MY_KEY");
   });
 });
 

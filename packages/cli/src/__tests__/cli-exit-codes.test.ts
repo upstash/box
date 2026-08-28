@@ -46,4 +46,12 @@ describe.skipIf(!built)("exit codes at the program boundary", () => {
     const result = run("exec", "--no-such-flag", "--", "ls");
     expect(`${result.stderr}${result.stdout}`).toContain("--no-such-flag");
   });
+
+  it("explains it exactly once", () => {
+    // Commander writes its own diagnostic before exitOverride throws, so
+    // reporting the thrown message too printed every usage error twice.
+    const result = run("exec", "--no-such-flag", "--", "ls");
+    const combined = `${result.stderr}${result.stdout}`;
+    expect(combined.split("--no-such-flag").length - 1).toBe(1);
+  });
 });

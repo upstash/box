@@ -75,23 +75,27 @@ export async function deleteCommand(
   // that looks like the CLI is broken. What matters is the id the file holds,
   // not how this command was told which box to delete: `box delete <id>`
   // resolves as a flag but can still be the pinned box.
+  // Every step below is best-effort: the box is already gone, and reporting a
+  // failure now would hide an irreversible success behind a local file error.
   let unpinned: string | undefined;
-  const pin = readOwnBoxFile();
-  if (pin?.id === resolved.id) {
-    try {
-      unpinned = clearBoxFile();
-    } catch {
-      // Nothing to clear, or it could not be removed; the delete already
-      // succeeded and is the thing worth reporting.
-    }
+  try {
+    const pin = readOwnBoxFile();
+    if (pin?.id === resolved.id) unpinned = clearBoxFile();
+  } catch {
+    // An unreadable, missing or racing .box says nothing about the delete.
   }
   // A pin in a parent directory belongs to the project, so it is not removed
   // from here; saying so beats leaving a stale pin to be discovered later.
   let stale: string | undefined;
   if (unpinned === undefined) {
-    const nearest = findBoxFile(process.cwd());
-    if (nearest !== undefined && resolved.id === readOwnBoxFile(path.dirname(nearest))?.id) {
-      stale = nearest;
+    try {
+      const nearest = findBoxFile(process.cwd());
+      if (nearest !== undefined && resolved.id === readOwnBoxFile(path.dirname(nearest))?.id) {
+        stale = nearest;
+      }
+    } catch {
+      // Same reasoning: a local read must not turn a completed delete into a
+      // reported failure.
     }
   }
 

@@ -438,6 +438,7 @@ program
 program
   .command("list")
   .description("List all boxes")
+  .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
   .option("--label <label>", "Only show boxes carrying this label")
   .action(async (opts) => runCommand(async () => listCommand(merged(opts))));
@@ -454,6 +455,7 @@ program
 program
   .command("snapshot [box-id]")
   .description("Create a snapshot of a box")
+  .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
   .option("--name <name>", "Snapshot name")
   .action(async (boxId, opts) => runCommand(async () => snapshotCommand(boxId, merged(opts))));
@@ -476,6 +478,7 @@ const envCmd = program.command("env").description("Manage user-level env vars");
 
 envCmd
   .command("set <key> <value>")
+  .option("--json", "Emit machine-readable output")
   .description("Upsert a user-level env var")
   .option("--token <token>", "Upstash Box API token")
   .action(async (key, value, opts) =>
@@ -484,18 +487,21 @@ envCmd
 
 envCmd
   .command("list")
+  .option("--json", "Emit machine-readable output")
   .description("List user-level env vars (values are masked)")
   .option("--token <token>", "Upstash Box API token")
   .action(async (opts) => runCommand(async () => envListCommand(merged(opts))));
 
 envCmd
   .command("delete <key>")
+  .option("--json", "Emit machine-readable output")
   .description("Delete a user-level env var")
   .option("--token <token>", "Upstash Box API token")
   .action(async (key, opts) => runCommand(async () => envDeleteCommand(key, merged(opts))));
 
 envCmd
   .command("set-all")
+  .option("--json", "Emit machine-readable output")
   .description("Full-replace all user-level env vars (KEY=VALUE ...)")
   .option("--token <token>", "Upstash Box API token")
   .argument("<vars...>", "Key=value pairs")
@@ -505,6 +511,7 @@ const labelsCmd = program.command("labels").description("Manage labels on a box"
 
 labelsCmd
   .command("add <box-id> <label>")
+  .option("--json", "Emit machine-readable output")
   .description("Add a label to a box")
   .option("--token <token>", "Upstash Box API token")
   .action(async (boxId, label, opts) =>
@@ -513,6 +520,7 @@ labelsCmd
 
 labelsCmd
   .command("remove <box-id> <label>")
+  .option("--json", "Emit machine-readable output")
   .description("Remove a label from a box")
   .option("--token <token>", "Upstash Box API token")
   .action(async (boxId, label, opts) =>
@@ -521,6 +529,7 @@ labelsCmd
 
 labelsCmd
   .command("list <box-id>")
+  .option("--json", "Emit machine-readable output")
   .description("List a box's labels")
   .option("--token <token>", "Upstash Box API token")
   .action(async (boxId, opts) => runCommand(async () => labelListCommand(boxId, merged(opts))));
@@ -553,7 +562,12 @@ try {
   ) {
     process.exit(0);
   }
-  const message = (error as { message?: string }).message;
-  if (message && !/^\(outputHelp\)/.test(message)) note(message.replace(/^error: /, "Error: "));
+  // Commander has already written its own diagnostic for a usage error, so
+  // repeating it here printed everything twice. Anything else reaching this
+  // point is unexpected and has not been reported yet.
+  if (!code.startsWith("commander.")) {
+    const message = (error as { message?: string }).message;
+    if (message) note(message.replace(/^error: /, "Error: "));
+  }
   process.exit(CLI_FAILURE_EXIT_CODE);
 }

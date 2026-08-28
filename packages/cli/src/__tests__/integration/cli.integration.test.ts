@@ -28,7 +28,8 @@ describe.skipIf(!runnable)("box CLI against a real box", () => {
   let boxId = "";
 
   beforeAll(() => {
-    const created = run("create", "--no-repl", "--runtime", "node", "--name", "cli-integration");
+    const name = `cli-integration-${process.pid}-${Date.now()}`;
+    const created = run("create", "--no-repl", "--runtime", "node", "--name", name);
     boxId = created.stdout.trim();
     expect(boxId, `create failed: ${created.stderr}`).not.toBe("");
   }, 180_000);
@@ -41,6 +42,15 @@ describe.skipIf(!runnable)("box CLI against a real box", () => {
   describe("box selection", () => {
     it("pins the new box so later commands need no arguments", () => {
       expect(run("status").stdout).toContain(boxId);
+    });
+
+    it("ignores an ambient BOX_ID so the suite cannot touch a real box", () => {
+      // BOX_ID outranks the .box pin, so without clearing it these tests would
+      // write to, and delete, whatever box the developer had exported.
+      const spawned = makeRunner(work.path);
+      const result = spawned("status");
+      expect(result.stdout).toContain(boxId);
+      expect(result.stderr).not.toContain("takes precedence");
     });
 
     it("accepts the box on the root as well as the subcommand", () => {
@@ -76,6 +86,22 @@ describe.skipIf(!runnable)("box CLI against a real box", () => {
       expect(parsed.stdout).toContain("out");
       expect(parsed.stderr).toContain("err");
       expect(parsed.exit_code).toBe(0);
+    });
+  });
+
+  describe("machine-readable output", () => {
+    it("honours --json wherever it is advertised", () => {
+      // The root flag is advertised program-wide; a command that accepts it
+      // and prints a table silently breaks that contract.
+      const listed = run("list", "--json");
+      expect(listed.status).toBe(0);
+      expect(() => JSON.parse(listed.stdout)).not.toThrow();
+      expect(Array.isArray(JSON.parse(listed.stdout))).toBe(true);
+    });
+
+    it("accepts the flag on the root for those commands too", () => {
+      const listed = run("--json", "list");
+      expect(() => JSON.parse(listed.stdout)).not.toThrow();
     });
   });
 

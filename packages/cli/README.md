@@ -145,6 +145,10 @@ box git exec -C my-app -- grep -n TODO
 
 A clone lands in a directory named after the repository, so pass that directory with `-C, --folder`. Without it, git runs at the workspace root, which is not a repository. The CLI says so rather than reporting an empty (and apparently clean) status.
 
+`box git commit` stages everything first, like `git add -A`, so a new file does not
+need staging separately. Use `box git exec -- add <paths>` and `box git exec -- commit`
+when you want to choose what goes in.
+
 `box git exec` takes git's arguments without the leading `git`, and passes git's own exit code through. It is also the search path: `grep`, `ls-files`, `log`.
 
 ### `box expose`
@@ -312,37 +316,37 @@ box_abc123> Fix the failing test in auth.ts
 
 Typed lines run as shell commands in the box. `/agent` switches to sending them to the agent, `/shell` switches back. Commands take a leading `/`.
 
-| Command                                 | Description                                                    |
-| --------------------------------------- | -------------------------------------------------------------- |
-| `/agent`                                | Send typed lines to the agent                                  |
-| `/shell`                                | Send typed lines to the shell (the default)                    |
-| `/cd <path>`                            | Change the working directory used by later commands            |
-| `/files read <path>`                    | Read a file                                                    |
-| `/files write <path> <content>`         | Write a file                                                   |
-| `/files list [path]`                    | List a directory                                               |
-| `/files stat <path> [--follow]`         | Type, size, modification time and inode                        |
-| `/files mkdir <path> [-p]`              | Create a directory                                             |
-| `/files rename <from> <to>`             | Move or rename a path (alias `mv`)                             |
-| `/files remove <path> [-r]`             | Delete a path (alias `rm`); a directory needs `-r`             |
-| `/files upload <local> <dest>`          | Upload a local file into the box                               |
-| `/files download [path]`                | Download files from the box                                    |
-| `/git clone <repo> [branch]`            | Clone a repository                                             |
-| `/git status`, `/git diff`              | Working tree state                                             |
-| `/git commit <message>`                 | Commit staged changes                                          |
-| `/git checkout <branch>`                | Switch branches, creating the branch when it does not exist    |
-| `/git push`, `/git create-pr <title>`   | Push, open a pull request                                      |
-| `/git config [--name N --email E]`      | Show or set the git identity used for commits                  |
-| `/git exec <args...>`                   | Any other git command                                          |
-| `/expose <port> [--basic-auth]`         | Public URL for a port in the box                               |
-| `/expose list`, `/expose delete <port>` | Show or remove exposed ports                                   |
-| `/status`                               | Whether the box is idle, running or paused                     |
-| `/status runs`, `/status logs [n]`      | Recent runs (newest first), recent logs                        |
-| `/snapshot [name]`                      | Save a snapshot of the current state                           |
-| `/snapshot list`, `/snapshot delete`    | List or delete snapshots                                       |
-| `/model [provider model]`               | Change the agent model                                         |
-| `/pause`, `/delete`                     | Pause or delete the box, then exit                             |
-| `/console`                              | Open the box in the Upstash console                            |
-| `/help`, `/clear`, `/exit`              | Help, clear the screen, leave the REPL (the box keeps running) |
+| Command                                   | Description                                                    |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `/agent`                                  | Send typed lines to the agent                                  |
+| `/shell`                                  | Send typed lines to the shell (the default)                    |
+| `/cd <path>`                              | Change the working directory used by later commands            |
+| `/files read <path>`                      | Read a file                                                    |
+| `/files write <path> <content>`           | Write a file                                                   |
+| `/files list [path]`                      | List a directory                                               |
+| `/files stat <path> [--follow]`           | Type, size, modification time and inode                        |
+| `/files mkdir <path> [-p]`                | Create a directory                                             |
+| `/files rename <from> <to>`               | Move or rename a path (alias `mv`)                             |
+| `/files remove <path> [-r]`               | Delete a path (alias `rm`); a directory needs `-r`             |
+| `/files upload <local> <dest>`            | Upload a local file into the box                               |
+| `/files download [path]`                  | Download files from the box                                    |
+| `/git clone <repo> [branch]`              | Clone a repository                                             |
+| `/git status`, `/git diff`                | Working tree state                                             |
+| `/git commit <message>`                   | Commit staged changes                                          |
+| `/git checkout <branch>`                  | Switch branches, creating the branch when it does not exist    |
+| `/git push`, `/git create-pr <title>`     | Push, open a pull request                                      |
+| `/git config [--name N --email E]`        | Show or set the git identity used for commits                  |
+| `/git exec <args...>`                     | Any other git command                                          |
+| `/expose <port> [--basic-auth]`           | Public URL for a port in the box                               |
+| `/expose list`, `/expose delete <port>`   | Show or remove exposed ports                                   |
+| `/status`                                 | Whether the box is idle, running or paused                     |
+| `/status runs`, `/status logs [n]`        | Recent runs (newest first), recent logs                        |
+| `/snapshot [name]`                        | Save a snapshot of the current state                           |
+| `/snapshot list`, `/snapshot delete <id>` | List or delete snapshots                                       |
+| `/model [provider model]`                 | Change the agent model                                         |
+| `/pause`, `/delete`                       | Pause or delete the box, then exit                             |
+| `/console`                                | Open the box in the Upstash console                            |
+| `/help`, `/clear`, `/exit`                | Help, clear the screen, leave the REPL (the box keeps running) |
 
 ## Direct SSH
 

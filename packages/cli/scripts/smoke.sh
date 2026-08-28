@@ -33,6 +33,10 @@ if [ -z "${UPSTASH_BOX_API_KEY:-}" ] && [ -f "$CLI_DIR/../sdk/.env" ]; then
   set -a; . "$CLI_DIR/../sdk/.env"; set +a
 fi
 unset UPSTASH_BOX_BASE_URL
+# BOX_ID takes precedence over the .box pin this script writes, so an ambient
+# one would point every check — including the no-argument delete — at a box
+# that is not the fixture.
+unset BOX_ID
 if [ -z "${UPSTASH_BOX_API_KEY:-}" ]; then
   echo "Set UPSTASH_BOX_API_KEY first." >&2
   exit 1

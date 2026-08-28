@@ -29,7 +29,9 @@ export function makeRunner(cwd: string) {
     return spawnSync(process.execPath, [CLI, ...args], {
       cwd,
       encoding: "utf8",
-      env: { ...process.env, UPSTASH_BOX_API_KEY, NO_COLOR: "1" },
+      // BOX_ID outranks the .box pin, so an ambient one would point every
+      // command at a real box instead of this suite's fixture.
+      env: { ...process.env, UPSTASH_BOX_API_KEY, BOX_ID: "", NO_COLOR: "1" },
     });
   };
 }
@@ -41,7 +43,9 @@ export function makeStdinRunner(cwd: string) {
       cwd,
       input,
       encoding: "utf8",
-      env: { ...process.env, UPSTASH_BOX_API_KEY, NO_COLOR: "1" },
+      // BOX_ID outranks the .box pin, so an ambient one would point every
+      // command at a real box instead of this suite's fixture.
+      env: { ...process.env, UPSTASH_BOX_API_KEY, BOX_ID: "", NO_COLOR: "1" },
     });
   };
 }
