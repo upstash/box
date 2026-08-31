@@ -13,7 +13,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeAll(async () => {
     const setupBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
 
     tmpDir = join(tmpdir(), `box-cd-test-${Date.now()}`);
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeEach(async () => {
     box = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
   }, 120000);
 

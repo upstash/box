@@ -10,7 +10,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
 
     // Start a simple HTTP server on port 3000 that responds with our secret
