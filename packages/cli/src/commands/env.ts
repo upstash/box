@@ -1,19 +1,20 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
+import { emit, type GlobalFlags } from "../core/io.js";
+import { CliError } from "../core/errors.js";
 
-interface EnvFlags {
-  token?: string;
-}
+type EnvFlags = GlobalFlags;
 
 export async function envSetCommand(key: string, value: string, flags: EnvFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
   await Box.setEnv(key, value, { apiKey });
-  console.log(`Set ${key}`);
+  emit({ key }, `Set ${key}`, flags);
 }
 
 export async function envListCommand(flags: EnvFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
   const vars = await Box.listEnv({ apiKey });
+  if (flags.json) return emit(vars, "", flags);
   const entries = Object.entries(vars);
   if (entries.length === 0) {
     console.log("No env vars set.");
@@ -28,7 +29,7 @@ export async function envListCommand(flags: EnvFlags): Promise<void> {
 export async function envDeleteCommand(key: string, flags: EnvFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
   await Box.deleteEnv(key, { apiKey });
-  console.log(`Deleted ${key}`);
+  emit({ key, deleted: true }, `Deleted ${key}`, flags);
 }
 
 export async function envSetAllCommand(vars: string[], flags: EnvFlags): Promise<void> {
@@ -37,11 +38,11 @@ export async function envSetAllCommand(vars: string[], flags: EnvFlags): Promise
   for (const entry of vars) {
     const eq = entry.indexOf("=");
     if (eq === -1) {
-      console.error(`Error: invalid format "${entry}", expected KEY=VALUE`);
-      process.exit(1);
+      throw new CliError(`Invalid format "${entry}", expected KEY=VALUE`);
     }
     parsed[entry.slice(0, eq)] = entry.slice(eq + 1);
   }
   await Box.setAllEnv(parsed, { apiKey });
-  console.log(`Set ${Object.keys(parsed).length} env var(s)`);
+  const keys = Object.keys(parsed);
+  emit({ keys, count: keys.length }, `Set ${keys.length} env var(s)`, flags);
 }

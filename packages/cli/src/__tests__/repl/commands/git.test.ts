@@ -12,8 +12,22 @@ describe("handleGit", () => {
         commit: vi.fn().mockResolvedValue({ sha: "abc123", message: "fix bug" }),
         push: vi.fn().mockResolvedValue(undefined),
         createPR: vi.fn().mockResolvedValue({ number: 42, url: "https://github.com/pr/42" }),
-        exec: vi.fn().mockResolvedValue({ output: "git exec output" }),
+        // The repository probe is answered the way git answers it: a working
+        // tree prints "true", and a bare repository prints "false" with the
+        // same exit code.
+        exec: vi
+          .fn()
+          .mockImplementation(({ args }: { args: string[] }) =>
+            Promise.resolve(
+              args.includes("--is-inside-work-tree")
+                ? { output: "true\n", exit_code: 0 }
+                : { output: "git exec output", exit_code: 0 },
+            ),
+          ),
         checkout: vi.fn().mockResolvedValue(undefined),
+        updateConfig: vi
+          .fn()
+          .mockResolvedValue({ git_user_name: "Box", git_user_email: "box@upstash.com" }),
       },
     };
   }
@@ -45,11 +59,19 @@ describe("handleGit", () => {
       expect(events).toContainEqual({ type: "log", message: "+added line" });
     });
 
-    it("prints no changes when diff is empty", async () => {
+    it("prints no changes when the tree really is clean", async () => {
       const box = createMockBox();
       box.git.diff.mockResolvedValue("");
       const events = await collectEvents(handleGit(box as any, "diff"));
       expect(events).toContainEqual({ type: "log", message: "(no changes)" });
+    });
+
+    it("says so when empty output means there is no repository", async () => {
+      const box = createMockBox();
+      box.git.diff.mockResolvedValue("");
+      box.git.exec.mockResolvedValue({ output: "", exit_code: 128 });
+      const events = await collectEvents(handleGit(box as any, "diff"));
+      expect(events[0]).toMatchObject({ message: expect.stringContaining("Not a git repository") });
     });
   });
 
@@ -61,11 +83,31 @@ describe("handleGit", () => {
       expect(events).toContainEqual({ type: "log", message: "M src/index.ts" });
     });
 
-    it("prints clean when status is empty", async () => {
+    it("prints clean when the tree really is clean", async () => {
       const box = createMockBox();
       box.git.status.mockResolvedValue("");
       const events = await collectEvents(handleGit(box as any, "status"));
       expect(events).toContainEqual({ type: "log", message: "(clean)" });
+    });
+
+    it("says so when empty output means there is no repository", async () => {
+      // The same answer the non-interactive `box git status` gives, from the
+      // same check, so the REPL and the CLI cannot drift apart.
+      const box = createMockBox();
+      box.git.status.mockResolvedValue("");
+      box.git.exec.mockResolvedValue({ output: "", exit_code: 128 });
+      const events = await collectEvents(handleGit(box as any, "status"));
+      expect(events[0]).toMatchObject({ message: expect.stringContaining("Not a git repository") });
+    });
+
+    it("says it could not check rather than claiming clean", async () => {
+      const box = createMockBox();
+      box.git.status.mockResolvedValue("");
+      box.git.exec.mockRejectedValue(new Error("network"));
+      const events = await collectEvents(handleGit(box as any, "status"));
+      // Neither answer is supported by evidence, so claim neither.
+      expect(events[0]).toMatchObject({ message: expect.stringContaining("could not check") });
+      expect(events).not.toContainEqual({ type: "log", message: "(clean)" });
     });
   });
 
@@ -154,6 +196,84 @@ describe("handleGit", () => {
       expect(events).toContainEqual(
         expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: git") }),
       );
+    });
+  });
+
+  describe("config", () => {
+    it("sets the identity from --name and --email", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(
+        handleGit(box as any, "config --name Box --email box@upstash.com"),
+      );
+      expect(box.git.updateConfig).toHaveBeenCalledWith({
+        userName: "Box",
+        userEmail: "box@upstash.com",
+      });
+      expect(String(events[0]?.message)).toContain("Box <box@upstash.com>");
+    });
+
+    it("sets only the field given", async () => {
+      const box = createMockBox();
+      await collectEvents(handleGit(box as any, "config --email only@upstash.com"));
+      expect(box.git.updateConfig).toHaveBeenCalledWith({ userEmail: "only@upstash.com" });
+    });
+
+    it("reads the identity from git, not from porcelain status", async () => {
+      // There is no GET for the identity; status() returns working-tree
+      // porcelain, so reading it there printed something unrelated.
+      const box = createMockBox();
+      box.git.exec = vi
+        .fn()
+        .mockResolvedValueOnce({ output: "Box\n", exit_code: 0 })
+        .mockResolvedValueOnce({ output: "box@upstash.com\n", exit_code: 0 });
+      const events = await collectEvents(handleGit(box as any, "config"));
+      expect(box.git.status).not.toHaveBeenCalled();
+      expect(box.git.exec).toHaveBeenCalledWith({ args: ["config", "--get", "user.name"] });
+      expect(String(events[0]?.message)).toBe("git identity: Box <box@upstash.com>");
+    });
+
+    it("reports an unset identity when git says the key is not configured", async () => {
+      // `git config --get` exits non-zero for an unset key, which is an answer.
+      const box = createMockBox();
+      box.git.exec = vi.fn().mockResolvedValue({ output: "", exit_code: 1 });
+      const events = await collectEvents(handleGit(box as any, "config"));
+      expect(String(events[0]?.message)).toBe("git identity: (unset) <(unset)>");
+    });
+  });
+
+  it("lists config in its usage", async () => {
+    const events = await collectEvents(handleGit(createMockBox() as any, "bogus"));
+    expect(String(events[0]?.message)).toContain("config");
+  });
+
+  describe("config identity lookup", () => {
+    it("shows unset for a key git says is not configured", async () => {
+      const box = createMockBox();
+      box.git.exec.mockResolvedValue({ output: "", exit_code: 1 });
+      const events = await collectEvents(handleGit(box as any, "config"));
+      expect(events[0]).toMatchObject({ message: "git identity: (unset) <(unset)>" });
+    });
+
+    it("reports usage when a flag is given without a value", async () => {
+      // `--name` with nothing after it used to read as an absent flag, so this
+      // silently became a read, and `--name --email x` updated only the email.
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "config --name"));
+      expect(String(events[0]?.message)).toContain("Usage: git config --name");
+      expect(box.git.updateConfig).not.toHaveBeenCalled();
+    });
+
+    it("does not treat a git failure as an unset key", async () => {
+      const box = createMockBox();
+      box.git.exec.mockResolvedValue({ output: "bad config", exit_code: 3 });
+      await expect(collectEvents(handleGit(box as any, "config"))).rejects.toThrow(/exited 3/);
+    });
+
+    it("does not turn a failed lookup into an unset identity", async () => {
+      // A network outage is not evidence that nothing is configured.
+      const box = createMockBox();
+      box.git.exec.mockRejectedValue(new Error("network"));
+      await expect(collectEvents(handleGit(box as any, "config"))).rejects.toThrow();
     });
   });
 });

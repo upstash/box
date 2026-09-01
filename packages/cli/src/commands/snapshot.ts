@@ -1,12 +1,13 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
+import { emit, note, type GlobalFlags } from "../core/io.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
+import { CliError } from "../core/errors.js";
 
-interface SnapshotFlags {
-  token?: string;
+type SnapshotFlags = GlobalFlags & {
   name?: string;
-}
+};
 
 export async function snapshotCommand(
   boxId: string | undefined,
@@ -21,8 +22,7 @@ export async function snapshotCommand(
     const boxes = await Box.list({ apiKey });
     const active = boxes.filter((b) => b.status !== "deleted");
     if (active.length === 0) {
-      console.error("No boxes found.");
-      process.exit(1);
+      throw new CliError("No boxes found.");
     }
 
     if (process.stdin.isTTY && active.length > 1) {
@@ -40,19 +40,19 @@ export async function snapshotCommand(
       });
 
       if (!selected) {
-        console.log(dim("Aborted."));
+        note(dim("Aborted."));
         return;
       }
       targetId = selected;
     } else {
-      console.log("Only one box found, using it...");
+      note("Only one box found, using it...");
       targetId = active[0]!.id;
     }
   }
 
   const snapshotName = flags.name ?? `snapshot-${Date.now()}`;
-  console.log(`\nCreating snapshot of box ${targetId}...`);
+  note(`Creating snapshot of box ${targetId}...`);
   const box = await Box.get(targetId, { apiKey });
   const snapshot = await box.snapshot({ name: snapshotName });
-  console.log(`Snapshot created: ${snapshot.id} (${snapshot.name})`);
+  emit(snapshot, `Snapshot created: ${snapshot.id} (${snapshot.name})`, flags);
 }

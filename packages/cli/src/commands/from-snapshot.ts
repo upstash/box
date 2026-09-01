@@ -3,6 +3,7 @@ import type { AgentConfig, Runtime } from "@upstash/box";
 import { resolveToken } from "../auth.js";
 import { resolveAgentApiKey } from "../agent-key.js";
 import { startRepl } from "../repl/terminal.js";
+import { CliError } from "../core/errors.js";
 
 function resolveCliAgentHarness(harness: string | undefined): string | undefined {
   if (!harness) return undefined;
@@ -13,13 +14,11 @@ function resolveCliAgentHarness(harness: string | undefined): string | undefined
     case "cursor":
       return harness;
     case "custom":
-      console.error(
+      throw new CliError(
         "custom agent boxes require customHarness config and are not supported by this CLI command yet. Use the SDK or REST API.",
       );
-      process.exit(1);
     default:
-      console.error(`Unknown agent harness: ${harness}`);
-      process.exit(1);
+      throw new CliError(`Unknown agent harness: ${harness}`);
   }
 }
 
@@ -52,18 +51,16 @@ export async function fromSnapshotCommand(
     for (const e of flags.env) {
       const idx = e.indexOf("=");
       if (idx === -1) {
-        console.error(`Invalid env format: ${e} (expected KEY=VAL)`);
-        process.exit(1);
+        throw new CliError(`Invalid env format: ${e} (expected KEY=VAL)`);
       }
       env[e.slice(0, idx)] = e.slice(idx + 1);
     }
   }
 
   if (flags.agentModel && !agentHarness) {
-    console.error(
+    throw new CliError(
       "agent harness is required when --agent-model is set. Use --agent-harness (preferred), or the deprecated aliases --agent-provider / --agent-runner.",
     );
-    process.exit(1);
   }
 
   console.log("Creating box from snapshot...");
