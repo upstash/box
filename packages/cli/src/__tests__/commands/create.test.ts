@@ -463,7 +463,21 @@ describe("createCommand", () => {
       const clone = vi.fn().mockResolvedValue(undefined);
       vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);
       await createCommand({ ...headlessFlags, cloneRepo: "owner/repo", gitToken: "gh-tok" });
-      expect(clone).toHaveBeenCalledWith({ repo: "owner/repo", githubToken: "gh-tok" });
+      expect(clone).toHaveBeenCalledWith({ repo: "owner/repo" });
+    });
+
+    it("gives the box the git token, which is where clone reads it from", async () => {
+      // clone() has no token option: the SDK sends the one held by the
+      // connection. Asserting the option instead would pass while private
+      // clones failed unauthenticated.
+      const clone = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(Box.create).mockResolvedValueOnce({ id: "box-9", git: { clone } } as any);
+
+      await createCommand({ ...headlessFlags, cloneRepo: "owner/repo", gitToken: "gh-tok" });
+
+      expect(vi.mocked(Box.create).mock.calls[0]?.[0]).toMatchObject({
+        git: { token: "gh-tok" },
+      });
     });
 
     it("passes the workspace flags through", async () => {

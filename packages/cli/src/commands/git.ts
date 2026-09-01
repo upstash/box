@@ -27,7 +27,12 @@ export type GitFlags = GlobalFlags & {
 async function openBox(flags: GitFlags): Promise<Box> {
   const resolved = resolveBoxId({ flag: flags.box });
   announceBox(resolved);
-  return Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  // The git token belongs to the connection, not to the call: the SDK reads it
+  // from the instance, so passing it to clone() as an option does nothing.
+  return Box.get(resolved.id, {
+    apiKey: requireToken(flags.token),
+    ...(flags.githubToken === undefined ? {} : { gitToken: flags.githubToken }),
+  });
 }
 
 /**
@@ -112,7 +117,6 @@ export async function gitCloneCommand(repo: string, flags: GitFlags): Promise<vo
     repo,
     ...(flags.branch === undefined ? {} : { branch: flags.branch }),
     ...(depth === undefined ? {} : { depth }),
-    ...(flags.githubToken === undefined ? {} : { githubToken: flags.githubToken }),
     ...(flags.folder === undefined || flags.folder === "" ? {} : { folder: flags.folder }),
   });
   emit({ repo, folder: flags.folder ?? null }, `Cloned ${repo}`, flags);

@@ -82,6 +82,31 @@ describe("box git", () => {
     expect(clone).toHaveBeenCalledWith({ repo: "https://example.com/me/my-app" });
   });
 
+  it("gives the connection the git token, which is where clone reads it from", async () => {
+    // clone() has no token option. The SDK sends the token held by the Box
+    // instance, so it has to be set when the box is opened. Asserting it as a
+    // clone option would pass while every private clone ran unauthenticated.
+    const clone = vi.fn().mockResolvedValue(undefined);
+    boxWith({ clone });
+
+    await gitCloneCommand("https://example.com/me/private", {
+      ...flags,
+      githubToken: "ghp_x",
+    });
+
+    expect(getBox).toHaveBeenCalledWith("b1", expect.objectContaining({ gitToken: "ghp_x" }));
+    expect(clone).toHaveBeenCalledWith({ repo: "https://example.com/me/private" });
+  });
+
+  it("does not send a git token the caller never gave", async () => {
+    const clone = vi.fn().mockResolvedValue(undefined);
+    boxWith({ clone });
+
+    await gitCloneCommand("https://example.com/me/public", { ...flags });
+
+    expect(getBox.mock.calls[0]?.[1]).not.toHaveProperty("gitToken");
+  });
+
   it("rejects a depth that is not a positive number", async () => {
     const clone = vi.fn();
     boxWith({ clone });

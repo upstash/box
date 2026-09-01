@@ -179,10 +179,9 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
   if (flags.cloneRepo) {
     if (headless) note(`Cloning ${flags.cloneRepo}...`);
     try {
-      await box.git.clone({
-        repo: flags.cloneRepo,
-        ...(flags.gitToken === undefined ? {} : { githubToken: flags.gitToken }),
-      });
+      // --git-token already reached the box through Box.create's git config,
+      // which is where the SDK reads it from.
+      await box.git.clone({ repo: flags.cloneRepo });
     } catch (error) {
       // The box exists and is billing. Failing here without naming it would
       // leave the caller unable to reuse or delete it.
