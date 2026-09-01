@@ -53,8 +53,13 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
       secretCookie: z.string(),
     });
 
+    // A real task, not "say hi". The runner exposes the schema as a
+    // StructuredOutput tool, and a model asked to call a tool for no reason can
+    // refuse it as a prompt injection, which is what Haiku 4.5 did.
     const run = await box.agent.run({
-      prompt: "say hi",
+      prompt:
+        "Write the text 'hello' to greeting.txt, then report the message you wrote, " +
+        "its size in bytes, and the value 'chocolate-chip' as the secret cookie.",
       responseSchema: schema,
     });
 
