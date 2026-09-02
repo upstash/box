@@ -17,6 +17,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: ClaudeCode.Fable_5_1, label: "Claude Fable 5.1" },
         { value: ClaudeCode.Fable_5, label: "Claude Fable 5" },
         { value: ClaudeCode.Opus_5, label: "Claude Opus 5" },
         { value: ClaudeCode.Opus_4_8, label: "Claude Opus 4.8" },
@@ -33,6 +34,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (OR)" },
         { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_5, label: "Claude Opus 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
@@ -53,6 +55,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (Vercel)" },
         { value: VercelModel.Claude_Fable_5, label: "Claude Fable 5 (Vercel)" },
         { value: VercelModel.Claude_Opus_5, label: "Claude Opus 5 (Vercel)" },
         { value: VercelModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (Vercel)" },
@@ -85,6 +88,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (OR)" },
         { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_5, label: "Claude Opus 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
@@ -130,6 +134,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       options: [
         { value: OpenCodeModel.Zen_GPT_5_Nano, label: "GPT-5 Nano" },
         { value: OpenCodeModel.Zen_MiniMax_M2_7, label: "MiniMax M2.7" },
+        { value: OpenCodeModel.Zen_Claude_Fable_5_1, label: "Claude Fable 5.1" },
         { value: OpenCodeModel.Zen_Claude_Fable_5, label: "Claude Fable 5" },
         { value: OpenCodeModel.Zen_Claude_Opus_5, label: "Claude Opus 5" },
         { value: OpenCodeModel.Zen_Claude_Sonnet_5, label: "Claude Sonnet 5" },
@@ -150,6 +155,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Anthropic",
       options: [
+        { value: OpenCodeModel.Claude_Fable_5_1, label: "Claude Fable 5.1" },
         { value: OpenCodeModel.Claude_Fable_5, label: "Claude Fable 5" },
         { value: OpenCodeModel.Claude_Opus_5, label: "Claude Opus 5" },
         { value: OpenCodeModel.Claude_Opus_4_8, label: "Claude Opus 4.8" },
@@ -184,6 +190,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenRouter",
       options: [
+        { value: OpenRouterModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (OR)" },
         { value: OpenRouterModel.Claude_Fable_5, label: "Claude Fable 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_5, label: "Claude Opus 5 (OR)" },
         { value: OpenRouterModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (OR)" },
@@ -204,6 +211,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (Vercel)" },
         { value: VercelModel.Claude_Fable_5, label: "Claude Fable 5 (Vercel)" },
         { value: VercelModel.Claude_Opus_5, label: "Claude Opus 5 (Vercel)" },
         { value: VercelModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (Vercel)" },

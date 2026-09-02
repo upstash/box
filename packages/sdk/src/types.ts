@@ -44,6 +44,7 @@ export enum Agent {
  * Claude Code model identifiers
  */
 export enum ClaudeCode {
+  Fable_5_1 = "anthropic/claude-fable-5-1",
   Fable_5 = "anthropic/claude-fable-5",
   Opus_4_5 = "anthropic/claude-opus-4-5",
   Opus_4_6 = "anthropic/claude-opus-4-6",
@@ -79,6 +80,7 @@ export enum OpenAICodex {
  * OpenRouter model identifiers — shared across agents that support OpenRouter
  */
 export enum OpenRouterModel {
+  Claude_Fable_5_1 = "openrouter/anthropic/claude-fable-5.1",
   Claude_Fable_5 = "openrouter/anthropic/claude-fable-5",
   Claude_Opus_5 = "openrouter/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "openrouter/anthropic/claude-sonnet-5",
@@ -100,6 +102,7 @@ export enum OpenRouterModel {
  * Vercel AI Gateway model identifiers — shared across agents that support Vercel AI Gateway
  */
 export enum VercelModel {
+  Claude_Fable_5_1 = "vercel/anthropic/claude-fable-5.1",
   Claude_Fable_5 = "vercel/anthropic/claude-fable-5",
   Claude_Opus_5 = "vercel/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "vercel/anthropic/claude-sonnet-5",
@@ -127,6 +130,7 @@ export enum VercelModel {
  */
 export enum OpenCodeModel {
   // Anthropic-backed OpenCode models
+  Claude_Fable_5_1 = "opencode/claude-fable-5-1",
   Claude_Fable_5 = "opencode/claude-fable-5",
   Claude_Opus_5 = "opencode/claude-opus-5",
   Claude_Opus_4_5 = "opencode/claude-opus-4-5",
@@ -157,6 +161,7 @@ export enum OpenCodeModel {
   Zen_Big_Pickle = "opencode/big-pickle",
   // Paid models
   Zen_MiniMax_M2_7 = "opencode/minimax-m2.7",
+  Zen_Claude_Fable_5_1 = "opencode/claude-fable-5-1",
   Zen_Claude_Fable_5 = "opencode/claude-fable-5",
   Zen_Claude_Opus_5 = "opencode/claude-opus-5",
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
