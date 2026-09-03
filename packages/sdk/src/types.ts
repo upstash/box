@@ -122,6 +122,19 @@ export enum VercelModel {
   Grok_4_20_Reasoning = "vercel/xai/grok-4.20-reasoning",
 }
 
+export enum BedrockModel {
+  Opus_5 = "bedrock/global.anthropic.claude-opus-5",
+  Opus_4_8 = "bedrock/global.anthropic.claude-opus-4-8",
+  Opus_4_7 = "bedrock/global.anthropic.claude-opus-4-7",
+  Opus_4_6 = "bedrock/global.anthropic.claude-opus-4-6-v1",
+  Opus_4_5 = "bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0",
+  Sonnet_5 = "bedrock/global.anthropic.claude-sonnet-5",
+  Sonnet_4_6 = "bedrock/global.anthropic.claude-sonnet-4-6",
+  Sonnet_4_5 = "bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  Sonnet_4 = "bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
+  Haiku_4_5 = "bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+}
+
 /**
  * OpenCode model identifiers — supports models from multiple providers
  */
@@ -255,7 +268,7 @@ type ManagedAgentApiKeyConfig = {
 type HarnessConfig =
   | {
       harness: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | BedrockModel;
       provider?: never;
       runner?: never;
     }
@@ -267,7 +280,13 @@ type HarnessConfig =
     }
   | {
       harness: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
+      model:
+        | OpenCodeModel
+        | ClaudeCode
+        | OpenAICodex
+        | OpenRouterModel
+        | VercelModel
+        | BedrockModel;
       provider?: never;
       runner?: never;
     }
@@ -276,7 +295,7 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | BedrockModel;
       harness?: never;
       runner?: never;
     }
@@ -290,7 +309,13 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
+      model:
+        | OpenCodeModel
+        | ClaudeCode
+        | OpenAICodex
+        | OpenRouterModel
+        | VercelModel
+        | BedrockModel;
       harness?: never;
       runner?: never;
     }
