@@ -9,7 +9,11 @@ import { fromSnapshotCommand } from "./commands/from-snapshot.js";
 import { listCommand } from "./commands/list.js";
 import { getCommand } from "./commands/get.js";
 import { initDemoCommand } from "./commands/init-demo.js";
-import { snapshotCommand } from "./commands/snapshot.js";
+import {
+  snapshotCommand,
+  snapshotListCommand,
+  snapshotDeleteCommand,
+} from "./commands/snapshot.js";
 import { completionCommand } from "./commands/completion.js";
 import {
   envSetCommand,
@@ -18,9 +22,54 @@ import {
   envSetAllCommand,
 } from "./commands/env.js";
 import { labelAddCommand, labelRemoveCommand, labelListCommand } from "./commands/labels.js";
-import { statusCommand } from "./commands/status.js";
+import {
+  statusCommand,
+  statusRunsCommand,
+  statusLogsCommand,
+  cancelCommand,
+} from "./commands/status.js";
+import {
+  scheduleExecCommand,
+  scheduleAgentCommand,
+  scheduleListCommand,
+  scheduleGetCommand,
+  scheduleUpdateCommand,
+  schedulePauseCommand,
+  scheduleResumeCommand,
+  scheduleDeleteCommand,
+} from "./commands/schedule.js";
+import {
+  configureModelCommand,
+  configureHarnessCommand,
+  initCommandGetCommand,
+  initCommandSetCommand,
+  initCommandDeleteCommand,
+  networkPolicyCommand,
+  skillsAddCommand,
+  skillsRemoveCommand,
+  skillsListCommand,
+  resumeCommand,
+} from "./commands/config.js";
+import {
+  browserGotoCommand,
+  browserObserveCommand,
+  browserExtractCommand,
+  browserLiveUrlCommand,
+  recordingStartCommand,
+  recordingStopCommand,
+  recordingListCommand,
+  recordingGetCommand,
+  recordingDownloadCommand,
+  browserOpenCommand,
+  browserTabsCommand,
+  browserContentCommand,
+  browserScreenshotCommand,
+  browserActCommand,
+  browserCloseCommand,
+  browserCdpUrlCommand,
+} from "./commands/browser.js";
 import { useCommand } from "./commands/use.js";
-import { execCommand } from "./commands/exec.js";
+import { execCommand, execCodeCommand } from "./commands/exec.js";
 import {
   filesReadCommand,
   filesWriteCommand,
@@ -120,6 +169,36 @@ program
     await runCommand(async () => statusCommand(globals(flags)));
   });
 
+// `box status` keeps its own action; runs and logs hang off it as subcommands.
+const statusGroup = program.commands.find((command) => command.name() === "status")!;
+statusGroup
+  .command("runs")
+  .description("List the box's runs, most recent first")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (opts) => runCommand(async () => statusRunsCommand(merged(opts))));
+
+statusGroup
+  .command("logs")
+  .description("Print the box's log lines")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .option("--limit <n>", "Maximum entries to return")
+  .option("--offset <n>", "Skip this many entries")
+  .action(async (opts) => runCommand(async () => statusLogsCommand(merged(opts))));
+
+program
+  .command("cancel <run-id>")
+  .description("Cancel a running execution (get ids from box status runs)")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (runId: string, opts) =>
+    runCommand(async () => cancelCommand(runId, merged(opts))),
+  );
+
 program
   .command("exec")
   // Variadic so the remote command survives as separate words, and Commander
@@ -136,6 +215,19 @@ program
       execCommand(parts, { ...globals(flags), cwd: flags.cwd as string | undefined }),
     );
   });
+
+program
+  .command("code")
+  .argument("<source>", "Inline code, or - to read stdin")
+  .description("Run inline code in the box (js, ts or python)")
+  .option("--lang <lang>", "js, ts or python (default python)")
+  .option("--timeout <seconds>", "Give up after this long")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (source: string, opts) =>
+    runCommand(async () => execCodeCommand(source, merged(opts))),
+  );
 
 const files = program.command("files").description("File operations inside the box");
 /** Flags every file verb accepts, declared once. */
@@ -457,11 +549,295 @@ program
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
+  .option("--no-repl", "Restore and print the id instead of opening the REPL")
+  .option("--no-use", "Do not write a .box file")
+  .option("--json", "Emit machine-readable output (implies --no-repl)")
   .action(async (snapshotId, opts) =>
-    runCommand(async () => {
-      refuseJson(merged(opts), "box from-snapshot", "box create --no-repl --json");
-      return fromSnapshotCommand(snapshotId, merged(opts));
-    }),
+    runCommand(async () => fromSnapshotCommand(snapshotId, merged(opts))),
+  );
+
+const schedule = program
+  .command("schedule")
+  .description("Cron schedules that run a command or an agent prompt in the box");
+
+/** Flags every schedule verb accepts, declared once. */
+const withScheduleCommon = (cmd: import("commander").Command) =>
+  cmd
+    .option("--box <id>", "Box to act on")
+    .option("--json", "Emit machine-readable output")
+    .option("--token <token>", "Upstash Box API token");
+
+withScheduleCommon(
+  schedule
+    .command("exec")
+    .argument("[command...]", "Command to run on the cron; put it after --")
+    .description("Schedule a shell command"),
+)
+  .option("--cron <expr>", "Cron expression, UTC")
+  .option("-C, --folder <dir>", "Working directory inside the box")
+  .option("--webhook-url <url>", "POST the result here after each run")
+  .action(async (parts: string[], opts) =>
+    runCommand(async () => scheduleExecCommand(parts, merged(opts))),
+  );
+
+withScheduleCommon(
+  schedule
+    .command("agent")
+    .argument("[prompt...]", "Prompt for the agent")
+    .description("Schedule an agent prompt"),
+)
+  .option("--cron <expr>", "Cron expression, UTC")
+  .option("-C, --folder <dir>", "Working directory inside the box")
+  .option("--model <model>", "Model to run the prompt on")
+  .option("--timeout <seconds>", "Give up after this long")
+  .option("--webhook-url <url>", "POST the result here after each run")
+  .action(async (parts: string[], opts) =>
+    runCommand(async () => scheduleAgentCommand(parts, merged(opts))),
+  );
+
+withScheduleCommon(schedule.command("list").description("List schedules")).action(async (opts) =>
+  runCommand(async () => scheduleListCommand(merged(opts))),
+);
+
+withScheduleCommon(
+  schedule.command("get").argument("<schedule-id>").description("Show one schedule"),
+).action(async (id: string, opts) => runCommand(async () => scheduleGetCommand(id, merged(opts))));
+
+withScheduleCommon(
+  schedule
+    .command("update")
+    .argument("<schedule-id>")
+    .argument("[command...]", "Replacement command; put it after --")
+    .description("Change a schedule in place"),
+)
+  .option("--cron <expr>", "New cron expression")
+  .option("--prompt <text>", "New prompt")
+  .option("-C, --folder <dir>", "New working directory")
+  .option("--model <model>", "New model")
+  .option("--timeout <seconds>", "New timeout; 0 clears it")
+  .option("--webhook-url <url>", "New webhook URL")
+  .action(async (id: string, parts: string[], opts) =>
+    runCommand(async () => scheduleUpdateCommand(id, parts, merged(opts))),
+  );
+
+withScheduleCommon(
+  schedule.command("pause").argument("<schedule-id>").description("Pause a schedule"),
+).action(async (id: string, opts) =>
+  runCommand(async () => schedulePauseCommand(id, merged(opts))),
+);
+
+withScheduleCommon(
+  schedule.command("resume").argument("<schedule-id>").description("Resume a schedule"),
+).action(async (id: string, opts) =>
+  runCommand(async () => scheduleResumeCommand(id, merged(opts))),
+);
+
+withScheduleCommon(
+  schedule.command("delete").argument("<schedule-id>").description("Delete a schedule"),
+).action(async (id: string, opts) =>
+  runCommand(async () => scheduleDeleteCommand(id, merged(opts))),
+);
+
+const skills = program.command("skills").description("Skills enabled inside the box");
+
+withScheduleCommon(
+  skills.command("add").argument("<skill-id>").description("Enable a skill"),
+).action(async (id: string, opts) => runCommand(async () => skillsAddCommand(id, merged(opts))));
+
+withScheduleCommon(
+  skills.command("remove").argument("<skill-id>").description("Disable a skill"),
+).action(async (id: string, opts) => runCommand(async () => skillsRemoveCommand(id, merged(opts))));
+
+withScheduleCommon(skills.command("list").description("List enabled skills")).action(async (opts) =>
+  runCommand(async () => skillsListCommand(merged(opts))),
+);
+
+const config = program.command("config").description("Box configuration");
+
+withScheduleCommon(
+  config.command("model").argument("<model>").description("Point the agent at another model"),
+).action(async (model: string, opts) =>
+  runCommand(async () => configureModelCommand(model, merged(opts))),
+);
+
+withScheduleCommon(config.command("harness").description("Point the box at a custom harness"))
+  .requiredOption("--command <executable>", "Harness executable")
+  .option(
+    "--arg <value>",
+    "Argument passed before the prompt (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .action(async (opts) =>
+    runCommand(async () =>
+      configureHarnessCommand({ ...merged(opts), args: opts.arg as string[] }),
+    ),
+  );
+
+withScheduleCommon(
+  config
+    .command("network")
+    .argument("<mode>", "allow-all, deny-all or custom")
+    .description("Set the network policy"),
+)
+  .option(
+    "--allow-domain <domain>",
+    "Allowed domain (repeatable, custom only)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--allow-cidr <cidr>",
+    "Allowed CIDR (repeatable, custom only)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--deny-cidr <cidr>",
+    "Denied CIDR (repeatable, custom only)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .action(async (mode: string, opts) =>
+    runCommand(async () =>
+      networkPolicyCommand(mode, {
+        ...merged(opts),
+        allowDomain: opts.allowDomain as string[],
+        allowCidr: opts.allowCidr as string[],
+        denyCidr: opts.denyCidr as string[],
+      }),
+    ),
+  );
+
+const initCommand = config.command("init-command").description("Command the box runs at startup");
+
+withScheduleCommon(initCommand.command("get").description("Show the init command")).action(
+  async (opts) => runCommand(async () => initCommandGetCommand(merged(opts))),
+);
+
+withScheduleCommon(
+  initCommand
+    .command("set")
+    .argument("<command>", "The command, or - to read stdin")
+    .description("Set the init command"),
+).action(async (command: string, opts) =>
+  runCommand(async () => initCommandSetCommand(command, merged(opts))),
+);
+
+withScheduleCommon(initCommand.command("delete").description("Remove the init command")).action(
+  async (opts) => runCommand(async () => initCommandDeleteCommand(merged(opts))),
+);
+
+program
+  .command("resume")
+  .description("Resume a paused box (every other command resumes it anyway)")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (opts) => runCommand(async () => resumeCommand(merged(opts))));
+
+const browser = program
+  .command("browser")
+  .description("Drive the box's headless Chromium (needs box create --browser)");
+
+/** Flags every browser verb accepts, declared once. */
+const withBrowserCommon = (cmd: import("commander").Command) =>
+  cmd
+    .option("--box <id>", "Box to act on")
+    .option("--json", "Emit machine-readable output")
+    .option("--token <token>", "Upstash Box API token")
+    .option("--tab <id>", "Tab to act on; only needed when more than one is open");
+
+withBrowserCommon(
+  browser.command("open").argument("<url>").description("Open a URL and print the tab id"),
+).action(async (url: string, opts) =>
+  runCommand(async () => browserOpenCommand(url, merged(opts))),
+);
+
+withBrowserCommon(browser.command("tabs").description("List open tabs")).action(async (opts) =>
+  runCommand(async () => browserTabsCommand(merged(opts))),
+);
+
+withBrowserCommon(
+  browser.command("content").description("Read the page title, text and links"),
+).action(async (opts) => runCommand(async () => browserContentCommand(merged(opts))));
+
+withBrowserCommon(browser.command("screenshot").description("Capture the page as a PNG"))
+  .requiredOption("-o, --out <file>", "Write the PNG here")
+  .option("--full-page", "Capture the whole scrollable page")
+  .action(async (opts) => runCommand(async () => browserScreenshotCommand(merged(opts))));
+
+withBrowserCommon(
+  browser
+    .command("act")
+    .argument("<instruction>")
+    .description('Act on the page in words, e.g. "click the login button"'),
+).action(async (instruction: string, opts) =>
+  runCommand(async () => browserActCommand(instruction, merged(opts))),
+);
+
+withBrowserCommon(browser.command("close").description("Close a tab")).action(async (opts) =>
+  runCommand(async () => browserCloseCommand(merged(opts))),
+);
+
+withBrowserCommon(
+  browser.command("cdp-url").description("Print the CDP URL for Playwright or Puppeteer"),
+).action(async (opts) => runCommand(async () => browserCdpUrlCommand(merged(opts))));
+
+withBrowserCommon(
+  browser.command("goto").argument("<url>").description("Navigate an open tab"),
+).action(async (url: string, opts) =>
+  runCommand(async () => browserGotoCommand(url, merged(opts))),
+);
+
+withBrowserCommon(
+  browser
+    .command("observe")
+    .argument("<instruction>")
+    .description("List the actions available on the page"),
+).action(async (instruction: string, opts) =>
+  runCommand(async () => browserObserveCommand(instruction, merged(opts))),
+);
+
+withBrowserCommon(
+  browser
+    .command("extract")
+    .argument("<instruction>")
+    .description("Pull structured data off the page against a JSON Schema"),
+)
+  .requiredOption("--schema <file>", "Flat JSON Schema object describing the fields")
+  .action(async (instruction: string, opts) =>
+    runCommand(async () => browserExtractCommand(instruction, merged(opts))),
+  );
+
+withBrowserCommon(
+  browser.command("live-url").description("Print a URL for watching the tab live"),
+).action(async (opts) => runCommand(async () => browserLiveUrlCommand(merged(opts))));
+
+const recordings = browser.command("recordings").description("Browser session recordings");
+
+withBrowserCommon(recordings.command("start").description("Start recording"))
+  .option("--max-seconds <n>", "Stop automatically after this long")
+  .action(async (opts) => runCommand(async () => recordingStartCommand(merged(opts))));
+
+withBrowserCommon(recordings.command("stop").description("Stop the active recording")).action(
+  async (opts) => runCommand(async () => recordingStopCommand(merged(opts))),
+);
+
+withBrowserCommon(recordings.command("list").description("List recordings")).action(async (opts) =>
+  runCommand(async () => recordingListCommand(merged(opts))),
+);
+
+withBrowserCommon(
+  recordings.command("get").argument("<recording-id>").description("Show one recording"),
+).action(async (id: string, opts) => runCommand(async () => recordingGetCommand(id, merged(opts))));
+
+withBrowserCommon(
+  recordings.command("download").argument("<recording-id>").description("Download a recording"),
+)
+  .requiredOption("-o, --out <file>", "Write the video here")
+  .action(async (id: string, opts) =>
+    runCommand(async () => recordingDownloadCommand(id, merged(opts))),
   );
 
 program
@@ -488,6 +864,27 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--name <name>", "Snapshot name")
   .action(async (boxId, opts) => runCommand(async () => snapshotCommand(boxId, merged(opts))));
+
+const snapshotGroup = program.commands.find((command) => command.name() === "snapshot")!;
+
+snapshotGroup
+  .command("list")
+  .description("List the box's snapshots")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (opts) => runCommand(async () => snapshotListCommand(merged(opts))));
+
+snapshotGroup
+  .command("delete")
+  .argument("<snapshot-id>")
+  .description("Delete a snapshot")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (snapshotId: string, opts) =>
+    runCommand(async () => snapshotDeleteCommand(snapshotId, merged(opts))),
+  );
 
 program
   .command("init-demo")

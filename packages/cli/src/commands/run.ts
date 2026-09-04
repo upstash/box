@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
-import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
-
-/** Largest delay Node's timers accept before clamping. */
-const MAX_TIMER_MS = 2_147_483_647;
+import { emit, note, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
 export type RunFlags = GlobalFlags & {
   timeout?: string;
@@ -61,16 +58,7 @@ function toolLine(name: string, input: Record<string, unknown>): string {
  */
 export async function runCommandAction(parts: string[], flags: RunFlags): Promise<void> {
   const prompt = promptFrom(parts);
-  const timeout = flags.timeout === undefined ? undefined : Number(flags.timeout);
-  if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) {
-    throw new CliError("--timeout must be a positive number of seconds");
-  }
-  // The SDK arms this with setTimeout, and Node clamps a delay beyond its timer
-  // range to about a millisecond, so an out-of-range timeout would abort the
-  // run almost immediately instead of allowing more time.
-  if (timeout !== undefined && timeout * 1000 > MAX_TIMER_MS) {
-    throw new CliError(`--timeout must be at most ${Math.floor(MAX_TIMER_MS / 1000)} seconds`);
-  }
+  const timeout = timeoutMs(flags.timeout);
 
   const resolved = resolveBoxId({ flag: flags.box });
   announceBox(resolved);
@@ -78,7 +66,7 @@ export async function runCommandAction(parts: string[], flags: RunFlags): Promis
 
   const run = await box.agent.stream({
     prompt,
-    ...(timeout === undefined ? {} : { timeout: timeout * 1000 }),
+    ...(timeout === undefined ? {} : { timeout }),
   });
 
   let output = "";

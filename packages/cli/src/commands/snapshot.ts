@@ -1,6 +1,7 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
-import { emit, note, type GlobalFlags } from "../core/io.js";
+import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
+import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
 import { CliError } from "../core/errors.js";
@@ -55,4 +56,42 @@ export async function snapshotCommand(
   const box = await Box.get(targetId, { apiKey });
   const snapshot = await box.snapshot({ name: snapshotName });
   emit(snapshot, `Snapshot created: ${snapshot.id} (${snapshot.name})`, flags);
+}
+
+/**
+ * List the box's snapshots.
+ * @param flags - resolved global flags.
+ */
+export async function snapshotListCommand(flags: GlobalFlags): Promise<void> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  const snapshots = await box.listSnapshots();
+
+  emit(
+    snapshots,
+    snapshots.length === 0
+      ? ["No snapshots."]
+      : snapshots.map(
+          (snap) =>
+            `${snap.id}\t${snap.status}\t${Math.round(snap.size_bytes / 1024 / 1024)}MB\t${snap.name}`,
+        ),
+    flags,
+  );
+}
+
+/**
+ * Delete a snapshot.
+ * @param snapshotId - the snapshot to remove.
+ * @param flags - resolved global flags.
+ */
+export async function snapshotDeleteCommand(snapshotId: string, flags: GlobalFlags): Promise<void> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  await box.deleteSnapshot(snapshotId);
+
+  emit({ id: snapshotId, deleted: true }, [`Deleted ${snapshotId}`], flags);
 }
