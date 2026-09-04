@@ -20,8 +20,27 @@ vi.mock("../../auth.js", () => ({
   resolveToken: vi.fn((token?: string) => token ?? "resolved-token"),
 }));
 
+vi.mock("../../core/box-ref.js", () => ({
+  writeBoxFile: vi.fn(() => "/tmp/.box"),
+}));
+
+/** Run a body as though a terminal were attached, then restore. */
+async function withTty(body: () => Promise<void>): Promise<void> {
+  const inTty = process.stdin.isTTY;
+  const outTty = process.stdout.isTTY;
+  process.stdin.isTTY = true;
+  Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+  try {
+    await body();
+  } finally {
+    process.stdin.isTTY = inTty;
+    Object.defineProperty(process.stdout, "isTTY", { value: outTty, configurable: true });
+  }
+}
+
 import { Box } from "@upstash/box";
 import { startRepl } from "../../repl/terminal.js";
+import { writeBoxFile } from "../../core/box-ref.js";
 
 describe("fromSnapshotCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
@@ -41,11 +60,13 @@ describe("fromSnapshotCommand", () => {
     const mockBox = { id: "box-1" };
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);
 
-    await fromSnapshotCommand("snap-1", {
-      token: "key",
-      agentModel: "model",
-      agentHarness: "claude-code",
-      agentApiKey: "agent-key",
+    await withTty(async () => {
+      await fromSnapshotCommand("snap-1", {
+        token: "key",
+        agentModel: "model",
+        agentHarness: "claude-code",
+        agentApiKey: "agent-key",
+      });
     });
 
     expect(Box.fromSnapshot).toHaveBeenCalledWith(
@@ -73,10 +94,12 @@ describe("fromSnapshotCommand", () => {
     const mockBox = { id: "box-2" };
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce(mockBox as any);
 
-    await fromSnapshotCommand("snap-1", {
-      token: "key",
-      agentModel: "model",
-      agentHarness: "claude-code",
+    await withTty(async () => {
+      await fromSnapshotCommand("snap-1", {
+        token: "key",
+        agentModel: "model",
+        agentHarness: "claude-code",
+      });
     });
 
     expect(Box.fromSnapshot).toHaveBeenCalledWith(
@@ -86,6 +109,35 @@ describe("fromSnapshotCommand", () => {
       }),
     );
     expect(startRepl).toHaveBeenCalledWith(mockBox);
+  });
+
+  it("restores without a REPL when --no-repl is given", async () => {
+    // The reason snapshot list/delete were write-only: an agent could make a
+    // snapshot and never restore one, because restore always opened a REPL.
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-9" } as any);
+
+    await withTty(async () => {
+      await fromSnapshotCommand("snap-1", { token: "key", repl: false });
+    });
+
+    expect(startRepl).not.toHaveBeenCalled();
+    expect(writeBoxFile).toHaveBeenCalledWith("box-9");
+  });
+
+  it("goes headless with no terminal, so a script does not hang", async () => {
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-9" } as any);
+
+    await fromSnapshotCommand("snap-1", { token: "key" });
+
+    expect(startRepl).not.toHaveBeenCalled();
+  });
+
+  it("does not pin when --no-use is given", async () => {
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-9" } as any);
+
+    await fromSnapshotCommand("snap-1", { token: "key", repl: false, use: false });
+
+    expect(writeBoxFile).not.toHaveBeenCalled();
   });
 
   it("errors when agentModel is set without a harness flag", async () => {

@@ -40,3 +40,77 @@ export async function statusCommand(flags: GlobalFlags): Promise<void> {
     flags,
   );
 }
+
+/**
+ * List the box's runs, most recent first.
+ *
+ * The REPL has had this since the beginning; without it a non-interactive
+ * caller can see that a run happened but not which one, so it has no id to
+ * cancel or to read logs for.
+ * @param flags - resolved global flags.
+ */
+export async function statusRunsCommand(flags: GlobalFlags): Promise<void> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  const runs = await box.listRuns();
+
+  emit(
+    runs,
+    runs.length === 0
+      ? ["No runs yet."]
+      : runs.map(
+          (run) =>
+            `${run.id}\t${run.type}\t${run.status ?? ""}\t${Math.round(run.duration_ms / 1000)}s\t$${run.cost_usd.toFixed(4)}`,
+        ),
+    flags,
+  );
+}
+
+/**
+ * Print the box's log lines.
+ * @param flags - resolved global flags, plus paging.
+ */
+export async function statusLogsCommand(
+  flags: GlobalFlags & { limit?: string; offset?: string },
+): Promise<void> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  const logs = await box.logs({
+    ...(flags.limit === undefined ? {} : { limit: Number(flags.limit) }),
+    ...(flags.offset === undefined ? {} : { offset: Number(flags.offset) }),
+  });
+
+  emit(
+    logs,
+    logs.length === 0
+      ? ["No logs."]
+      : logs.map(
+          (entry) =>
+            `${new Date(entry.timestamp * 1000).toISOString()}\t${entry.level}\t${entry.source}\t${entry.message}`,
+        ),
+    flags,
+  );
+}
+
+/**
+ * Cancel a run by id.
+ *
+ * An agent that starts a long run has no other way to stop it: the object with
+ * `.cancel()` on it lives in the process that started the run, which has
+ * usually exited by the time anyone wants it stopped.
+ * @param runId - the run to cancel, from `box status runs`.
+ * @param flags - resolved global flags.
+ */
+export async function cancelCommand(runId: string, flags: GlobalFlags): Promise<void> {
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+  await box.cancelRun(runId);
+
+  emit({ run_id: runId, cancelled: true }, [`Cancelled ${runId}`], flags);
+}

@@ -9,7 +9,11 @@ import { fromSnapshotCommand } from "./commands/from-snapshot.js";
 import { listCommand } from "./commands/list.js";
 import { getCommand } from "./commands/get.js";
 import { initDemoCommand } from "./commands/init-demo.js";
-import { snapshotCommand } from "./commands/snapshot.js";
+import {
+  snapshotCommand,
+  snapshotListCommand,
+  snapshotDeleteCommand,
+} from "./commands/snapshot.js";
 import { completionCommand } from "./commands/completion.js";
 import {
   envSetCommand,
@@ -18,7 +22,21 @@ import {
   envSetAllCommand,
 } from "./commands/env.js";
 import { labelAddCommand, labelRemoveCommand, labelListCommand } from "./commands/labels.js";
-import { statusCommand } from "./commands/status.js";
+import {
+  statusCommand,
+  statusRunsCommand,
+  statusLogsCommand,
+  cancelCommand,
+} from "./commands/status.js";
+import {
+  browserOpenCommand,
+  browserTabsCommand,
+  browserContentCommand,
+  browserScreenshotCommand,
+  browserActCommand,
+  browserCloseCommand,
+  browserCdpUrlCommand,
+} from "./commands/browser.js";
 import { useCommand } from "./commands/use.js";
 import { execCommand } from "./commands/exec.js";
 import {
@@ -119,6 +137,36 @@ program
   .action(async (flags: Record<string, unknown>) => {
     await runCommand(async () => statusCommand(globals(flags)));
   });
+
+// `box status` keeps its own action; runs and logs hang off it as subcommands.
+const statusGroup = program.commands.find((command) => command.name() === "status")!;
+statusGroup
+  .command("runs")
+  .description("List the box's runs, most recent first")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (opts) => runCommand(async () => statusRunsCommand(merged(opts))));
+
+statusGroup
+  .command("logs")
+  .description("Print the box's log lines")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .option("--limit <n>", "Maximum entries to return")
+  .option("--offset <n>", "Skip this many entries")
+  .action(async (opts) => runCommand(async () => statusLogsCommand(merged(opts))));
+
+program
+  .command("cancel <run-id>")
+  .description("Cancel a running execution (get ids from box status runs)")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (runId: string, opts) =>
+    runCommand(async () => cancelCommand(runId, merged(opts))),
+  );
 
 program
   .command("exec")
@@ -457,12 +505,60 @@ program
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
+  .option("--no-repl", "Restore and print the id instead of opening the REPL")
+  .option("--no-use", "Do not write a .box file")
+  .option("--json", "Emit machine-readable output (implies --no-repl)")
   .action(async (snapshotId, opts) =>
-    runCommand(async () => {
-      refuseJson(merged(opts), "box from-snapshot", "box create --no-repl --json");
-      return fromSnapshotCommand(snapshotId, merged(opts));
-    }),
+    runCommand(async () => fromSnapshotCommand(snapshotId, merged(opts))),
   );
+
+const browser = program
+  .command("browser")
+  .description("Drive the box's headless Chromium (needs box create --browser)");
+
+/** Flags every browser verb accepts, declared once. */
+const withBrowserCommon = (cmd: import("commander").Command) =>
+  cmd
+    .option("--box <id>", "Box to act on")
+    .option("--json", "Emit machine-readable output")
+    .option("--token <token>", "Upstash Box API token")
+    .option("--tab <id>", "Tab to act on; only needed when more than one is open");
+
+withBrowserCommon(
+  browser.command("open").argument("<url>").description("Open a URL and print the tab id"),
+).action(async (url: string, opts) =>
+  runCommand(async () => browserOpenCommand(url, merged(opts))),
+);
+
+withBrowserCommon(browser.command("tabs").description("List open tabs")).action(async (opts) =>
+  runCommand(async () => browserTabsCommand(merged(opts))),
+);
+
+withBrowserCommon(
+  browser.command("content").description("Read the page title, text and links"),
+).action(async (opts) => runCommand(async () => browserContentCommand(merged(opts))));
+
+withBrowserCommon(browser.command("screenshot").description("Capture the page as a PNG"))
+  .requiredOption("-o, --out <file>", "Write the PNG here")
+  .option("--full-page", "Capture the whole scrollable page")
+  .action(async (opts) => runCommand(async () => browserScreenshotCommand(merged(opts))));
+
+withBrowserCommon(
+  browser
+    .command("act")
+    .argument("<instruction>")
+    .description('Act on the page in words, e.g. "click the login button"'),
+).action(async (instruction: string, opts) =>
+  runCommand(async () => browserActCommand(instruction, merged(opts))),
+);
+
+withBrowserCommon(browser.command("close").description("Close a tab")).action(async (opts) =>
+  runCommand(async () => browserCloseCommand(merged(opts))),
+);
+
+withBrowserCommon(
+  browser.command("cdp-url").description("Print the CDP URL for Playwright or Puppeteer"),
+).action(async (opts) => runCommand(async () => browserCdpUrlCommand(merged(opts))));
 
 program
   .command("list")
@@ -488,6 +584,27 @@ program
   .option("--token <token>", "Upstash Box API token")
   .option("--name <name>", "Snapshot name")
   .action(async (boxId, opts) => runCommand(async () => snapshotCommand(boxId, merged(opts))));
+
+const snapshotGroup = program.commands.find((command) => command.name() === "snapshot")!;
+
+snapshotGroup
+  .command("list")
+  .description("List the box's snapshots")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (opts) => runCommand(async () => snapshotListCommand(merged(opts))));
+
+snapshotGroup
+  .command("delete")
+  .argument("<snapshot-id>")
+  .description("Delete a snapshot")
+  .option("--box <id>", "Box to act on")
+  .option("--json", "Emit machine-readable output")
+  .option("--token <token>", "Upstash Box API token")
+  .action(async (snapshotId: string, opts) =>
+    runCommand(async () => snapshotDeleteCommand(snapshotId, merged(opts))),
+  );
 
 program
   .command("init-demo")
