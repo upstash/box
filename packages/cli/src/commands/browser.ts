@@ -200,6 +200,7 @@ function schemaFromFile(path: string): z.ZodTypeAny {
   let parsed: {
     type?: string;
     properties?: Record<string, { type?: string; items?: { type?: string } }>;
+    required?: string[];
   } | null;
   try {
     parsed = JSON.parse(readFileSync(path, "utf8")) as typeof parsed;
@@ -216,6 +217,10 @@ function schemaFromFile(path: string): z.ZodTypeAny {
     throw new CliError('The schema must be {"type":"object","properties":{...}}');
   }
 
+  // JSON Schema says a property is optional unless it is named in `required`.
+  // Marking everything required instead makes tab.extract() throw client-side
+  // the moment the page is missing a field the caller knew might be absent.
+  const required = new Set(parsed.required ?? []);
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const [key, prop] of Object.entries(parsed.properties)) {
     switch (prop.type) {
@@ -238,6 +243,7 @@ function schemaFromFile(path: string): z.ZodTypeAny {
       default:
         throw new CliError(`Field ${key}: unsupported type ${prop.type ?? "(missing)"}`);
     }
+    if (!required.has(key)) shape[key] = shape[key]!.optional();
   }
   return z.object(shape);
 }

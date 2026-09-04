@@ -137,6 +137,21 @@ describe("schedule and config", () => {
       expect(update).toHaveBeenCalledWith("sch-1", { cron: "@hourly" });
     });
 
+    it("updates the timeout in milliseconds, and lets 0 clear it", async () => {
+      const update = vi
+        .fn()
+        .mockResolvedValue({ id: "sch-1", type: "prompt", cron: "@daily", status: "active" });
+      getBox.mockResolvedValue({ schedule: { update } });
+
+      await scheduleUpdateCommand("sch-1", [], { ...flags, timeout: "45" });
+      expect(update).toHaveBeenCalledWith("sch-1", { timeout: 45_000 });
+
+      // 0 is how the SDK clears the field, so it has to survive the conversion
+      // that rejects every other non-positive value.
+      await scheduleUpdateCommand("sch-1", [], { ...flags, timeout: "0" });
+      expect(update).toHaveBeenLastCalledWith("sch-1", { timeout: 0 });
+    });
+
     it("refuses an update that changes nothing", async () => {
       getBox.mockResolvedValue({ schedule: { update: vi.fn() } });
 

@@ -143,6 +143,48 @@ describe("browser extract schema", () => {
     expect(extract).toHaveBeenCalledWith("read the page", expect.anything());
   });
 
+  it("leaves a property out of `required` optional, so a missing field parses", async () => {
+    // tab.extract() ends in schema.parse(), so marking everything required
+    // makes a page that simply lacks an optional field fail client-side.
+    let captured: { parse: (value: unknown) => unknown } | undefined;
+    const extract = vi.fn().mockImplementation((_instruction, schema) => {
+      captured = schema;
+      return Promise.resolve({ title: "Hi" });
+    });
+    getBox.mockResolvedValue({
+      browser: { listTabs: vi.fn().mockResolvedValue([{ id: "t", extract }]) },
+    });
+    const schema = schemaAt({
+      type: "object",
+      properties: { title: { type: "string" }, subtitle: { type: "string" } },
+      required: ["title"],
+    });
+
+    await browserExtractCommand("read it", { ...flags, schema });
+
+    expect(() => captured!.parse({ title: "Hi" })).not.toThrow();
+  });
+
+  it("keeps a property named in `required` required", async () => {
+    let captured: { parse: (value: unknown) => unknown } | undefined;
+    const extract = vi.fn().mockImplementation((_instruction, schema) => {
+      captured = schema;
+      return Promise.resolve({ title: "Hi" });
+    });
+    getBox.mockResolvedValue({
+      browser: { listTabs: vi.fn().mockResolvedValue([{ id: "t", extract }]) },
+    });
+    const schema = schemaAt({
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"],
+    });
+
+    await browserExtractCommand("read it", { ...flags, schema });
+
+    expect(() => captured!.parse({})).toThrow();
+  });
+
   it("refuses a nested object rather than dropping the field", async () => {
     // A dropped field comes back as a missing key, which reads as "the page did
     // not have it" rather than as a schema the CLI could not express.

@@ -95,13 +95,20 @@ const MAX_TIMER_MS = 2_147_483_647;
  * milliseconds, so a caller that passes the number straight through asks for a
  * 30ms limit when it said 30 seconds, and the work is killed before it starts.
  * @param value - the raw flag, when given.
+ * @param options - allowZero accepts 0, which clears a value rather than setting one.
  * @returns the timeout in milliseconds, or undefined when unset.
  * @throws CliError when the value is not a usable number of seconds.
  */
-export function timeoutMs(value: string | undefined): number | undefined {
+export function timeoutMs(
+  value: string | undefined,
+  options: { allowZero?: boolean } = {},
+): number | undefined {
   if (value === undefined) return undefined;
 
   const seconds = Number(value);
+  // 0 clears a schedule's timeout, which only makes sense on an update: at
+  // creation it would ask for a run that is out of time before it starts.
+  if (options.allowZero && seconds === 0) return 0;
   if (!Number.isFinite(seconds) || seconds <= 0) {
     throw new CliError("--timeout must be a positive number of seconds");
   }

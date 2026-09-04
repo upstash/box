@@ -614,6 +614,7 @@ withScheduleCommon(
   .option("--prompt <text>", "New prompt")
   .option("-C, --folder <dir>", "New working directory")
   .option("--model <model>", "New model")
+  .option("--timeout <seconds>", "New timeout; 0 clears it")
   .option("--webhook-url <url>", "New webhook URL")
   .action(async (id: string, parts: string[], opts) =>
     runCommand(async () => scheduleUpdateCommand(id, parts, merged(opts))),

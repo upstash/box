@@ -119,8 +119,10 @@ export async function scheduleUpdateCommand(
   command: string[],
   flags: ScheduleFlags,
 ): Promise<void> {
+  const timeout = timeoutMs(flags.timeout, { allowZero: true });
   const changes = {
     ...(flags.cron === undefined ? {} : { cron: flags.cron }),
+    ...(timeout === undefined ? {} : { timeout }),
     ...(command.length === 0 ? {} : { command }),
     ...(flags.prompt === undefined ? {} : { prompt: flags.prompt }),
     ...(flags.folder === undefined ? {} : { folder: flags.folder }),
@@ -129,7 +131,7 @@ export async function scheduleUpdateCommand(
   };
   if (Object.keys(changes).length === 0) {
     throw new CliError(
-      "Nothing to update. Pass --cron, --prompt, --folder, --model, --webhook-url, or a command after --",
+      "Nothing to update. Pass --cron, --prompt, --folder, --model, --timeout, --webhook-url, or a command after --",
     );
   }
 
