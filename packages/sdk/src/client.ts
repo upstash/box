@@ -2626,18 +2626,6 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Cancel a run by id.
-   *
-   * `Run.cancel()` only works while you are holding the object the call
-   * returned, which a separate process never is. Listing runs and cancelling
-   * one by id is the only route open to a caller that did not start it.
-   * @param runId - the run to cancel.
-   */
-  async cancelRun(runId: string): Promise<void> {
-    await this._request("POST", `/v2/box/${this.id}/runs/${runId}/cancel`);
-  }
-
-  /**
    * List all runs for this box, newest first.
    */
   async listRuns(): Promise<BoxRunData[]> {

@@ -107,13 +107,15 @@ describe("runs, logs, cancel and snapshots", () => {
   });
 
   describe("cancel", () => {
-    it("cancels the run it was given", async () => {
-      const cancelRun = vi.fn().mockResolvedValue(undefined);
-      getBox.mockResolvedValue({ cancelRun });
+    it("posts to the run's cancel endpoint", async () => {
+      // Pins the method and the path, since the SDK has no cancel-by-id to
+      // typecheck against: a wrong path here would only fail on a live box.
+      const request = vi.fn().mockResolvedValue({});
+      getBox.mockResolvedValue({ id: "b1", _request: request });
 
       await cancelCommand("run-9", { ...flags });
 
-      expect(cancelRun).toHaveBeenCalledWith("run-9");
+      expect(request).toHaveBeenCalledWith("POST", "/v2/box/b1/runs/run-9/cancel");
       expect(written()).toContain("run-9");
     });
   });

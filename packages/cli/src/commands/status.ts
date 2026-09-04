@@ -134,7 +134,11 @@ export async function cancelCommand(runId: string, flags: GlobalFlags): Promise<
   announceBox(resolved);
 
   const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
-  await box.cancelRun(runId);
+  // The SDK has no cancel-by-id: Run.cancel() lives on the object the original
+  // call returned, which this process never holds. Going through the box's own
+  // request method keeps the base URL, auth and timeouts in one place rather
+  // than rebuilding them here.
+  await box._request("POST", `/v2/box/${box.id}/runs/${runId}/cancel`);
 
   emit({ run_id: runId, cancelled: true }, [`Cancelled ${runId}`], flags);
 }

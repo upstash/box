@@ -2,13 +2,6 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
-## 0.3.2
-
-- Add `cancel_run(run_id)`, matching `cancelRun` in `@upstash/box`. `Run.cancel()`
-  only works while holding the object the original call returned, which a
-  separate process never is, so cancelling by id is the only route open to a
-  caller that did not start the run.
-
 ## 0.3.1
 
 - Fix `git.update_config()` sending its request to `/v2/box/{id}/git-config`,

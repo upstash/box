@@ -422,21 +422,6 @@ describe("Box instance methods", () => {
     });
   });
 
-  describe("cancelRun", () => {
-    it("POSTs to the run's cancel endpoint", async () => {
-      // The CLI's own tests mock the SDK, so nothing else pins the method and
-      // the path; a typo here would only surface against a live box.
-      const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(mockResponse({}));
-
-      await box.cancelRun("run-9");
-
-      const [url, init] = fetchMock.mock.calls[1]!;
-      expect(url).toContain("/v2/box/box-123/runs/run-9/cancel");
-      expect((init as RequestInit).method).toBe("POST");
-    });
-  });
-
   describe("listRuns", () => {
     it("returns runs for the box", async () => {
       const { box, fetchMock } = await createTestBox();
