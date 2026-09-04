@@ -3,7 +3,7 @@ import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { buildCommand, execCollect, execStream } from "../core/exec.js";
-import { emit, requireToken, type GlobalFlags } from "../core/io.js";
+import { emit, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
 export type ExecFlags = GlobalFlags & { cwd?: string };
 
@@ -76,10 +76,7 @@ export async function execCodeCommand(
   const code = source === "-" ? readFileSync(0, "utf8") : source;
   if (!code.trim()) throw new CliError("No code to run");
 
-  const timeout = flags.timeout === undefined ? undefined : Number(flags.timeout);
-  if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) {
-    throw new CliError("--timeout must be a positive number of seconds");
-  }
+  const timeout = timeoutMs(flags.timeout);
 
   const resolved = resolveBoxId({ flag: flags.box });
   announceBox(resolved);
@@ -91,5 +88,17 @@ export async function execCodeCommand(
     ...(timeout === undefined ? {} : { timeout }),
   });
 
-  emit({ output: run.result, exit_code: 0 }, [run.result], flags);
+  // Same contract as `box exec`: the remote status passes through, so `box code
+  // ... && next` chains correctly and --json reports the real code. Claiming 0
+  // would make a failing snippet look successful to both.
+  const exitCode = run.exitCode ?? 0;
+  if (flags.json) {
+    emit({ stdout: run.stdout, stderr: run.stderr, exit_code: exitCode }, "", flags);
+  } else {
+    if (run.stdout)
+      process.stdout.write(run.stdout.endsWith("\n") ? run.stdout : `${run.stdout}\n`);
+    if (run.stderr)
+      process.stderr.write(run.stderr.endsWith("\n") ? run.stderr : `${run.stderr}\n`);
+  }
+  if (exitCode !== 0) process.exitCode = exitCode;
 }

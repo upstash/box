@@ -38,7 +38,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `getStatus`, `pause`, `resume`, `delete` | `get_status`, `pause`, `resume`, `delete` |
 | `snapshot`, `listSnapshots`, `deleteSnapshot` | `snapshot`, `list_snapshots`, `delete_snapshot` |
 | `getInitCommand`, `setInitCommand`, `deleteInitCommand` | `get_init_command`, `set_init_command`, `delete_init_command` |
-| `logs`, `listRuns` | `logs`, `list_runs` |
+| `logs`, `listRuns`, `cancelRun` | `logs`, `list_runs`, `cancel_run` |
 | `getPublicURL`, `listPublicURLs`, `deletePublicURL` | `get_public_url`, `list_public_urls`, `delete_public_url` |
 | `id`, `size`, `keepAlive` | `id`, `size`, `keep_alive` |
 | `browser.tab.create` | `browser.tab.create` |

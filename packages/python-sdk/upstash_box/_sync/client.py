@@ -1554,6 +1554,15 @@ class Box(Generic[T]):
         data = self._request("GET", f"/v2/box/{self.id}/logs{qs}")
         return [LogEntry.model_validate(entry) for entry in data.get("logs", [])]
 
+    def cancel_run(self, run_id: str) -> None:
+        """Cancel a run by id.
+
+        ``Run.cancel()`` only works while holding the object the call returned,
+        which a separate process never is, so cancelling by id is the only route
+        open to a caller that did not start the run.
+        """
+        self._request("POST", f"/v2/box/{self.id}/runs/{run_id}/cancel")
+
     def list_runs(self) -> List[BoxRunData]:
 
         data = self._request("GET", f"/v2/box/{self.id}/runs")

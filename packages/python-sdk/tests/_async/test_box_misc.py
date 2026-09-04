@@ -1,4 +1,4 @@
-"""skills, config_model, public URLs, lifecycle, init-command, logs, list_runs."""
+"""skills, config_model, public URLs, lifecycle, init-command, logs, list_runs, cancel_run."""
 
 import httpx
 import pytest
@@ -165,6 +165,18 @@ async def test_init_command_crud():
     assert await box.get_init_command() == "npm run dev"
     await box.set_init_command("npm start")
     await box.delete_init_command()
+    await box.aclose()
+
+
+# ---------- cancel_run ----------
+
+
+@respx.mock
+async def test_cancel_run():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/runs/r1/cancel").mock(return_value=httpx.Response(200, json={}))
+    await box.cancel_run("r1")
+    assert route.called
     await box.aclose()
 
 

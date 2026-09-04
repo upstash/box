@@ -1,6 +1,7 @@
 import { Box } from "@upstash/box";
 import { announceBox, findBoxFile, resolveBoxId } from "../core/box-ref.js";
 import { emit, requireToken, type GlobalFlags } from "../core/io.js";
+import { CliError } from "../core/errors.js";
 
 /**
  * Report which box is selected, where that came from, and what it is doing.
@@ -42,6 +43,25 @@ export async function statusCommand(flags: GlobalFlags): Promise<void> {
 }
 
 /**
+ * Read a whole-number flag.
+ *
+ * `Number("nope")` is NaN, which serialises into the query string as `NaN` and
+ * is silently ignored upstream, so the caller gets a default page and no idea
+ * the flag was wrong.
+ * @param raw - the flag as given.
+ * @param name - the flag name, for the message.
+ * @returns the parsed count.
+ * @throws CliError when it is not a non-negative whole number.
+ */
+function countFlag(raw: string, name: string): number {
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new CliError(`${name} must be a whole number`);
+  }
+  return value;
+}
+
+/**
  * List the box's runs, most recent first.
  *
  * The REPL has had this since the beginning; without it a non-interactive
@@ -80,8 +100,8 @@ export async function statusLogsCommand(
 
   const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
   const logs = await box.logs({
-    ...(flags.limit === undefined ? {} : { limit: Number(flags.limit) }),
-    ...(flags.offset === undefined ? {} : { offset: Number(flags.offset) }),
+    ...(flags.limit === undefined ? {} : { limit: countFlag(flags.limit, "--limit") }),
+    ...(flags.offset === undefined ? {} : { offset: countFlag(flags.offset, "--offset") }),
   });
 
   emit(

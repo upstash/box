@@ -72,6 +72,17 @@ describe("schedule and config", () => {
       expect(agent).toHaveBeenCalledWith({ cron: "@daily", prompt: "check the logs" });
     });
 
+    it("converts the timeout from seconds to the milliseconds the SDK takes", async () => {
+      // Every --timeout flag is documented in seconds and every SDK option is
+      // milliseconds. Passing the number straight through would ask for 60ms.
+      const agent = vi.fn().mockResolvedValue({ id: "sch-2" });
+      getBox.mockResolvedValue({ schedule: { agent } });
+
+      await scheduleAgentCommand(["x"], { ...flags, cron: "@daily", timeout: "60" });
+
+      expect(agent).toHaveBeenCalledWith(expect.objectContaining({ timeout: 60_000 }));
+    });
+
     it("rejects a timeout that is not a positive number", async () => {
       getBox.mockResolvedValue({ schedule: { agent: vi.fn() } });
 

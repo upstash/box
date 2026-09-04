@@ -17,3 +17,5 @@ Give the CLI parity with the SDK, so an agent driving a terminal can reach every
 - The rest of the browser: `goto`, `observe`, `extract`, `live-url`, and `recordings start|stop|list|get|download`. `extract` takes a flat JSON Schema file, since a Zod schema cannot travel through a command line, and refuses anything nested rather than silently dropping fields.
 
 `exec.session` is deliberately absent: a session is a live WebSocket with `on`/`send`/`close`, and a one-shot command has nowhere to hold it. `getPreviewUrl` and `listPreviews` are deprecated aliases for the public-URL calls, so `box public-url` already covers them.
+
+`Box.cancelRun()` is added to the SDK, because `Run.cancel()` needs the object the original call returned, which another process never holds. The Python SDK gets the same method as `cancel_run`; it versions separately, so it is not in this changeset.

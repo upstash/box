@@ -1,7 +1,7 @@
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
-import { emit, requireToken, type GlobalFlags } from "../core/io.js";
+import { emit, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
 export type ScheduleFlags = GlobalFlags & {
   cron?: string;
@@ -29,15 +29,6 @@ function line(schedule: {
 }): string {
   const what = schedule.command ? schedule.command.join(" ") : (schedule.prompt ?? "");
   return `${schedule.id}\t${schedule.status}\t${schedule.type}\t${schedule.cron}\t${what}`;
-}
-
-function timeoutOf(flags: ScheduleFlags): number | undefined {
-  if (flags.timeout === undefined) return undefined;
-  const seconds = Number(flags.timeout);
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    throw new CliError("--timeout must be a positive number of seconds");
-  }
-  return seconds;
 }
 
 /**
@@ -76,7 +67,7 @@ export async function scheduleAgentCommand(prompt: string[], flags: ScheduleFlag
   if (!text) throw new CliError("Nothing to schedule. Give the agent a prompt.");
 
   const box = await open(flags);
-  const timeout = timeoutOf(flags);
+  const timeout = timeoutMs(flags.timeout);
   const schedule = await box.schedule.agent({
     cron: flags.cron,
     prompt: text,

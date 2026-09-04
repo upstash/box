@@ -2626,9 +2626,6 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * List all runs for this box, newest first.
-   */
-  /**
    * Cancel a run by id.
    *
    * `Run.cancel()` only works while you are holding the object the call
@@ -2640,6 +2637,9 @@ export class Box<TProvider = unknown> {
     await this._request("POST", `/v2/box/${this.id}/runs/${runId}/cancel`);
   }
 
+  /**
+   * List all runs for this box, newest first.
+   */
   async listRuns(): Promise<BoxRunData[]> {
     const data = await this._request<{ runs: BoxRunData[] }>("GET", `/v2/box/${this.id}/runs`);
     return data.runs;
