@@ -81,7 +81,22 @@ export async function browserContentCommand(flags: BrowserFlags): Promise<void> 
   const box = await open(flags);
   const tab = await resolveTab(box, flags);
   const content = await tab.content();
-  emit(content, [content.title, content.url, "", content.text], flags);
+  const links = content.links ?? [];
+  emit(
+    content,
+    [
+      content.title,
+      content.url,
+      "",
+      content.text,
+      // The command says it reads links, so the default output has to carry
+      // them; without this only --json exposed a destination URL.
+      ...(links.length === 0
+        ? []
+        : ["", ...links.map((link) => `${link.text ?? ""}\t${link.href ?? ""}`)]),
+    ],
+    flags,
+  );
 }
 
 /**
@@ -185,13 +200,18 @@ function schemaFromFile(path: string): z.ZodTypeAny {
   let parsed: {
     type?: string;
     properties?: Record<string, { type?: string; items?: { type?: string } }>;
-  };
+  } | null;
   try {
-    parsed = JSON.parse(readFileSync(path, "utf8"));
+    parsed = JSON.parse(readFileSync(path, "utf8")) as typeof parsed;
   } catch (error) {
     throw new CliError(`Could not read the schema at ${path}: ${(error as Error).message}`);
   }
 
+  // JSON.parse("null") succeeds, and reading .type off the result is a raw
+  // TypeError rather than the message the caller needs.
+  if (parsed === null || typeof parsed !== "object") {
+    throw new CliError('The schema must be {"type":"object","properties":{...}}');
+  }
   if (parsed.type !== "object" || !parsed.properties) {
     throw new CliError('The schema must be {"type":"object","properties":{...}}');
   }

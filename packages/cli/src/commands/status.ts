@@ -47,16 +47,20 @@ export async function statusCommand(flags: GlobalFlags): Promise<void> {
  *
  * `Number("nope")` is NaN, which serialises into the query string as `NaN` and
  * is silently ignored upstream, so the caller gets a default page and no idea
- * the flag was wrong.
+ * the flag was wrong. `--limit 0` is rejected for the same reason: the SDK only
+ * sends a limit when it is truthy, so zero would quietly return a full page.
  * @param raw - the flag as given.
  * @param name - the flag name, for the message.
+ * @param min - the smallest value the endpoint honours.
  * @returns the parsed count.
  * @throws CliError when it is not a non-negative whole number.
  */
-function countFlag(raw: string, name: string): number {
+function countFlag(raw: string, name: string, min: number): number {
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0) {
-    throw new CliError(`${name} must be a whole number`);
+  if (!Number.isInteger(value) || value < min) {
+    throw new CliError(
+      min === 1 ? `${name} must be a whole number of at least 1` : `${name} must be a whole number`,
+    );
   }
   return value;
 }
@@ -100,8 +104,8 @@ export async function statusLogsCommand(
 
   const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
   const logs = await box.logs({
-    ...(flags.limit === undefined ? {} : { limit: countFlag(flags.limit, "--limit") }),
-    ...(flags.offset === undefined ? {} : { offset: countFlag(flags.offset, "--offset") }),
+    ...(flags.limit === undefined ? {} : { limit: countFlag(flags.limit, "--limit", 1) }),
+    ...(flags.offset === undefined ? {} : { offset: countFlag(flags.offset, "--offset", 0) }),
   });
 
   emit(

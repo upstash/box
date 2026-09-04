@@ -74,6 +74,7 @@ export async function scheduleAgentCommand(prompt: string[], flags: ScheduleFlag
     ...(flags.folder === undefined ? {} : { folder: flags.folder }),
     ...(flags.model === undefined ? {} : { model: flags.model }),
     ...(timeout === undefined ? {} : { timeout }),
+    ...(flags.webhookUrl === undefined ? {} : { webhookUrl: flags.webhookUrl }),
   });
 
   emit(schedule, [schedule.id], flags);
@@ -124,10 +125,11 @@ export async function scheduleUpdateCommand(
     ...(flags.prompt === undefined ? {} : { prompt: flags.prompt }),
     ...(flags.folder === undefined ? {} : { folder: flags.folder }),
     ...(flags.model === undefined ? {} : { model: flags.model }),
+    ...(flags.webhookUrl === undefined ? {} : { webhookUrl: flags.webhookUrl }),
   };
   if (Object.keys(changes).length === 0) {
     throw new CliError(
-      "Nothing to update. Pass --cron, --prompt, --folder, --model, or a command after --",
+      "Nothing to update. Pass --cron, --prompt, --folder, --model, --webhook-url, or a command after --",
     );
   }
 

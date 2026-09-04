@@ -83,6 +83,21 @@ describe("schedule and config", () => {
       expect(agent).toHaveBeenCalledWith(expect.objectContaining({ timeout: 60_000 }));
     });
 
+    it("forwards a webhook, which agent schedules support too", async () => {
+      const agent = vi.fn().mockResolvedValue({ id: "sch-2" });
+      getBox.mockResolvedValue({ schedule: { agent } });
+
+      await scheduleAgentCommand(["x"], {
+        ...flags,
+        cron: "@daily",
+        webhookUrl: "https://hook.test",
+      });
+
+      expect(agent).toHaveBeenCalledWith(
+        expect.objectContaining({ webhookUrl: "https://hook.test" }),
+      );
+    });
+
     it("rejects a timeout that is not a positive number", async () => {
       getBox.mockResolvedValue({ schedule: { agent: vi.fn() } });
 

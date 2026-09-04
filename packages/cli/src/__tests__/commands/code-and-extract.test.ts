@@ -176,6 +176,15 @@ describe("browser extract schema", () => {
     await expect(browserExtractCommand("x", { ...flags, schema })).rejects.toThrow(/type.*object/);
   });
 
+  it("refuses a schema file holding null with a message, not a TypeError", async () => {
+    // JSON.parse("null") succeeds, so the property read below it threw a raw
+    // TypeError past the CLI's own validation.
+    tabReturning({});
+    const schema = schemaAt(null);
+
+    await expect(browserExtractCommand("x", { ...flags, schema })).rejects.toThrow(/type.*object/);
+  });
+
   it("names the file when it cannot be read", async () => {
     tabReturning({});
 

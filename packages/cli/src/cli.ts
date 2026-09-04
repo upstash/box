@@ -590,6 +590,7 @@ withScheduleCommon(
   .option("-C, --folder <dir>", "Working directory inside the box")
   .option("--model <model>", "Model to run the prompt on")
   .option("--timeout <seconds>", "Give up after this long")
+  .option("--webhook-url <url>", "POST the result here after each run")
   .action(async (parts: string[], opts) =>
     runCommand(async () => scheduleAgentCommand(parts, merged(opts))),
   );
@@ -613,6 +614,7 @@ withScheduleCommon(
   .option("--prompt <text>", "New prompt")
   .option("-C, --folder <dir>", "New working directory")
   .option("--model <model>", "New model")
+  .option("--webhook-url <url>", "New webhook URL")
   .action(async (id: string, parts: string[], opts) =>
     runCommand(async () => scheduleUpdateCommand(id, parts, merged(opts))),
   );

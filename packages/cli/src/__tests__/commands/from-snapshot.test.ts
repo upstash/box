@@ -132,6 +132,27 @@ describe("fromSnapshotCommand", () => {
     expect(startRepl).not.toHaveBeenCalled();
   });
 
+  it("still reports the id when the directory cannot be written", async () => {
+    // The box exists and is billing by this point; swallowing its id would
+    // leave it running with no way to find it.
+    vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-9" } as any);
+    vi.mocked(writeBoxFile).mockImplementationOnce(() => {
+      throw new Error("EROFS: read-only file system");
+    });
+
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    let written = "";
+    try {
+      await fromSnapshotCommand("snap-1", { token: "key", repl: false });
+      // mockRestore also clears mock.calls, so read them before restoring.
+      written = stdout.mock.calls.map((call) => String(call[0])).join("");
+    } finally {
+      stdout.mockRestore();
+    }
+
+    expect(written).toContain("box-9");
+  });
+
   it("does not pin when --no-use is given", async () => {
     vi.mocked(Box.fromSnapshot).mockResolvedValueOnce({ id: "box-9" } as any);
 

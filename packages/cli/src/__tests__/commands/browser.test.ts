@@ -93,6 +93,22 @@ describe("box browser", () => {
     expect(written()).toContain("hello");
   });
 
+  it("prints the links, which the description promises", async () => {
+    // Without this only --json exposed a destination URL, so the default output
+    // did not match what the command says it reads.
+    const content = vi.fn().mockResolvedValue({
+      title: "T",
+      url: "u",
+      text: "body",
+      links: [{ text: "Docs", href: "https://docs.test" }],
+    });
+    boxWith({ listTabs: vi.fn().mockResolvedValue([{ id: "tab-1", content }]) });
+
+    await browserContentCommand({ ...flags });
+
+    expect(written()).toContain("https://docs.test");
+  });
+
   it("refuses to guess when several tabs are open", async () => {
     boxWith({ listTabs: vi.fn().mockResolvedValue([{ id: "tab-1" }, { id: "tab-2" }]) });
 

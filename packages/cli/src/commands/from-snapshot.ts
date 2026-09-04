@@ -108,8 +108,17 @@ export async function fromSnapshotCommand(
     return;
   }
 
-  // Pin it, so the commands that follow need no --box. Same as headless create.
-  const pinned = flags.use === false ? undefined : writeBoxFile(box.id);
+  // Pin it, so the commands that follow need no --box. Same as headless create,
+  // including the catch: the box already exists and is billing, so losing its id
+  // to a read-only directory would leave it running and undiscoverable.
+  let pinned: string | undefined;
+  if (flags.use !== false) {
+    try {
+      pinned = writeBoxFile(box.id);
+    } catch (error) {
+      note(`Could not write a .box file: ${(error as Error).message}`);
+    }
+  }
   emit(
     { id: box.id, ...(pinned === undefined ? {} : { box_file: pinned }) },
     [box.id, ...(pinned === undefined ? [] : [`Pinned to ${pinned}`])],

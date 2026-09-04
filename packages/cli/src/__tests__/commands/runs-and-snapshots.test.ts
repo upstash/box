@@ -73,6 +73,23 @@ describe("runs, logs, cancel and snapshots", () => {
       expect(logs).toHaveBeenCalledWith({ limit: 50, offset: 10 });
     });
 
+    it("rejects --limit 0, which the SDK would drop as falsy", async () => {
+      // box.logs only sets limit when truthy, so 0 returned a full default
+      // page instead of nothing, with no sign the flag was ignored.
+      getBox.mockResolvedValue({ logs: vi.fn() });
+
+      await expect(statusLogsCommand({ ...flags, limit: "0" })).rejects.toThrow(/at least 1/);
+    });
+
+    it("still allows --offset 0", async () => {
+      const logs = vi.fn().mockResolvedValue([]);
+      getBox.mockResolvedValue({ logs });
+
+      await statusLogsCommand({ ...flags, offset: "0" });
+
+      expect(logs).toHaveBeenCalledWith({ offset: 0 });
+    });
+
     it("renders the timestamp as a date rather than a number", async () => {
       getBox.mockResolvedValue({
         logs: vi
