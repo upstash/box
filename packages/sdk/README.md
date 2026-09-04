@@ -385,6 +385,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                    | Value                         |
 | ----------------------- | ----------------------------- |
+| `ClaudeCode.Fable_5_1`  | `anthropic/claude-fable-5-1`  |
 | `ClaudeCode.Fable_5`    | `anthropic/claude-fable-5`    |
 | `ClaudeCode.Opus_5`     | `anthropic/claude-opus-5`     |
 | `ClaudeCode.Opus_4_8`   | `anthropic/claude-opus-4-8`   |
@@ -417,6 +418,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                               | Value                                   |
 | ---------------------------------- | --------------------------------------- |
+| `OpenRouterModel.Claude_Fable_5_1` | `openrouter/anthropic/claude-fable-5.1` |
 | `OpenRouterModel.Claude_Fable_5`   | `openrouter/anthropic/claude-fable-5`   |
 | `OpenRouterModel.Claude_Opus_5`    | `openrouter/anthropic/claude-opus-5`    |
 | `OpenRouterModel.Claude_Sonnet_5`  | `openrouter/anthropic/claude-sonnet-5`  |
