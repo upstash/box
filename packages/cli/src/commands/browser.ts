@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { z } from "zod";
 import { Box, type Tab } from "@upstash/box";
 import { resolveBoxId, announceBox } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
@@ -8,6 +9,8 @@ export type BrowserFlags = GlobalFlags & {
   tab?: string;
   out?: string;
   fullPage?: boolean;
+  schema?: string;
+  maxSeconds?: string;
 };
 
 async function open(flags: BrowserFlags): Promise<Box> {
@@ -138,4 +141,185 @@ export async function browserCdpUrlCommand(flags: BrowserFlags): Promise<void> {
   const url = await box.browser.cdpUrl();
   note("Connect with: chromium.connectOverCDP(<url>)");
   emit({ cdp_url: url }, [url], flags);
+}
+
+/**
+ * Navigate an existing tab.
+ * @param url - where to go.
+ * @param flags - the merged flags.
+ */
+export async function browserGotoCommand(url: string, flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const tab = await resolveTab(box, flags);
+  const content = await tab.goto(url);
+  emit(content, [content.title, content.url], flags);
+}
+
+/**
+ * List the actions available on the page.
+ * @param instruction - what to look for.
+ * @param flags - the merged flags.
+ */
+export async function browserObserveCommand(
+  instruction: string,
+  flags: BrowserFlags,
+): Promise<void> {
+  const box = await open(flags);
+  const tab = await resolveTab(box, flags);
+  const result = await tab.observe(instruction);
+  emit(result, [JSON.stringify(result, undefined, 2)], flags);
+}
+
+/**
+ * Build a Zod object from a flat JSON Schema.
+ *
+ * `extract` takes a Zod schema, which cannot travel through a command line, so
+ * the CLI accepts the JSON Schema an agent can write to a file. Only a flat
+ * object of scalars and string arrays converts; anything nested is refused
+ * rather than silently dropped, because a field that vanishes from the schema
+ * comes back as a missing key rather than as an error.
+ * @param path - file holding the JSON Schema.
+ * @returns the equivalent Zod object.
+ */
+function schemaFromFile(path: string): z.ZodTypeAny {
+  let parsed: {
+    type?: string;
+    properties?: Record<string, { type?: string; items?: { type?: string } }>;
+  };
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new CliError(`Could not read the schema at ${path}: ${(error as Error).message}`);
+  }
+
+  if (parsed.type !== "object" || !parsed.properties) {
+    throw new CliError('The schema must be {"type":"object","properties":{...}}');
+  }
+
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const [key, prop] of Object.entries(parsed.properties)) {
+    switch (prop.type) {
+      case "string":
+        shape[key] = z.string();
+        break;
+      case "number":
+      case "integer":
+        shape[key] = z.number();
+        break;
+      case "boolean":
+        shape[key] = z.boolean();
+        break;
+      case "array":
+        if (prop.items?.type !== "string") {
+          throw new CliError(`Field ${key}: only arrays of string are supported`);
+        }
+        shape[key] = z.array(z.string());
+        break;
+      default:
+        throw new CliError(`Field ${key}: unsupported type ${prop.type ?? "(missing)"}`);
+    }
+  }
+  return z.object(shape);
+}
+
+/**
+ * Pull structured data off the page against a schema.
+ * @param instruction - what to extract.
+ * @param flags - the merged flags; --schema names a JSON Schema file.
+ */
+export async function browserExtractCommand(
+  instruction: string,
+  flags: BrowserFlags,
+): Promise<void> {
+  if (!flags.schema) {
+    throw new CliError("--schema <file.json> is required, holding a flat JSON Schema object");
+  }
+
+  const box = await open(flags);
+  const tab = await resolveTab(box, flags);
+  const result = await tab.extract(instruction, schemaFromFile(flags.schema) as never);
+  emit(result, [JSON.stringify(result, undefined, 2)], flags);
+}
+
+/**
+ * Print the live-view URL for a tab, to watch it in a browser.
+ * @param flags - the merged flags.
+ */
+export async function browserLiveUrlCommand(flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const tab = await resolveTab(box, flags);
+  const url = await tab.liveViewUrl();
+  emit({ live_view_url: url }, [url], flags);
+}
+
+/**
+ * Start recording the browser session.
+ * @param flags - the merged flags.
+ */
+export async function recordingStartCommand(flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const seconds = flags.maxSeconds === undefined ? undefined : Number(flags.maxSeconds);
+  if (seconds !== undefined && (!Number.isFinite(seconds) || seconds <= 0)) {
+    throw new CliError("--max-seconds must be a positive number");
+  }
+
+  const handle = await box.browser.recordings.start(
+    seconds === undefined ? undefined : { maxDurationSeconds: seconds },
+  );
+  emit(handle, [handle.id ?? "recording started"], flags);
+}
+
+/**
+ * Stop the active recording.
+ * @param flags - the merged flags.
+ */
+export async function recordingStopCommand(flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const result = await box.browser.recordings.stop();
+  emit(result, [result?.id ?? "recording stopped"], flags);
+}
+
+/**
+ * List recordings.
+ * @param flags - the merged flags.
+ */
+export async function recordingListCommand(flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const recordings = await box.browser.recordings.list();
+  emit(
+    recordings,
+    recordings.length === 0
+      ? ["No recordings."]
+      : recordings.map((rec) => `${rec.id}\t${rec.status ?? ""}`),
+    flags,
+  );
+}
+
+/**
+ * Show one recording.
+ * @param recordingId - which recording.
+ * @param flags - the merged flags.
+ */
+export async function recordingGetCommand(recordingId: string, flags: BrowserFlags): Promise<void> {
+  const box = await open(flags);
+  const recording = await box.browser.recordings.get(recordingId);
+  emit(recording, [JSON.stringify(recording, undefined, 2)], flags);
+}
+
+/**
+ * Download a recording to a file.
+ * @param recordingId - which recording.
+ * @param flags - the merged flags; --out names the destination.
+ */
+export async function recordingDownloadCommand(
+  recordingId: string,
+  flags: BrowserFlags,
+): Promise<void> {
+  if (!flags.out) {
+    throw new CliError("--out <file> is required: video bytes cannot share stdout with text");
+  }
+
+  const box = await open(flags);
+  await box.browser.recordings.download(recordingId, { path: flags.out });
+  emit({ id: recordingId, path: flags.out }, [`Downloaded to ${flags.out}`], flags);
 }

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
@@ -52,4 +53,43 @@ export async function execCommand(parts: string[], flags: ExecFlags): Promise<vo
     { cwd: flags.cwd },
   );
   if (exitCode !== 0) process.exitCode = exitCode;
+}
+
+/**
+ * Run inline code in the box, in one of the runtimes it ships with.
+ *
+ * `-` reads the source from stdin, which is how a caller avoids the shell
+ * mangling quotes, newlines and backslashes in a program.
+ * @param source - the code, or `-` to read stdin.
+ * @param flags - the merged flags; --lang picks the runtime.
+ */
+export async function execCodeCommand(
+  source: string,
+  flags: ExecFlags & { lang?: string; timeout?: string },
+): Promise<void> {
+  const langs = new Set(["js", "ts", "python"]);
+  const lang = flags.lang ?? "python";
+  if (!langs.has(lang)) {
+    throw new CliError(`--lang must be one of: ${[...langs].join(", ")}`);
+  }
+
+  const code = source === "-" ? readFileSync(0, "utf8") : source;
+  if (!code.trim()) throw new CliError("No code to run");
+
+  const timeout = flags.timeout === undefined ? undefined : Number(flags.timeout);
+  if (timeout !== undefined && (!Number.isFinite(timeout) || timeout <= 0)) {
+    throw new CliError("--timeout must be a positive number of seconds");
+  }
+
+  const resolved = resolveBoxId({ flag: flags.box });
+  announceBox(resolved);
+  const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
+
+  const run = await box.exec.code({
+    code,
+    lang: lang as "js" | "ts" | "python",
+    ...(timeout === undefined ? {} : { timeout }),
+  });
+
+  emit({ output: run.result, exit_code: 0 }, [run.result], flags);
 }
