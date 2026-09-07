@@ -556,6 +556,18 @@ class PullRequest(_Model):
     number: int
     title: str
     base: str
+    # Set when gh exited non-zero but still returned a URL: the pull request
+    # exists, but an attachment failed to upload or it was already open.
+    warning: Optional[str] = None
+
+
+class Issue(_Model):
+    url: str
+    number: int
+    title: str
+    # Set when gh exited non-zero but still returned a URL, which means an
+    # attachment failed to upload.
+    warning: Optional[str] = None
 
 
 class Snapshot(_Model):

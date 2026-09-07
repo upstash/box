@@ -20,7 +20,7 @@ async function emptyGitMessage(box: Box, clean: string): Promise<string> {
 }
 
 /**
- * Handle git subcommands: clone, diff, status, commit, push, create-pr, exec, checkout.
+ * Handle git subcommands: clone, diff, status, commit, push, create-pr, create-issue, exec, checkout.
  */
 export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPLEvent> {
   const parts = args.split(/\s+/);
@@ -72,6 +72,18 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       }
       const pr = await box.git.createPR({ title });
       yield { type: "log", message: `PR #${pr.number}: ${pr.url}` };
+      if (pr.warning) yield { type: "log", message: `Warning: ${pr.warning}` };
+      break;
+    }
+    case "create-issue": {
+      const title = parts.slice(1).join(" ");
+      if (!title) {
+        yield { type: "log", message: "Usage: git create-issue <title>" };
+        return;
+      }
+      const issue = await box.git.createIssue({ title });
+      yield { type: "log", message: `Issue #${issue.number}: ${issue.url}` };
+      if (issue.warning) yield { type: "log", message: `Warning: ${issue.warning}` };
       break;
     }
     case "exec": {
@@ -143,7 +155,7 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       yield {
         type: "log",
         message:
-          "Usage: git <clone|diff|status|commit|push|create-pr|exec|checkout|config> [args...]",
+          "Usage: git <clone|diff|status|commit|push|create-pr|create-issue|exec|checkout|config> [args...]",
       };
   }
 }

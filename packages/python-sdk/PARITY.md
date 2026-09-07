@@ -28,7 +28,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `files.read/write/list/upload/download` | `files.read/write/list/upload/download` |
 | `files.stat/mkdir/rename/remove` | `files.stat/mkdir/rename/remove` |
 | `exec.session` (live WebSocket session) | `exec.session` |
-| `git.clone/diff/status/commit/updateConfig/push/createPR/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/exec/checkout` |
+| `git.clone/diff/status/commit/updateConfig/push/createPR/createIssue/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/create_issue/exec/checkout` |
 | `schedule.exec/agent/list/get/update/pause/resume/delete` | same (snake) |
 | `skills.add/remove/list` | `skills.add/remove/list` |
 | `labels.add/remove/list` | `labels.add/remove/list` |

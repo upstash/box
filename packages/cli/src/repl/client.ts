@@ -30,7 +30,7 @@ const COMMANDS: Record<BoxREPLCommandName, Omit<BoxREPLCommand, "name">> = {
   },
   git: {
     description:
-      "Git operations (clone, diff, status, commit, push, create-pr, exec, checkout, config)",
+      "Git operations (clone, diff, status, commit, push, create-pr, create-issue, exec, checkout, config)",
     handler: handleGit,
   },
   snapshot: {

@@ -2,6 +2,17 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## Unreleased
+
+- Add `git.create_issue()`, which opens a GitHub issue from a box.
+- Add `attach` to `git.create_pr()` and `git.create_issue()`. It takes image or
+  video files, relative to the working directory, and uploads them to the new
+  item. Alt text for an image is written as `shot.png#alt text`; a video cannot
+  take alt text.
+- Add `warning` to `PullRequest` and the new `Issue` model. It is set when `gh`
+  exits non-zero but still returns a URL, which means the item exists while an
+  attachment is missing, or the pull request was already open.
+
 ## 0.3.1
 
 - Fix `git.update_config()` sending its request to `/v2/box/{id}/git-config`,

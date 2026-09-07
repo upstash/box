@@ -68,6 +68,7 @@ from ..types import (
     FinishUsage,
     GitCommitResult,
     GitConfigResult,
+    Issue,
     ListOptions,
     LogEntry,
     ModelConfig,
@@ -429,9 +430,23 @@ class AsyncGitNamespace:
         await self._box._git_push(branch)
 
     async def create_pr(
-        self, *, title: str, body: Optional[str] = None, base: Optional[str] = None
+        self,
+        *,
+        title: str,
+        body: Optional[str] = None,
+        base: Optional[str] = None,
+        attach: Optional[List[str]] = None,
     ) -> PullRequest:
-        return await self._box._git_create_pr(title, body, base)
+        return await self._box._git_create_pr(title, body, base, attach)
+
+    async def create_issue(
+        self,
+        *,
+        title: str,
+        body: Optional[str] = None,
+        attach: Optional[List[str]] = None,
+    ) -> Issue:
+        return await self._box._git_create_issue(title, body, attach)
 
     async def exec(self, *, args: List[str]) -> str:
         return await self._box._git_exec(args)
@@ -1713,13 +1728,25 @@ class AsyncBox(Generic[T]):
             body["folder"] = folder
         await self._request("POST", f"/v2/box/{self.id}/git/push", body=body)
 
-    async def _git_create_pr(self, title, body_text, base) -> PullRequest:
+    async def _git_create_pr(self, title, body_text, base, attach=None) -> PullRequest:
         folder = self._get_folder()
         body: Dict[str, Any] = {"title": title, "body": body_text, "base": base}
+        if attach:
+            body["attach"] = attach
         if folder:
             body["folder"] = folder
         data = await self._request("POST", f"/v2/box/{self.id}/git/create-pr", body=body)
         return PullRequest.model_validate(data)
+
+    async def _git_create_issue(self, title, body_text, attach=None) -> Issue:
+        folder = self._get_folder()
+        body: Dict[str, Any] = {"title": title, "body": body_text}
+        if attach:
+            body["attach"] = attach
+        if folder:
+            body["folder"] = folder
+        data = await self._request("POST", f"/v2/box/{self.id}/git/create-issue", body=body)
+        return Issue.model_validate(data)
 
     async def _git_exec(self, args) -> str:
         folder = self._get_folder()

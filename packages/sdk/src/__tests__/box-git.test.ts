@@ -194,6 +194,74 @@ describe("Box git operations", () => {
       expect(body.title).toBe("Fix");
       expect(body.body).toBe("desc");
       expect(body.base).toBe("main");
+      expect(body.attach).toBeUndefined();
+    });
+
+    it("sends attachments and surfaces a warning", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          url: "https://github.com/owner/repo/pull/42",
+          number: 42,
+          title: "Fix",
+          base: "main",
+          warning: "failed to upload later.png",
+        }),
+      );
+
+      const pr = await box.git.createPR({
+        title: "Fix",
+        attach: ["shot.png#the login error", "clip.mp4"],
+      });
+      expect(pr.warning).toBe("failed to upload later.png");
+
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.attach).toEqual(["shot.png#the login error", "clip.mp4"]);
+    });
+
+    it("omits an empty attach list", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ url: "u", number: 1, title: "t", base: "main" }),
+      );
+
+      await box.git.createPR({ title: "Fix", attach: [] });
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.attach).toBeUndefined();
+    });
+  });
+
+  describe("git.createIssue", () => {
+    it("creates an issue", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({
+          url: "https://github.com/owner/repo/issues/9",
+          number: 9,
+          title: "Bug",
+        }),
+      );
+
+      const issue = await box.git.createIssue({ title: "Bug", body: "steps" });
+      expect(issue.number).toBe(9);
+      expect(issue.url).toContain("issues/9");
+      expect(issue.warning).toBeUndefined();
+
+      const call = fetchMock.mock.calls[1]!;
+      expect(call[0]).toContain("/git/create-issue");
+      const body = JSON.parse(call[1]?.body as string);
+      expect(body.title).toBe("Bug");
+      expect(body.body).toBe("steps");
+      expect(body.base).toBeUndefined();
+    });
+
+    it("sends attachments", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ url: "u", number: 9, title: "Bug" }));
+
+      await box.git.createIssue({ title: "Bug", attach: ["repro.png#the repro"] });
+      const body = JSON.parse(fetchMock.mock.calls[1]![1]?.body as string);
+      expect(body.attach).toEqual(["repro.png#the repro"]);
     });
   });
 

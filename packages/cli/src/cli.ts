@@ -88,6 +88,7 @@ import {
   gitCommitCommand,
   gitCheckoutCommand,
   gitPushCommand,
+  gitCreateIssueCommand,
   gitCreatePrCommand,
   gitConfigCommand,
   gitExecCommand,
@@ -348,6 +349,13 @@ withGitCommon(
     await runCommand(async () => gitCheckoutCommand(branch, { ...globals(flags), ...flags }));
   });
 
+// --attach repeats, so each occurrence appends instead of overwriting.
+const attachHelp =
+  "Image or video to upload; repeat for several. Alt text for an image: 'shot.png#alt text'";
+function collectAttach(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 withGitCommon(git.command("push").description("Push the current branch"))
   .option("--branch <branch>", "Branch to push")
   .action(async (flags: Record<string, unknown>) => {
@@ -358,8 +366,17 @@ withGitCommon(git.command("create-pr").description("Open a pull request"))
   .requiredOption("--title <title>", "Pull request title")
   .option("--body <body>", "Pull request body")
   .option("--base <branch>", "Base branch")
+  .option("--attach <file>", attachHelp, collectAttach, [])
   .action(async (flags: Record<string, unknown>) => {
     await runCommand(async () => gitCreatePrCommand({ ...globals(flags), ...flags }));
+  });
+
+withGitCommon(git.command("create-issue").description("Open an issue"))
+  .requiredOption("--title <title>", "Issue title")
+  .option("--body <body>", "Issue body")
+  .option("--attach <file>", attachHelp, collectAttach, [])
+  .action(async (flags: Record<string, unknown>) => {
+    await runCommand(async () => gitCreateIssueCommand({ ...globals(flags), ...flags }));
   });
 
 withGitCommon(git.command("config").description("Show or set the git identity"))
