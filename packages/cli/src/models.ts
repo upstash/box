@@ -44,6 +44,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_6_Astra, label: "GPT-6 Astra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
         { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },
@@ -73,6 +74,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenAICodex.GPT_6_Astra, label: "GPT-6 Astra" },
         { value: OpenAICodex.GPT_5_6_Sol, label: "GPT-5.6 Sol" },
         { value: OpenAICodex.GPT_5_6_Terra, label: "GPT-5.6 Terra" },
         { value: OpenAICodex.GPT_5_6_Luna, label: "GPT-5.6 Luna" },
@@ -98,6 +100,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_6_Astra, label: "GPT-6 Astra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
         { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },
@@ -109,6 +112,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "Vercel AI Gateway",
       options: [
+        { value: VercelModel.GPT_6_Astra, label: "GPT-6 Astra (Vercel)" },
         { value: VercelModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (Vercel)" },
         { value: VercelModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (Vercel)" },
         { value: VercelModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (Vercel)" },
@@ -172,6 +176,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
     {
       label: "OpenAI",
       options: [
+        { value: OpenCodeModel.GPT_6_Astra, label: "GPT-6 Astra" },
         { value: OpenCodeModel.GPT_5_5, label: "GPT-5.5" },
         { value: OpenCodeModel.GPT_5_4_Pro, label: "GPT-5.4 Pro" },
         { value: OpenCodeModel.GPT_5_4, label: "GPT-5.4" },
@@ -200,6 +205,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: OpenRouterModel.DeepSeek_R1, label: "DeepSeek R1 (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Pro, label: "Gemini 2.5 Pro (OR)" },
         { value: OpenRouterModel.Gemini_2_5_Flash, label: "Gemini 2.5 Flash (OR)" },
+        { value: OpenRouterModel.GPT_6_Astra, label: "GPT-6 Astra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (OR)" },
         { value: OpenRouterModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (OR)" },
         { value: OpenRouterModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (OR)" },

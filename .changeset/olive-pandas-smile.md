@@ -3,7 +3,10 @@
 "@upstash/box-cli": patch
 ---
 
-Add Claude Fable 5.1, and correct two model picker entries.
+Add GPT-6 Astra and Claude Fable 5.1, and correct two model picker entries.
+
+`GPT_6_Astra` is available on the OpenAI API, OpenRouter, the Vercel AI Gateway
+and OpenCode Zen, all at $10 / $50 per MTok.
 
 `Fable_5_1` is available on the Claude API, OpenRouter, Vercel AI Gateway and
 OpenCode Zen. Note the spelling differs by provider: the Claude API and Zen use

@@ -66,6 +66,7 @@ class ClaudeCode(str, Enum):
 class OpenAICodex(str, Enum):
     """OpenAI Codex model identifiers."""
 
+    GPT_6_ASTRA = "openai/gpt-6-astra"
     GPT_5_6 = "openai/gpt-5.6"
     GPT_5_6_SOL = "openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "openai/gpt-5.6-terra"
@@ -93,6 +94,7 @@ class OpenRouterModel(str, Enum):
     DEEPSEEK_R1 = "openrouter/deepseek/deepseek-r1"
     GEMINI_2_5_PRO = "openrouter/google/gemini-2.5-pro"
     GEMINI_2_5_FLASH = "openrouter/google/gemini-2.5-flash"
+    GPT_6_ASTRA = "openrouter/openai/gpt-6-astra"
     GPT_5_6_SOL = "openrouter/openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "openrouter/openai/gpt-5.6-terra"
     GPT_5_6_LUNA = "openrouter/openai/gpt-5.6-luna"
@@ -112,6 +114,7 @@ class VercelModel(str, Enum):
     CLAUDE_SONNET_4_6 = "vercel/anthropic/claude-sonnet-4.6"
     CLAUDE_OPUS_4_6 = "vercel/anthropic/claude-opus-4.6"
     CLAUDE_HAIKU_4_5 = "vercel/anthropic/claude-haiku-4.5"
+    GPT_6_ASTRA = "vercel/openai/gpt-6-astra"
     GPT_5_6_SOL = "vercel/openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "vercel/openai/gpt-5.6-terra"
     GPT_5_6_LUNA = "vercel/openai/gpt-5.6-luna"
@@ -144,6 +147,7 @@ class OpenCodeModel(str, Enum):
     CLAUDE_SONNET_5 = "opencode/claude-sonnet-5"
     CLAUDE_HAIKU_4_5 = "opencode/claude-haiku-4-5"
     # OpenAI-backed OpenCode models
+    GPT_6_ASTRA = "opencode/gpt-6-astra"
     GPT_5_5 = "opencode/gpt-5.5"
     GPT_5_4 = "opencode/gpt-5.4"
     GPT_5_4_PRO = "opencode/gpt-5.4-pro"
