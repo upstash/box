@@ -89,6 +89,8 @@ def infer_default_provider(model: str) -> Agent:
     """Infer the default harness from a model string prefix."""
     if model.startswith("custom/"):
         return Agent.CUSTOM
+    if model.startswith("bedrock/"):
+        return Agent.CLAUDE_CODE
     if model.startswith("cursor/"):
         return Agent.CURSOR
     if model.startswith("vercel/openai/"):
