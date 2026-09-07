@@ -129,9 +129,7 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
   [Agent.OpenCode]: [
     {
       label: "OpenCode — Free",
-      options: [
-        { value: OpenCodeModel.Zen_Big_Pickle, label: "Big Pickle (Free)" },
-      ],
+      options: [{ value: OpenCodeModel.Zen_Big_Pickle, label: "Big Pickle (Free)" }],
     },
     {
       label: "OpenCode — Paid",

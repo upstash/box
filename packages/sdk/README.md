@@ -402,7 +402,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                              | Value                          |
 | --------------------------------- | ------------------------------ |
-| `OpenAICodex.GPT_6_Astra` | `openai/gpt-6-astra`          |
+| `OpenAICodex.GPT_6_Astra`         | `openai/gpt-6-astra`           |
 | `OpenAICodex.GPT_5_6`             | `openai/gpt-5.6` (alias → Sol) |
 | `OpenAICodex.GPT_5_6_Sol`         | `openai/gpt-5.6-sol`           |
 | `OpenAICodex.GPT_5_6_Terra`       | `openai/gpt-5.6-terra`         |
