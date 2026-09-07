@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
@@ -62,12 +63,10 @@ describe("initDemoCommand", () => {
   it("exits if directory already exists", async () => {
     existsSpy.mockReturnValue(true);
 
-    await initDemoCommand({ token: "key", directory: "my-demo" });
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Directory "my-demo" already exists'),
+    await expect(initDemoCommand({ token: "key", directory: "my-demo" })).rejects.toThrow(
+      /Directory "my-demo" already exists/,
     );
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("aborts if user declines confirmation", async () => {

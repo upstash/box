@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
   }, 120000);
 
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
     const schedule = await box.schedule.agent({
       cron: "0 9 * * *",
       prompt: "Run the test suite",
-      model: "anthropic/claude-sonnet-4-6",
+      model: "anthropic/claude-haiku-4-5",
       webhookUrl: "https://example.com/hook",
       webhookHeaders: { "x-key": "val" },
     });
@@ -57,7 +57,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
     expect(schedule.type).toBe("prompt");
     expect(schedule.status).toBe("active");
     expect(schedule.prompt).toBe("Run the test suite");
-    expect(schedule.model).toBe("anthropic/claude-sonnet-4-6");
+    expect(schedule.model).toBe("anthropic/claude-haiku-4-5");
 
     const list = await box.schedule.list();
     const found = list.find((s) => s.id === schedule.id)!;

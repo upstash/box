@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../core/errors.js";
 import { resolveToken } from "../auth.js";
 
 describe("resolveToken", () => {
@@ -22,10 +23,12 @@ describe("resolveToken", () => {
     expect(resolveToken()).toBe("env-token");
   });
 
-  it("exits when no token available", () => {
-    resolveToken();
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("API token required"));
+  it("throws when no token is available", () => {
+    // A CliError rather than process.exit, so it exits 125 through the same
+    // boundary as every other CLI failure.
+    expect(() => resolveToken()).toThrow(CliError);
+    expect(() => resolveToken()).toThrow(/API token required/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("prefers flag over env var", () => {

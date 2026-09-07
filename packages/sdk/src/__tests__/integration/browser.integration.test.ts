@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("browser", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
       browser: true,
     });
   }, 180000);

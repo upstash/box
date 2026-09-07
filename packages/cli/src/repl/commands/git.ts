@@ -1,5 +1,23 @@
 import type { Box } from "@upstash/box";
 import type { BoxREPLEvent } from "../types.js";
+import { isInsideRepo, notARepoMessage } from "../../core/git-repo.js";
+import { hasFlagToken, readFlagValue } from "./args.js";
+
+/**
+ * Explain empty git output, which means either a clean tree or no repository.
+ * @param box - the box at its current directory.
+ * @param clean - what to say when it really is a repository.
+ * @returns the message to show.
+ */
+async function emptyGitMessage(box: Box, clean: string): Promise<string> {
+  try {
+    return (await isInsideRepo(box)) ? clean : notARepoMessage();
+  } catch {
+    // Neither answer is supported by evidence, so claim neither. Saying
+    // "(clean)" here would be the same wrong answer this check exists to stop.
+    return "(no output; could not check whether this is a git repository)";
+  }
+}
 
 /**
  * Handle git subcommands: clone, diff, status, commit, push, create-pr, exec, checkout.
@@ -22,12 +40,12 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
     }
     case "diff": {
       const diff = await box.git.diff();
-      yield { type: "log", message: diff || "(no changes)" };
+      yield { type: "log", message: diff || (await emptyGitMessage(box, "(no changes)")) };
       break;
     }
     case "status": {
       const status = await box.git.status();
-      yield { type: "log", message: status || "(clean)" };
+      yield { type: "log", message: status || (await emptyGitMessage(box, "(clean)")) };
       break;
     }
     case "commit": {
@@ -66,6 +84,51 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
       yield { type: "log", message: result.output || "(no output)" };
       break;
     }
+    case "config": {
+      // Setting the identity is what makes commits from the box attributable.
+      const name = readFlagValue(args, "--name");
+      const email = readFlagValue(args, "--email");
+      // A flag with no value is a mistake, not a request to read the identity.
+      for (const [flag, value] of [
+        ["--name", name],
+        ["--email", email],
+      ] as const) {
+        if (hasFlagToken(args, flag) && value === undefined) {
+          yield { type: "log", message: `Usage: git config ${flag} <value>` };
+          return;
+        }
+      }
+      if (name === undefined && email === undefined) {
+        // There is no GET for the identity, and status() returns porcelain, not
+        // config. Ask git itself instead of printing something unrelated.
+        // A non-zero `git config --get` means the key is unset, which is an
+        // answer. A request that failed is not, and must not be shown as
+        // "(unset)": let it propagate, as the non-interactive path does.
+        const read = async (key: string): Promise<string> => {
+          const result = await box.git.exec({ args: ["config", "--get", key] });
+          if (result.exit_code === 0) return result.output.trim();
+          // git uses 1 for "not found"; anything else is a real failure.
+          if (result.exit_code === 1) return "";
+          throw new Error(`Could not read ${key}: git exited ${result.exit_code}`);
+        };
+        const [userName, userEmail] = await Promise.all([read("user.name"), read("user.email")]);
+        const shown = (value: string) => value || "(unset)";
+        yield {
+          type: "log",
+          message: `git identity: ${shown(userName)} <${shown(userEmail)}>`,
+        };
+        return;
+      }
+      const updated = await box.git.updateConfig({
+        ...(name === undefined ? {} : { userName: name }),
+        ...(email === undefined ? {} : { userEmail: email }),
+      });
+      yield {
+        type: "log",
+        message: `git identity: ${updated.git_user_name} <${updated.git_user_email}>`,
+      };
+      break;
+    }
     case "checkout": {
       const branch = parts[1];
       if (!branch) {
@@ -79,7 +142,8 @@ export async function* handleGit(box: Box, args: string): AsyncGenerator<BoxREPL
     default:
       yield {
         type: "log",
-        message: "Usage: git <clone|diff|status|commit|push|create-pr|exec|checkout> [args...]",
+        message:
+          "Usage: git <clone|diff|status|commit|push|create-pr|exec|checkout|config> [args...]",
       };
   }
 }

@@ -28,7 +28,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regula
   it("creates a source box and writes files", async () => {
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
+      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
 
     await sourceBox.files.write({ path: "hello.txt", content: "hello from snapshot" });

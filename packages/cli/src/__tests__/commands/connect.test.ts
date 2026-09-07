@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import { connectCommand } from "../../commands/connect.js";
 
 vi.mock("@upstash/box", () => ({
@@ -72,19 +73,14 @@ describe("connectCommand", () => {
   it("exits when no boxes found", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([]);
 
-    // process.exit is mocked so code continues; catch the resulting error
-    await connectCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(connectCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("filters out deleted boxes", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-deleted", status: "deleted" } as any]);
 
-    await connectCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(connectCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

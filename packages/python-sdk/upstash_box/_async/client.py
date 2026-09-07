@@ -396,9 +396,14 @@ class AsyncGitNamespace:
         self._box = box
 
     async def clone(
-        self, *, repo: str, branch: Optional[str] = None, depth: Optional[int] = None
+        self,
+        *,
+        repo: str,
+        branch: Optional[str] = None,
+        depth: Optional[int] = None,
+        folder: Optional[str] = None,
     ) -> None:
-        await self._box._git_clone(repo, branch, depth)
+        await self._box._git_clone(repo, branch, depth, folder)
 
     async def diff(self) -> str:
         return await self._box._git_diff()
@@ -1656,8 +1661,10 @@ class AsyncBox(Generic[T]):
 
     # ==================== Git ====================
 
-    async def _git_clone(self, repo, branch, depth) -> None:
-        folder = self._get_folder()
+    async def _git_clone(self, repo, branch, depth, folder=None) -> None:
+        # For clone the folder is the destination, so an explicit one wins over
+        # the current directory; the directory does not exist yet by definition.
+        folder = folder or self._get_folder()
         body: Dict[str, Any] = {"repo": repo, "branch": branch, "github_token": self._git_token}
         if depth is not None:
             body["depth"] = depth
@@ -1694,7 +1701,7 @@ class AsyncBox(Generic[T]):
             raise BoxError("At least one of user_name or user_email is required")
         data = await self._request(
             "PUT",
-            f"/v2/box/{self.id}/git-config",
+            f"/v2/box/{self.id}/config/git",
             body={"git_user_name": user_name, "git_user_email": user_email},
         )
         return GitConfigResult.model_validate(data)

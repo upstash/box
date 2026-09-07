@@ -21,10 +21,13 @@ import { Box } from "@upstash/box";
 
 describe("labels commands", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
 
   beforeEach(() => {
     vi.clearAllMocks();
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     vi.mocked(Box.get).mockResolvedValue({ id: "box-1", labels: mockLabels } as any);
   });
 
@@ -37,7 +40,7 @@ describe("labels commands", () => {
 
     expect(Box.get).toHaveBeenCalledWith("box-1", { apiKey: "key" });
     expect(mockLabels.add).toHaveBeenCalledWith("x-team");
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("beta, x-team"));
+    expect(written()).toContain("beta, x-team");
   });
 
   it("remove sends the label and prints updated set", async () => {
@@ -46,7 +49,7 @@ describe("labels commands", () => {
     await labelRemoveCommand("box-1", "beta", { token: "key" });
 
     expect(mockLabels.remove).toHaveBeenCalledWith("beta");
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("x-team"));
+    expect(written()).toContain("x-team");
   });
 
   it("list prints each label", async () => {
@@ -55,15 +58,23 @@ describe("labels commands", () => {
     await labelListCommand("box-1", { token: "key" });
 
     expect(mockLabels.list).toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalledWith("beta");
-    expect(logSpy).toHaveBeenCalledWith("x-team");
+    expect(written()).toContain("beta");
+    expect(written()).toContain("x-team");
   });
 
-  it("list prints a message when there are no labels", async () => {
+  it("says so on stderr when there are no labels, leaving stdout empty", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     mockLabels.list.mockResolvedValueOnce([]);
 
     await labelListCommand("box-1", { token: "key" });
 
-    expect(logSpy).toHaveBeenCalledWith("No labels.");
+    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).toContain("No labels.");
+    expect(written()).toBe("");
+  });
+
+  it("emits an empty array under --json rather than a message", async () => {
+    mockLabels.list.mockResolvedValueOnce([]);
+    await labelListCommand("box-1", { token: "key", json: true });
+    expect(JSON.parse(written())).toEqual([]);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { CliError } from "../../core/errors.js";
 import { snapshotCommand } from "../../commands/snapshot.js";
 
 vi.mock("@upstash/box", () => ({
@@ -21,12 +22,17 @@ import { Box } from "@upstash/box";
 describe("snapshotCommand", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: ReturnType<typeof vi.spyOn>;
+  let stderr: ReturnType<typeof vi.spyOn>;
+  const written = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -41,7 +47,7 @@ describe("snapshotCommand", () => {
 
     expect(Box.get).toHaveBeenCalledWith("box-1", { apiKey: "key" });
     expect(mockBox.snapshot).toHaveBeenCalledWith({ name: "my-snap" });
-    expect(logSpy).toHaveBeenCalledWith("Snapshot created: snap-1 (my-snap)");
+    expect(written()).toContain("Snapshot created: snap-1 (my-snap)");
   });
 
   it("uses single box when only one exists", async () => {
@@ -52,26 +58,24 @@ describe("snapshotCommand", () => {
 
     await snapshotCommand(undefined, { token: "key", name: "auto" });
 
-    expect(logSpy).toHaveBeenCalledWith("Only one box found, using it...");
+    // Progress goes to stderr so that --json leaves only the result on stdout.
+    const warned = stderr.mock.calls.map((call) => String(call[0])).join("");
+    expect(warned).toContain("Only one box found, using it...");
     expect(Box.get).toHaveBeenCalledWith("box-only", { apiKey: "key" });
   });
 
   it("exits when no boxes found", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([]);
 
-    await snapshotCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(snapshotCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("filters out deleted boxes", async () => {
     vi.mocked(Box.list).mockResolvedValueOnce([{ id: "box-deleted", status: "deleted" } as any]);
 
-    await snapshotCommand(undefined, { token: "key" }).catch(() => {});
-
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(errorSpy).toHaveBeenCalledWith("No boxes found.");
+    await expect(snapshotCommand(undefined, { token: "key" })).rejects.toThrow(/No boxes found/);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("generates default snapshot name when none provided", async () => {

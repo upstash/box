@@ -1,20 +1,22 @@
 import { Box } from "@upstash/box";
 import { resolveToken } from "../auth.js";
-import { formatJSON } from "../output.js";
+import { emit, type GlobalFlags } from "../core/io.js";
 
-interface ListFlags {
-  token?: string;
+type ListFlags = GlobalFlags & {
   label?: string;
-}
+};
 
 export async function listCommand(flags: ListFlags): Promise<void> {
   const apiKey = resolveToken(flags.token);
   const boxes = await Box.list({ apiKey, label: flags.label });
 
   if (boxes.length === 0) {
+    // The empty array is still the answer under --json.
+    if (flags.json) return emit(boxes, "", flags);
     console.log(flags.label ? `No boxes found with label "${flags.label}".` : "No boxes found.");
     return;
   }
+  if (flags.json) return emit(boxes, "", flags);
 
   const formatDate = (ts: number) => {
     const d = new Date(ts < 1e12 ? ts * 1000 : ts);

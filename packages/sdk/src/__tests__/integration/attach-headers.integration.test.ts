@@ -119,7 +119,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
   it("Box.create: creates a box with attachHeaders", async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
       attachHeaders: sourceConfig,
     });
     expect(box.id).toBeTruthy();
@@ -143,7 +143,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
   it("Box.fromSnapshot: restores with modified attachHeaders", async () => {
     boxFromSnap = await Box.fromSnapshot(boxSnapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
       attachHeaders: fromSnapConfig,
     });
     expect(boxFromSnap.id).toBeTruthy();

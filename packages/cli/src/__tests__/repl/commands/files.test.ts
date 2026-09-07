@@ -14,6 +14,16 @@ describe("handleFiles", () => {
         ]),
         upload: vi.fn().mockResolvedValue(undefined),
         download: vi.fn().mockResolvedValue(undefined),
+        stat: vi.fn().mockResolvedValue({
+          type: "file",
+          size: 12,
+          mod_time: "2026-01-01T00:00:00Z",
+          inode: 42,
+          version: "v1",
+        }),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        rename: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
       },
     };
   }
@@ -100,6 +110,92 @@ describe("handleFiles", () => {
       expect(events).toContainEqual(
         expect.objectContaining({ type: "log", message: expect.stringContaining("Usage: files") }),
       );
+    });
+  });
+
+  describe("stat", () => {
+    it("prints type, size, time and inode", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleFiles(box as any, "stat app.ts"));
+      expect(box.files.stat).toHaveBeenCalledWith("app.ts", undefined);
+      expect(events[0]).toEqual({
+        type: "log",
+        message: "file\t12\t2026-01-01T00:00:00Z\tinode 42",
+      });
+    });
+
+    it("passes --follow however it is ordered", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "stat --follow link.ts"));
+      // The flag before the path is the Unix spelling; reading the path from a
+      // fixed index would take "--follow" as the path here.
+      expect(box.files.stat).toHaveBeenCalledWith("link.ts", { follow: true });
+    });
+
+    it("prints usage without a path", async () => {
+      const events = await collectEvents(handleFiles(createMockBox() as any, "stat"));
+      expect(events[0]?.message).toContain("Usage: files stat");
+    });
+  });
+
+  describe("mkdir", () => {
+    it("creates a directory", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "mkdir build"));
+      expect(box.files.mkdir).toHaveBeenCalledWith("build", undefined);
+    });
+
+    it("accepts -p before the path", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "mkdir -p a/b/c"));
+      expect(box.files.mkdir).toHaveBeenCalledWith("a/b/c", { parents: true });
+    });
+  });
+
+  describe("rename", () => {
+    it("moves a path and accepts the mv alias", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "mv old.txt new.txt"));
+      expect(box.files.rename).toHaveBeenCalledWith("old.txt", "new.txt");
+    });
+
+    it("prints usage when the destination is missing", async () => {
+      const events = await collectEvents(handleFiles(createMockBox() as any, "rename only.txt"));
+      expect(events[0]?.message).toContain("Usage: files rename");
+    });
+  });
+
+  describe("remove", () => {
+    it("removes without recursion by default", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "remove note.txt"));
+      expect(box.files.remove).toHaveBeenCalledWith("note.txt", undefined);
+    });
+
+    it("accepts -r before the path", async () => {
+      const box = createMockBox();
+      await collectEvents(handleFiles(box as any, "rm -r build"));
+      expect(box.files.remove).toHaveBeenCalledWith("build", { recursive: true });
+    });
+  });
+
+  describe("usage", () => {
+    it("lists every verb it accepts", async () => {
+      const events = await collectEvents(handleFiles(createMockBox() as any, "nope"));
+      const message = String(events[0]?.message);
+      for (const verb of [
+        "read",
+        "write",
+        "list",
+        "stat",
+        "mkdir",
+        "rename",
+        "remove",
+        "upload",
+        "download",
+      ]) {
+        expect(message).toContain(verb);
+      }
     });
   });
 });

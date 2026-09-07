@@ -30,7 +30,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     // Create source box with an agent
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_6 },
+      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
 
     // Write a file with random content using exec

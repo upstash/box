@@ -3,6 +3,7 @@ import { resolveToken } from "../auth.js";
 import { startRepl } from "../repl/terminal.js";
 import { interactiveSelect } from "../utils/interactive-select.js";
 import { dim } from "../utils/ansi.js";
+import { CliError } from "../core/errors.js";
 
 interface ConnectFlags {
   token?: string;
@@ -21,8 +22,7 @@ export async function connectCommand(
     const boxes = await Box.list({ apiKey });
     const active = boxes.filter((b) => b.status !== "deleted");
     if (active.length === 0) {
-      console.error("No boxes found.");
-      process.exit(1);
+      throw new CliError("No boxes found.");
     }
 
     if (process.stdin.isTTY && active.length > 1) {

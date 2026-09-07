@@ -12,7 +12,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("files", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Opus_4_6 },
+      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
     });
     tmpDir = join(tmpdir(), `box-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
