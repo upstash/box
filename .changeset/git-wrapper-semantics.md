@@ -10,5 +10,4 @@ Two behaviours change, both because the old ones were wrong:
 - **`box files download <file>` downloads the file.** Given a file path it used to create an empty local directory named after it and exit 0, which is a silently wrong result rather than an error. `--out` names the destination; folder downloads are unchanged.
 
 The remaining additions change nothing for existing calls:
-- `box git checkout --new` creates the branch and fails if it exists. Plain checkout prefers an existing local or remote-tracking branch, so asking for a fresh one can silently restore old work into the tree.
 - `box git create-pr --body-file` and `box git create-issue --body-file`, matching `gh`. A body worth writing does not survive shell quoting; `-` reads stdin.

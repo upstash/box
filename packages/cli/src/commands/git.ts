@@ -13,7 +13,6 @@ export type GitFlags = GlobalFlags & {
   message?: string;
   authorName?: string;
   authorEmail?: string;
-  new?: boolean;
   bodyFile?: string;
   title?: string;
   body?: string;
@@ -169,19 +168,6 @@ export async function gitCommitCommand(flags: GitFlags): Promise<void> {
  */
 export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promise<void> {
   const box = await open(flags);
-
-  // checkout prefers a branch that already exists, local or remote-tracking, so
-  // asking for a fresh one can silently restore old work instead. --new fails
-  // rather than resurrecting it.
-  if (flags.new) {
-    const result = await box.git.exec({ args: ["checkout", "-b", branch] });
-    if (result.exit_code !== 0) {
-      throw new CliError(result.output.trim() || `Could not create branch "${branch}"`);
-    }
-    emit({ branch, created: true }, `Created and switched to ${branch}`, flags);
-    return;
-  }
-
   await box.git.checkout({ branch });
 
   // A read-back that could not run proves nothing. Falling back to the

@@ -347,7 +347,6 @@ withGitCommon(git.command("commit").description("Commit staged changes"))
 withGitCommon(
   git.command("checkout").argument("<branch>").description("Switch branches, creating if needed"),
 )
-  .option("--new", "Create the branch, failing if it already exists")
   // Accepted because it is what a git user types; the branch is created either
   // way, so it has nothing to switch on.
   .option("-b, --create", "Accepted for familiarity with git; branches are always created")

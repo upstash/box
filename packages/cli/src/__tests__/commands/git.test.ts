@@ -132,30 +132,6 @@ describe("box git", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("creates a fresh branch with --new instead of resurrecting one", async () => {
-    // Plain checkout prefers an existing local or remote-tracking branch, which
-    // silently restores old work into the tree.
-    const checkout = vi.fn();
-    const exec = vi.fn().mockResolvedValue({ output: "", exit_code: 0 });
-    boxWith({ checkout, exec });
-
-    await gitCheckoutCommand("feature/x", { ...flags, new: true });
-
-    expect(checkout).not.toHaveBeenCalled();
-    expect(exec).toHaveBeenCalledWith({ args: ["checkout", "-b", "feature/x"] });
-  });
-
-  it("fails --new when the branch already exists", async () => {
-    boxWith({
-      checkout: vi.fn(),
-      exec: vi.fn().mockResolvedValue({ output: "fatal: already exists", exit_code: 128 }),
-    });
-
-    await expect(gitCheckoutCommand("feature/x", { ...flags, new: true })).rejects.toThrow(
-      /already exists/,
-    );
-  });
-
   describe("--body-file", () => {
     it("reads the body from a file", async () => {
       const createPR = vi.fn().mockResolvedValue({ url: "u" });
