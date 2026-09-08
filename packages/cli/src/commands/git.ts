@@ -1,8 +1,9 @@
+import { readFileSync } from "node:fs";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { isInsideRepo, notARepoMessage } from "../core/git-repo.js";
-import { emit, requireToken, type GlobalFlags } from "../core/io.js";
+import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
 
 export type GitFlags = GlobalFlags & {
   folder?: string;
@@ -12,6 +13,9 @@ export type GitFlags = GlobalFlags & {
   message?: string;
   authorName?: string;
   authorEmail?: string;
+  stagedOnly?: boolean;
+  new?: boolean;
+  bodyFile?: string;
   title?: string;
   body?: string;
   base?: string;
@@ -147,12 +151,62 @@ export async function gitDiffCommand(flags: GitFlags): Promise<void> {
 export async function gitCommitCommand(flags: GitFlags): Promise<void> {
   if (!flags.message) throw new CliError("Usage: box git commit -m <message>");
   const box = await open(flags);
+
+  // The commit endpoint runs `git add -A` first, so a carefully staged index is
+  // not what gets committed. --staged-only goes through plain git instead, which
+  // is the only way to commit exactly what was staged.
+  if (flags.stagedOnly) {
+    const args = ["commit", "-m", flags.message];
+    if (flags.authorName && flags.authorEmail) {
+      args.unshift("-c", `user.name=${flags.authorName}`, "-c", `user.email=${flags.authorEmail}`);
+    }
+    const result = await box.git.exec({ args });
+    if (result.exit_code !== 0) {
+      throw new CliError(result.output.trim() || "git commit failed");
+    }
+    emit({ output: result.output }, result.output.trimEnd(), flags);
+    return;
+  }
+
+  await warnAboutImplicitStaging(box, flags);
+
   const commit = await box.git.commit({
     message: flags.message,
     ...(flags.authorName === undefined ? {} : { authorName: flags.authorName }),
     ...(flags.authorEmail === undefined ? {} : { authorEmail: flags.authorEmail }),
   });
   emit(commit, `Committed ${commit.sha ?? ""}`.trim(), flags);
+}
+
+/**
+ * Say what the implicit `git add -A` is about to pick up.
+ *
+ * Untracked files are the surprise: someone who staged one file still commits
+ * everything in the tree, and only finds out from the pushed diff.
+ * @param box - the box, positioned at the repository.
+ * @param flags - used to name --staged-only in the warning.
+ */
+async function warnAboutImplicitStaging(box: Box, flags: GitFlags): Promise<void> {
+  let status;
+  try {
+    status = await box.git.exec({ args: ["status", "--porcelain"] });
+  } catch {
+    return; // a warning is not worth failing the commit over
+  }
+  if (status.exit_code !== 0) return;
+
+  const sweeping = status.output
+    .split("\n")
+    .filter((line) => line.trim() && !line.startsWith("M  ") && !line.startsWith("A  "))
+    .map((line) => line.slice(3).trim());
+  if (sweeping.length === 0) return;
+
+  note(
+    `Committing ${sweeping.length} file(s) you did not stage: ${sweeping.slice(0, 5).join(", ")}` +
+      `${sweeping.length > 5 ? `, and ${sweeping.length - 5} more` : ""}`,
+  );
+  note("Use --staged-only to commit just the index.");
+  void flags;
 }
 
 /**
@@ -166,6 +220,19 @@ export async function gitCommitCommand(flags: GitFlags): Promise<void> {
  */
 export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promise<void> {
   const box = await open(flags);
+
+  // checkout prefers a branch that already exists, local or remote-tracking, so
+  // asking for a fresh one can silently restore old work instead. --new fails
+  // rather than resurrecting it.
+  if (flags.new) {
+    const result = await box.git.exec({ args: ["checkout", "-b", branch] });
+    if (result.exit_code !== 0) {
+      throw new CliError(result.output.trim() || `Could not create branch "${branch}"`);
+    }
+    emit({ branch, created: true }, `Created and switched to ${branch}`, flags);
+    return;
+  }
+
   await box.git.checkout({ branch });
 
   // A read-back that could not run proves nothing. Falling back to the
@@ -204,30 +271,68 @@ export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promi
 /** Push the current branch. */
 export async function gitPushCommand(flags: GitFlags): Promise<void> {
   const box = await open(flags);
-  await box.git.push(flags.branch === undefined ? undefined : { branch: flags.branch });
-  emit({ pushed: true }, "Pushed.", flags);
+
+  // Without a branch the API pushes to one named after the box, after a
+  // `checkout -B` that force-moves the ref. Sending the checked-out branch
+  // explicitly keeps `box git push` meaning what it does in git.
+  let branch = flags.branch;
+  if (branch === undefined) {
+    const probe = await box.git.exec({ args: ["rev-parse", "--abbrev-ref", "HEAD"] });
+    const head = probe.exit_code === 0 ? probe.output.trim() : "";
+    if (!head || head === "HEAD") {
+      throw new CliError(
+        "Could not read the current branch (detached HEAD?). Pass --branch <name>.",
+      );
+    }
+    branch = head;
+  }
+
+  await box.git.push({ branch });
+  emit({ pushed: true, branch }, `Pushed ${branch}.`, flags);
 }
 
 /** Open a pull request. */
 export async function gitCreatePrCommand(flags: GitFlags): Promise<void> {
   if (!flags.title) throw new CliError("Usage: box git create-pr --title <title>");
   const box = await open(flags);
+  const body = bodyFrom(flags);
   const pr = await box.git.createPR({
     title: flags.title,
-    ...(flags.body === undefined ? {} : { body: flags.body }),
+    ...(body === undefined ? {} : { body }),
     ...(flags.base === undefined ? {} : { base: flags.base }),
     ...(flags.attach?.length ? { attach: flags.attach } : {}),
   });
   emit(pr, prMessage("Pull request", pr), flags);
 }
 
+/**
+ * Resolve the body from --body or --body-file.
+ *
+ * A body long enough to be worth writing does not survive shell quoting, and
+ * `gh` has --body-file for the same reason.
+ * @param flags - the merged flags.
+ * @returns the body text, when either flag was given.
+ */
+function bodyFrom(flags: GitFlags): string | undefined {
+  if (flags.bodyFile !== undefined && flags.body !== undefined) {
+    throw new CliError("Pass --body or --body-file, not both");
+  }
+  if (flags.bodyFile === undefined) return flags.body;
+  try {
+    return flags.bodyFile === "-" ? readFileSync(0, "utf8") : readFileSync(flags.bodyFile, "utf8");
+  } catch (error) {
+    throw new CliError(`Could not read ${flags.bodyFile}: ${(error as Error).message}`);
+  }
+}
+
 /** Open an issue. */
 export async function gitCreateIssueCommand(flags: GitFlags): Promise<void> {
   if (!flags.title) throw new CliError("Usage: box git create-issue --title <title>");
   const box = await open(flags);
+  const issueBody = bodyFrom(flags);
   const issue = await box.git.createIssue({
     title: flags.title,
-    ...(flags.body === undefined ? {} : { body: flags.body }),
+    ...(issueBody === undefined ? {} : { body: issueBody }),
     ...(flags.attach?.length ? { attach: flags.attach } : {}),
   });
   emit(issue, prMessage("Issue", issue), flags);

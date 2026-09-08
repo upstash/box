@@ -301,10 +301,15 @@ withCommon(
 });
 
 withCommon(
-  files.command("download").argument("[folder]").description("Download files from the box"),
-).action(async (folder: string | undefined, flags: Record<string, unknown>) => {
-  await runCommand(async () => filesDownloadCommand(folder, { ...globals(flags), ...flags }));
-});
+  files
+    .command("download")
+    .argument("[folder]")
+    .description("Download files or a folder from the box"),
+)
+  .option("-o, --out <file>", "Destination when downloading a single file")
+  .action(async (folder: string | undefined, flags: Record<string, unknown>) => {
+    await runCommand(async () => filesDownloadCommand(folder, { ...globals(flags), ...flags }));
+  });
 
 const git = program.command("git").description("Git operations inside the box");
 /** Every git verb takes the same box flags plus an optional repo folder. */
@@ -332,6 +337,7 @@ withGitCommon(git.command("diff").description("Working tree diff")).action(
 );
 
 withGitCommon(git.command("commit").description("Commit staged changes"))
+  .option("--staged-only", "Commit exactly what is staged, without the implicit add -A")
   .requiredOption("-m, --message <message>", "Commit message")
   .option("--author-name <name>", "Commit author name")
   .option("--author-email <email>", "Commit author email")
@@ -342,6 +348,7 @@ withGitCommon(git.command("commit").description("Commit staged changes"))
 withGitCommon(
   git.command("checkout").argument("<branch>").description("Switch branches, creating if needed"),
 )
+  .option("--new", "Create the branch, failing if it already exists")
   // Accepted because it is what a git user types; the branch is created either
   // way, so it has nothing to switch on.
   .option("-b, --create", "Accepted for familiarity with git; branches are always created")
@@ -365,6 +372,7 @@ withGitCommon(git.command("push").description("Push the current branch"))
 withGitCommon(git.command("create-pr").description("Open a pull request"))
   .requiredOption("--title <title>", "Pull request title")
   .option("--body <body>", "Pull request body")
+  .option("--body-file <file>", "Read the body from a file, or - for stdin")
   .option("--base <branch>", "Base branch")
   .option("--attach <file>", attachHelp, collectAttach, [])
   .action(async (flags: Record<string, unknown>) => {
@@ -373,6 +381,7 @@ withGitCommon(git.command("create-pr").description("Open a pull request"))
 
 withGitCommon(git.command("create-issue").description("Open an issue"))
   .requiredOption("--title <title>", "Issue title")
+  .option("--body-file <file>", "Read the body from a file, or - for stdin")
   .option("--body <body>", "Issue body")
   .option("--attach <file>", attachHelp, collectAttach, [])
   .action(async (flags: Record<string, unknown>) => {

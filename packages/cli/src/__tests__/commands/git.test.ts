@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   gitCheckoutCommand,
   gitCloneCommand,
+  gitCommitCommand,
+  gitPushCommand,
   gitConfigCommand,
   gitDiffCommand,
   gitExecCommand,
@@ -105,6 +107,77 @@ describe("box git", () => {
     await gitCloneCommand("https://example.com/me/public", { ...flags });
 
     expect(getBox.mock.calls[0]?.[1]).not.toHaveProperty("gitToken");
+  });
+
+  it("pushes the checked-out branch, not one named after the box", async () => {
+    // With no branch the API pushes to the box id after a `checkout -B`, which
+    // force-moves the ref and leaves you on a branch you did not ask for.
+    const push = vi.fn().mockResolvedValue(undefined);
+    const exec = vi.fn().mockResolvedValue({ output: "feature/login\n", exit_code: 0 });
+    boxWith({ push, exec });
+
+    await gitPushCommand({ ...flags });
+
+    expect(push).toHaveBeenCalledWith({ branch: "feature/login" });
+  });
+
+  it("refuses to guess a branch on a detached HEAD", async () => {
+    const push = vi.fn();
+    boxWith({ push, exec: vi.fn().mockResolvedValue({ output: "HEAD\n", exit_code: 0 }) });
+
+    await expect(gitPushCommand({ ...flags })).rejects.toThrow(/--branch/);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("commits only the index with --staged-only", async () => {
+    // The commit endpoint runs `git add -A`, so a staged-one-file commit sweeps
+    // in every untracked file in the tree.
+    const commit = vi.fn();
+    const exec = vi.fn().mockResolvedValue({ output: "[main abc] msg", exit_code: 0 });
+    boxWith({ commit, exec });
+
+    await gitCommitCommand({ ...flags, message: "msg", stagedOnly: true });
+
+    expect(commit).not.toHaveBeenCalled();
+    expect(exec).toHaveBeenCalledWith({ args: ["commit", "-m", "msg"] });
+  });
+
+  it("warns about the files the implicit staging will sweep in", async () => {
+    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
+    const exec = vi
+      .fn()
+      .mockResolvedValue({ output: "?? shot.png\n?? node_modules/\n M src/a.ts\n", exit_code: 0 });
+    boxWith({ commit, exec });
+
+    await gitCommitCommand({ ...flags, message: "msg" });
+
+    const warned = stderr.mock.calls.map((c) => String(c[0])).join("");
+    expect(warned).toContain("shot.png");
+    expect(warned).toContain("--staged-only");
+  });
+
+  it("creates a fresh branch with --new instead of resurrecting one", async () => {
+    // Plain checkout prefers an existing local or remote-tracking branch, which
+    // silently restores old work into the tree.
+    const checkout = vi.fn();
+    const exec = vi.fn().mockResolvedValue({ output: "", exit_code: 0 });
+    boxWith({ checkout, exec });
+
+    await gitCheckoutCommand("feature/x", { ...flags, new: true });
+
+    expect(checkout).not.toHaveBeenCalled();
+    expect(exec).toHaveBeenCalledWith({ args: ["checkout", "-b", "feature/x"] });
+  });
+
+  it("fails --new when the branch already exists", async () => {
+    boxWith({
+      checkout: vi.fn(),
+      exec: vi.fn().mockResolvedValue({ output: "fatal: already exists", exit_code: 128 }),
+    });
+
+    await expect(gitCheckoutCommand("feature/x", { ...flags, new: true })).rejects.toThrow(
+      /already exists/,
+    );
   });
 
   it("rejects a depth that is not a positive number", async () => {
