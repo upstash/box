@@ -530,6 +530,45 @@ program
   .option("--init-command <command>", "Startup script, for keep-alive boxes")
   .option("--browser", "Provision a headless Chromium in the box")
   .option("--clone-repo <repo>", "Clone this repository into the box after creating it")
+  .option(
+    "--skill <owner/repo>",
+    "Skill to enable on the box (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--network-policy <mode>", "Outbound network policy (allow-all, deny-all, custom)")
+  .option(
+    "--allow-domain <domain>",
+    "Domain to allow, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--allow-cidr <cidr>",
+    "CIDR to allow, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--deny-cidr <cidr>",
+    "CIDR to deny, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--attach-header <host:Name=value>",
+    "Header to inject into outbound requests to a host (repeatable; visible in ps, prefer --attach-headers-file for secrets)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--attach-headers-file <path>", "JSON file of outbound headers keyed by host pattern")
+  .option(
+    "--mcp <name=spec>",
+    "MCP server, as an npm package or an https URL (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--mcp-file <path>", "JSON file holding an array of MCP server objects")
   .option("--no-repl", "Create the box, print its id and exit")
   .option("--no-use", "Do not write a .box file for the new box")
   .option("--json", "Print the new box as one object (implies --no-repl)")

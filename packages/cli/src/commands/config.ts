@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
-import { Box, type CustomHarnessConfig, type NetworkPolicy } from "@upstash/box";
+import { Box, type CustomHarnessConfig } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { emit, requireToken, type GlobalFlags } from "../core/io.js";
+import { buildNetworkPolicy } from "../core/network-policy.js";
 
 export type ConfigFlags = GlobalFlags & {
   command?: string;
@@ -91,40 +92,11 @@ export async function initCommandDeleteCommand(flags: GlobalFlags): Promise<void
 
 /**
  * Set the box's network policy.
- *
- * The modes are exclusive: `allow-all` and `deny-all` take no lists, and any
- * list implies `custom`. Sending a list with a blanket mode would look like it
- * narrowed the policy while doing nothing.
  * @param mode - allow-all, deny-all, or custom.
  * @param flags - the merged flags, with the allow and deny lists.
  */
 export async function networkPolicyCommand(mode: string, flags: ConfigFlags): Promise<void> {
-  const lists =
-    (flags.allowDomain?.length ?? 0) +
-    (flags.allowCidr?.length ?? 0) +
-    (flags.denyCidr?.length ?? 0);
-
-  if (mode !== "allow-all" && mode !== "deny-all" && mode !== "custom") {
-    throw new CliError("mode must be one of: allow-all, deny-all, custom");
-  }
-  if (mode !== "custom" && lists > 0) {
-    throw new CliError(
-      `--allow-domain, --allow-cidr and --deny-cidr only apply to 'custom', not '${mode}'`,
-    );
-  }
-  if (mode === "custom" && lists === 0) {
-    throw new CliError("custom needs at least one of --allow-domain, --allow-cidr or --deny-cidr");
-  }
-
-  const policy: NetworkPolicy =
-    mode === "custom"
-      ? {
-          mode: "custom",
-          ...(flags.allowDomain?.length ? { allowedDomains: flags.allowDomain } : {}),
-          ...(flags.allowCidr?.length ? { allowedCidrs: flags.allowCidr } : {}),
-          ...(flags.denyCidr?.length ? { deniedCidrs: flags.denyCidr } : {}),
-        }
-      : { mode };
+  const policy = buildNetworkPolicy(mode, flags);
 
   const box = await open(flags);
   await box.updateNetworkPolicy(policy);
