@@ -39,9 +39,9 @@ describe("create options that only exist at create time", () => {
 
   describe("--skill", () => {
     it("sends the skills as a list", async () => {
-      await createCommand({ ...base, skill: ["upstash/workflow-js", "upstash/qstash-js"] });
+      await createCommand({ ...base, skill: ["upstash/skills/redis", "upstash/skills/qstash"] });
 
-      expect(sent().skills).toEqual(["upstash/workflow-js", "upstash/qstash-js"]);
+      expect(sent().skills).toEqual(["upstash/skills/redis", "upstash/skills/qstash"]);
     });
 
     it("omits the field entirely when no skill is named", async () => {

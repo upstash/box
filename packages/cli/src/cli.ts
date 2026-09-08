@@ -531,8 +531,8 @@ program
   .option("--browser", "Provision a headless Chromium in the box")
   .option("--clone-repo <repo>", "Clone this repository into the box after creating it")
   .option(
-    "--skill <owner/repo>",
-    "Skill to enable on the box (repeatable)",
+    "--skill <owner/repo/skill>",
+    "Context7 skill to install on the box (repeatable)",
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
