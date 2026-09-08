@@ -744,6 +744,26 @@ export interface PullRequest {
   number: number;
   title: string;
   base: string;
+  /**
+   * Set when `gh` exited non-zero but still returned a URL. The pull request
+   * exists, but an attachment failed to upload or the pull request was already
+   * open, so it was not created by this call. Absent on a clean create.
+   */
+  warning?: string;
+}
+
+/**
+ * A GitHub issue created from a box.
+ */
+export interface Issue {
+  url: string;
+  number: number;
+  title: string;
+  /**
+   * Set when `gh` exited non-zero but still returned a URL, which means an
+   * attachment failed to upload. Absent on a clean create.
+   */
+  warning?: string;
 }
 
 /**
@@ -1032,6 +1052,23 @@ export interface GitPROptions {
   title: string;
   body?: string;
   base?: string;
+  /**
+   * Image or video files to upload, relative to the box's working directory.
+   * Add alt text for an image with `path#alt text`; a video cannot take alt
+   * text. Reference an attachment from `body` as `![alt](./shot.png)` and
+   * GitHub rewrites it to point at the uploaded asset.
+   */
+  attach?: string[];
+}
+
+/**
+ * Options for opening a GitHub issue.
+ */
+export interface GitIssueOptions {
+  title: string;
+  body?: string;
+  /** Image or video files to upload. See {@link GitPROptions.attach}. */
+  attach?: string[];
 }
 
 export interface GitCommitOptions {

@@ -112,3 +112,50 @@ async def test_push_and_create_pr_and_exec_and_checkout():
     assert await box.git.exec(args=["log", "--oneline"]) == "log"
     await box.git.checkout(branch="feature")
     await box.aclose()
+
+
+@respx.mock
+async def test_create_pr_and_issue_attachments():
+    box = await make_async_box(respx.mock)
+    pr_route = respx.post(f"{BASE}/git/create-pr").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "url": "u",
+                "number": 5,
+                "title": "t",
+                "base": "main",
+                "warning": "failed to upload later.png",
+            },
+        )
+    )
+    issue_route = respx.post(f"{BASE}/git/create-issue").mock(
+        return_value=httpx.Response(200, json={"url": "iu", "number": 9, "title": "bug"})
+    )
+
+    pr = await box.git.create_pr(title="t", attach=["shot.png#the login error"])
+    assert pr.warning == "failed to upload later.png"
+    assert last_json_body(pr_route)["attach"] == ["shot.png#the login error"]
+
+    issue = await box.git.create_issue(title="bug", body="steps", attach=["repro.png"])
+    assert issue.number == 9
+    assert issue.warning is None
+    body = last_json_body(issue_route)
+    assert body["title"] == "bug"
+    assert body["body"] == "steps"
+    assert body["attach"] == ["repro.png"]
+
+    await box.aclose()
+
+
+@respx.mock
+async def test_create_pr_omits_empty_attach():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/git/create-pr").mock(
+        return_value=httpx.Response(
+            200, json={"url": "u", "number": 5, "title": "t", "base": "main"}
+        )
+    )
+    await box.git.create_pr(title="t", attach=[])
+    assert "attach" not in last_json_body(route)
+    await box.aclose()

@@ -12,6 +12,7 @@ describe("handleGit", () => {
         commit: vi.fn().mockResolvedValue({ sha: "abc123", message: "fix bug" }),
         push: vi.fn().mockResolvedValue(undefined),
         createPR: vi.fn().mockResolvedValue({ number: 42, url: "https://github.com/pr/42" }),
+        createIssue: vi.fn().mockResolvedValue({ number: 9, url: "https://github.com/issues/9" }),
         // The repository probe is answered the way git answers it: a working
         // tree prints "true", and a bare repository prints "false" with the
         // same exit code.
@@ -152,6 +153,37 @@ describe("handleGit", () => {
     it("prints usage without title", async () => {
       const events = await collectEvents(handleGit(createMockBox() as any, "create-pr"));
       expect(events).toContainEqual({ type: "log", message: "Usage: git create-pr <title>" });
+    });
+
+    it("prints a warning when gh reported one", async () => {
+      const box = createMockBox();
+      box.git.createPR = vi.fn().mockResolvedValue({
+        number: 42,
+        url: "https://github.com/pr/42",
+        warning: "failed to upload later.png",
+      });
+      const events = await collectEvents(handleGit(box as any, "create-pr Fix"));
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Warning: failed to upload later.png",
+      });
+    });
+  });
+
+  describe("create-issue", () => {
+    it("creates an issue and prints details", async () => {
+      const box = createMockBox();
+      const events = await collectEvents(handleGit(box as any, "create-issue Broken search"));
+      expect(box.git.createIssue).toHaveBeenCalledWith({ title: "Broken search" });
+      expect(events).toContainEqual({
+        type: "log",
+        message: "Issue #9: https://github.com/issues/9",
+      });
+    });
+
+    it("prints usage without title", async () => {
+      const events = await collectEvents(handleGit(createMockBox() as any, "create-issue"));
+      expect(events).toContainEqual({ type: "log", message: "Usage: git create-issue <title>" });
     });
   });
 

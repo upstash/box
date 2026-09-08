@@ -15,6 +15,7 @@ export type GitFlags = GlobalFlags & {
   title?: string;
   body?: string;
   base?: string;
+  attach?: string[];
   name?: string;
   email?: string;
 };
@@ -215,8 +216,33 @@ export async function gitCreatePrCommand(flags: GitFlags): Promise<void> {
     title: flags.title,
     ...(flags.body === undefined ? {} : { body: flags.body }),
     ...(flags.base === undefined ? {} : { base: flags.base }),
+    ...(flags.attach?.length ? { attach: flags.attach } : {}),
   });
-  emit(pr, pr.url ? `Pull request: ${pr.url}` : "Pull request created", flags);
+  emit(pr, prMessage("Pull request", pr), flags);
+}
+
+/** Open an issue. */
+export async function gitCreateIssueCommand(flags: GitFlags): Promise<void> {
+  if (!flags.title) throw new CliError("Usage: box git create-issue --title <title>");
+  const box = await open(flags);
+  const issue = await box.git.createIssue({
+    title: flags.title,
+    ...(flags.body === undefined ? {} : { body: flags.body }),
+    ...(flags.attach?.length ? { attach: flags.attach } : {}),
+  });
+  emit(issue, prMessage("Issue", issue), flags);
+}
+
+/**
+ * Text line for a created pull request or issue.
+ *
+ * `warning` is set when gh exited non-zero but still returned a URL, so the
+ * item exists while an attachment may be missing. Text output would otherwise
+ * read as a clean success; JSON output carries the field either way.
+ */
+function prMessage(kind: string, item: { url?: string; warning?: string }): string {
+  const line = item.url ? `${kind}: ${item.url}` : `${kind} created`;
+  return item.warning ? `${line}\nWarning: ${item.warning}` : line;
 }
 
 /**

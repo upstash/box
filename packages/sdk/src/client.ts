@@ -28,11 +28,13 @@ import {
   type GitExecOptions,
   type GitExecResult,
   type GitCheckoutOptions,
+  type GitIssueOptions,
   type GitPROptions,
   type GitCommitOptions,
   type GitConfigUpdateOptions,
   type GitConfig,
   type GitCommitResult,
+  type Issue,
   type PullRequest,
   type LogEntry,
   type UploadFileEntry,
@@ -694,6 +696,7 @@ export class Box<TProvider = unknown> {
     updateConfig: (options: GitConfigUpdateOptions) => Promise<GitConfig>;
     push: (options?: { branch?: string }) => Promise<void>;
     createPR: (options: GitPROptions) => Promise<PullRequest>;
+    createIssue: (options: GitIssueOptions) => Promise<Issue>;
     exec: (options: GitExecOptions) => Promise<GitExecResult>;
     checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
@@ -888,6 +891,7 @@ export class Box<TProvider = unknown> {
       updateConfig: (options) => this._gitUpdateConfig(options),
       push: (options) => this._gitPush(options),
       createPR: (options) => this._gitCreatePR(options),
+      createIssue: (options) => this._gitCreateIssue(options),
       exec: (options) => this._gitExec(options),
       checkout: (options) => this._gitCheckout(options),
     };
@@ -3042,6 +3046,19 @@ export class Box<TProvider = unknown> {
         title: options.title,
         body: options.body,
         base: options.base,
+        ...(options.attach?.length ? { attach: options.attach } : {}),
+        ...(folder ? { folder } : {}),
+      },
+    });
+  }
+
+  private async _gitCreateIssue(options: GitIssueOptions): Promise<Issue> {
+    const folder = this._getFolder();
+    return this._request<Issue>("POST", `/v2/box/${this.id}/git/create-issue`, {
+      body: {
+        title: options.title,
+        body: options.body,
+        ...(options.attach?.length ? { attach: options.attach } : {}),
         ...(folder ? { folder } : {}),
       },
     });
