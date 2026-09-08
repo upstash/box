@@ -3,7 +3,6 @@ import {
   gitCheckoutCommand,
   gitCloneCommand,
   gitCreatePrCommand,
-  gitCommitCommand,
   gitPushCommand,
   gitConfigCommand,
   gitDiffCommand,
@@ -131,72 +130,6 @@ describe("box git", () => {
 
     await expect(gitPushCommand({ ...flags })).rejects.toThrow(/--branch/);
     expect(push).not.toHaveBeenCalled();
-  });
-
-  it("commits only the index with --staged-only", async () => {
-    // The commit endpoint runs `git add -A`, so a staged-one-file commit sweeps
-    // in every untracked file in the tree.
-    const commit = vi.fn();
-    const exec = vi.fn().mockResolvedValue({ output: "[main abc] msg", exit_code: 0 });
-    boxWith({ commit, exec });
-
-    await gitCommitCommand({ ...flags, message: "msg", stagedOnly: true });
-
-    expect(commit).not.toHaveBeenCalled();
-    expect(exec).toHaveBeenCalledWith({ args: ["commit", "-m", "msg"] });
-  });
-
-  it("warns about the files the implicit staging will sweep in", async () => {
-    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
-    const exec = vi
-      .fn()
-      .mockResolvedValue({ output: "?? shot.png\n?? node_modules/\n M src/a.ts\n", exit_code: 0 });
-    boxWith({ commit, exec });
-
-    await gitCommitCommand({ ...flags, message: "msg" });
-
-    const warned = stderr.mock.calls.map((c) => String(c[0])).join("");
-    expect(warned).toContain("shot.png");
-    expect(warned).toContain("--staged-only");
-  });
-
-  it("does not report staged deletions and renames as unstaged", async () => {
-    // Porcelain is XY. "D " and "R " are staged with a clean worktree, so
-    // add -A adds nothing for them; only the worktree column decides.
-    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
-    const exec = vi
-      .fn()
-      .mockResolvedValue({
-        output: "D  gone.ts\nR  old.ts -> new.ts\nM  edited.ts\n",
-        exit_code: 0,
-      });
-    boxWith({ commit, exec });
-
-    await gitCommitCommand({ ...flags, message: "msg" });
-
-    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).not.toContain("did not stage");
-  });
-
-  it("still reports a file edited after staging", async () => {
-    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
-    // MM: staged, then edited again — add -A will pick the newer change up.
-    const exec = vi.fn().mockResolvedValue({ output: "MM src/a.ts\n", exit_code: 0 });
-    boxWith({ commit, exec });
-
-    await gitCommitCommand({ ...flags, message: "msg" });
-
-    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).toContain("src/a.ts");
-  });
-
-  it("applies a lone author override with --staged-only", async () => {
-    const exec = vi.fn().mockResolvedValue({ output: "", exit_code: 0 });
-    boxWith({ commit: vi.fn(), exec });
-
-    await gitCommitCommand({ ...flags, message: "m", stagedOnly: true, authorName: "Bot" });
-
-    expect(exec).toHaveBeenCalledWith({
-      args: ["-c", "user.name=Bot", "commit", "-m", "m"],
-    });
   });
 
   it("creates a fresh branch with --new instead of resurrecting one", async () => {

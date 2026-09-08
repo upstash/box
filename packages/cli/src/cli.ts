@@ -337,7 +337,6 @@ withGitCommon(git.command("diff").description("Working tree diff")).action(
 );
 
 withGitCommon(git.command("commit").description("Commit staged changes"))
-  .option("--staged-only", "Commit exactly what is staged, without the implicit add -A")
   .requiredOption("-m, --message <message>", "Commit message")
   .option("--author-name <name>", "Commit author name")
   .option("--author-email <email>", "Commit author email")

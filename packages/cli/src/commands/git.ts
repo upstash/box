@@ -3,7 +3,7 @@ import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { isInsideRepo, notARepoMessage } from "../core/git-repo.js";
-import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
+import { emit, requireToken, type GlobalFlags } from "../core/io.js";
 
 export type GitFlags = GlobalFlags & {
   folder?: string;
@@ -13,7 +13,6 @@ export type GitFlags = GlobalFlags & {
   message?: string;
   authorName?: string;
   authorEmail?: string;
-  stagedOnly?: boolean;
   new?: boolean;
   bodyFile?: string;
   title?: string;
@@ -151,67 +150,12 @@ export async function gitDiffCommand(flags: GitFlags): Promise<void> {
 export async function gitCommitCommand(flags: GitFlags): Promise<void> {
   if (!flags.message) throw new CliError("Usage: box git commit -m <message>");
   const box = await open(flags);
-
-  // The commit endpoint runs `git add -A` first, so a carefully staged index is
-  // not what gets committed. --staged-only goes through plain git instead, which
-  // is the only way to commit exactly what was staged.
-  if (flags.stagedOnly) {
-    // Each override applies on its own, matching the commit endpoint; requiring
-    // both would silently drop a lone --author-name.
-    const args: string[] = [];
-    if (flags.authorName) args.push("-c", `user.name=${flags.authorName}`);
-    if (flags.authorEmail) args.push("-c", `user.email=${flags.authorEmail}`);
-    args.push("commit", "-m", flags.message);
-    const result = await box.git.exec({ args });
-    if (result.exit_code !== 0) {
-      throw new CliError(result.output.trim() || "git commit failed");
-    }
-    emit({ output: result.output }, result.output.trimEnd(), flags);
-    return;
-  }
-
-  await warnAboutImplicitStaging(box, flags);
-
   const commit = await box.git.commit({
     message: flags.message,
     ...(flags.authorName === undefined ? {} : { authorName: flags.authorName }),
     ...(flags.authorEmail === undefined ? {} : { authorEmail: flags.authorEmail }),
   });
   emit(commit, `Committed ${commit.sha ?? ""}`.trim(), flags);
-}
-
-/**
- * Say what the implicit `git add -A` is about to pick up.
- *
- * Untracked files are the surprise: someone who staged one file still commits
- * everything in the tree, and only finds out from the pushed diff.
- * @param box - the box, positioned at the repository.
- * @param flags - used to name --staged-only in the warning.
- */
-async function warnAboutImplicitStaging(box: Box, flags: GitFlags): Promise<void> {
-  let status;
-  try {
-    status = await box.git.exec({ args: ["status", "--porcelain"] });
-  } catch {
-    return; // a warning is not worth failing the commit over
-  }
-  if (status.exit_code !== 0) return;
-
-  // Porcelain is XY: X is the index, Y the working tree. `git add -A` stages
-  // whatever Y reports, so a staged deletion or rename ("D " / "R ") is already
-  // in the index and must not be listed as something the caller did not stage.
-  const sweeping = status.output
-    .split("\n")
-    .filter((line) => line.length > 1 && line[1] !== " ")
-    .map((line) => line.slice(3).trim());
-  if (sweeping.length === 0) return;
-
-  note(
-    `Committing ${sweeping.length} file(s) you did not stage: ${sweeping.slice(0, 5).join(", ")}` +
-      `${sweeping.length > 5 ? `, and ${sweeping.length - 5} more` : ""}`,
-  );
-  note("Use --staged-only to commit just the index.");
-  void flags;
 }
 
 /**
