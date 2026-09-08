@@ -1,6 +1,6 @@
 {
   "name": "@upstash/dsh-box",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DeepSeek Harness provider that runs the subprocess seam inside a remote Upstash Box",
   "type": "module",
   "repository": {
