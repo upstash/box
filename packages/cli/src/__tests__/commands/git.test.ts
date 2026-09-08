@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   gitCheckoutCommand,
   gitCloneCommand,
+  gitCreatePrCommand,
   gitCommitCommand,
   gitPushCommand,
   gitConfigCommand,
@@ -10,6 +11,9 @@ import {
   gitStatusCommand,
 } from "../../commands/git.js";
 import { CliError } from "../../core/errors.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const getBox = vi.hoisted(() => vi.fn());
 vi.mock("@upstash/box", () => ({ Box: { get: getBox } }));
@@ -156,6 +160,45 @@ describe("box git", () => {
     expect(warned).toContain("--staged-only");
   });
 
+  it("does not report staged deletions and renames as unstaged", async () => {
+    // Porcelain is XY. "D " and "R " are staged with a clean worktree, so
+    // add -A adds nothing for them; only the worktree column decides.
+    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
+    const exec = vi
+      .fn()
+      .mockResolvedValue({
+        output: "D  gone.ts\nR  old.ts -> new.ts\nM  edited.ts\n",
+        exit_code: 0,
+      });
+    boxWith({ commit, exec });
+
+    await gitCommitCommand({ ...flags, message: "msg" });
+
+    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).not.toContain("did not stage");
+  });
+
+  it("still reports a file edited after staging", async () => {
+    const commit = vi.fn().mockResolvedValue({ sha: "abc" });
+    // MM: staged, then edited again — add -A will pick the newer change up.
+    const exec = vi.fn().mockResolvedValue({ output: "MM src/a.ts\n", exit_code: 0 });
+    boxWith({ commit, exec });
+
+    await gitCommitCommand({ ...flags, message: "msg" });
+
+    expect(stderr.mock.calls.map((c) => String(c[0])).join("")).toContain("src/a.ts");
+  });
+
+  it("applies a lone author override with --staged-only", async () => {
+    const exec = vi.fn().mockResolvedValue({ output: "", exit_code: 0 });
+    boxWith({ commit: vi.fn(), exec });
+
+    await gitCommitCommand({ ...flags, message: "m", stagedOnly: true, authorName: "Bot" });
+
+    expect(exec).toHaveBeenCalledWith({
+      args: ["-c", "user.name=Bot", "commit", "-m", "m"],
+    });
+  });
+
   it("creates a fresh branch with --new instead of resurrecting one", async () => {
     // Plain checkout prefers an existing local or remote-tracking branch, which
     // silently restores old work into the tree.
@@ -178,6 +221,37 @@ describe("box git", () => {
     await expect(gitCheckoutCommand("feature/x", { ...flags, new: true })).rejects.toThrow(
       /already exists/,
     );
+  });
+
+  describe("--body-file", () => {
+    it("reads the body from a file", async () => {
+      const createPR = vi.fn().mockResolvedValue({ url: "u" });
+      boxWith({ createPR });
+      const file = join(mkdtempSync(join(tmpdir(), "box-body-")), "body.md");
+      writeFileSync(file, "## Steps\n\n1. open the page\n");
+
+      await gitCreatePrCommand({ ...flags, title: "T", bodyFile: file });
+
+      expect(createPR).toHaveBeenCalledWith(
+        expect.objectContaining({ body: "## Steps\n\n1. open the page\n" }),
+      );
+    });
+
+    it("refuses both --body and --body-file", async () => {
+      boxWith({ createPR: vi.fn() });
+
+      await expect(
+        gitCreatePrCommand({ ...flags, title: "T", body: "a", bodyFile: "b" }),
+      ).rejects.toThrow(/not both/);
+    });
+
+    it("names the file it could not read", async () => {
+      boxWith({ createPR: vi.fn() });
+
+      await expect(
+        gitCreatePrCommand({ ...flags, title: "T", bodyFile: "/nope/missing.md" }),
+      ).rejects.toThrow(/Could not read/);
+    });
   });
 
   it("rejects a depth that is not a positive number", async () => {

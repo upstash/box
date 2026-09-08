@@ -156,10 +156,12 @@ export async function gitCommitCommand(flags: GitFlags): Promise<void> {
   // not what gets committed. --staged-only goes through plain git instead, which
   // is the only way to commit exactly what was staged.
   if (flags.stagedOnly) {
-    const args = ["commit", "-m", flags.message];
-    if (flags.authorName && flags.authorEmail) {
-      args.unshift("-c", `user.name=${flags.authorName}`, "-c", `user.email=${flags.authorEmail}`);
-    }
+    // Each override applies on its own, matching the commit endpoint; requiring
+    // both would silently drop a lone --author-name.
+    const args: string[] = [];
+    if (flags.authorName) args.push("-c", `user.name=${flags.authorName}`);
+    if (flags.authorEmail) args.push("-c", `user.email=${flags.authorEmail}`);
+    args.push("commit", "-m", flags.message);
     const result = await box.git.exec({ args });
     if (result.exit_code !== 0) {
       throw new CliError(result.output.trim() || "git commit failed");
@@ -195,9 +197,12 @@ async function warnAboutImplicitStaging(box: Box, flags: GitFlags): Promise<void
   }
   if (status.exit_code !== 0) return;
 
+  // Porcelain is XY: X is the index, Y the working tree. `git add -A` stages
+  // whatever Y reports, so a staged deletion or rename ("D " / "R ") is already
+  // in the index and must not be listed as something the caller did not stage.
   const sweeping = status.output
     .split("\n")
-    .filter((line) => line.trim() && !line.startsWith("M  ") && !line.startsWith("A  "))
+    .filter((line) => line.length > 1 && line[1] !== " ")
     .map((line) => line.slice(3).trim());
   if (sweeping.length === 0) return;
 
