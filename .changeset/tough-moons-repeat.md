@@ -22,8 +22,10 @@ track whether their own timeout fired, so `Run.cancel()` rejects with the underl
 real timeout still rejects with "Run timed out" / "Stream timed out". The stream path also clears
 its timeout when the stream settles, which it previously never did.
 
-A rejection that is not an `Error` (some runtimes abort with a plain object) is wrapped in an
-`Error` that keeps the original `name` and `message`, so callers can always read a `stack`.
+A rejection that is not an `Error` (browsers abort with a `DOMException`, which is not an `Error`
+there) is wrapped in an `Error` that keeps the original `name` and `message`, so callers can always
+read a `stack`. `agent.stream()` now does this too, both when setup fails and when the stream
+aborts mid-flight, matching `agent.run()`.
 
 Ending a stream early no longer emits an unhandled promise rejection. The internal
 `reader.cancel()` rejects rather than throws once the stream has errored, and that rejection was

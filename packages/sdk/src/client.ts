@@ -1598,7 +1598,7 @@ export class Box<TProvider = unknown> {
     } catch (e) {
       // Failing here means iterate() is never created, so its finally never clears the timeout.
       clearStreamTimeout();
-      throw e;
+      throw asError(e);
     }
 
     let rawOutput = "";
@@ -1755,14 +1755,14 @@ export class Box<TProvider = unknown> {
         if (isAbortError(e)) {
           Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
           if (timedOut) throw new BoxError("Stream timed out", undefined, { cause: e });
-          throw e;
+          throw asError(e);
         }
         Run._update(run, {
           result: rawOutput.trim(),
           status: "failed",
           computeMs: Date.now() - start,
         });
-        throw e;
+        throw asError(e);
       } finally {
         clearStreamTimeout();
         if (!finished) {

@@ -152,6 +152,62 @@ describe("box.agent.run", () => {
     expect(clearTimeoutSpy).toHaveBeenCalledWith(timeoutHandle);
   });
 
+  it("rejects with an Error when stream setup fails with a non-Error", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock.mockRejectedValue({ name: "AbortError", message: "aborted" });
+
+    const rejection = await box.agent.stream({ prompt: "cancel me" }).then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(rejection).toBeInstanceOf(Error);
+    expect(rejection).toMatchObject({ name: "AbortError", message: "aborted" });
+    expect((rejection as Error).stack).toBeDefined();
+  });
+
+  it("rejects with an Error when the stream aborts mid-flight with a non-Error", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string, init: { signal?: AbortSignal }) => {
+      if (String(url).includes("/cancel")) {
+        return Promise.resolve(
+          new Response("{}", { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: text\ndata: {"text":"hi"}\n\n'));
+          init?.signal?.addEventListener(
+            "abort",
+            () => controller.error({ name: "AbortError", message: "aborted" }),
+            { once: true },
+          );
+        },
+      });
+      return Promise.resolve(
+        new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
+      );
+    });
+
+    const stream = await box.agent.stream({ prompt: "long job" });
+    const rejection = await (async () => {
+      try {
+        for await (const _chunk of stream) {
+          await stream.cancel();
+        }
+        return null;
+      } catch (error) {
+        return error;
+      }
+    })();
+
+    expect(rejection).toBeInstanceOf(Error);
+    expect(rejection).toMatchObject({ name: "AbortError", message: "aborted" });
+    expect((rejection as Error).stack).toBeDefined();
+  });
+
   it("does not retry a timeout that fires once the stream is open", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockClear();
