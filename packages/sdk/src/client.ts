@@ -185,6 +185,15 @@ const EXEC_SESSION_SIGNALS = new Set([
 /**
  * Error thrown by the Box SDK
  */
+function isAbortError(error: unknown): boolean {
+  if (typeof DOMException !== "undefined" && error instanceof DOMException) {
+    return error.name === "AbortError";
+  }
+  return Boolean(
+    error && typeof error === "object" && (error as { name?: string }).name === "AbortError",
+  );
+}
+
 export class BoxError extends Error {
   constructor(
     message: string,
@@ -1319,6 +1328,9 @@ export class Box<TProvider = unknown> {
         return await this._executeRun(options, attempt);
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e));
+        // A cancelled or timed-out run must not be retried: the caller asked for it to stop,
+        // and a retry starts a second billed run they never see.
+        if (isAbortError(lastError)) throw lastError;
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -1334,10 +1346,6 @@ export class Box<TProvider = unknown> {
     const run = new Run<T | string>(this, "agent");
     const abortController = new AbortController();
     Run._update(run, { abortController });
-
-    if (options.timeout) {
-      setTimeout(() => abortController.abort(), options.timeout);
-    }
 
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
     const folder = this._getFolder();
@@ -1358,20 +1366,41 @@ export class Box<TProvider = unknown> {
       options.files,
     );
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: fetchHeaders,
-      body: fetchBody,
-      signal: abortController.signal,
-    });
+    const timeoutId = options.timeout
+      ? setTimeout(() => abortController.abort(), options.timeout)
+      : undefined;
+    timeoutId?.unref?.();
+    const clearRunTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: fetchHeaders,
+        body: fetchBody,
+        signal: abortController.signal,
+      });
+    } catch (error) {
+      clearRunTimeout();
+      throw error;
+    }
 
     if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
+      try {
+        const msg = await parseErrorResponse(response);
+        throw new BoxError(msg, response.status);
+      } finally {
+        clearRunTimeout();
+      }
     }
 
     const reader = response.body?.getReader();
-    if (!reader) throw new BoxError("Streaming not supported");
+    if (!reader) {
+      clearRunTimeout();
+      throw new BoxError("Streaming not supported");
+    }
 
     const decoder = new TextDecoder();
     let buffer = "";
@@ -1472,6 +1501,8 @@ export class Box<TProvider = unknown> {
         throw new BoxError("Run timed out");
       }
       throw e;
+    } finally {
+      clearRunTimeout();
     }
 
     // Parse structured output if schema provided

@@ -27,6 +27,45 @@ describe("box.agent.run", () => {
     expect(run.cost.outputTokens).toBe(20);
   });
 
+  it("clears the timeout handle after a completed run", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockSSEResponse([{ event: "done", data: { output: "done" } }]));
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+
+    await box.agent.run({ prompt: "finish quickly", timeout: 600_000 });
+
+    const timeoutHandle = setTimeoutSpy.mock.results.at(-1)?.value;
+    expect(timeoutHandle).toBeDefined();
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(timeoutHandle);
+  });
+
+  it("does not retry a run that was aborted", async () => {
+    const { box, fetchMock } = await createTestBox();
+    const abort = Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
+    fetchMock.mockClear();
+    fetchMock.mockRejectedValue(abort);
+
+    await expect(box.agent.run({ prompt: "cancel me", maxRetries: 3 })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("still retries an ordinary transient failure", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock
+      .mockRejectedValueOnce(new Error("socket hang up"))
+      .mockResolvedValueOnce(mockSSEResponse([{ event: "done", data: { output: "second try" } }]));
+
+    const run = await box.agent.run({ prompt: "flaky", maxRetries: 1 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(run.status).toBe("completed");
+  });
+
   it("populates run.cost.totalUsd from done event total_cost_usd", async () => {
     const { box, fetchMock } = await createTestBox();
 
