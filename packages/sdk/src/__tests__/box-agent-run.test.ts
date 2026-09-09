@@ -4,6 +4,20 @@ import { Agent } from "../types.js";
 import type { Chunk } from "../types.js";
 import { mockSSEResponse, mockResponse, createTestBox, mockSSEResponseChunked } from "./helpers.js";
 
+/** A response body that delivers one event and then stays open until the request is aborted. */
+function abortableEventStream(signal: AbortSignal | undefined): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('event: text\ndata: {"text":"hi"}\n\n'));
+      signal?.addEventListener(
+        "abort",
+        () => controller.error(new DOMException("This operation was aborted", "AbortError")),
+        { once: true },
+      );
+    },
+  });
+}
+
 describe("box.agent.run", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -75,30 +89,60 @@ describe("box.agent.run", () => {
     }
   });
 
-  it("does not retry a non-Error abort", async () => {
+  it("does not retry a non-Error abort, and still rejects with an Error", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockClear();
     fetchMock.mockRejectedValue({ name: "AbortError", message: "aborted" });
 
-    await expect(box.agent.run({ prompt: "cancel me", maxRetries: 3 })).rejects.toMatchObject({
-      name: "AbortError",
+    const rejection = await box.agent.run({ prompt: "cancel me", maxRetries: 3 }).then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(rejection).toBeInstanceOf(Error);
+    expect(rejection).toMatchObject({ name: "AbortError", message: "aborted" });
+    expect((rejection as Error).stack).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a cancelled run as an abort, not as a timeout", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((url: string, init: { signal?: AbortSignal }) => {
+      // The cancel POST must answer, or awaiting cancel() would hang on the streaming body.
+      if (String(url).includes("/cancel")) {
+        return Promise.resolve(
+          new Response("{}", { status: 200, headers: { "content-type": "application/json" } }),
+        );
+      }
+      const body = abortableEventStream(init?.signal);
+      return Promise.resolve(
+        new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
+      );
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // No timeout is configured, so the only abort can be the caller's own cancel.
+    const stream = await box.agent.stream({ prompt: "long job" });
+    const rejection = await (async () => {
+      try {
+        for await (const _chunk of stream) {
+          await stream.cancel();
+        }
+        return null;
+      } catch (error) {
+        return error;
+      }
+    })();
+
+    expect(rejection).toMatchObject({ name: "AbortError" });
+    expect((rejection as Error).message).not.toMatch(/timed out/);
   });
 
   it("does not retry a timeout that fires once the stream is open", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockClear();
     fetchMock.mockImplementation((_url: string, init: { signal?: AbortSignal }) => {
-      const body = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode('event: text\ndata: {"text":"hi"}\n\n'));
-          init?.signal?.addEventListener("abort", () =>
-            controller.error(new DOMException("This operation was aborted", "AbortError")),
-          );
-        },
-      });
+      const body = abortableEventStream(init?.signal);
       return Promise.resolve(
         new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
       );

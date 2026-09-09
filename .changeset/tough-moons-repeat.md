@@ -16,3 +16,15 @@ nothing else about it changes.
 
 The run timeout handle is also cleared once the request settles, and is unref'd while it waits, so
 a completed run no longer holds the process open for the remainder of a long timeout.
+
+Cancelling a run no longer reports itself as a timeout. Both the run and the stream paths now
+track whether their own timeout fired, so `Run.cancel()` rejects with the underlying abort while a
+real timeout still rejects with "Run timed out" / "Stream timed out". The stream path also clears
+its timeout when the stream settles, which it previously never did.
+
+A rejection that is not an `Error` (some runtimes abort with a plain object) is wrapped in an
+`Error` that keeps the original `name` and `message`, so callers can always read a `stack`.
+
+Ending a stream early no longer emits an unhandled promise rejection. The internal
+`reader.cancel()` rejects rather than throws once the stream has errored, and that rejection was
+not being observed.

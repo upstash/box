@@ -195,6 +195,16 @@ function isAbortError(error: unknown, depth = 3): boolean {
   return isAbortError((error as { cause?: unknown }).cause, depth - 1);
 }
 
+/** Keeps a rejection an `Error`, carrying the original `name` and value for a non-Error throw. */
+function asError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  const name = (value as { name?: string } | null)?.name;
+  const message = (value as { message?: string } | null)?.message ?? String(value);
+  const error = new Error(message, { cause: value });
+  if (typeof name === "string") error.name = name;
+  return error;
+}
+
 /**
  * Error thrown by the Box SDK
  */
@@ -1335,8 +1345,8 @@ export class Box<TProvider = unknown> {
         // A cancelled or timed-out run must not be retried: the caller asked for it to stop, and
         // a retry starts a second billed run they never see. Checked before wrapping, because
         // wrapping a non-Error throw would hide the name this looks for.
-        if (isAbortError(e)) throw e;
-        lastError = e instanceof Error ? e : new Error(String(e));
+        if (isAbortError(e)) throw asError(e);
+        lastError = asError(e);
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -1372,8 +1382,13 @@ export class Box<TProvider = unknown> {
       options.files,
     );
 
+    // Only the timeout may report itself as one: Run.cancel() aborts the same controller.
+    let timedOut = false;
     const timeoutId = options.timeout
-      ? setTimeout(() => abortController.abort(), options.timeout)
+      ? setTimeout(() => {
+          timedOut = true;
+          abortController.abort();
+        }, options.timeout)
       : undefined;
     timeoutId?.unref?.();
     const clearRunTimeout = () => {
@@ -1502,9 +1517,9 @@ export class Box<TProvider = unknown> {
         processEvent(eventType, eventData);
       }
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
+      if (isAbortError(e)) {
         Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-        throw new BoxError("Run timed out", undefined, { cause: e });
+        if (timedOut) throw new BoxError("Run timed out", undefined, { cause: e });
       }
       throw e;
     } finally {
@@ -1537,9 +1552,18 @@ export class Box<TProvider = unknown> {
     const abortController = new AbortController();
     Run._update(run, { abortController });
 
-    if (options.timeout) {
-      setTimeout(() => abortController.abort(), options.timeout);
-    }
+    // Only the timeout may report itself as one: StreamRun.cancel() aborts the same controller.
+    let timedOut = false;
+    const timeoutId = options.timeout
+      ? setTimeout(() => {
+          timedOut = true;
+          abortController.abort();
+        }, options.timeout)
+      : undefined;
+    timeoutId?.unref?.();
+    const clearStreamTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
 
     const folder = this._getFolder();
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
@@ -1721,9 +1745,10 @@ export class Box<TProvider = unknown> {
           computeMs: Date.now() - start,
         });
       } catch (e) {
-        if (e instanceof Error && e.name === "AbortError") {
+        if (isAbortError(e)) {
           Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-          throw new BoxError("Stream timed out", undefined, { cause: e });
+          if (timedOut) throw new BoxError("Stream timed out", undefined, { cause: e });
+          throw e;
         }
         Run._update(run, {
           result: rawOutput.trim(),
@@ -1732,6 +1757,7 @@ export class Box<TProvider = unknown> {
         });
         throw e;
       } finally {
+        clearStreamTimeout();
         if (!finished) {
           // Early termination (consumer break/return) — run may still be executing server-side
           if (run.status === "running") {
@@ -1742,11 +1768,8 @@ export class Box<TProvider = unknown> {
             });
           }
         }
-        try {
-          reader.cancel();
-        } catch {
-          // ignore cancel errors
-        }
+        // Rejects rather than throws when the stream already errored, e.g. after a cancel.
+        void reader.cancel().catch(() => {});
       }
     }
 
