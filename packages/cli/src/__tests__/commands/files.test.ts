@@ -7,6 +7,7 @@ import {
   filesRenameCommand,
   filesStatCommand,
   filesWriteCommand,
+  filesDownloadCommand,
 } from "../../commands/files.js";
 import { CliError } from "../../core/errors.js";
 
@@ -14,9 +15,11 @@ const getBox = vi.hoisted(() => vi.fn());
 vi.mock("@upstash/box", () => ({ Box: { get: getBox } }));
 
 const readFileSync = vi.hoisted(() => vi.fn());
+const writeFileSync = vi.hoisted(() => vi.fn());
 vi.mock("node:fs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs")>()),
   readFileSync,
+  writeFileSync,
 }));
 
 describe("box files", () => {
@@ -28,6 +31,7 @@ describe("box files", () => {
     process.env.UPSTASH_BOX_API_KEY = "box_test";
     getBox.mockReset();
     readFileSync.mockReset();
+    writeFileSync.mockReset();
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -222,6 +226,55 @@ describe("box files", () => {
       boxWith({ rename });
       await filesRenameCommand("a.ts", "b.ts", { ...flags });
       expect(rename).toHaveBeenCalledWith("a.ts", "b.ts");
+    });
+  });
+
+  describe("download", () => {
+    it("writes the file when given a file path", async () => {
+      // It used to hand the path to the folder download, which created an empty
+      // local directory named after the file and exited 0.
+      const download = vi.fn();
+      boxWith({
+        stat: vi.fn().mockResolvedValue({ type: "file", size: 3 }),
+        read: vi.fn().mockResolvedValue(Buffer.from("hey").toString("base64")),
+        download,
+      });
+
+      await filesDownloadCommand("repo/notes.txt", { ...flags });
+
+      expect(download).not.toHaveBeenCalled();
+      expect(writeFileSync).toHaveBeenCalledWith("notes.txt", Buffer.from("hey"));
+    });
+
+    it("honours --out for the destination", async () => {
+      boxWith({
+        stat: vi.fn().mockResolvedValue({ type: "file", size: 3 }),
+        read: vi.fn().mockResolvedValue(Buffer.from("hey").toString("base64")),
+        download: vi.fn(),
+      });
+
+      await filesDownloadCommand("repo/notes.txt", { ...flags, out: "/tmp/copy.txt" });
+
+      expect(writeFileSync).toHaveBeenCalledWith("/tmp/copy.txt", Buffer.from("hey"));
+    });
+
+    it("still uses the folder download for a directory", async () => {
+      const download = vi.fn().mockResolvedValue(undefined);
+      boxWith({ stat: vi.fn().mockResolvedValue({ type: "directory" }), download });
+
+      await filesDownloadCommand("repo", { ...flags });
+
+      expect(download).toHaveBeenCalledWith({ folder: "repo" });
+      expect(writeFileSync).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the folder download when the path cannot be stat-ed", async () => {
+      const download = vi.fn().mockResolvedValue(undefined);
+      boxWith({ stat: vi.fn().mockRejectedValue(new Error("nope")), download });
+
+      await filesDownloadCommand("repo", { ...flags });
+
+      expect(download).toHaveBeenCalledWith({ folder: "repo" });
     });
   });
 });

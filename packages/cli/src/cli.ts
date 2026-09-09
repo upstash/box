@@ -301,10 +301,15 @@ withCommon(
 });
 
 withCommon(
-  files.command("download").argument("[folder]").description("Download files from the box"),
-).action(async (folder: string | undefined, flags: Record<string, unknown>) => {
-  await runCommand(async () => filesDownloadCommand(folder, { ...globals(flags), ...flags }));
-});
+  files
+    .command("download")
+    .argument("[folder]")
+    .description("Download files or a folder from the box"),
+)
+  .option("-o, --out <file>", "Destination when downloading a single file")
+  .action(async (folder: string | undefined, flags: Record<string, unknown>) => {
+    await runCommand(async () => filesDownloadCommand(folder, { ...globals(flags), ...flags }));
+  });
 
 const git = program.command("git").description("Git operations inside the box");
 /** Every git verb takes the same box flags plus an optional repo folder. */
@@ -365,6 +370,7 @@ withGitCommon(git.command("push").description("Push the current branch"))
 withGitCommon(git.command("create-pr").description("Open a pull request"))
   .requiredOption("--title <title>", "Pull request title")
   .option("--body <body>", "Pull request body")
+  .option("--body-file <file>", "Read the body from a file, or - for stdin")
   .option("--base <branch>", "Base branch")
   .option("--attach <file>", attachHelp, collectAttach, [])
   .action(async (flags: Record<string, unknown>) => {
@@ -373,6 +379,7 @@ withGitCommon(git.command("create-pr").description("Open a pull request"))
 
 withGitCommon(git.command("create-issue").description("Open an issue"))
   .requiredOption("--title <title>", "Issue title")
+  .option("--body-file <file>", "Read the body from a file, or - for stdin")
   .option("--body <body>", "Issue body")
   .option("--attach <file>", attachHelp, collectAttach, [])
   .action(async (flags: Record<string, unknown>) => {
@@ -522,6 +529,45 @@ program
   .option("--init-command <command>", "Startup script, for keep-alive boxes")
   .option("--browser", "Provision a headless Chromium in the box")
   .option("--clone-repo <repo>", "Clone this repository into the box after creating it")
+  .option(
+    "--skill <owner/repo/skill>",
+    "Context7 skill to install on the box (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--network-policy <mode>", "Outbound network policy (allow-all, deny-all, custom)")
+  .option(
+    "--allow-domain <domain>",
+    "Domain to allow, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--allow-cidr <cidr>",
+    "CIDR to allow, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--deny-cidr <cidr>",
+    "CIDR to deny, for --network-policy custom (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option(
+    "--attach-header <host:Name=value>",
+    "Header to inject into outbound requests to a host (repeatable; visible in ps, prefer --attach-headers-file for secrets)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--attach-headers-file <path>", "JSON file of outbound headers keyed by host pattern")
+  .option(
+    "--mcp <name=spec>",
+    "MCP server, as an npm package or an https URL (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .option("--mcp-file <path>", "JSON file holding an array of MCP server objects")
   .option("--no-repl", "Create the box, print its id and exit")
   .option("--no-use", "Do not write a .box file for the new box")
   .option("--json", "Print the new box as one object (implies --no-repl)")

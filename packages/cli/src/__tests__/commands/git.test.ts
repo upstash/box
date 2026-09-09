@@ -2,12 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   gitCheckoutCommand,
   gitCloneCommand,
+  gitCreatePrCommand,
+  gitPushCommand,
   gitConfigCommand,
   gitDiffCommand,
   gitExecCommand,
   gitStatusCommand,
 } from "../../commands/git.js";
 import { CliError } from "../../core/errors.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const getBox = vi.hoisted(() => vi.fn());
 vi.mock("@upstash/box", () => ({ Box: { get: getBox } }));
@@ -105,6 +110,57 @@ describe("box git", () => {
     await gitCloneCommand("https://example.com/me/public", { ...flags });
 
     expect(getBox.mock.calls[0]?.[1]).not.toHaveProperty("gitToken");
+  });
+
+  it("pushes the checked-out branch, not one named after the box", async () => {
+    // With no branch the API pushes to the box id after a `checkout -B`, which
+    // force-moves the ref and leaves you on a branch you did not ask for.
+    const push = vi.fn().mockResolvedValue(undefined);
+    const exec = vi.fn().mockResolvedValue({ output: "feature/login\n", exit_code: 0 });
+    boxWith({ push, exec });
+
+    await gitPushCommand({ ...flags });
+
+    expect(push).toHaveBeenCalledWith({ branch: "feature/login" });
+  });
+
+  it("refuses to guess a branch on a detached HEAD", async () => {
+    const push = vi.fn();
+    boxWith({ push, exec: vi.fn().mockResolvedValue({ output: "HEAD\n", exit_code: 0 }) });
+
+    await expect(gitPushCommand({ ...flags })).rejects.toThrow(/--branch/);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  describe("--body-file", () => {
+    it("reads the body from a file", async () => {
+      const createPR = vi.fn().mockResolvedValue({ url: "u" });
+      boxWith({ createPR });
+      const file = join(mkdtempSync(join(tmpdir(), "box-body-")), "body.md");
+      writeFileSync(file, "## Steps\n\n1. open the page\n");
+
+      await gitCreatePrCommand({ ...flags, title: "T", bodyFile: file });
+
+      expect(createPR).toHaveBeenCalledWith(
+        expect.objectContaining({ body: "## Steps\n\n1. open the page\n" }),
+      );
+    });
+
+    it("refuses both --body and --body-file", async () => {
+      boxWith({ createPR: vi.fn() });
+
+      await expect(
+        gitCreatePrCommand({ ...flags, title: "T", body: "a", bodyFile: "b" }),
+      ).rejects.toThrow(/not both/);
+    });
+
+    it("names the file it could not read", async () => {
+      boxWith({ createPR: vi.fn() });
+
+      await expect(
+        gitCreatePrCommand({ ...flags, title: "T", bodyFile: "/nope/missing.md" }),
+      ).rejects.toThrow(/Could not read/);
+    });
   });
 
   it("rejects a depth that is not a positive number", async () => {

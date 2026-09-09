@@ -1,10 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
 import { emit, requireToken, type GlobalFlags } from "../core/io.js";
 
 export type FilesFlags = GlobalFlags & {
+  out?: string;
   follow?: boolean;
   parents?: boolean;
   recursive?: boolean;
@@ -179,6 +181,22 @@ export async function filesDownloadCommand(
   flags: FilesFlags,
 ): Promise<void> {
   const box = await open(flags);
+
+  // Given a file, the download API creates an empty local directory named after
+  // it and reports success. Reading the file and writing it is what the caller
+  // asked for, and is the only outcome that is not silently wrong.
+  if (folder !== undefined) {
+    const stat = await box.files.stat(folder).catch(() => undefined);
+    if (stat && stat.type !== "directory") {
+      const content = await box.files.read(folder, { encoding: "base64" });
+      const bytes = Buffer.from(content, "base64");
+      const dest = flags.out ?? basename(folder);
+      writeFileSync(dest, bytes);
+      emit({ path: dest, bytes: bytes.length }, `Wrote ${bytes.length} bytes to ${dest}`, flags);
+      return;
+    }
+  }
+
   await box.files.download(folder === undefined ? undefined : { folder });
   emit({ folder: folder ?? null }, "Downloaded.", flags);
 }

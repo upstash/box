@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
 import { CliError } from "../core/errors.js";
@@ -12,6 +13,7 @@ export type GitFlags = GlobalFlags & {
   message?: string;
   authorName?: string;
   authorEmail?: string;
+  bodyFile?: string;
   title?: string;
   body?: string;
   base?: string;
@@ -204,30 +206,68 @@ export async function gitCheckoutCommand(branch: string, flags: GitFlags): Promi
 /** Push the current branch. */
 export async function gitPushCommand(flags: GitFlags): Promise<void> {
   const box = await open(flags);
-  await box.git.push(flags.branch === undefined ? undefined : { branch: flags.branch });
-  emit({ pushed: true }, "Pushed.", flags);
+
+  // Without a branch the API pushes to one named after the box, after a
+  // `checkout -B` that force-moves the ref. Sending the checked-out branch
+  // explicitly keeps `box git push` meaning what it does in git.
+  let branch = flags.branch;
+  if (branch === undefined) {
+    const probe = await box.git.exec({ args: ["rev-parse", "--abbrev-ref", "HEAD"] });
+    const head = probe.exit_code === 0 ? probe.output.trim() : "";
+    if (!head || head === "HEAD") {
+      throw new CliError(
+        "Could not read the current branch (detached HEAD?). Pass --branch <name>.",
+      );
+    }
+    branch = head;
+  }
+
+  await box.git.push({ branch });
+  emit({ pushed: true, branch }, `Pushed ${branch}.`, flags);
 }
 
 /** Open a pull request. */
 export async function gitCreatePrCommand(flags: GitFlags): Promise<void> {
   if (!flags.title) throw new CliError("Usage: box git create-pr --title <title>");
   const box = await open(flags);
+  const body = bodyFrom(flags);
   const pr = await box.git.createPR({
     title: flags.title,
-    ...(flags.body === undefined ? {} : { body: flags.body }),
+    ...(body === undefined ? {} : { body }),
     ...(flags.base === undefined ? {} : { base: flags.base }),
     ...(flags.attach?.length ? { attach: flags.attach } : {}),
   });
   emit(pr, prMessage("Pull request", pr), flags);
 }
 
+/**
+ * Resolve the body from --body or --body-file.
+ *
+ * A body long enough to be worth writing does not survive shell quoting, and
+ * `gh` has --body-file for the same reason.
+ * @param flags - the merged flags.
+ * @returns the body text, when either flag was given.
+ */
+function bodyFrom(flags: GitFlags): string | undefined {
+  if (flags.bodyFile !== undefined && flags.body !== undefined) {
+    throw new CliError("Pass --body or --body-file, not both");
+  }
+  if (flags.bodyFile === undefined) return flags.body;
+  try {
+    return flags.bodyFile === "-" ? readFileSync(0, "utf8") : readFileSync(flags.bodyFile, "utf8");
+  } catch (error) {
+    throw new CliError(`Could not read ${flags.bodyFile}: ${(error as Error).message}`);
+  }
+}
+
 /** Open an issue. */
 export async function gitCreateIssueCommand(flags: GitFlags): Promise<void> {
   if (!flags.title) throw new CliError("Usage: box git create-issue --title <title>");
   const box = await open(flags);
+  const issueBody = bodyFrom(flags);
   const issue = await box.git.createIssue({
     title: flags.title,
-    ...(flags.body === undefined ? {} : { body: flags.body }),
+    ...(issueBody === undefined ? {} : { body: issueBody }),
     ...(flags.attach?.length ? { attach: flags.attach } : {}),
   });
   emit(issue, prMessage("Issue", issue), flags);
