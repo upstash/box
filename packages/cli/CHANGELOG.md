@@ -1,5 +1,30 @@
 # @upstash/box-cli
 
+## 0.3.0
+
+### Minor Changes
+
+- 3e2fc22: Add the create-time options the CLI was missing.
+
+  `--keep-alive`, `--browser`, `--env` and the rest can only be chosen when a box is created, so an option with no flag was unreachable from the CLI for the life of the box. Four of the SDK's create options had none:
+  - `--skill <owner/repo/skill>` (repeatable), matching `skills`. The box agent wants a three-part Context7 identifier and only warns when it cannot parse one, so a malformed skill is silently not installed.
+  - `--network-policy <mode>` with `--allow-domain`, `--allow-cidr` and `--deny-cidr`, matching `box config network`. A list without `--network-policy` is an error rather than a box created with unrestricted egress.
+  - `--attach-header host:Name=value` (repeatable) and `--attach-headers-file <path>`, for headers injected into outbound requests. These values are secrets and a command line is visible in `ps` and shell history, so prefer the file.
+  - `--mcp name=package` / `--mcp name=https://url` (repeatable) and `--mcp-file <path>` for servers that also need `args` or `headers`.
+
+  Nothing existing changes: every flag is new, and `box create` without them sends exactly what it sent before.
+
+### Patch Changes
+
+- 3e2fc22: Fix the git and file wrappers where they diverge from the tools they wrap.
+
+  Two behaviours change, both because the old ones were wrong:
+  - **`box git push` with no `--branch` now pushes the checked-out branch.** It used to send nothing, and the API then pushes to a branch named after the box, after a `checkout -B` that force-moves the ref — so a push landed under the box id and left you on a branch you never asked for. A detached HEAD is now an error naming `--branch` rather than a guess.
+  - **`box files download <file>` downloads the file.** Given a file path it used to create an empty local directory named after it and exit 0, which is a silently wrong result rather than an error. `--out` names the destination; folder downloads are unchanged.
+
+  The remaining additions change nothing for existing calls:
+  - `box git create-pr --body-file` and `box git create-issue --body-file`, matching `gh`. A body worth writing does not survive shell quoting; `-` reads stdin.
+
 ## 0.2.24
 
 ### Patch Changes
