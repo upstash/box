@@ -1572,27 +1572,34 @@ export class Box<TProvider = unknown> {
       requestBody.agent_options = toBackendAgentOptions(this._agent, options.options);
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
-    const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
-      this._headers,
-      requestBody,
-      options.files,
-    );
+    let reader: ReadableStreamDefaultReader<Uint8Array>;
+    try {
+      const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
+        this._headers,
+        requestBody,
+        options.files,
+      );
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: fetchHeaders,
-      body: fetchBody,
-      signal: abortController.signal,
-    });
+      const response = await fetch(url, {
+        method: "POST",
+        headers: fetchHeaders,
+        body: fetchBody,
+        signal: abortController.signal,
+      });
 
-    if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
+      if (!response.ok) {
+        const msg = await parseErrorResponse(response);
+        throw new BoxError(msg, response.status);
+      }
+
+      const bodyReader = response.body?.getReader();
+      if (!bodyReader) throw new BoxError("Streaming not supported");
+      reader = bodyReader;
+    } catch (e) {
+      // Failing here means iterate() is never created, so its finally never clears the timeout.
+      clearStreamTimeout();
+      throw e;
     }
-
-    const bodyReader = response.body?.getReader();
-    if (!bodyReader) throw new BoxError("Streaming not supported");
-    const reader = bodyReader;
 
     let rawOutput = "";
 

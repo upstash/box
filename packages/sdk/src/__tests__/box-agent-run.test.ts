@@ -138,6 +138,20 @@ describe("box.agent.run", () => {
     expect((rejection as Error).message).not.toMatch(/timed out/);
   });
 
+  it("clears the stream timeout when the request fails before the stream opens", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValue(mockResponse({ error: "boom" }, 500));
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+
+    await expect(box.agent.stream({ prompt: "fails early", timeout: 600_000 })).rejects.toThrow();
+
+    const timeoutHandle = setTimeoutSpy.mock.results.at(-1)?.value;
+    expect(timeoutHandle).toBeDefined();
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(timeoutHandle);
+  });
+
   it("does not retry a timeout that fires once the stream is open", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockClear();
