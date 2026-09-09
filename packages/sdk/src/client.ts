@@ -183,15 +183,16 @@ const EXEC_SESSION_SIGNALS = new Set([
 ]);
 
 /**
- * Returns true when `error` represents an abort/cancellation (e.g. Fetch abort in Node/browser).
+ * Returns true when `error` represents an abort/cancellation (e.g. Fetch abort in Node/browser),
+ * including one that a `BoxError` wraps to report a timeout. Runtimes differ on whether that error
+ * is an `Error`, a `DOMException`, or a plain object, so this matches on `name` and follows the
+ * `cause` chain rather than the type.
  */
-function isAbortError(error: unknown): boolean {
-  if (typeof DOMException !== "undefined" && error instanceof DOMException) {
-    return error.name === "AbortError";
-  }
-  return Boolean(
-    error && typeof error === "object" && (error as { name?: string }).name === "AbortError",
-  );
+function isAbortError(error: unknown, depth = 3): boolean {
+  if (!error || typeof error !== "object") return false;
+  if ((error as { name?: string }).name === "AbortError") return true;
+  if (depth <= 0) return false;
+  return isAbortError((error as { cause?: unknown }).cause, depth - 1);
 }
 
 /**
@@ -201,8 +202,9 @@ export class BoxError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "BoxError";
   }
 }
@@ -1330,10 +1332,11 @@ export class Box<TProvider = unknown> {
       try {
         return await this._executeRun(options, attempt);
       } catch (e) {
+        // A cancelled or timed-out run must not be retried: the caller asked for it to stop, and
+        // a retry starts a second billed run they never see. Checked before wrapping, because
+        // wrapping a non-Error throw would hide the name this looks for.
+        if (isAbortError(e)) throw e;
         lastError = e instanceof Error ? e : new Error(String(e));
-        // A cancelled or timed-out run must not be retried: the caller asked for it to stop,
-        // and a retry starts a second billed run they never see.
-        if (isAbortError(lastError)) throw lastError;
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -1501,7 +1504,7 @@ export class Box<TProvider = unknown> {
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-        throw new BoxError("Run timed out");
+        throw new BoxError("Run timed out", undefined, { cause: e });
       }
       throw e;
     } finally {
@@ -1720,7 +1723,7 @@ export class Box<TProvider = unknown> {
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") {
           Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-          throw new BoxError("Stream timed out");
+          throw new BoxError("Stream timed out", undefined, { cause: e });
         }
         Run._update(run, {
           result: rawOutput.trim(),

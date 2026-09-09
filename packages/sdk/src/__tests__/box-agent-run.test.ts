@@ -54,16 +54,62 @@ describe("box.agent.run", () => {
   });
 
   it("still retries an ordinary transient failure", async () => {
+    vi.useFakeTimers();
+    try {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockClear();
+      fetchMock
+        .mockRejectedValueOnce(new Error("socket hang up"))
+        .mockResolvedValueOnce(
+          mockSSEResponse([{ event: "done", data: { output: "second try" } }]),
+        );
+
+      const pending = box.agent.run({ prompt: "flaky", maxRetries: 1 });
+      await vi.runAllTimersAsync();
+      const run = await pending;
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(run.status).toBe("completed");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry a non-Error abort", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock.mockClear();
-    fetchMock
-      .mockRejectedValueOnce(new Error("socket hang up"))
-      .mockResolvedValueOnce(mockSSEResponse([{ event: "done", data: { output: "second try" } }]));
+    fetchMock.mockRejectedValue({ name: "AbortError", message: "aborted" });
 
-    const run = await box.agent.run({ prompt: "flaky", maxRetries: 1 });
+    await expect(box.agent.run({ prompt: "cancel me", maxRetries: 3 })).rejects.toMatchObject({
+      name: "AbortError",
+    });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(run.status).toBe("completed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a timeout that fires once the stream is open", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockClear();
+    fetchMock.mockImplementation((_url: string, init: { signal?: AbortSignal }) => {
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: text\ndata: {"text":"hi"}\n\n'));
+          init?.signal?.addEventListener("abort", () =>
+            controller.error(new DOMException("This operation was aborted", "AbortError")),
+          );
+        },
+      });
+      return Promise.resolve(
+        new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }),
+      );
+    });
+
+    // The run reports the timeout as a BoxError, which must still be recognised as an abort.
+    await expect(
+      box.agent.run({ prompt: "hang mid-stream", timeout: 50, maxRetries: 2 }),
+    ).rejects.toMatchObject({ name: "BoxError", message: "Run timed out" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("populates run.cost.totalUsd from done event total_cost_usd", async () => {
