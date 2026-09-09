@@ -183,14 +183,38 @@ const EXEC_SESSION_SIGNALS = new Set([
 ]);
 
 /**
+ * Returns true when `error` represents an abort/cancellation (e.g. Fetch abort in Node/browser),
+ * including one that a `BoxError` wraps to report a timeout. Runtimes differ on whether that error
+ * is an `Error`, a `DOMException`, or a plain object, so this matches on `name` and follows the
+ * `cause` chain rather than the type.
+ */
+function isAbortError(error: unknown, depth = 3): boolean {
+  if (!error || typeof error !== "object") return false;
+  if ((error as { name?: string }).name === "AbortError") return true;
+  if (depth <= 0) return false;
+  return isAbortError((error as { cause?: unknown }).cause, depth - 1);
+}
+
+/** Keeps a rejection an `Error`, carrying the original `name` and value for a non-Error throw. */
+function asError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  const name = (value as { name?: string } | null)?.name;
+  const message = (value as { message?: string } | null)?.message ?? String(value);
+  const error = new Error(message, { cause: value });
+  if (typeof name === "string") error.name = name;
+  return error;
+}
+
+/**
  * Error thrown by the Box SDK
  */
 export class BoxError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "BoxError";
   }
 }
@@ -1318,7 +1342,11 @@ export class Box<TProvider = unknown> {
       try {
         return await this._executeRun(options, attempt);
       } catch (e) {
-        lastError = e instanceof Error ? e : new Error(String(e));
+        // A cancelled or timed-out run must not be retried: the caller asked for it to stop, and
+        // a retry starts a second billed run they never see. Checked before wrapping, because
+        // wrapping a non-Error throw would hide the name this looks for.
+        if (isAbortError(e)) throw asError(e);
+        lastError = asError(e);
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -1334,10 +1362,6 @@ export class Box<TProvider = unknown> {
     const run = new Run<T | string>(this, "agent");
     const abortController = new AbortController();
     Run._update(run, { abortController });
-
-    if (options.timeout) {
-      setTimeout(() => abortController.abort(), options.timeout);
-    }
 
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
     const folder = this._getFolder();
@@ -1358,20 +1382,46 @@ export class Box<TProvider = unknown> {
       options.files,
     );
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: fetchHeaders,
-      body: fetchBody,
-      signal: abortController.signal,
-    });
+    // Only the timeout may report itself as one: Run.cancel() aborts the same controller.
+    let timedOut = false;
+    const timeoutId = options.timeout
+      ? setTimeout(() => {
+          timedOut = true;
+          abortController.abort();
+        }, options.timeout)
+      : undefined;
+    timeoutId?.unref?.();
+    const clearRunTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: fetchHeaders,
+        body: fetchBody,
+        signal: abortController.signal,
+      });
+    } catch (error) {
+      clearRunTimeout();
+      throw error;
+    }
 
     if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
+      try {
+        const msg = await parseErrorResponse(response);
+        throw new BoxError(msg, response.status);
+      } finally {
+        clearRunTimeout();
+      }
     }
 
     const reader = response.body?.getReader();
-    if (!reader) throw new BoxError("Streaming not supported");
+    if (!reader) {
+      clearRunTimeout();
+      throw new BoxError("Streaming not supported");
+    }
 
     const decoder = new TextDecoder();
     let buffer = "";
@@ -1467,11 +1517,13 @@ export class Box<TProvider = unknown> {
         processEvent(eventType, eventData);
       }
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
+      if (isAbortError(e)) {
         Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-        throw new BoxError("Run timed out");
+        if (timedOut) throw new BoxError("Run timed out", undefined, { cause: e });
       }
       throw e;
+    } finally {
+      clearRunTimeout();
     }
 
     // Parse structured output if schema provided
@@ -1500,9 +1552,18 @@ export class Box<TProvider = unknown> {
     const abortController = new AbortController();
     Run._update(run, { abortController });
 
-    if (options.timeout) {
-      setTimeout(() => abortController.abort(), options.timeout);
-    }
+    // Only the timeout may report itself as one: StreamRun.cancel() aborts the same controller.
+    let timedOut = false;
+    const timeoutId = options.timeout
+      ? setTimeout(() => {
+          timedOut = true;
+          abortController.abort();
+        }, options.timeout)
+      : undefined;
+    timeoutId?.unref?.();
+    const clearStreamTimeout = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
 
     const folder = this._getFolder();
     const requestBody: Record<string, unknown> = { prompt: options.prompt };
@@ -1511,27 +1572,34 @@ export class Box<TProvider = unknown> {
       requestBody.agent_options = toBackendAgentOptions(this._agent, options.options);
 
     const url = `${this._baseUrl}/v2/box/${this.id}/run/stream`;
-    const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
-      this._headers,
-      requestBody,
-      options.files,
-    );
+    let reader: ReadableStreamDefaultReader<Uint8Array>;
+    try {
+      const { body: fetchBody, headers: fetchHeaders } = await buildRunRequest(
+        this._headers,
+        requestBody,
+        options.files,
+      );
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: fetchHeaders,
-      body: fetchBody,
-      signal: abortController.signal,
-    });
+      const response = await fetch(url, {
+        method: "POST",
+        headers: fetchHeaders,
+        body: fetchBody,
+        signal: abortController.signal,
+      });
 
-    if (!response.ok) {
-      const msg = await parseErrorResponse(response);
-      throw new BoxError(msg, response.status);
+      if (!response.ok) {
+        const msg = await parseErrorResponse(response);
+        throw new BoxError(msg, response.status);
+      }
+
+      const bodyReader = response.body?.getReader();
+      if (!bodyReader) throw new BoxError("Streaming not supported");
+      reader = bodyReader;
+    } catch (e) {
+      // Failing here means iterate() is never created, so its finally never clears the timeout.
+      clearStreamTimeout();
+      throw asError(e);
     }
-
-    const bodyReader = response.body?.getReader();
-    if (!bodyReader) throw new BoxError("Streaming not supported");
-    const reader = bodyReader;
 
     let rawOutput = "";
 
@@ -1684,17 +1752,19 @@ export class Box<TProvider = unknown> {
           computeMs: Date.now() - start,
         });
       } catch (e) {
-        if (e instanceof Error && e.name === "AbortError") {
+        if (isAbortError(e)) {
           Run._update(run, { status: "cancelled", computeMs: Date.now() - start });
-          throw new BoxError("Stream timed out");
+          if (timedOut) throw new BoxError("Stream timed out", undefined, { cause: e });
+          throw asError(e);
         }
         Run._update(run, {
           result: rawOutput.trim(),
           status: "failed",
           computeMs: Date.now() - start,
         });
-        throw e;
+        throw asError(e);
       } finally {
+        clearStreamTimeout();
         if (!finished) {
           // Early termination (consumer break/return) — run may still be executing server-side
           if (run.status === "running") {
@@ -1705,11 +1775,8 @@ export class Box<TProvider = unknown> {
             });
           }
         }
-        try {
-          reader.cancel();
-        } catch {
-          // ignore cancel errors
-        }
+        // Rejects rather than throws when the stream already errored, e.g. after a cancel.
+        void reader.cancel().catch(() => {});
       }
     }
 
