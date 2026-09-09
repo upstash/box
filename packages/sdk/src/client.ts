@@ -183,7 +183,7 @@ const EXEC_SESSION_SIGNALS = new Set([
 ]);
 
 /**
- * Error thrown by the Box SDK
+ * Returns true when `error` represents an abort/cancellation (e.g. Fetch abort in Node/browser).
  */
 function isAbortError(error: unknown): boolean {
   if (typeof DOMException !== "undefined" && error instanceof DOMException) {
@@ -194,6 +194,9 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
+/**
+ * Error thrown by the Box SDK
+ */
 export class BoxError extends Error {
   constructor(
     message: string,
