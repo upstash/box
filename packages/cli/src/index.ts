@@ -10,3 +10,5 @@ export type {
   ToolCallSummary,
 } from "./repl/types.js";
 export { MODEL_OPTIONS_BY_AGENT } from "./models.js";
+export { buildBoxProgram } from "./program.js";
+export { setDefaultToken } from "./core/io.js";

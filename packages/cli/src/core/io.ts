@@ -78,11 +78,23 @@ export async function runCommand(run: () => Promise<void>): Promise<void> {
  * @throws CliError when no token is available.
  */
 export function requireToken(flagToken?: string): string {
-  const token = flagToken?.trim() || process.env.UPSTASH_BOX_API_KEY?.trim();
+  const token =
+    flagToken?.trim() || process.env.UPSTASH_BOX_API_KEY?.trim() || defaultToken?.trim();
   if (!token) {
     throw new CliError("API token required. Pass --token or set UPSTASH_BOX_API_KEY.");
   }
   return token;
+}
+
+let defaultToken: string | undefined;
+
+/**
+ * Supply the token a host CLI resolved on the user's behalf, such as an OAuth
+ * access token from a saved login. `--token` and `UPSTASH_BOX_API_KEY` still win.
+ * @param token - the credential, or undefined to clear it.
+ */
+export function setDefaultToken(token: string | undefined): void {
+  defaultToken = token;
 }
 
 /** Largest delay Node's timers accept before clamping. */

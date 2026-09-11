@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CliError } from "../core/errors.js";
 import { resolveToken } from "../auth.js";
+import { setDefaultToken } from "../core/io.js";
 
 describe("resolveToken", () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
@@ -12,7 +13,10 @@ describe("resolveToken", () => {
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    setDefaultToken(undefined);
+    vi.restoreAllMocks();
+  });
 
   it("returns flag token when provided", () => {
     expect(resolveToken("flag-token")).toBe("flag-token");
@@ -33,6 +37,14 @@ describe("resolveToken", () => {
 
   it("prefers flag over env var", () => {
     process.env.UPSTASH_BOX_API_KEY = "env-token";
+    expect(resolveToken("flag-token")).toBe("flag-token");
+  });
+
+  it("falls back to a host-supplied default token, behind flag and env", () => {
+    setDefaultToken("host-token");
+    expect(resolveToken()).toBe("host-token");
+    process.env.UPSTASH_BOX_API_KEY = "env-token";
+    expect(resolveToken()).toBe("env-token");
     expect(resolveToken("flag-token")).toBe("flag-token");
   });
 });
