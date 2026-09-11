@@ -4,6 +4,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Send a JWT credential (an OAuth access token from an Upstash login) as
+  `Authorization: Bearer`; Box API keys keep using `X-Box-Api-Key`. Mirrors the
+  JS SDK.
 - Add `git.create_issue()`, which opens a GitHub issue from a box.
 - Add `attach` to `git.create_pr()` and `git.create_issue()`. It takes image or
   video files, relative to the working directory, and uploads them to the new

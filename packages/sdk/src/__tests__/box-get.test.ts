@@ -24,6 +24,17 @@ describe("Box.get", () => {
     expect((init?.headers as Record<string, string>)["X-Box-Api-Key"]).toBe("test-api-key");
   });
 
+  it("sends a JWT credential as a Bearer token instead of an API key", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse(TEST_BOX_DATA));
+    const jwt = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyXzEifQ.c2ln";
+
+    await Box.get("box-123", { apiKey: jwt, baseUrl: TEST_CONFIG.baseUrl });
+
+    const headers = vi.mocked(fetch).mock.calls[0]![1]?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${jwt}`);
+    expect(headers["X-Box-Api-Key"]).toBeUndefined();
+  });
+
   it("throws on 404", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ error: "box not found" }, 404));
 

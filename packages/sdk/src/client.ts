@@ -75,8 +75,14 @@ type BrowserExtractSchema<T> = {
 
 const DEFAULT_BASE_URL = "https://us-east-1.box.upstash.com";
 
+// An OAuth access token (a JWT) is only recognised in the Authorization header.
+const JWT_SHAPE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
 function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, string> {
-  return { "X-Box-Api-Key": apiKey, ...telemetryHeaders(enableTelemetry) };
+  const credential: Record<string, string> = JWT_SHAPE.test(apiKey)
+    ? { Authorization: `Bearer ${apiKey}` }
+    : { "X-Box-Api-Key": apiKey };
+  return { ...credential, ...telemetryHeaders(enableTelemetry) };
 }
 
 /** Decode base64 to bytes in both Node and edge runtimes. */
