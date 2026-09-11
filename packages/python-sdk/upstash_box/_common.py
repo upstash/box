@@ -6,6 +6,7 @@ No ``await`` here — this module is imported verbatim by both clients.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 
@@ -63,8 +64,17 @@ def resolve_api_key(api_key: Optional[str]) -> str:
     return key
 
 
+# An OAuth access token (a JWT) is only recognised in the Authorization header.
+_JWT_SHAPE = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
+
+
 def build_headers(api_key: str) -> Dict[str, str]:
-    return {"X-Box-Api-Key": api_key, **telemetry_headers()}
+    credential = (
+        {"Authorization": f"Bearer {api_key}"}
+        if _JWT_SHAPE.match(api_key)
+        else {"X-Box-Api-Key": api_key}
+    )
+    return {**credential, **telemetry_headers()}
 
 
 def parse_error_response(response: httpx.Response) -> str:

@@ -51,3 +51,12 @@ def test_platform_detection(monkeypatch):
     monkeypatch.delenv("VERCEL")
     monkeypatch.setenv("CI", "1")
     assert telemetry_headers()["Upstash-Telemetry-Platform"] == "ci"
+
+
+def test_build_headers_sends_a_jwt_as_bearer(monkeypatch):
+    monkeypatch.delenv("UPSTASH_DISABLE_TELEMETRY", raising=False)
+    jwt = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyXzEifQ.c2ln"
+    headers = build_headers(jwt)
+    assert headers["Authorization"] == f"Bearer {jwt}"
+    assert "X-Box-Api-Key" not in headers
+    assert build_headers("box_abc")["X-Box-Api-Key"] == "box_abc"
