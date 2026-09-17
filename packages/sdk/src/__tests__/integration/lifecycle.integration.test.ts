@@ -97,6 +97,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
     // Verify the run shows up in listRuns
     const runs = await box.listRuns();
     expect(runs.length).toBeGreaterThanOrEqual(1);
+    expect(runs.find((r) => r.id === run.id)?.status).toBe("cancelled");
   }, 120000);
 
   it("box.logs: returns structured logs", async () => {

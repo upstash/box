@@ -172,6 +172,21 @@ export async function startRepl(box: Box, options?: BoxREPLClientOptions): Promi
   let isMetaReturn = false;
 
   if (stdin.isTTY) {
+    // Intercept Ctrl+C: cancel the active run instead of exiting the REPL.
+    // Wraps readline's _ttyWrite so the \x03 character never reaches readline
+    // when there is an active run, preventing it from closing the interface.
+    const rlAnyTty = rl as unknown as {
+      _ttyWrite: (s: string, key: Record<string, unknown>) => void;
+    };
+    const origTtyWrite = rlAnyTty._ttyWrite.bind(rl);
+    rlAnyTty._ttyWrite = (s: string, key: Record<string, unknown>) => {
+      if (key?.ctrl && key?.name === "c" && client.activeRun) {
+        client.cancelActiveRun();
+        return;
+      }
+      return origTtyWrite(s, key);
+    };
+
     // Must run before readline's handler so the cursor is still on the input line
     stdin.prependListener(
       "keypress",
