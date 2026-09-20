@@ -63,6 +63,18 @@ def resolve_api_key(api_key: Optional[str]) -> str:
     return key
 
 
+def require_ids(value: Any, name: str) -> List[str]:
+    """Normalize the ids for a bulk delete and reject a list that names nothing.
+
+    The bulk endpoints delete whatever they are scoped to, so an empty or blank
+    scope must never reach them: it would read as "everything".
+    """
+    ids = value if isinstance(value, list) else [value]
+    if not ids or any(not isinstance(i, str) or not i.strip() for i in ids):
+        raise BoxError(f"{name} must contain at least one non-empty id")
+    return ids
+
+
 def build_headers(api_key: str) -> Dict[str, str]:
     return {"X-Box-Api-Key": api_key, **telemetry_headers()}
 

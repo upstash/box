@@ -37,6 +37,26 @@ async def test_delete_boxes():
     assert json.loads(route.calls.last.request.content) == {"ids": ["box-123"]}
 
 
+@pytest.mark.parametrize("box_ids", [[], "", ["box-1", " "], None])
+@respx.mock
+async def test_delete_boxes_rejects_an_empty_scope(box_ids):
+    route = respx.delete(ROOT).mock(return_value=httpx.Response(200, json={}))
+    with pytest.raises(BoxError, match="box_ids must contain at least one non-empty id"):
+        await AsyncBox.delete_boxes(box_ids=box_ids, **_opts())
+    assert not route.called
+
+
+@pytest.mark.parametrize("snapshot_ids", [[], "", ["snap-1", " "]])
+@respx.mock
+async def test_delete_snapshots_rejects_an_empty_scope(snapshot_ids):
+    route = respx.delete(f"{ROOT}/snapshots").mock(
+        return_value=httpx.Response(200, json={"deleted": 0})
+    )
+    with pytest.raises(BoxError, match="snapshot_ids must contain at least one non-empty id"):
+        await AsyncBox.delete_snapshots(snapshot_ids=snapshot_ids, **_opts())
+    assert not route.called
+
+
 @respx.mock
 async def test_delete_snapshots_all():
     route = respx.delete(f"{ROOT}/snapshots").mock(
@@ -45,6 +65,7 @@ async def test_delete_snapshots_all():
     result = await AsyncBox.delete_snapshots(**_opts())
     assert result["deleted"] == 3
     assert json.loads(route.calls.last.request.content) == {}
+    assert route.calls.last.request.url.params["all"] == "true"
 
 
 @respx.mock
