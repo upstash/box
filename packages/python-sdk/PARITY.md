@@ -68,6 +68,7 @@ epoch seconds to **ms** in both SDKs.
 | `create`, `get`, `getByName`, `list`, `fromSnapshot` | `create`, `get`, `get_by_name`, `list`, `from_snapshot` |
 | `delete` (bulk) | `delete_boxes` (renamed to avoid clashing with instance `delete`) |
 | `deleteSnapshots` | `delete_snapshots` |
+| `delete` / `deleteSnapshots` reject an empty or blank id list | `delete_boxes` / `delete_snapshots` raise `BoxError` the same way |
 | `setEnv`, `listEnv`, `deleteEnv`, `setAllEnv` | `set_env`, `list_env`, `delete_env`, `set_all_env` |
 
 ## `EphemeralBox`

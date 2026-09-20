@@ -80,6 +80,19 @@ function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, s
 }
 
 /** Decode base64 to bytes in both Node and edge runtimes. */
+/**
+ * Normalizes the ids for a bulk delete and rejects a list that names nothing.
+ * The bulk endpoints delete whatever they are scoped to, so an empty or blank
+ * scope must never reach them: it would read as "everything".
+ */
+function requireIds(value: string | string[], name: string): string[] {
+  const ids = Array.isArray(value) ? value : [value];
+  if (ids.length === 0 || ids.some((id) => typeof id !== "string" || id.trim() === "")) {
+    throw new BoxError(`${name} must contain at least one non-empty id`);
+  }
+  return ids;
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
   if (typeof globalThis.atob !== "function") {
@@ -1071,6 +1084,7 @@ export class Box<TProvider = unknown> {
   /**
    * Delete snapshots for the authenticated user.
    * Omit snapshotIds to delete all snapshots, or pass a single ID / array of IDs to delete specific ones.
+   * An empty snapshotIds is rejected rather than read as "all".
    */
   static async deleteSnapshots(
     options?: BoxConnectionOptions & { snapshotIds?: string | string[] },
@@ -1092,12 +1106,16 @@ export class Box<TProvider = unknown> {
       "Content-Type": "application/json",
     };
 
+    // Deleting everything is asked for explicitly, never implied by a missing list.
     const body: { ids?: string[] } = {};
-    if (options?.snapshotIds !== undefined) {
-      body.ids = Array.isArray(options.snapshotIds) ? options.snapshotIds : [options.snapshotIds];
+    let url = `${baseUrl}/v2/box/snapshots`;
+    if (options?.snapshotIds === undefined) {
+      url += "?all=true";
+    } else {
+      body.ids = requireIds(options.snapshotIds, "snapshotIds");
     }
 
-    const response = await fetch(`${baseUrl}/v2/box/snapshots`, {
+    const response = await fetch(url, {
       method: "DELETE",
       headers,
       body: JSON.stringify(body),
@@ -1132,7 +1150,7 @@ export class Box<TProvider = unknown> {
       "Content-Type": "application/json",
     };
 
-    const ids = Array.isArray(options.boxIds) ? options.boxIds : [options.boxIds];
+    const ids = requireIds(options.boxIds, "boxIds");
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "DELETE",
       headers,

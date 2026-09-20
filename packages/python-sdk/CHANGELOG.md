@@ -4,6 +4,12 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Fix `delete_boxes(box_ids=[])` deleting every box on the account. The API read
+  an empty id list as "no filter". `delete_boxes` and `delete_snapshots` now raise
+  `BoxError` before any request is made when the list is empty or contains a
+  blank id.
+- `delete_snapshots()` with no `snapshot_ids` still deletes every snapshot, and
+  now says so explicitly by sending `?all=true`.
 - Add `git.create_issue()`, which opens a GitHub issue from a box.
 - Add `attach` to `git.create_pr()` and `git.create_issue()`. It takes image or
   video files, relative to the working directory, and uploads them to the new

@@ -2101,7 +2101,7 @@ class Box(Generic[T]):
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
-        ids = box_ids if isinstance(box_ids, list) else [box_ids]
+        ids = common.require_ids(box_ids, "box_ids")
         with httpx.Client() as client:
             response = client.request(
                 "DELETE",
@@ -2121,14 +2121,19 @@ class Box(Generic[T]):
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
+        # Deleting everything is asked for explicitly, never implied by a missing list.
         body: Dict[str, Any] = {}
-        if snapshot_ids is not None:
-            body["ids"] = snapshot_ids if isinstance(snapshot_ids, list) else [snapshot_ids]
+        params: Dict[str, str] = {}
+        if snapshot_ids is None:
+            params["all"] = "true"
+        else:
+            body["ids"] = common.require_ids(snapshot_ids, "snapshot_ids")
         with httpx.Client() as client:
             response = client.request(
                 "DELETE",
                 f"{base_url}/v2/box/snapshots",
                 headers={**headers, "Content-Type": "application/json"},
+                params=params,
                 content=json.dumps(body),
             )
             common.raise_for_status(response)
