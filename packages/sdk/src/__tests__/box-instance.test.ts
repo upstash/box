@@ -380,20 +380,15 @@ describe("Box instance methods", () => {
       await expect(box.setInitCommand("")).rejects.toThrow("initCommand is required");
     });
 
-    it("throws for non-keep-alive boxes", async () => {
+    it("works on boxes that are not keep-alive", async () => {
       const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ init_command: "npm run dev" }));
 
-      await expect(box.getInitCommand()).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
-      await expect(box.setInitCommand("echo hi")).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
-      await expect(box.deleteInitCommand()).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
+      await expect(box.getInitCommand()).resolves.toBe("npm run dev");
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("GET");
     });
   });
 

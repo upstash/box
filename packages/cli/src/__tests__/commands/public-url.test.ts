@@ -52,6 +52,31 @@ describe("box public-url", () => {
     expect(out()).toContain("user: u  password: p");
   });
 
+  it("passes wakeOnRequest through and warns when the URL is unprotected", async () => {
+    const getPublicURL = vi.fn().mockResolvedValue({
+      url: "https://b1-3000.example",
+      port: 3000,
+      wake_on_request: true,
+    });
+    getBox.mockResolvedValue({ getPublicURL });
+    await publicUrlCommand("3000", { ...flags, wakeOnRequest: true });
+    expect(getPublicURL).toHaveBeenCalledWith(3000, { wakeOnRequest: true });
+    expect(err()).toContain("anyone with the URL can start this box");
+  });
+
+  it("does not warn when a wake-enabled URL is protected", async () => {
+    const getPublicURL = vi.fn().mockResolvedValue({
+      url: "https://b1-3000.example",
+      port: 3000,
+      token: "t",
+      wake_on_request: true,
+    });
+    getBox.mockResolvedValue({ getPublicURL });
+    await publicUrlCommand("3000", { ...flags, wakeOnRequest: true, bearerToken: true });
+    expect(getPublicURL).toHaveBeenCalledWith(3000, { bearerToken: true, wakeOnRequest: true });
+    expect(err()).not.toContain("anyone with the URL can start this box");
+  });
+
   it("rejects a port outside the valid range rather than calling the API", async () => {
     const getPublicURL = vi.fn();
     getBox.mockResolvedValue({ getPublicURL });

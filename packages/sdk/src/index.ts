@@ -74,6 +74,7 @@ export type {
   ErrorResponse,
   BoxRunData,
   PublicURL,
+  PublicURLListItem,
   Preview,
   NetworkPolicy,
   EphemeralBoxConfig,

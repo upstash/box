@@ -266,6 +266,10 @@ await box.delete_snapshot(snapshot.id)
 url = await box.get_public_url(3000)
 urls = await box.list_public_urls()
 await box.delete_public_url(3000)
+
+# wake_on_request: a request to the URL resumes a paused box and waits for the
+# port, so anyone who can reach the URL can start the box.
+url = await box.get_public_url(3000, wake_on_request=True)
 ```
 
 ### Browser

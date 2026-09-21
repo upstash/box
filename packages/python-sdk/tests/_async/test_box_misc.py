@@ -104,19 +104,54 @@ async def test_configure_model():
 async def test_public_urls():
     box = await make_async_box(respx.mock)
     respx.post(f"{BASE}/preview").mock(
-        return_value=httpx.Response(200, json={"url": "https://x", "port": 3000, "token": "t"})
+        return_value=httpx.Response(
+            200,
+            json={"url": "https://x", "port": 3000, "token": "t", "wake_on_request": False},
+        )
     )
     respx.get(f"{BASE}/preview").mock(
-        return_value=httpx.Response(200, json={"previews": [{"url": "https://x", "port": 3000}]})
+        return_value=httpx.Response(
+            200,
+            json={"previews": [{"url": "https://x", "port": 3000, "wake_on_request": False}]},
+        )
     )
     respx.delete(f"{BASE}/preview/3000").mock(return_value=httpx.Response(200, json={}))
 
     url = await box.get_public_url(3000, bearer_token=True)
     assert url.url == "https://x"
     assert url.token == "t"
+    assert url.wake_on_request is False
     listed = await box.list_public_urls()
     assert listed["public_urls"][0].port == 3000
+    assert listed["public_urls"][0].wake_on_request is False
     await box.delete_public_url(3000)
+    await box.aclose()
+
+
+@respx.mock
+async def test_public_url_wake_on_request():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/preview").mock(
+        return_value=httpx.Response(
+            200, json={"url": "https://x", "port": 3000, "wake_on_request": True}
+        )
+    )
+    url = await box.get_public_url(3000, wake_on_request=True)
+    assert last_json_body(route) == {"port": 3000, "wake_on_request": True}
+    assert url.wake_on_request is True
+    await box.aclose()
+
+
+@respx.mock
+async def test_public_url_omits_wake_on_request_by_default():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/preview").mock(
+        return_value=httpx.Response(
+            200, json={"url": "https://x", "port": 3000, "wake_on_request": False}
+        )
+    )
+    await box.get_public_url(3000)
+    assert last_json_body(route) == {"port": 3000}
     await box.aclose()
 
 
@@ -147,14 +182,6 @@ async def test_keep_alive_box_cannot_pause():
 
 
 @respx.mock
-async def test_init_command_requires_keep_alive():
-    box = await make_async_box(respx.mock)
-    with pytest.raises(BoxError, match="only available for keep-alive"):
-        await box.get_init_command()
-    await box.aclose()
-
-
-@respx.mock
 async def test_init_command_crud():
     box = await make_async_box(respx.mock, {"keep_alive": True})
     respx.get(f"{BASE}/startup").mock(
@@ -165,6 +192,30 @@ async def test_init_command_crud():
     assert await box.get_init_command() == "npm run dev"
     await box.set_init_command("npm start")
     await box.delete_init_command()
+    await box.aclose()
+
+
+@respx.mock
+async def test_init_command_crud_without_keep_alive():
+    box = await make_async_box(respx.mock)
+    respx.get(f"{BASE}/startup").mock(
+        return_value=httpx.Response(200, json={"init_command": "npm run dev"})
+    )
+    put = respx.put(f"{BASE}/startup").mock(return_value=httpx.Response(200, json={}))
+    respx.delete(f"{BASE}/startup").mock(return_value=httpx.Response(200, json={}))
+    assert box.keep_alive is False
+    assert await box.get_init_command() == "npm run dev"
+    await box.set_init_command("npm start")
+    assert last_json_body(put) == {"init_command": "npm start"}
+    await box.delete_init_command()
+    await box.aclose()
+
+
+@respx.mock
+async def test_set_init_command_requires_a_command():
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError, match="init_command is required"):
+        await box.set_init_command("")
     await box.aclose()
 
 

@@ -882,10 +882,6 @@ class AsyncBox(Generic[T]):
                 "No agent configured. Pass an `agent` option to create() to use box.agent.run()."
             )
 
-    def _require_keep_alive(self, feature: str) -> None:
-        if not self.keep_alive:
-            raise BoxError(f"{feature} is only available for keep-alive boxes")
-
     def _log(self, *args: Any) -> None:
         if self._debug:
             _logger.debug("[Box] %s", " ".join(str(a) for a in args))
@@ -1521,12 +1517,10 @@ class AsyncBox(Generic[T]):
         self._network_policy = policy
 
     async def get_init_command(self) -> str:
-        self._require_keep_alive("Init command")
         data = await self._request("GET", f"/v2/box/{self.id}/startup")
         return data.get("init_command", "")
 
     async def set_init_command(self, init_command: str) -> None:
-        self._require_keep_alive("Init command")
         if not init_command:
             raise BoxError("init_command is required")
         await self._request(
@@ -1534,7 +1528,6 @@ class AsyncBox(Generic[T]):
         )
 
     async def delete_init_command(self) -> None:
-        self._require_keep_alive("Init command")
         await self._request("DELETE", f"/v2/box/{self.id}/startup")
 
     async def pause(self) -> None:
@@ -1792,13 +1785,21 @@ class AsyncBox(Generic[T]):
     # ==================== Public URLs ====================
 
     async def get_public_url(
-        self, port: int, *, bearer_token: Optional[bool] = None, basic_auth: Optional[bool] = None
+        self,
+        port: int,
+        *,
+        bearer_token: Optional[bool] = None,
+        basic_auth: Optional[bool] = None,
+        wake_on_request: Optional[bool] = None,
     ) -> PublicURL:
         body: Dict[str, Any] = {"port": port}
         if bearer_token is not None:
             body["bearer_token"] = bearer_token
         if basic_auth is not None:
             body["basic_auth"] = basic_auth
+        # wake_on_request: a request to a paused box resumes it and waits for the port.
+        if wake_on_request is not None:
+            body["wake_on_request"] = wake_on_request
         data = await self._request("POST", f"/v2/box/{self.id}/preview", body=body)
         return PublicURL.model_validate(data)
 
@@ -1963,8 +1964,6 @@ class AsyncBox(Generic[T]):
         agent = config.get("agent")
         if agent:
             common.resolve_agent_model(agent)
-        if config.get("init_command") is not None and not config.get("keep_alive"):
-            raise BoxError("init_command requires keep_alive=True")
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
         timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)

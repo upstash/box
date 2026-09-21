@@ -475,7 +475,7 @@ export interface BoxConfig extends BoxConnectionOptions {
   browser?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
-  /** Optional startup script for keep-alive boxes. */
+  /** Startup script run once per container start, after create, resume and snapshot restore. */
   initCommand?: string;
   agent?: AgentConfig;
   git?: {
@@ -1238,6 +1238,26 @@ export interface PublicURL {
   username?: string;
   /** Basic auth password (only returned when basicAuth is true) */
   password?: string;
+  /** Whether a request to this URL resumes the box when it is paused */
+  wake_on_request?: boolean;
+}
+
+/** One entry returned by `listPublicURLs()`. Secrets are only returned at creation time. */
+export interface PublicURLListItem {
+  /** Preview id, `{boxId}-{port}` */
+  id: string;
+  /** Port number exposed */
+  port: number;
+  /** Public URL to access the exposed port */
+  url: string;
+  /** Unix seconds */
+  created_at: number;
+  /** Whether the URL is protected by basic auth */
+  basic_auth: boolean;
+  /** Whether the URL is protected by a bearer token */
+  bearer_token: boolean;
+  /** Whether a request to this URL resumes the box when it is paused */
+  wake_on_request: boolean;
 }
 
 /** @deprecated Use `PublicURL` instead. */

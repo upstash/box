@@ -4,6 +4,13 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Add `wake_on_request` to `get_public_url()` and to the `PublicURL` model. When
+  true, a request to the public URL resumes a paused box and is held until the
+  app's port is listening. When false (the default) such a request gets a
+  "box is sleeping" response.
+- Init commands now work on every box, not only keep-alive ones. `create(init_command=...)`
+  no longer requires `keep_alive=True`, and `get_init_command()`, `set_init_command()`
+  and `delete_init_command()` no longer raise on a non-keep-alive box.
 - Fix `delete_boxes(box_ids=[])` deleting every box on the account. The API read
   an empty id list as "no filter". `delete_boxes` and `delete_snapshots` now raise
   `BoxError` before any request is made when the list is empty or contains a

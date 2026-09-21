@@ -104,9 +104,14 @@ async def test_create_requires_api_key(monkeypatch):
         await AsyncBox.create(base_url=TEST_BASE_URL)
 
 
-async def test_init_command_requires_keep_alive():
-    with pytest.raises(BoxError, match="init_command requires keep_alive"):
-        await AsyncBox.create(init_command="x", **_opts())
+@respx.mock
+async def test_create_init_command_without_keep_alive():
+    route = respx.post(CREATE_URL).mock(return_value=httpx.Response(200, json=TEST_BOX_DATA))
+    box = await AsyncBox.create(init_command="npm run dev", **_opts())
+    body = last_json_body(route)
+    assert body["init_command"] == "npm run dev"
+    assert "keep_alive" not in body
+    await box.aclose()
 
 
 @respx.mock

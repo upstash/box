@@ -408,6 +408,7 @@ const publicUrl = program
   .argument("[port]", "Port to publish; omit to list")
   .option("--basic-auth", "Protect the URL with generated basic-auth credentials")
   .option("--bearer-token", "Protect the URL with a generated bearer token")
+  .option("--wake-on-request", "Resume the box when a request hits this URL")
   .option("--box <id>", "Box to act on")
   .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")
@@ -526,7 +527,7 @@ program
   .option("--name <name>", "Human-readable name for the box")
   .option("--size <size>", "Resource size (small, medium, large)")
   .option("--keep-alive", "Keep the box running instead of pausing when idle")
-  .option("--init-command <command>", "Startup script, for keep-alive boxes")
+  .option("--init-command <command>", "Startup script, run once each time the box starts")
   .option("--browser", "Provision a headless Chromium in the box")
   .option("--clone-repo <repo>", "Clone this repository into the box after creating it")
   .option(
