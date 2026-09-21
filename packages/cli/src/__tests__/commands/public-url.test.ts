@@ -95,6 +95,24 @@ describe("box public-url", () => {
     expect(out()).toContain("3000  https://b1-3000.example");
   });
 
+  it("marks only the wake-enabled URLs in the list", async () => {
+    getBox.mockResolvedValue({
+      listPublicURLs: vi.fn().mockResolvedValue({
+        publicURLs: [
+          { port: 3000, url: "https://b1-3000.example", wake_on_request: true },
+          { port: 8080, url: "https://b1-8080.example", wake_on_request: false },
+          // An older server may omit the field entirely.
+          { port: 9090, url: "https://b1-9090.example" },
+        ],
+      }),
+    });
+    await publicUrlListCommand({ ...flags });
+    const lines = out().split("\n");
+    expect(lines.find((l) => l.includes("3000"))).toContain("(wakes)");
+    expect(lines.find((l) => l.includes("8080"))).not.toContain("(wakes)");
+    expect(lines.find((l) => l.includes("9090"))).not.toContain("(wakes)");
+  });
+
   it("says so on stderr when there are none, leaving stdout empty", async () => {
     getBox.mockResolvedValue({ listPublicURLs: vi.fn().mockResolvedValue({ publicURLs: [] }) });
     await publicUrlListCommand({ ...flags });

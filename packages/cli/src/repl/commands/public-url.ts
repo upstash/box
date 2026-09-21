@@ -63,11 +63,17 @@ export async function* handlePublicUrl(box: Box, args: string): AsyncGenerator<B
         yield { type: "log", message: `user: ${created.username}  password: ${created.password}` };
       }
       if (created.token) yield { type: "log", message: `bearer token: ${created.token}` };
+      if (wakeOnRequest && !basicAuth && !bearerToken) {
+        yield {
+          type: "log",
+          message: "Unprotected and wake-enabled: anyone with the URL can start this box.",
+        };
+      }
       // Detaching matters: a server started as a plain background job is reaped
       // when the command that launched it finishes, and the URL then 502s.
       yield {
         type: "log",
-        message: "Start the server detached — ( npm run dev & ) — or it stops with the command.",
+        message: "Start the server detached, ( npm run dev & ), or it stops with the command.",
       };
     }
   }

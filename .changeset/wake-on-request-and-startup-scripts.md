@@ -1,14 +1,16 @@
 ---
 "@upstash/box": minor
-"@upstash/box-cli": minor
+"@upstash/box-cli": patch
 ---
 
 Add `wakeOnRequest` to public URLs, and allow init commands on every box.
 
 `box.getPublicURL(port, { wakeOnRequest: true })` marks a public URL so that an
 incoming HTTP request resumes a paused box. The request is held until the app's
-port is listening, bounded at 30 seconds, so the caller gets the app's own
-response instead of an error. It is off by default: anyone who can reach a
+port is listening, so the caller gets the app's own response rather than an
+error. That wait is bounded at 30 seconds: if the port is still not listening,
+the caller gets a `503` with `Retry-After: 5` while the box keeps resuming in
+the background, so a retry usually succeeds. It is off by default: anyone who can reach a
 wake-enabled URL can start the box and incur compute charges, so pair it with
 `bearerToken` or `basicAuth`. The CLI exposes it as `box public-url <port>
 --wake-on-request`, and warns when the URL has no authentication.
