@@ -17,6 +17,59 @@ from upstash_box import BoxError
 BASE = f"{TEST_BASE_URL}/v2/box/box-123"
 
 
+@respx.mock
+async def test_jev_act_options_and_variable_replay():
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "input_tokens": 100,
+                "output_tokens": 5,
+                "actions": [
+                    {
+                        "selector": "#email",
+                        "description": "Email",
+                        "method": "fill",
+                        "arguments": ["%email%"],
+                    }
+                ],
+            },
+        )
+    )
+    tab = box.browser.get_tab("tab-1")
+    result = await tab.act(
+        "Fill Email with %email%",
+        model="vercel/typesafe-ai/jev",
+        variables={"email": "hello@example.com"},
+        scope="#login",
+        timeout=15000,
+    )
+    assert last_json_body(route) == {
+        "instruction": "Fill Email with %email%",
+        "model": "vercel/typesafe-ai/jev",
+        "tab": "tab-1",
+        "variables": {"email": "hello@example.com"},
+        "scope": "#login",
+        "timeout": 15000,
+    }
+    assert result.actions[0].arguments == ["%email%"]
+    await tab.act(result.actions[0], variables={"email": "other@example.com"})
+    assert "model" not in last_json_body(route)
+    assert last_json_body(route)["variables"] == {"email": "other@example.com"}
+    await box.aclose()
+
+
+@pytest.mark.parametrize("timeout", [0, -1, 1.5, 180001, True])
+@respx.mock
+async def test_invalid_act_timeout(timeout):
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError, match="act timeout"):
+        await box.browser.get_tab("tab-1").act("Click Submit", timeout=timeout)
+    await box.aclose()
+
+
 # ---------- tabs / page operations ----------
 
 

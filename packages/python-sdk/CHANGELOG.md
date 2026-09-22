@@ -4,6 +4,10 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Support Jev browser actions through `model="vercel/typesafe-ai/jev"`. Add
+  `variables`, `scope`, and `timeout` to `tab.act()`, including variable-backed
+  deterministic action replay.
+
 - Fix `delete_boxes(box_ids=[])` deleting every box on the account. The API read
   an empty id list as "no filter". `delete_boxes` and `delete_snapshots` now raise
   `BoxError` before any request is made when the list is empty or contains a

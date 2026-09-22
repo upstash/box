@@ -24,6 +24,42 @@ BASE = f"{TEST_BASE_URL}/v2/box/box-123"
 RUN_URL = f"{BASE}/run/stream"
 
 
+@respx.mock
+def test_jev_act_options_and_replay():
+    box = make_sync_box(respx.mock)
+    route = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "actions": [
+                    {
+                        "selector": "#email",
+                        "description": "Email",
+                        "method": "fill",
+                        "arguments": ["%email%"],
+                    }
+                ],
+            },
+        )
+    )
+    tab = box.browser.get_tab("tab-1")
+    result = tab.act(
+        "Fill Email with %email%",
+        model="vercel/typesafe-ai/jev",
+        variables={"email": "hello@example.com"},
+        scope="#login",
+        timeout=15000,
+    )
+    assert result.success
+    assert last_json_body(route)["timeout"] == 15000
+    assert last_json_body(route)["scope"] == "#login"
+    tab.act(result.actions[0], variables={"email": "other@example.com"})
+    assert "model" not in last_json_body(route)
+    assert last_json_body(route)["variables"] == {"email": "other@example.com"}
+    box.close()
+
+
 def _opts():
     return {"api_key": TEST_API_KEY, "base_url": TEST_BASE_URL}
 

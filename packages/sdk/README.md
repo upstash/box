@@ -114,6 +114,45 @@ ssh <box-id>@us-east-1.box.upstash.com
 
 Use your **Box API key** as the SSH password.
 
+### Browser actions
+
+Select Jev through Vercel AI Gateway using the existing `tab.act()` API. Configure
+a Vercel Gateway key on your Box account first. This requires a backend and browser
+image with Jev support.
+
+```ts
+const box = await Box.create({ browser: true });
+const tab = await box.browser.tab.create("https://your-app.example/settings");
+const model = "vercel/typesafe-ai/jev";
+
+const result = await tab.act("Choose Germany from the country dropdown and confirm", {
+  model,
+});
+if (!result.success) throw new Error(result.message);
+
+const filled = await tab.act("Fill the Email field with %email%", {
+  model,
+  variables: { email: "person@example.com" },
+  scope: "form#profile", // Optional CSS selector matching one element.
+  timeout: 60_000, // Optional, defaults to 180_000 ms.
+});
+
+// Replay a resolved action without inference, using a different exact value.
+if (filled.success && filled.actions.length) {
+  await tab.act(filled.actions[0], { variables: { email: "other@example.com" } });
+}
+```
+
+One focused instruction can perform several interactions, such as opening a menu,
+choosing an option, and confirming. Jev stops when it determines the instruction
+is complete, becomes uncertain or blocked, reaches eight interactions, or runs out
+of time. Check `success` and `message`; a failed call may have performed some actions.
+
+For text entry, supply the exact string in `variables` and reference it as `%name%`.
+Jev chooses from available controls and supplied values; it does not generate text.
+Its initial support covers DOM controls in the main document and open shadow roots.
+It does not support iframe contents, canvas interactions, `extract()`, or `observe()`.
+
 ### Agent
 
 #### `box.agent.run(options: RunOptions): Promise<Run>`

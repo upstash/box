@@ -55,6 +55,8 @@ import {
   type AgentConfig,
   type CustomHarnessConfig,
   type BrowserExtractOptions,
+  type BrowserActOptions,
+  type BrowserActReplayOptions,
   type BrowserContent,
   type BrowserScreenshotOptions,
   type BrowserTabCreateOptions,
@@ -576,25 +578,40 @@ export class Tab {
     return { elements: resp.elements ?? [] };
   }
 
-  /** Resolve and execute one natural-language action on this tab (metered). */
-  async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult>;
+  /** Execute a focused instruction. Jev is available as `vercel/typesafe-ai/jev`. */
+  async act(instruction: string, options?: BrowserActOptions): Promise<BrowserActResult>;
   /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
-  async act(action: BrowserAction): Promise<BrowserActResult>;
+  async act(action: BrowserAction, options?: BrowserActReplayOptions): Promise<BrowserActResult>;
   async act(
     instructionOrAction: string | BrowserAction,
-    options?: BrowserExtractOptions,
+    options?: BrowserActOptions,
   ): Promise<BrowserActResult> {
     if (typeof instructionOrAction !== "string" && !instructionOrAction.selector) {
       throw new BoxError("act(action) requires a selector; observe() did not resolve one");
     }
+    if (
+      options?.timeout !== undefined &&
+      (!Number.isInteger(options.timeout) || options.timeout < 1 || options.timeout > 180000)
+    ) {
+      throw new BoxError("act timeout must be an integer from 1 to 180000 milliseconds");
+    }
+    if (options?.scope !== undefined && !options.scope.trim()) {
+      throw new BoxError("act scope must be a non-empty CSS selector");
+    }
+    const executionOptions = {
+      ...(options?.variables !== undefined ? { variables: options.variables } : {}),
+      ...(options?.timeout !== undefined ? { timeout: options.timeout } : {}),
+    };
     const body =
       typeof instructionOrAction === "string"
         ? {
             instruction: instructionOrAction,
             tab: this.id,
             ...(options?.model ? { model: options.model } : {}),
+            ...(options?.scope ? { scope: options.scope } : {}),
+            ...executionOptions,
           }
-        : { action: instructionOrAction, tab: this.id };
+        : { action: instructionOrAction, tab: this.id, ...executionOptions };
     const resp = await this.box._request<{
       success?: boolean;
       message?: string;
@@ -605,7 +622,8 @@ export class Tab {
       output_tokens?: number;
     }>("POST", `/v2/box/${this.box.id}/browser/act`, {
       body,
-      timeout: 180000,
+      // Allow the server a short grace period to return the operation outcome.
+      timeout: options?.timeout !== undefined ? options.timeout + 5000 : 185000,
     });
     return {
       success: Boolean(resp.success),

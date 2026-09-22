@@ -202,6 +202,56 @@ describe("Box browser operations", () => {
     });
   });
 
+  it("forwards Jev act options and preserves placeholder arguments", async () => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        success: true,
+        actions: [
+          { selector: "#email", description: "Email", method: "fill", arguments: ["%email%"] },
+        ],
+        input_tokens: 120,
+        output_tokens: 4,
+      }),
+    );
+    const result = await box.browser.getTab("tab-1").act("Fill Email with %email%", {
+      model: "vercel/typesafe-ai/jev",
+      variables: { email: "hello@example.com" },
+      scope: "#login",
+      timeout: 15000,
+    });
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string)).toEqual({
+      instruction: "Fill Email with %email%",
+      model: "vercel/typesafe-ai/jev",
+      tab: "tab-1",
+      variables: { email: "hello@example.com" },
+      scope: "#login",
+      timeout: 15000,
+    });
+    expect(result.actions[0].arguments).toEqual(["%email%"]);
+    expect(result.inputTokens).toBe(120);
+    fetchMock.mockResolvedValueOnce(mockResponse({ success: true }));
+    await box.browser
+      .getTab("tab-1")
+      .act(result.actions[0], { variables: { email: "second@example.com" }, timeout: 5000 });
+    const replay = JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string);
+    expect(replay.variables).toEqual({ email: "second@example.com" });
+    expect(replay).not.toHaveProperty("model");
+    expect(replay).not.toHaveProperty("instruction");
+  });
+
+  it.each([0, -1, 1.5, 180001, NaN])(
+    "rejects invalid act timeout %s before sending",
+    async (timeout) => {
+      const { box, fetchMock } = await createTestBox();
+      const calls = fetchMock.mock.calls.length;
+      await expect(box.browser.getTab("tab-1").act("Click Submit", { timeout })).rejects.toThrow(
+        "act timeout",
+      );
+      expect(fetchMock.mock.calls).toHaveLength(calls);
+    },
+  );
+
   it("replays a pre-resolved action deterministically (posts action, not instruction)", async () => {
     const { box, fetchMock } = await createTestBox();
     fetchMock

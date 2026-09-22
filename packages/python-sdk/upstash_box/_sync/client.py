@@ -683,25 +683,40 @@ class Tab:
         instruction: Union[str, BrowserObserveElement, BrowserActAction],
         *,
         model: Optional[str] = None,
+        variables: Optional[Dict[str, str]] = None,
+        scope: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> BrowserActResult:
-        """Resolve and execute one action on this tab.
+        """Execute a focused instruction on this tab, possibly using several interactions.
 
         Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
         action to replay it with no LLM call and no key (``model`` ignored).
         """
+        if timeout is not None and (
+            isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 180000
+        ):
+            raise BoxError("act timeout must be an integer from 1 to 180000 milliseconds")
+        if scope is not None and not scope.strip():
+            raise BoxError("act scope must be a non-empty CSS selector")
         if isinstance(instruction, str):
             body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
             if model:
                 body["model"] = model
+            if scope:
+                body["scope"] = scope
         else:
             if not instruction.selector:
                 raise BoxError("act(action) requires a selector; observe() did not resolve one")
             body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
+        if variables is not None:
+            body["variables"] = variables
+        if timeout is not None:
+            body["timeout"] = timeout
         resp = self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",
             body=body,
-            timeout=180000,
+            timeout=timeout + 5000 if timeout is not None else 185000,
         )
         return BrowserActResult.model_validate(resp)
 

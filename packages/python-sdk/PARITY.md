@@ -10,8 +10,13 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 
 ## Module exports
 
+Browser act options: JS `BrowserActOptions` / `BrowserActReplayOptions` map to
+Python `Tab.act(..., model=, variables=, scope=, timeout=)` keyword arguments.
+Both SDKs support `vercel/typesafe-ai/jev` and preserve `%name%` action arguments.
+
 | JS                     | Python                       |
 | ---------------------- | ---------------------------- |
+| `BrowserActOptions` / `BrowserActReplayOptions` | `Tab.act()` keyword arguments: `model`, `variables`, `scope`, `timeout` |
 | `Box` / `EphemeralBox` | `Box` / `EphemeralBox` (+ `Async*`) |
 | `Run` / `StreamRun`    | `Run` / `StreamRun` (+ `Async*`) |
 | `BoxError`             | `BoxError`                   |

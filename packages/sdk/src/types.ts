@@ -1255,6 +1255,19 @@ export interface BrowserExtractOptions {
   model?: string;
 }
 
+/** Options for instruction-based `tab.act()`. */
+export interface BrowserActOptions extends BrowserExtractOptions {
+  /** Exact values referenced as `%name%` in the instruction. */
+  variables?: Record<string, string>;
+  /** CSS selector limiting target discovery. Must match exactly one element. */
+  scope?: string;
+  /** Action timeout in milliseconds, from 1 to 180000. Defaults to 180000. */
+  timeout?: number;
+}
+
+/** Replay a resolved action without inference, substituting any named values locally. */
+export type BrowserActReplayOptions = Pick<BrowserActOptions, "variables" | "timeout">;
+
 /** A link on the page. */
 export interface BrowserLink {
   /** Link text. */
