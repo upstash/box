@@ -114,6 +114,58 @@ ssh <box-id>@us-east-1.box.upstash.com
 
 Use your **Box API key** as the SSH password.
 
+### Browser actions
+
+Select Jev, TypeSafe AI's fast evaluation model, with
+`model: "jev"` on `tab.act()` (`typesafe-ai/jev` and `vercel/typesafe-ai/jev` also
+work). No extra setup is needed: Jev runs on the Upstash-provided key by default,
+billed at $0.042 per million input tokens with free output. A non-managed Box with
+your own Vercel AI Gateway key uses that key instead.
+
+```ts
+const box = await Box.create({ browser: true });
+const tab = await box.browser.tab.create("https://your-app.example/settings");
+const model = "jev";
+
+const result = await tab.act("Choose Germany from the country dropdown and confirm", {
+  model,
+});
+if (!result.success) throw new Error(result.message);
+
+const filled = await tab.act("Fill the Email field with %email%", {
+  model,
+  variables: { email: "person@example.com" },
+  scope: "form#profile", // Optional CSS selector matching one element.
+  timeout: 60_000, // Optional, defaults to 180_000 ms.
+  confidenceThreshold: 0.7, // Optional Jev-only override; default is 0.8.
+});
+
+// Replay a resolved action without inference, using a different exact value.
+if (filled.success && filled.actions.length) {
+  await tab.act(filled.actions[0], { variables: { email: "other@example.com" } });
+}
+```
+
+One focused instruction can perform several interactions, such as opening a menu,
+choosing an option, and confirming. Jev stops when it determines the instruction
+is complete, becomes uncertain or blocked, reaches eight interactions, or runs out
+of time. Check `success` and `message`; a failed call may have performed some actions.
+
+`confidenceThreshold` accepts a finite number from `0` to `1`, inclusive, for
+Jev instructions only. It applies to action selection, focused action checks,
+and completion. Lower values accept more uncertain model decisions; these scores
+are not calibrated guarantees of correctness. Target validation, ambiguity checks,
+variable requirements, deadlines and interaction limits still apply. Replay and
+other models reject this option.
+
+For text entry, supply the exact string in `variables` and reference it as `%name%`.
+`%name%` is treated as a variable only when `variables` is supplied, so literal
+text such as `caf%C3%A9` works without it. Returned messages and actions show
+supplied values as `%name%`, never the values themselves.
+Jev chooses from available controls and supplied values; it does not generate text.
+Its initial support covers DOM controls in the main document and open shadow roots.
+It does not support iframe contents, canvas interactions, `extract()`, or `observe()`.
+
 ### Agent
 
 #### `box.agent.run(options: RunOptions): Promise<Run>`

@@ -84,6 +84,8 @@ export type {
   Schedule,
   ScheduleStatus,
   BrowserExtractOptions,
+  BrowserActOptions,
+  BrowserActReplayOptions,
   BrowserContent,
   BrowserLink,
   BrowserScreenshotOptions,

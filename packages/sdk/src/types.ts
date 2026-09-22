@@ -1255,6 +1255,23 @@ export interface BrowserExtractOptions {
   model?: string;
 }
 
+/** Options for instruction-based `tab.act()`. */
+export interface BrowserActOptions extends BrowserExtractOptions {
+  /** Jev-only decision threshold, from 0 to 1 inclusive. Defaults to 0.8.
+   * Lower values accept more uncertain model decisions. Does not bypass target checks.
+   */
+  confidenceThreshold?: number;
+  /** Exact values referenced as `%name%` in the instruction. */
+  variables?: Record<string, string>;
+  /** CSS selector limiting target discovery. Must match exactly one element. */
+  scope?: string;
+  /** Action timeout in milliseconds, from 1 to 180000. Defaults to 180000. */
+  timeout?: number;
+}
+
+/** Replay a resolved action without inference, substituting any named values locally. */
+export type BrowserActReplayOptions = Pick<BrowserActOptions, "variables" | "timeout">;
+
 /** A link on the page. */
 export interface BrowserLink {
   /** Link text. */

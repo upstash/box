@@ -105,6 +105,8 @@ T = TypeVar("T")
 
 WORKSPACE = common.WORKSPACE
 _DEFAULT_TIMEOUT_MS = 600000
+# Model names that select Jev for browser act.
+_JEV_MODELS = frozenset({"jev", "typesafe-ai/jev", "vercel/typesafe-ai/jev"})
 
 
 def _resolve_tool_call_id(parsed: Dict[str, Any]) -> Optional[str]:
@@ -683,25 +685,54 @@ class Tab:
         instruction: Union[str, BrowserObserveElement, BrowserActAction],
         *,
         model: Optional[str] = None,
+        variables: Optional[Dict[str, str]] = None,
+        scope: Optional[str] = None,
+        timeout: Optional[int] = None,
+        confidence_threshold: Optional[float] = None,
     ) -> BrowserActResult:
-        """Resolve and execute one action on this tab.
+        """Execute a focused instruction on this tab, possibly using several interactions.
 
         Pass a string (LLM-resolved, metered) or a pre-resolved ``observe()``
         action to replay it with no LLM call and no key (``model`` ignored).
+        Jev's ``confidence_threshold`` is from 0 to 1 inclusive, default 0.8.
+        Lower values accept more uncertain model decisions; target checks still apply.
         """
+        if confidence_threshold is not None:
+            if (
+                isinstance(confidence_threshold, bool)
+                or not isinstance(confidence_threshold, (int, float))
+                or not 0 <= confidence_threshold <= 1
+            ):
+                raise BoxError("act confidence threshold must be a finite number from 0 to 1")
+            if not isinstance(instruction, str) or model not in _JEV_MODELS:
+                raise BoxError("act confidence threshold is supported only for Jev instructions")
+        if timeout is not None and (
+            isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 180000
+        ):
+            raise BoxError("act timeout must be an integer from 1 to 180000 milliseconds")
+        if scope is not None and not scope.strip():
+            raise BoxError("act scope must be a non-empty CSS selector")
         if isinstance(instruction, str):
             body: Dict[str, Any] = {"instruction": instruction, "tab": self.id}
             if model:
                 body["model"] = model
+            if scope:
+                body["scope"] = scope
         else:
             if not instruction.selector:
                 raise BoxError("act(action) requires a selector; observe() did not resolve one")
             body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
+        if confidence_threshold is not None:
+            body["confidence_threshold"] = confidence_threshold
+        if variables is not None:
+            body["variables"] = variables
+        if timeout is not None:
+            body["timeout"] = timeout
         resp = self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",
             body=body,
-            timeout=180000,
+            timeout=timeout + 5000 if timeout is not None else 185000,
         )
         return BrowserActResult.model_validate(resp)
 
