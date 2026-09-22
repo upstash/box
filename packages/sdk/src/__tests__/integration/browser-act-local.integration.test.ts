@@ -53,6 +53,7 @@ it("sends model and variables over HTTP, then replays without a model", async ()
     variables: { email: "test@example.com" },
     scope: "form",
     timeout: 10000,
+    confidenceThreshold: 0.7,
   });
   expect(result.success).toBe(true);
   expect(result.inputTokens).toBe(100);
@@ -61,6 +62,7 @@ it("sends model and variables over HTTP, then replays without a model", async ()
     model: "vercel/typesafe-ai/jev",
     scope: "form",
     timeout: 10000,
+    confidence_threshold: 0.7,
   });
   expect(requests[1]).toMatchObject({
     action: { arguments: ["%email%"] },

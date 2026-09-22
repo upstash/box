@@ -595,6 +595,18 @@ export class Tab {
     ) {
       throw new BoxError("act timeout must be an integer from 1 to 180000 milliseconds");
     }
+    if (options?.confidenceThreshold !== undefined) {
+      if (
+        !Number.isFinite(options.confidenceThreshold) ||
+        options.confidenceThreshold < 0 ||
+        options.confidenceThreshold > 1
+      ) {
+        throw new BoxError("act confidence threshold must be a finite number from 0 to 1");
+      }
+      if (typeof instructionOrAction !== "string" || options.model !== "vercel/typesafe-ai/jev") {
+        throw new BoxError("act confidence threshold is supported only for Jev instructions");
+      }
+    }
     if (options?.scope !== undefined && !options.scope.trim()) {
       throw new BoxError("act scope must be a non-empty CSS selector");
     }
@@ -609,6 +621,9 @@ export class Tab {
             tab: this.id,
             ...(options?.model ? { model: options.model } : {}),
             ...(options?.scope ? { scope: options.scope } : {}),
+            ...(options?.confidenceThreshold !== undefined
+              ? { confidence_threshold: options.confidenceThreshold }
+              : {}),
             ...executionOptions,
           }
         : { action: instructionOrAction, tab: this.id, ...executionOptions };

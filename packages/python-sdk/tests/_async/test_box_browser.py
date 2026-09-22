@@ -45,6 +45,7 @@ async def test_jev_act_options_and_variable_replay():
         variables={"email": "hello@example.com"},
         scope="#login",
         timeout=15000,
+        confidence_threshold=0.7,
     )
     assert last_json_body(route) == {
         "instruction": "Fill Email with %email%",
@@ -53,6 +54,7 @@ async def test_jev_act_options_and_variable_replay():
         "variables": {"email": "hello@example.com"},
         "scope": "#login",
         "timeout": 15000,
+        "confidence_threshold": 0.7,
     }
     assert result.actions[0].arguments == ["%email%"]
     await tab.act(result.actions[0], variables={"email": "other@example.com"})
@@ -633,4 +635,37 @@ async def test_recordings_list_paginates_and_get():
     first, second = (c.request.url for c in listing.calls)
     assert "limit=100" in str(first)
     assert "cursor=cursor-2" in str(second)
+    await box.aclose()
+
+
+@pytest.mark.parametrize("threshold", [-0.1, 1.1, float("nan"), float("inf"), True, "0.7"])
+@respx.mock
+async def test_invalid_jev_confidence_threshold(threshold):
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError, match="confidence threshold"):
+        await box.browser.get_tab("tab-1").act(
+            "Click Submit", model="vercel/typesafe-ai/jev", confidence_threshold=threshold
+        )
+    await box.aclose()
+
+
+@pytest.mark.parametrize("threshold", [0, 1])
+@respx.mock
+async def test_jev_threshold_boundaries(threshold):
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(200, json={"success": True})
+    )
+    await box.browser.get_tab("tab-1").act(
+        "Click Submit", model="vercel/typesafe-ai/jev", confidence_threshold=threshold
+    )
+    assert last_json_body(route)["confidence_threshold"] == threshold
+    await box.aclose()
+
+
+@respx.mock
+async def test_threshold_rejects_other_models():
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError, match="only for Jev instructions"):
+        await box.browser.get_tab("tab-1").act("Click Submit", confidence_threshold=0.7)
     await box.aclose()

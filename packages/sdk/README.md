@@ -135,6 +135,7 @@ const filled = await tab.act("Fill the Email field with %email%", {
   variables: { email: "person@example.com" },
   scope: "form#profile", // Optional CSS selector matching one element.
   timeout: 60_000, // Optional, defaults to 180_000 ms.
+  confidenceThreshold: 0.7, // Optional Jev-only override; default is 0.8.
 });
 
 // Replay a resolved action without inference, using a different exact value.
@@ -147,6 +148,13 @@ One focused instruction can perform several interactions, such as opening a menu
 choosing an option, and confirming. Jev stops when it determines the instruction
 is complete, becomes uncertain or blocked, reaches eight interactions, or runs out
 of time. Check `success` and `message`; a failed call may have performed some actions.
+
+`confidenceThreshold` accepts a finite number from `0` to `1`, inclusive, for
+Jev instructions only. It applies to action selection, focused action checks,
+and completion. Lower values accept more uncertain model decisions; these scores
+are not calibrated guarantees of correctness. Target validation, ambiguity checks,
+variable requirements, deadlines and interaction limits still apply. Replay and
+other models reject this option.
 
 For text entry, supply the exact string in `variables` and reference it as `%name%`.
 Jev chooses from available controls and supplied values; it does not generate text.

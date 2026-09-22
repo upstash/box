@@ -345,3 +345,20 @@ value.
 ## License
 
 MIT
+
+
+### Jev decision threshold
+
+```python
+result = await tab.act(
+    "Open Edit profile, fill Display name with %name%, and Save profile",
+    model="vercel/typesafe-ai/jev",
+    variables={"name": "Ada"},
+    confidence_threshold=0.7,  # Optional; default 0.8. Also available on the sync client.
+)
+```
+
+The threshold accepts finite numbers from 0 to 1 inclusive. Lower values accept
+more uncertain action and completion decisions. Target validation and execution
+limits remain enforced. This option is only supported for Jev instructions,
+not action replay or other models. Check `result.success` and `result.message`.

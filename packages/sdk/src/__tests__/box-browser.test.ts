@@ -219,6 +219,7 @@ describe("Box browser operations", () => {
       variables: { email: "hello@example.com" },
       scope: "#login",
       timeout: 15000,
+      confidenceThreshold: 0.7,
     });
     expect(JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string)).toEqual({
       instruction: "Fill Email with %email%",
@@ -227,6 +228,7 @@ describe("Box browser operations", () => {
       variables: { email: "hello@example.com" },
       scope: "#login",
       timeout: 15000,
+      confidence_threshold: 0.7,
     });
     expect(result.actions[0].arguments).toEqual(["%email%"]);
     expect(result.inputTokens).toBe(120);
@@ -238,6 +240,40 @@ describe("Box browser operations", () => {
     expect(replay.variables).toEqual({ email: "second@example.com" });
     expect(replay).not.toHaveProperty("model");
     expect(replay).not.toHaveProperty("instruction");
+  });
+
+  it.each([-0.1, 1.1, NaN, Infinity, -Infinity])(
+    "rejects invalid Jev threshold %s",
+    async (confidenceThreshold) => {
+      const { box, fetchMock } = await createTestBox();
+      const calls = fetchMock.mock.calls.length;
+      await expect(
+        box.browser
+          .getTab("tab-1")
+          .act("Click Submit", { model: "vercel/typesafe-ai/jev", confidenceThreshold }),
+      ).rejects.toThrow("confidence threshold");
+      expect(fetchMock.mock.calls).toHaveLength(calls);
+    },
+  );
+
+  it.each([0, 1])("preserves the threshold boundary %s", async (confidenceThreshold) => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ success: true }));
+    await box.browser
+      .getTab("tab-1")
+      .act("Click Submit", { model: "vercel/typesafe-ai/jev", confidenceThreshold });
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string).confidence_threshold).toBe(
+      confidenceThreshold,
+    );
+  });
+
+  it("rejects a threshold for a different model", async () => {
+    const { box } = await createTestBox();
+    await expect(
+      box.browser
+        .getTab("tab-1")
+        .act("Click Submit", { model: "anthropic/claude-sonnet-4-5", confidenceThreshold: 0.7 }),
+    ).rejects.toThrow("only for Jev instructions");
   });
 
   it.each([0, -1, 1.5, 180001, NaN])(

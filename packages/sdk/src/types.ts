@@ -1257,6 +1257,10 @@ export interface BrowserExtractOptions {
 
 /** Options for instruction-based `tab.act()`. */
 export interface BrowserActOptions extends BrowserExtractOptions {
+  /** Jev-only decision threshold, from 0 to 1 inclusive. Defaults to 0.8.
+   * Lower values accept more uncertain model decisions. Does not bypass target checks.
+   */
+  confidenceThreshold?: number;
   /** Exact values referenced as `%name%` in the instruction. */
   variables?: Record<string, string>;
   /** CSS selector limiting target discovery. Must match exactly one element. */

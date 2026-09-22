@@ -48,9 +48,11 @@ def test_jev_act_options_and_replay():
         "Fill Email with %email%",
         model="vercel/typesafe-ai/jev",
         variables={"email": "hello@example.com"},
+        confidence_threshold=0.7,
         scope="#login",
         timeout=15000,
     )
+    assert last_json_body(route)["confidence_threshold"] == 0.7
     assert result.success
     assert last_json_body(route)["timeout"] == 15000
     assert last_json_body(route)["scope"] == "#login"
