@@ -116,14 +116,16 @@ Use your **Box API key** as the SSH password.
 
 ### Browser actions
 
-Select Jev through Vercel AI Gateway using the existing `tab.act()` API. Configure
-a Vercel Gateway key on your Box account first. This requires a backend and browser
-image with Jev support.
+Select Jev, TypeSafe AI's fast evaluation model, with
+`model: "jev"` on `tab.act()` (`typesafe-ai/jev` and `vercel/typesafe-ai/jev` also
+work). No extra setup is needed: Jev runs on the Upstash-provided key by default,
+billed at $0.042 per million input tokens with free output. A non-managed Box with
+your own Vercel AI Gateway key uses that key instead.
 
 ```ts
 const box = await Box.create({ browser: true });
 const tab = await box.browser.tab.create("https://your-app.example/settings");
-const model = "vercel/typesafe-ai/jev";
+const model = "jev";
 
 const result = await tab.act("Choose Germany from the country dropdown and confirm", {
   model,
@@ -157,6 +159,9 @@ variable requirements, deadlines and interaction limits still apply. Replay and
 other models reject this option.
 
 For text entry, supply the exact string in `variables` and reference it as `%name%`.
+`%name%` is treated as a variable only when `variables` is supplied, so literal
+text such as `caf%C3%A9` works without it. Returned messages and actions show
+supplied values as `%name%`, never the values themselves.
 Jev chooses from available controls and supplied values; it does not generate text.
 Its initial support covers DOM controls in the main document and open shadow roots.
 It does not support iframe contents, canvas interactions, `extract()`, or `observe()`.

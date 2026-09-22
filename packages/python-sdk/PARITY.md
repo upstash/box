@@ -12,7 +12,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 
 Browser act options: JS `BrowserActOptions` / `BrowserActReplayOptions` map to
 Python `Tab.act(..., model=, variables=, scope=, timeout=, confidence_threshold=)` keyword arguments.
-Both SDKs support `vercel/typesafe-ai/jev` and preserve `%name%` action arguments.
+Both SDKs accept `jev`, `typesafe-ai/jev` and `vercel/typesafe-ai/jev` for Jev and preserve `%name%` action arguments.
 
 | JS                     | Python                       |
 | ---------------------- | ---------------------------- |

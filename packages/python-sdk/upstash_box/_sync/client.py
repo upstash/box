@@ -105,6 +105,8 @@ T = TypeVar("T")
 
 WORKSPACE = common.WORKSPACE
 _DEFAULT_TIMEOUT_MS = 600000
+# Model names that select Jev for browser act.
+_JEV_MODELS = frozenset({"jev", "typesafe-ai/jev", "vercel/typesafe-ai/jev"})
 
 
 def _resolve_tool_call_id(parsed: Dict[str, Any]) -> Optional[str]:
@@ -702,7 +704,7 @@ class Tab:
                 or not 0 <= confidence_threshold <= 1
             ):
                 raise BoxError("act confidence threshold must be a finite number from 0 to 1")
-            if not isinstance(instruction, str) or model != "vercel/typesafe-ai/jev":
+            if not isinstance(instruction, str) or model not in _JEV_MODELS:
                 raise BoxError("act confidence threshold is supported only for Jev instructions")
         if timeout is not None and (
             isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 180000

@@ -267,6 +267,15 @@ describe("Box browser operations", () => {
     );
   });
 
+  it.each(["jev", "typesafe-ai/jev"])("accepts a threshold for the %s alias", async (model) => {
+    const { box, fetchMock } = await createTestBox();
+    fetchMock.mockResolvedValueOnce(mockResponse({ success: true }));
+    await box.browser.getTab("tab-1").act("Click Submit", { model, confidenceThreshold: 0.7 });
+    const body = JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string);
+    expect(body.model).toBe(model);
+    expect(body.confidence_threshold).toBe(0.7);
+  });
+
   it("rejects a threshold for a different model", async () => {
     const { box } = await createTestBox();
     await expect(

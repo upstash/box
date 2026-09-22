@@ -71,6 +71,9 @@ import {
 } from "./types.js";
 import { telemetryHeaders } from "./telemetry.js";
 
+// Model names that select Jev for browser act.
+const JEV_MODELS = new Set(["jev", "typesafe-ai/jev", "vercel/typesafe-ai/jev"]);
+
 type BrowserExtractSchema<T> = {
   parse(data: unknown): T;
 };
@@ -578,7 +581,7 @@ export class Tab {
     return { elements: resp.elements ?? [] };
   }
 
-  /** Execute a focused instruction. Jev is available as `vercel/typesafe-ai/jev`. */
+  /** Execute a focused instruction. Jev is available as `jev` (also `typesafe-ai/jev`, `vercel/typesafe-ai/jev`). */
   async act(instruction: string, options?: BrowserActOptions): Promise<BrowserActResult>;
   /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
   async act(action: BrowserAction, options?: BrowserActReplayOptions): Promise<BrowserActResult>;
@@ -603,7 +606,7 @@ export class Tab {
       ) {
         throw new BoxError("act confidence threshold must be a finite number from 0 to 1");
       }
-      if (typeof instructionOrAction !== "string" || options.model !== "vercel/typesafe-ai/jev") {
+      if (typeof instructionOrAction !== "string" || !JEV_MODELS.has(options.model ?? "")) {
         throw new BoxError("act confidence threshold is supported only for Jev instructions");
       }
     }

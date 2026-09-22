@@ -6,7 +6,8 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 - Add Jev-only `confidence_threshold` to `tab.act()`, with default 0.8 and an inclusive 0–1 range.
 
-- Support Jev browser actions through `model="vercel/typesafe-ai/jev"`. Add
+- Support Jev browser actions through `model="jev"` (also `"typesafe-ai/jev"` and
+  `"vercel/typesafe-ai/jev"`), on the Upstash-provided key by default. Add
   `variables`, `scope`, and `timeout` to `tab.act()`, including variable-backed
   deterministic action replay.
 

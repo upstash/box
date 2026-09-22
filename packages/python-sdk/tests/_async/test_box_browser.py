@@ -663,6 +663,20 @@ async def test_jev_threshold_boundaries(threshold):
     await box.aclose()
 
 
+@pytest.mark.parametrize("model", ["jev", "typesafe-ai/jev"])
+@respx.mock
+async def test_jev_threshold_accepts_aliases(model):
+    box = await make_async_box(respx.mock)
+    route = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(200, json={"success": True})
+    )
+    await box.browser.get_tab("tab-1").act("Click Submit", model=model, confidence_threshold=0.7)
+    body = last_json_body(route)
+    assert body["model"] == model
+    assert body["confidence_threshold"] == 0.7
+    await box.aclose()
+
+
 @respx.mock
 async def test_threshold_rejects_other_models():
     box = await make_async_box(respx.mock)
