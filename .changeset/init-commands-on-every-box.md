@@ -1,5 +1,5 @@
 ---
-"@upstash/box": minor
+"@upstash/box": patch
 "@upstash/box-cli": patch
 ---
 
