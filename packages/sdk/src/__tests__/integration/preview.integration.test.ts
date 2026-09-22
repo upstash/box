@@ -98,9 +98,9 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
   });
 });
 
-const WAKE_SECRET = "box-wake-on-request-integration-secret-7";
+const WAKE_SECRET = "box-paused-url-integration-secret-7";
 
-describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: wake on request", () => {
+describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: paused box", () => {
   let box: Box;
 
   beforeAll(async () => {
@@ -122,12 +122,8 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: wake on request", () => {
     }
   }, 30000);
 
-  it("resumes a paused box and serves the app's own response", async () => {
-    const created = await box.getPublicURL(3000, { wakeOnRequest: true });
-    expect(created.wake_on_request).toBe(true);
-
-    const listed = await box.listPublicURLs();
-    expect(listed.publicURLs.find((p) => p.port === 3000)?.wake_on_request).toBe(true);
+  it("a request to the URL resumes the box and serves the app's own response", async () => {
+    const created = await box.getPublicURL(3000);
 
     const awake = await fetch(created.url, { signal: AbortSignal.timeout(60_000) });
     expect(await awake.text()).toBe(WAKE_SECRET);
@@ -141,21 +137,6 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: wake on request", () => {
     expect(await woken.text()).toBe(WAKE_SECRET);
     expect((await box.getStatus()).status).not.toBe("paused");
 
-    await box.deletePublicURL(3000);
-  }, 240000);
-
-  it("leaves a paused box asleep when the URL is not wake-enabled", async () => {
-    const created = await box.getPublicURL(3000);
-    expect(created.wake_on_request).toBe(false);
-
-    await box.pause();
-    expect((await box.getStatus()).status).toBe("paused");
-
-    const response = await fetch(created.url, { signal: AbortSignal.timeout(60_000) });
-    expect(response.status).not.toBe(200);
-    expect((await box.getStatus()).status).toBe("paused");
-
-    await box.resume();
     await box.deletePublicURL(3000);
   }, 240000);
 });

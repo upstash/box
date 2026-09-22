@@ -1785,21 +1785,13 @@ class AsyncBox(Generic[T]):
     # ==================== Public URLs ====================
 
     async def get_public_url(
-        self,
-        port: int,
-        *,
-        bearer_token: Optional[bool] = None,
-        basic_auth: Optional[bool] = None,
-        wake_on_request: Optional[bool] = None,
+        self, port: int, *, bearer_token: Optional[bool] = None, basic_auth: Optional[bool] = None
     ) -> PublicURL:
         body: Dict[str, Any] = {"port": port}
         if bearer_token is not None:
             body["bearer_token"] = bearer_token
         if basic_auth is not None:
             body["basic_auth"] = basic_auth
-        # wake_on_request: a request to a paused box resumes it and waits for the port.
-        if wake_on_request is not None:
-            body["wake_on_request"] = wake_on_request
         data = await self._request("POST", f"/v2/box/{self.id}/preview", body=body)
         return PublicURL.model_validate(data)
 

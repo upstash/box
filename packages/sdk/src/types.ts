@@ -1238,8 +1238,6 @@ export interface PublicURL {
   username?: string;
   /** Basic auth password (only returned when basicAuth is true) */
   password?: string;
-  /** Whether a request to this URL resumes the box when it is paused */
-  wake_on_request?: boolean;
 }
 
 /** One entry returned by `listPublicURLs()`. Secrets are only returned at creation time. */
@@ -1256,9 +1254,6 @@ export interface PublicURLListItem {
   basic_auth: boolean;
   /** Whether the URL is protected by a bearer token */
   bearer_token: boolean;
-  /** Whether a request to this URL resumes the box when it is paused. Absent on
-   * servers older than the wake-on-request release. */
-  wake_on_request?: boolean;
 }
 
 /** @deprecated Use `PublicURL` instead. */

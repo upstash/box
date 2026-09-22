@@ -46,29 +46,21 @@ export async function* handlePublicUrl(box: Box, args: string): AsyncGenerator<B
         yield {
           type: "log",
           message:
-            "Usage: public-url <port> [--basic-auth|--bearer-token|--wake-on-request] | public-url list | public-url delete <port>",
+            "Usage: public-url <port> [--basic-auth|--bearer-token] | public-url list | public-url delete <port>",
         };
         return;
       }
       const basicAuth = parts.includes("--basic-auth");
       const bearerToken = parts.includes("--bearer-token");
-      const wakeOnRequest = parts.includes("--wake-on-request");
       const created = await box.getPublicURL(port, {
         ...(basicAuth ? { basicAuth: true } : {}),
         ...(bearerToken ? { bearerToken: true } : {}),
-        ...(wakeOnRequest ? { wakeOnRequest: true } : {}),
       });
       yield { type: "log", message: created.url };
       if (created.username) {
         yield { type: "log", message: `user: ${created.username}  password: ${created.password}` };
       }
       if (created.token) yield { type: "log", message: `bearer token: ${created.token}` };
-      if (wakeOnRequest && !basicAuth && !bearerToken) {
-        yield {
-          type: "log",
-          message: "Unprotected and wake-enabled: anyone with the URL can start this box.",
-        };
-      }
       // Detaching matters: a server started as a plain background job is reaped
       // when the command that launched it finishes, and the URL then 502s.
       yield {

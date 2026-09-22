@@ -52,31 +52,6 @@ describe("box public-url", () => {
     expect(out()).toContain("user: u  password: p");
   });
 
-  it("passes wakeOnRequest through and warns when the URL is unprotected", async () => {
-    const getPublicURL = vi.fn().mockResolvedValue({
-      url: "https://b1-3000.example",
-      port: 3000,
-      wake_on_request: true,
-    });
-    getBox.mockResolvedValue({ getPublicURL });
-    await publicUrlCommand("3000", { ...flags, wakeOnRequest: true });
-    expect(getPublicURL).toHaveBeenCalledWith(3000, { wakeOnRequest: true });
-    expect(err()).toContain("anyone with the URL can start this box");
-  });
-
-  it("does not warn when a wake-enabled URL is protected", async () => {
-    const getPublicURL = vi.fn().mockResolvedValue({
-      url: "https://b1-3000.example",
-      port: 3000,
-      token: "t",
-      wake_on_request: true,
-    });
-    getBox.mockResolvedValue({ getPublicURL });
-    await publicUrlCommand("3000", { ...flags, wakeOnRequest: true, bearerToken: true });
-    expect(getPublicURL).toHaveBeenCalledWith(3000, { bearerToken: true, wakeOnRequest: true });
-    expect(err()).not.toContain("anyone with the URL can start this box");
-  });
-
   it("rejects a port outside the valid range rather than calling the API", async () => {
     const getPublicURL = vi.fn();
     getBox.mockResolvedValue({ getPublicURL });
@@ -93,24 +68,6 @@ describe("box public-url", () => {
     });
     await publicUrlListCommand({ ...flags });
     expect(out()).toContain("3000  https://b1-3000.example");
-  });
-
-  it("marks only the wake-enabled URLs in the list", async () => {
-    getBox.mockResolvedValue({
-      listPublicURLs: vi.fn().mockResolvedValue({
-        publicURLs: [
-          { port: 3000, url: "https://b1-3000.example", wake_on_request: true },
-          { port: 8080, url: "https://b1-8080.example", wake_on_request: false },
-          // An older server may omit the field entirely.
-          { port: 9090, url: "https://b1-9090.example" },
-        ],
-      }),
-    });
-    await publicUrlListCommand({ ...flags });
-    const lines = out().split("\n");
-    expect(lines.find((l) => l.includes("3000"))).toContain("(wakes)");
-    expect(lines.find((l) => l.includes("8080"))).not.toContain("(wakes)");
-    expect(lines.find((l) => l.includes("9090"))).not.toContain("(wakes)");
   });
 
   it("says so on stderr when there are none, leaving stdout empty", async () => {

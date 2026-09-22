@@ -408,7 +408,6 @@ const publicUrl = program
   .argument("[port]", "Port to publish; omit to list")
   .option("--basic-auth", "Protect the URL with generated basic-auth credentials")
   .option("--bearer-token", "Protect the URL with a generated bearer token")
-  .option("--wake-on-request", "Resume the box when a request hits this URL")
   .option("--box <id>", "Box to act on")
   .option("--json", "Emit machine-readable output")
   .option("--token <token>", "Upstash Box API token")

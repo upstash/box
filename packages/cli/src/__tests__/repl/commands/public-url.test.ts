@@ -41,40 +41,6 @@ describe("handlePublicUrl", () => {
     expect(events.some((e) => String(e.message).includes("user: user"))).toBe(true);
   });
 
-  it("warns when a wake-enabled URL has no authentication", async () => {
-    const box = createMockBox();
-    box.getPublicURL.mockResolvedValue({
-      url: "https://box-1-3000.preview",
-      port: 3000,
-      wake_on_request: true,
-    });
-    const events = await collectEvents(handlePublicUrl(box as any, "3000 --wake-on-request"));
-    expect(box.getPublicURL).toHaveBeenCalledWith(3000, { wakeOnRequest: true });
-    expect(
-      events.some((e) => String(e.message).includes("anyone with the URL can start this box")),
-    ).toBe(true);
-  });
-
-  it("does not warn when a wake-enabled URL is protected", async () => {
-    const box = createMockBox();
-    box.getPublicURL.mockResolvedValue({
-      url: "https://box-1-3000.preview",
-      port: 3000,
-      token: "t",
-      wake_on_request: true,
-    });
-    const events = await collectEvents(
-      handlePublicUrl(box as any, "3000 --wake-on-request --bearer-token"),
-    );
-    expect(box.getPublicURL).toHaveBeenCalledWith(3000, {
-      bearerToken: true,
-      wakeOnRequest: true,
-    });
-    expect(
-      events.some((e) => String(e.message).includes("anyone with the URL can start this box")),
-    ).toBe(false);
-  });
-
   it("lists the public URLs, and with no argument", async () => {
     const box = createMockBox();
     for (const args of ["list", ""]) {

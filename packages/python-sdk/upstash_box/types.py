@@ -594,7 +594,6 @@ class PublicURL(_Model):
     token: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    wake_on_request: Optional[bool] = None
 
 
 class BoxData(_Model):

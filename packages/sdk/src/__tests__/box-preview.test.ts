@@ -62,36 +62,6 @@ describe("Box public URL operations", () => {
       const body = JSON.parse(init?.body as string);
       expect(body.basic_auth).toBe(true);
     });
-
-    it("creates a public URL that wakes a paused box", async () => {
-      const { box, fetchMock } = await createTestBox();
-      const mockPublicUrl = {
-        url: "https://box-123-3000.preview.box.upstash.com",
-        port: 3000,
-        wake_on_request: true,
-      };
-      fetchMock.mockResolvedValueOnce(mockResponse(mockPublicUrl));
-
-      const publicUrl = await box.getPublicURL(3000, { wakeOnRequest: true });
-      expect(publicUrl.wake_on_request).toBe(true);
-
-      const [, init] = fetchMock.mock.calls[1]!;
-      const body = JSON.parse(init?.body as string);
-      expect(body.wake_on_request).toBe(true);
-    });
-
-    it("omits wake_on_request when not requested", async () => {
-      const { box, fetchMock } = await createTestBox();
-      fetchMock.mockResolvedValueOnce(
-        mockResponse({ url: "https://box-123-3000.preview.box.upstash.com", port: 3000 }),
-      );
-
-      await box.getPublicURL(3000);
-
-      const [, init] = fetchMock.mock.calls[1]!;
-      const body = JSON.parse(init?.body as string);
-      expect(body).not.toHaveProperty("wake_on_request");
-    });
   });
 
   describe("listPublicURLs", () => {

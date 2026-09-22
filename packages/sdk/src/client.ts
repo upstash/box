@@ -3198,20 +3198,18 @@ export class Box<TProvider = unknown> {
   // ==================== Public URLs ====================
 
   /**
-   * Expose a port on a public URL. With `wakeOnRequest`, a request to the URL
-   * resumes a paused box and is held until the port is listening, which means
-   * anyone who can reach the URL can start the box and incur compute charges.
+   * Expose a port on a public URL. A request to the URL resumes the box if it
+   * is paused and is held until the port is listening.
    */
   async getPublicURL(
     port: number,
-    options?: { bearerToken?: boolean; basicAuth?: boolean; wakeOnRequest?: boolean },
+    options?: { bearerToken?: boolean; basicAuth?: boolean },
   ): Promise<PublicURL> {
     return this._request<PublicURL>("POST", `/v2/box/${this.id}/preview`, {
       body: {
         port,
         ...(options?.bearerToken !== undefined && { bearer_token: options.bearerToken }),
         ...(options?.basicAuth !== undefined && { basic_auth: options.basicAuth }),
-        ...(options?.wakeOnRequest !== undefined && { wake_on_request: options.wakeOnRequest }),
       },
     });
   }
@@ -3231,7 +3229,7 @@ export class Box<TProvider = unknown> {
   /** @deprecated Use `getPublicURL` instead. */
   async getPreviewUrl(
     port: number,
-    options?: { bearerToken?: boolean; basicAuth?: boolean; wakeOnRequest?: boolean },
+    options?: { bearerToken?: boolean; basicAuth?: boolean },
   ): Promise<Preview> {
     return this.getPublicURL(port, options);
   }

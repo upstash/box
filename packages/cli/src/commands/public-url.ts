@@ -6,7 +6,6 @@ import { emit, note, requireToken, type GlobalFlags } from "../core/io.js";
 export type PublicUrlFlags = GlobalFlags & {
   basicAuth?: boolean;
   bearerToken?: boolean;
-  wakeOnRequest?: boolean;
 };
 
 /** Resolve the box once, shared by every verb. */
@@ -41,15 +40,11 @@ export async function publicUrlCommand(portArg: string, flags: PublicUrlFlags): 
   const created = await box.getPublicURL(port, {
     ...(flags.basicAuth ? { basicAuth: true } : {}),
     ...(flags.bearerToken ? { bearerToken: true } : {}),
-    ...(flags.wakeOnRequest ? { wakeOnRequest: true } : {}),
   });
   const lines = [created.url];
   if (created.username) lines.push(`user: ${created.username}  password: ${created.password}`);
   if (created.token) lines.push(`bearer token: ${created.token}`);
   emit(created, lines, flags);
-  if (flags.wakeOnRequest && !flags.basicAuth && !flags.bearerToken) {
-    note("Unprotected and wake-enabled: anyone with the URL can start this box.");
-  }
   // A server started as a plain background job is reaped when the command that
   // launched it finishes, and the URL then 502s.
   note("Start the server detached, ( npm run dev & ), or it stops with the command.");
@@ -62,10 +57,7 @@ export async function publicUrlListCommand(flags: GlobalFlags): Promise<void> {
   if (publicURLs.length === 0 && !flags.json) note("No public URLs.");
   emit(
     publicURLs,
-    publicURLs.map(
-      (entry) =>
-        `${String(entry.port).padEnd(6)}${entry.url}${entry.wake_on_request ? "  (wakes)" : ""}`,
-    ),
+    publicURLs.map((entry) => `${String(entry.port).padEnd(6)}${entry.url}`),
     flags,
   );
 }

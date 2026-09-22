@@ -104,54 +104,19 @@ async def test_configure_model():
 async def test_public_urls():
     box = await make_async_box(respx.mock)
     respx.post(f"{BASE}/preview").mock(
-        return_value=httpx.Response(
-            200,
-            json={"url": "https://x", "port": 3000, "token": "t", "wake_on_request": False},
-        )
+        return_value=httpx.Response(200, json={"url": "https://x", "port": 3000, "token": "t"})
     )
     respx.get(f"{BASE}/preview").mock(
-        return_value=httpx.Response(
-            200,
-            json={"previews": [{"url": "https://x", "port": 3000, "wake_on_request": False}]},
-        )
+        return_value=httpx.Response(200, json={"previews": [{"url": "https://x", "port": 3000}]})
     )
     respx.delete(f"{BASE}/preview/3000").mock(return_value=httpx.Response(200, json={}))
 
     url = await box.get_public_url(3000, bearer_token=True)
     assert url.url == "https://x"
     assert url.token == "t"
-    assert url.wake_on_request is False
     listed = await box.list_public_urls()
     assert listed["public_urls"][0].port == 3000
-    assert listed["public_urls"][0].wake_on_request is False
     await box.delete_public_url(3000)
-    await box.aclose()
-
-
-@respx.mock
-async def test_public_url_wake_on_request():
-    box = await make_async_box(respx.mock)
-    route = respx.post(f"{BASE}/preview").mock(
-        return_value=httpx.Response(
-            200, json={"url": "https://x", "port": 3000, "wake_on_request": True}
-        )
-    )
-    url = await box.get_public_url(3000, wake_on_request=True)
-    assert last_json_body(route) == {"port": 3000, "wake_on_request": True}
-    assert url.wake_on_request is True
-    await box.aclose()
-
-
-@respx.mock
-async def test_public_url_omits_wake_on_request_by_default():
-    box = await make_async_box(respx.mock)
-    route = respx.post(f"{BASE}/preview").mock(
-        return_value=httpx.Response(
-            200, json={"url": "https://x", "port": 3000, "wake_on_request": False}
-        )
-    )
-    await box.get_public_url(3000)
-    assert last_json_body(route) == {"port": 3000}
     await box.aclose()
 
 
