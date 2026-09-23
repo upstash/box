@@ -1,5 +1,23 @@
 # @upstash/box-cli
 
+## 0.3.2
+
+### Patch Changes
+
+- 1a09289: Add Claude Opus 5.5 model constants and CLI options for Claude Code, OpenRouter,
+  Vercel AI Gateway, OpenCode/Zen, and Cursor.
+- 1a09289: Add GPT-6 Sol and GPT-6 Luna model constants and CLI options for Codex,
+  OpenRouter, and OpenCode/Zen.
+- 1a09289: Fix Vercel AI Gateway Grok model identifiers: the gateway moved xAI models from
+  the `xai/` to the `spacexai/` namespace, so `VercelModel.Grok_*` now resolve
+  again. Add `VercelModel.Grok_4_7`, `GPT_6_Sol`, `GPT_6_Luna`, and
+  `Gemini_3_8_Flash`, with matching CLI picker options.
+- Updated dependencies [1a09289]
+- Updated dependencies [1a09289]
+- Updated dependencies [8fed971]
+- Updated dependencies [1a09289]
+  - @upstash/box@0.7.6
+
 ## 0.3.1
 
 ### Patch Changes
