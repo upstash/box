@@ -475,7 +475,11 @@ export interface BoxConfig extends BoxConnectionOptions {
   browser?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
-  /** Startup script run once per container start, after create, resume and snapshot restore. */
+  /**
+   * Startup script run once per container start: after create and on every resume.
+   * A box restored from a snapshot does not inherit it; pass `initCommand` to
+   * `fromSnapshot` to set one there.
+   */
   initCommand?: string;
   agent?: AgentConfig;
   git?: {
