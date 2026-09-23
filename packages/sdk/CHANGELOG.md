@@ -1,5 +1,26 @@
 # @upstash/box
 
+## 0.7.6
+
+### Patch Changes
+
+- 1a09289: Add Claude Opus 5.5 model constants and CLI options for Claude Code, OpenRouter,
+  Vercel AI Gateway, OpenCode/Zen, and Cursor.
+- 1a09289: Add GPT-6 Sol and GPT-6 Luna model constants and CLI options for Codex,
+  OpenRouter, and OpenCode/Zen.
+- 8fed971: Reject an empty id list in `Box.delete` and `Box.deleteSnapshots` instead of deleting everything.
+
+  `Box.delete({ boxIds: [] })` sent `{"ids": []}`, and the API read an empty list as "no filter", so it deleted every box on the account. A script that computed its id list and came up empty wiped the account instead of doing nothing. `Box.deleteSnapshots({ snapshotIds: [] })` had the same shape.
+
+  Both now throw a `BoxError` before any request is made when the list is empty or contains a blank id. `EphemeralBox.delete` and `EphemeralBox.deleteSnapshots` are the same functions, so they are covered too.
+
+  Calling `Box.deleteSnapshots()` with no `snapshotIds` still deletes every snapshot, as documented. It now says so explicitly by sending `?all=true`, so the API no longer has to infer "everything" from a missing list.
+
+- 1a09289: Fix Vercel AI Gateway Grok model identifiers: the gateway moved xAI models from
+  the `xai/` to the `spacexai/` namespace, so `VercelModel.Grok_*` now resolve
+  again. Add `VercelModel.Grok_4_7`, `GPT_6_Sol`, `GPT_6_Luna`, and
+  `Gemini_3_8_Flash`, with matching CLI picker options.
+
 ## 0.7.5
 
 ### Patch Changes

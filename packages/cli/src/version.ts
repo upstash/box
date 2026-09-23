@@ -1,2 +1,2 @@
 // Generated from package.json by scripts/gen-version.mjs — do not edit.
-export const VERSION = "0.3.1";
+export const VERSION = "0.3.2";
