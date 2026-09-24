@@ -7,6 +7,7 @@ from upstash_box import (
     CursorModel,
     FinishChunk,
     FinishUsage,
+    OpenAICodex,
     OpenCodeModel,
     OpenRouterModel,
     PublicURL,
@@ -18,6 +19,44 @@ from upstash_box import (
     ToolCallChunk,
     VercelModel,
 )
+
+
+def test_claude_opus_5_5_model_identifier():
+    assert {
+        ClaudeCode.OPUS_5_5.value,
+        CursorModel.CLAUDE_OPUS_5_5.value,
+        OpenCodeModel.CLAUDE_OPUS_5_5.value,
+        OpenCodeModel.ZEN_CLAUDE_OPUS_5_5.value,
+        OpenRouterModel.CLAUDE_OPUS_5_5.value,
+        VercelModel.CLAUDE_OPUS_5_5.value,
+    } == {
+        "anthropic/claude-opus-5-5",
+        "cursor/claude-opus-5-5",
+        "opencode/claude-opus-5-5",
+        "openrouter/anthropic/claude-opus-5.5",
+        "vercel/anthropic/claude-opus-5.5",
+    }
+
+
+def test_gpt_6_sol_and_luna_model_identifiers():
+    assert OpenAICodex.GPT_6_SOL.value == "openai/gpt-6-sol"
+    assert OpenAICodex.GPT_6_LUNA.value == "openai/gpt-6-luna"
+    assert OpenRouterModel.GPT_6_SOL.value == "openrouter/openai/gpt-6-sol"
+    assert OpenRouterModel.GPT_6_LUNA.value == "openrouter/openai/gpt-6-luna"
+    assert OpenCodeModel.GPT_6_SOL.value == "opencode/gpt-6-sol"
+    assert OpenCodeModel.GPT_6_LUNA.value == "opencode/gpt-6-luna"
+
+
+def test_vercel_gateway_model_identifiers():
+    # xAI models moved from the xai/ to the spacexai/ namespace on the gateway.
+    assert VercelModel.GROK_BUILD_0_1.value == "vercel/spacexai/grok-build-0.1"
+    assert VercelModel.GROK_4_7.value == "vercel/spacexai/grok-4.7"
+    assert VercelModel.GROK_4_3.value == "vercel/spacexai/grok-4.3"
+    assert VercelModel.GROK_4_20_REASONING.value == "vercel/spacexai/grok-4.20-reasoning"
+    assert VercelModel.GPT_6_SOL.value == "vercel/openai/gpt-6-sol"
+    assert VercelModel.GPT_6_LUNA.value == "vercel/openai/gpt-6-luna"
+    assert VercelModel.GEMINI_3_8_FLASH.value == "vercel/google/gemini-3.8-flash"
+    assert not any(m.value.startswith("vercel/xai/") for m in VercelModel)
 
 
 def test_claude_opus_5_model_identifier():

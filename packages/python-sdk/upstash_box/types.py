@@ -55,6 +55,7 @@ class ClaudeCode(str, Enum):
     OPUS_4_6 = "anthropic/claude-opus-4-6"
     OPUS_4_7 = "anthropic/claude-opus-4-7"
     OPUS_4_8 = "anthropic/claude-opus-4-8"
+    OPUS_5_5 = "anthropic/claude-opus-5-5"
     OPUS_5 = "anthropic/claude-opus-5"
     SONNET_4 = "anthropic/claude-sonnet-4"
     SONNET_4_5 = "anthropic/claude-sonnet-4-5"
@@ -67,6 +68,8 @@ class OpenAICodex(str, Enum):
     """OpenAI Codex model identifiers."""
 
     GPT_6_ASTRA = "openai/gpt-6-astra"
+    GPT_6_SOL = "openai/gpt-6-sol"
+    GPT_6_LUNA = "openai/gpt-6-luna"
     GPT_5_6 = "openai/gpt-5.6"
     GPT_5_6_SOL = "openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "openai/gpt-5.6-terra"
@@ -86,6 +89,7 @@ class OpenRouterModel(str, Enum):
 
     CLAUDE_FABLE_5_1 = "openrouter/anthropic/claude-fable-5.1"
     CLAUDE_FABLE_5 = "openrouter/anthropic/claude-fable-5"
+    CLAUDE_OPUS_5_5 = "openrouter/anthropic/claude-opus-5.5"
     CLAUDE_OPUS_5 = "openrouter/anthropic/claude-opus-5"
     CLAUDE_SONNET_5 = "openrouter/anthropic/claude-sonnet-5"
     CLAUDE_SONNET_4 = "openrouter/anthropic/claude-sonnet-4"
@@ -95,6 +99,8 @@ class OpenRouterModel(str, Enum):
     GEMINI_2_5_PRO = "openrouter/google/gemini-2.5-pro"
     GEMINI_2_5_FLASH = "openrouter/google/gemini-2.5-flash"
     GPT_6_ASTRA = "openrouter/openai/gpt-6-astra"
+    GPT_6_SOL = "openrouter/openai/gpt-6-sol"
+    GPT_6_LUNA = "openrouter/openai/gpt-6-luna"
     GPT_5_6_SOL = "openrouter/openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "openrouter/openai/gpt-5.6-terra"
     GPT_5_6_LUNA = "openrouter/openai/gpt-5.6-luna"
@@ -108,6 +114,7 @@ class VercelModel(str, Enum):
 
     CLAUDE_FABLE_5_1 = "vercel/anthropic/claude-fable-5.1"
     CLAUDE_FABLE_5 = "vercel/anthropic/claude-fable-5"
+    CLAUDE_OPUS_5_5 = "vercel/anthropic/claude-opus-5.5"
     CLAUDE_OPUS_5 = "vercel/anthropic/claude-opus-5"
     CLAUDE_SONNET_5 = "vercel/anthropic/claude-sonnet-5"
     CLAUDE_OPUS_4_7 = "vercel/anthropic/claude-opus-4.7"
@@ -115,6 +122,8 @@ class VercelModel(str, Enum):
     CLAUDE_OPUS_4_6 = "vercel/anthropic/claude-opus-4.6"
     CLAUDE_HAIKU_4_5 = "vercel/anthropic/claude-haiku-4.5"
     GPT_6_ASTRA = "vercel/openai/gpt-6-astra"
+    GPT_6_SOL = "vercel/openai/gpt-6-sol"
+    GPT_6_LUNA = "vercel/openai/gpt-6-luna"
     GPT_5_6_SOL = "vercel/openai/gpt-5.6-sol"
     GPT_5_6_TERRA = "vercel/openai/gpt-5.6-terra"
     GPT_5_6_LUNA = "vercel/openai/gpt-5.6-luna"
@@ -122,12 +131,15 @@ class VercelModel(str, Enum):
     GPT_5_5_PRO = "vercel/openai/gpt-5.5-pro"
     GPT_5_4 = "vercel/openai/gpt-5.4"
     GPT_5_4_MINI = "vercel/openai/gpt-5.4-mini"
+    GEMINI_3_8_FLASH = "vercel/google/gemini-3.8-flash"
     GEMINI_3_5_FLASH = "vercel/google/gemini-3.5-flash"
     GEMINI_3_1_FLASH_LITE = "vercel/google/gemini-3.1-flash-lite"
     GEMINI_3_1_PRO_PREVIEW = "vercel/google/gemini-3.1-pro-preview"
-    GROK_BUILD_0_1 = "vercel/xai/grok-build-0.1"
-    GROK_4_3 = "vercel/xai/grok-4.3"
-    GROK_4_20_REASONING = "vercel/xai/grok-4.20-reasoning"
+    # xAI models moved from the xai/ to the spacexai/ namespace on the gateway.
+    GROK_BUILD_0_1 = "vercel/spacexai/grok-build-0.1"
+    GROK_4_7 = "vercel/spacexai/grok-4.7"
+    GROK_4_3 = "vercel/spacexai/grok-4.3"
+    GROK_4_20_REASONING = "vercel/spacexai/grok-4.20-reasoning"
 
 
 class OpenCodeModel(str, Enum):
@@ -136,6 +148,7 @@ class OpenCodeModel(str, Enum):
     # Anthropic-backed OpenCode models
     CLAUDE_FABLE_5_1 = "opencode/claude-fable-5-1"
     CLAUDE_FABLE_5 = "opencode/claude-fable-5"
+    CLAUDE_OPUS_5_5 = "opencode/claude-opus-5-5"
     CLAUDE_OPUS_5 = "opencode/claude-opus-5"
     CLAUDE_OPUS_4_5 = "opencode/claude-opus-4-5"
     CLAUDE_OPUS_4_6 = "opencode/claude-opus-4-6"
@@ -148,6 +161,8 @@ class OpenCodeModel(str, Enum):
     CLAUDE_HAIKU_4_5 = "opencode/claude-haiku-4-5"
     # OpenAI-backed OpenCode models
     GPT_6_ASTRA = "opencode/gpt-6-astra"
+    GPT_6_SOL = "opencode/gpt-6-sol"
+    GPT_6_LUNA = "opencode/gpt-6-luna"
     GPT_5_5 = "opencode/gpt-5.5"
     GPT_5_4 = "opencode/gpt-5.4"
     GPT_5_4_PRO = "opencode/gpt-5.4-pro"
@@ -168,6 +183,7 @@ class OpenCodeModel(str, Enum):
     ZEN_MINIMAX_M2_7 = "opencode/minimax-m2.7"
     ZEN_CLAUDE_FABLE_5_1 = "opencode/claude-fable-5-1"
     ZEN_CLAUDE_FABLE_5 = "opencode/claude-fable-5"
+    ZEN_CLAUDE_OPUS_5_5 = "opencode/claude-opus-5-5"
     ZEN_CLAUDE_OPUS_5 = "opencode/claude-opus-5"
     ZEN_CLAUDE_SONNET_4_6 = "opencode/claude-sonnet-4-6"
     ZEN_CLAUDE_SONNET_4_5 = "opencode/claude-sonnet-4-5"
@@ -202,6 +218,7 @@ class CursorModel(str, Enum):
     GPT_5_1_CODEX_MINI = "cursor/gpt-5.1-codex-mini"
     GPT_5_MINI = "cursor/gpt-5-mini"
     CLAUDE_FABLE_5 = "cursor/claude-fable-5"
+    CLAUDE_OPUS_5_5 = "cursor/claude-opus-5-5"
     CLAUDE_OPUS_5 = "cursor/claude-opus-5"
     CLAUDE_OPUS_4_8 = "cursor/claude-opus-4-8"
     CLAUDE_OPUS_4_7 = "cursor/claude-opus-4-7"
