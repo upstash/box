@@ -99,6 +99,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | Browser `schema` = Pydantic model or raw dict (Python) vs Zod (JS) | Same `ResponseSchema` contract as `agent.run`; raw dicts skip client-side validation. |
 | `screenshot` `type: "png"\|"base64"` (JS) → `encoding: "bytes"\|"base64"` (Python) | Python returns native `bytes`; `encoding` matches `files.read` naming. |
 | `browser` on `from_snapshot` (Python) | Python's shared create-body builder forwards `browser=True` on `from_snapshot`; JS `fromSnapshot` currently omits it (JS gap). |
+| `PublicURLListItem` type (JS) | JS types `listPublicURLs()` as a distinct list item (`id`, `created_at`, `basic_auth`, `bearer_token`, no secrets); Python reuses `PublicURL` for create and list, so the list-only fields arrive through `extra="allow"` untyped (Python gap). |
 
 ## Behavioral quirks mirrored exactly
 
@@ -108,6 +109,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 - `Run.cancel()`: swallows endpoint errors, always sets `cancelled`.
 - `files.download` destination: `./{basename}` | `./workspace` | `./{basename(cwd)}`.
 - 3-mode run request: file paths → multipart, base64 objects → JSON `files`, else plain JSON.
+- Init commands on any box (not just keep-alive): both SDKs dropped the keep-alive guard together.
 
 ## Test mapping (JS unit file → Python)
 

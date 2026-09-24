@@ -4,6 +4,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Init commands now work on every box, not only keep-alive ones. `create(init_command=...)`
+  no longer requires `keep_alive=True`, and `get_init_command()`, `set_init_command()`
+  and `delete_init_command()` no longer raise on a non-keep-alive box.
 - Add Claude Opus 5.5 model constants for Claude Code, OpenRouter, Vercel AI
   Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
 - Fix Vercel AI Gateway Grok identifiers: the gateway moved xAI models from the

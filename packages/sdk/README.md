@@ -326,7 +326,7 @@ await box.delete(); // Permanent delete
 const { status } = await box.getStatus();
 ```
 
-Keep-alive boxes also support init-command management:
+Init commands can be read, set and removed on any box, including a paused one:
 
 ```ts
 const script = await box.getInitCommand();

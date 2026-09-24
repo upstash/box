@@ -40,6 +40,7 @@ import {
   type UploadFileEntry,
   type Snapshot,
   type Preview,
+  type PublicURLListItem,
   type PublicURL,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
@@ -973,9 +974,6 @@ export class Box<TProvider = unknown> {
       );
     }
     if (config?.agent) resolveAgentModel(config.agent);
-    if (config?.initCommand !== undefined && !config.keepAlive) {
-      throw new BoxError("initCommand requires keepAlive: true");
-    }
     const baseUrl = (
       config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
@@ -2514,10 +2512,9 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Read the current init command for a keep-alive box.
+   * Read the current init command.
    */
   async getInitCommand(): Promise<string> {
-    this._requireKeepAlive("Init command");
     const data = await this._request<{ init_command?: string }>(
       "GET",
       `/v2/box/${this.id}/startup`,
@@ -2526,10 +2523,10 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Set or replace the init command for a keep-alive box.
+   * Set or replace the init command. On a paused box the change is stored and
+   * applied on the next resume.
    */
   async setInitCommand(initCommand: string): Promise<void> {
-    this._requireKeepAlive("Init command");
     if (!initCommand) {
       throw new BoxError("initCommand is required");
     }
@@ -2539,10 +2536,9 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Delete the init command for a keep-alive box.
+   * Delete the init command.
    */
   async deleteInitCommand(): Promise<void> {
-    this._requireKeepAlive("Init command");
     await this._request("DELETE", `/v2/box/${this.id}/startup`);
   }
 
@@ -2726,12 +2722,6 @@ export class Box<TProvider = unknown> {
 
   private log(...args: unknown[]) {
     if (this._debug) console.log("[Box]", ...args);
-  }
-
-  private _requireKeepAlive(feature: string): void {
-    if (!this.keepAlive) {
-      throw new BoxError(`${feature} is only available for keep-alive boxes`);
-    }
   }
 
   private async _browserCreateTab(url: string, options?: BrowserTabCreateOptions): Promise<Tab> {
@@ -3207,6 +3197,10 @@ export class Box<TProvider = unknown> {
 
   // ==================== Public URLs ====================
 
+  /**
+   * Expose a port on a public URL. A request to the URL resumes the box if it
+   * is paused and is held until the port is listening.
+   */
   async getPublicURL(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
@@ -3220,8 +3214,8 @@ export class Box<TProvider = unknown> {
     });
   }
 
-  async listPublicURLs(): Promise<{ publicURLs: PublicURL[] }> {
-    const data = await this._request<{ previews: PublicURL[] }>(
+  async listPublicURLs(): Promise<{ publicURLs: PublicURLListItem[] }> {
+    const data = await this._request<{ previews: PublicURLListItem[] }>(
       "GET",
       `/v2/box/${this.id}/preview`,
     );
@@ -3241,7 +3235,7 @@ export class Box<TProvider = unknown> {
   }
 
   /** @deprecated Use `listPublicURLs` instead. */
-  async listPreviews(): Promise<{ previews: Preview[] }> {
+  async listPreviews(): Promise<{ previews: PublicURLListItem[] }> {
     const data = await this.listPublicURLs();
     return { previews: data.publicURLs };
   }

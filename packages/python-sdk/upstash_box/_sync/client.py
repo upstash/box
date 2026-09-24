@@ -873,10 +873,6 @@ class Box(Generic[T]):
                 "No agent configured. Pass an `agent` option to create() to use box.agent.run()."
             )
 
-    def _require_keep_alive(self, feature: str) -> None:
-        if not self.keep_alive:
-            raise BoxError(f"{feature} is only available for keep-alive boxes")
-
     def _log(self, *args: Any) -> None:
         if self._debug:
             _logger.debug("[Box] %s", " ".join(str(a) for a in args))
@@ -1510,18 +1506,15 @@ class Box(Generic[T]):
         self._network_policy = policy
 
     def get_init_command(self) -> str:
-        self._require_keep_alive("Init command")
         data = self._request("GET", f"/v2/box/{self.id}/startup")
         return data.get("init_command", "")
 
     def set_init_command(self, init_command: str) -> None:
-        self._require_keep_alive("Init command")
         if not init_command:
             raise BoxError("init_command is required")
         self._request("PUT", f"/v2/box/{self.id}/startup", body={"init_command": init_command})
 
     def delete_init_command(self) -> None:
-        self._require_keep_alive("Init command")
         self._request("DELETE", f"/v2/box/{self.id}/startup")
 
     def pause(self) -> None:
@@ -1940,8 +1933,6 @@ class Box(Generic[T]):
         agent = config.get("agent")
         if agent:
             common.resolve_agent_model(agent)
-        if config.get("init_command") is not None and not config.get("keep_alive"):
-            raise BoxError("init_command requires keep_alive=True")
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
         timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
