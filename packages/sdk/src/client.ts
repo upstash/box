@@ -360,6 +360,8 @@ export class Run<T = string> {
 
   /**
    * Cancel a running execution.
+   *
+   * @see node_modules/@upstash/box/docs/overall/shell.mdx
    */
   async cancel(): Promise<void> {
     this._abortController?.abort();
@@ -371,6 +373,8 @@ export class Run<T = string> {
 
   /**
    * Retrieve logs for this run.
+   *
+   * @see node_modules/@upstash/box/docs/overall/shell.mdx
    */
   async logs(): Promise<RunLog[]> {
     const allLogs = await this._box.logs();
@@ -467,6 +471,8 @@ export class StreamRun<T = string, C = Chunk> extends Run<T> implements AsyncIte
  * `box.browser.listTabs()`, or `box.browser.getTab(id)`. All page operations
  * run against this specific tab. `screenshot`/`extract`/`observe`/`act`/`run`
  * all work headless, without a visible screen.
+ *
+ * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
  */
 export class Tab {
   /** CDP target id of this tab. */
@@ -485,7 +491,11 @@ export class Tab {
     this.title = init.title;
   }
 
-  /** Navigate this tab to a URL and return the page content. */
+  /**
+   * Navigate this tab to a URL and return the page content.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
+   */
   goto(url: string): Promise<BrowserContent> {
     return this.box._request<BrowserContent>("POST", `/v2/box/${this.box.id}/browser/goto`, {
       body: { url, tab: this.id },
@@ -493,7 +503,11 @@ export class Tab {
     });
   }
 
-  /** Read this tab's current title, URL, text, and links. */
+  /**
+   * Read this tab's current title, URL, text, and links.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/reading-pages.mdx
+   */
   content(): Promise<BrowserContent> {
     return this.box._request<BrowserContent>(
       "GET",
@@ -502,7 +516,11 @@ export class Tab {
     );
   }
 
-  /** Capture this tab as PNG bytes, or as a base64 string when requested. */
+  /**
+   * Capture this tab as PNG bytes, or as a base64 string when requested.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/reading-pages.mdx
+   */
   screenshot(options: BrowserScreenshotOptions & { type: "base64" }): Promise<string>;
   screenshot(options?: BrowserScreenshotOptions & { type?: "png" }): Promise<Uint8Array>;
   screenshot(options: BrowserScreenshotOptions): Promise<Uint8Array | string>;
@@ -522,7 +540,11 @@ export class Tab {
     return resp.data;
   }
 
-  /** Extract schema-validated structured data from this tab (metered). */
+  /**
+   * Extract schema-validated structured data from this tab (metered).
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/reading-pages.mdx
+   */
   async extract<T>(
     instruction: string,
     schema: BrowserExtractSchema<T>,
@@ -547,7 +569,11 @@ export class Tab {
     return schema.parse(resp.data);
   }
 
-  /** List actionable page elements matching an instruction (metered). */
+  /**
+   * List actionable page elements matching an instruction (metered).
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/ai-actions.mdx
+   */
   async observe(
     instruction: string,
     options?: BrowserExtractOptions,
@@ -563,9 +589,17 @@ export class Tab {
     return { elements: resp.elements ?? [] };
   }
 
-  /** Resolve and execute one natural-language action on this tab (metered). */
+  /**
+   * Resolve and execute one natural-language action on this tab (metered).
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/ai-actions.mdx
+   */
   async act(instruction: string, options?: BrowserExtractOptions): Promise<BrowserActResult>;
-  /** Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored). */
+  /**
+   * Replay a pre-resolved `observe()` action with no LLM call and no key (`model` ignored).
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/ai-actions.mdx
+   */
   async act(action: BrowserAction): Promise<BrowserActResult>;
   async act(
     instructionOrAction: string | BrowserAction,
@@ -609,17 +643,26 @@ export class Tab {
    * Live-view URL for this tab (authenticated via a token in the URL). Open it
    * directly or embed it in an iframe — the page renders the tab live via CDP
    * screencast. View-only: frames flow out, no input goes in.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/live-view.mdx
    */
   liveViewUrl(): Promise<string> {
     return this.box._browserLiveViewUrl(this.id);
   }
 
-  /** Close this tab. */
+  /**
+   * Close this tab.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
+   */
   async close(): Promise<void> {
     await this.box._request("DELETE", `/v2/box/${this.box.id}/browser/tabs/${this.id}`);
   }
 }
 
+/**
+ * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
+ */
 export class Box<TProvider = unknown> {
   readonly id: string;
 
@@ -629,43 +672,91 @@ export class Box<TProvider = unknown> {
   /** Whether this box is configured as keep-alive. */
   readonly keepAlive: boolean;
 
-  /** Current network access policy for this box. */
+  /**
+   * Current network access policy for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/network-policy.mdx
+   */
   get networkPolicy(): NetworkPolicy {
     return this._networkPolicy;
   }
 
-  /** Agent operations namespace */
+  /**
+   * Agent operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/agent.mdx
+   */
   readonly agent: {
+    /**
+     * @see node_modules/@upstash/box/docs/overall/agent.mdx
+     */
     run<T>(
       options: RunOptions<T, TProvider> & {
         responseSchema: RunOptions<T, TProvider>["responseSchema"];
       },
     ): Promise<Run<T>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/agent.mdx
+     */
     run(options: RunOptions<undefined, TProvider>): Promise<Run<string>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/agent.mdx
+     */
     stream(options: StreamOptions<TProvider>): Promise<StreamRun<string, Chunk>>;
   };
 
-  /** File operations namespace */
+  /**
+   * File operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/files.mdx
+   */
   readonly files: {
     /**
      * Read a file. Passing `length` reads a bounded byte range starting at
      * `offset` (default 0) instead of the whole file; the server rejects a
      * `length` above 8 MiB.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     read: (
       path: string,
       options?: { encoding?: "base64"; offset?: number; length?: number },
     ) => Promise<string>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     write: (options: { path: string; content: string; encoding?: "base64" }) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     list: (path?: string) => Promise<FileEntry[]>;
-    /** Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat). */
+    /**
+     * Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat).
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     stat: (path: string, options?: { follow?: boolean }) => Promise<FileStat>;
-    /** Create a directory. `parents` mirrors `mkdir -p`. */
+    /**
+     * Create a directory. `parents` mirrors `mkdir -p`.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     mkdir: (path: string, options?: { parents?: boolean }) => Promise<void>;
-    /** Move/rename a path. */
+    /**
+     * Move/rename a path.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     rename: (from: string, to: string) => Promise<void>;
-    /** Remove a path. `recursive` is required to remove a directory. */
+    /**
+     * Remove a path. `recursive` is required to remove a directory.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     remove: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     upload: (files: UploadFileEntry[]) => Promise<void>;
     /**
      * Download files from the box to the local filesystem.
@@ -681,47 +772,126 @@ export class Box<TProvider = unknown> {
      * // Download the entire workspace
      * await box.files.download();
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     download: (options?: { folder?: string }) => Promise<void>;
   };
 
-  /** Execution namespace — shell commands and inline code */
+  /**
+   * Execution namespace — shell commands and inline code
+   *
+   * @see node_modules/@upstash/box/docs/overall/shell.mdx
+   */
   readonly exec: {
+    /**
+     * @see node_modules/@upstash/box/docs/overall/shell.mdx
+     */
     command: (command: string) => Promise<Run<string>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/shell.mdx
+     */
     code: (options: CodeExecutionOptions) => Promise<Run<string>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
+     */
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
     /**
      * Open a live, interactive command session over a WebSocket: stdin,
      * streamed stdout/stderr, resize, and signals. Node-only. See
      * {@link ExecSessionOptions}.
+     *
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
      */
     session: (options: ExecSessionOptions) => Promise<ExecSessionHandle>;
   };
 
-  /** Schedule operations namespace */
+  /**
+   * Schedule operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+   */
   readonly schedule: {
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     exec: (options: ExecScheduleOptions) => Promise<Schedule>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     agent: (options: AgentScheduleOptions<TProvider>) => Promise<Schedule>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     list: () => Promise<Schedule[]>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     get: (id: string) => Promise<Schedule>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     update: (id: string, options: UpdateScheduleOptions<TProvider>) => Promise<Schedule>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     pause: (id: string) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     resume: (id: string) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+     */
     delete: (id: string) => Promise<void>;
   };
 
-  /** Git operations namespace */
+  /**
+   * Git operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/git.mdx
+   */
   readonly git: {
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     clone: (options: GitCloneOptions) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     diff: () => Promise<string>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     status: () => Promise<string>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     commit: (options: GitCommitOptions) => Promise<GitCommitResult>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     updateConfig: (options: GitConfigUpdateOptions) => Promise<GitConfig>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     push: (options?: { branch?: string }) => Promise<void>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     createPR: (options: GitPROptions) => Promise<PullRequest>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     createIssue: (options: GitIssueOptions) => Promise<Issue>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     exec: (options: GitExecOptions) => Promise<GitExecResult>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/git.mdx
+     */
     checkout: (options: GitCheckoutOptions) => Promise<void>;
   };
 
@@ -751,34 +921,74 @@ export class Box<TProvider = unknown> {
    * tabs. All page operations (`goto`, `content`, `screenshot`, `extract`,
    * `observe`, `act`, `run`, `close`) live on the {@link Tab} handle returned
    * here.
+   *
+   * @see node_modules/@upstash/box/docs/overall/browser/overview.mdx
    */
   readonly browser: {
     tab: {
-      /** Open a tab, navigate it, and wait for the requested lifecycle state. */
+      /**
+       * Open a tab, navigate it, and wait for the requested lifecycle state.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
+       */
       create: (url: string, options?: BrowserTabCreateOptions) => Promise<Tab>;
     };
-    /** List the box's open tabs as handles. */
+    /**
+     * List the box's open tabs as handles.
+     *
+     * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
+     */
     listTabs: () => Promise<Tab[]>;
-    /** Address an existing tab by its CDP target id — no network call. */
+    /**
+     * Address an existing tab by its CDP target id — no network call.
+     *
+     * @see node_modules/@upstash/box/docs/overall/browser/tabs.mdx
+     */
     getTab: (id: string) => Tab;
-    /** Return an authenticated CDP WebSocket URL for Playwright, Puppeteer, or Stagehand. */
+    /**
+     * Return an authenticated CDP WebSocket URL for Playwright, Puppeteer, or Stagehand.
+     *
+     * @see node_modules/@upstash/box/docs/overall/browser/connect.mdx
+     */
     cdpUrl: () => Promise<string>;
     /**
      * Session recordings — capture the browser (all tabs, follows the
      * foreground) to a replayable HLS video with run/tab-switch chapters.
      * Recordings auto-stop after `maxDurationSeconds` (max 10 minutes) or
      * after 3 minutes of no on-screen activity.
+     *
+     * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
      */
     recordings: {
-      /** Start capturing. One active recording per box. */
+      /**
+       * Start capturing. One active recording per box.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
+       */
       start: (options?: BrowserRecordingOptions) => Promise<BrowserRecordingHandle>;
-      /** Stop the active recording and return its metadata. */
+      /**
+       * Stop the active recording and return its metadata.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
+       */
       stop: () => Promise<BrowserRecording>;
-      /** List this box's recordings, newest first. */
+      /**
+       * List this box's recordings, newest first.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
+       */
       list: () => Promise<BrowserRecording[]>;
-      /** Fetch one recording's metadata. */
+      /**
+       * Fetch one recording's metadata.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
+       */
       get: (recordingId: string) => Promise<BrowserRecording>;
-      /** Download a recording's video (MP4, or MPEG-TS for pre-MP4 recordings) to a local file; returns the path written. */
+      /**
+       * Download a recording's video (MP4, or MPEG-TS for pre-MP4 recordings) to a local file; returns the path written.
+       *
+       * @see node_modules/@upstash/box/docs/overall/browser/recordings.mdx
+       */
       download: (recordingId: string, options?: { path?: string }) => Promise<string>;
     };
   };
@@ -951,6 +1161,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Create a new sandboxed box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   static async create<TProvider = unknown>(config?: BoxConfig): Promise<Box<TProvider>> {
     const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
@@ -1042,6 +1254,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * List all boxes for the authenticated user.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   static async list(options?: ListOptions): Promise<BoxData[]> {
     const apiKey = options?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
@@ -1146,6 +1360,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Get an existing box by ID
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   static async get<TProvider = unknown>(
     boxId: string,
@@ -1186,6 +1402,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Get an existing box by name
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   static getByName = Box.get;
 
@@ -2454,6 +2672,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Get the current box status.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async getStatus(): Promise<{ status: string }> {
     return this._request<{ status: string }>("GET", `/v2/box/${this.id}/status`);
@@ -2474,6 +2694,8 @@ export class Box<TProvider = unknown> {
    * Update the custom harness configured for this box.
    *
    * The box must have been created with `agent.harness: Agent.Custom`.
+   *
+   * @see node_modules/@upstash/box/docs/overall/custom-agent.mdx
    */
   async configureCustomHarness(customHarness: CustomHarnessConfig): Promise<void> {
     if (this._agent !== Agent.Custom) {
@@ -2487,6 +2709,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Update the network access policy for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/network-policy.mdx
    */
   async updateNetworkPolicy(policy: NetworkPolicy): Promise<void> {
     await this._request("PUT", `/v2/box/${this.id}/config/network-policy`, {
@@ -2497,6 +2721,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Read the current init command for a keep-alive box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async getInitCommand(): Promise<string> {
     this._requireKeepAlive("Init command");
@@ -2509,6 +2735,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Set or replace the init command for a keep-alive box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async setInitCommand(initCommand: string): Promise<void> {
     this._requireKeepAlive("Init command");
@@ -2522,6 +2750,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Delete the init command for a keep-alive box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async deleteInitCommand(): Promise<void> {
     this._requireKeepAlive("Init command");
@@ -2530,6 +2760,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Pause the box (release compute, preserve state).
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async pause(): Promise<void> {
     if (this.keepAlive) {
@@ -2540,6 +2772,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Resume a paused box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async resume(): Promise<void> {
     await this._request("POST", `/v2/box/${this.id}/resume`);
@@ -2547,6 +2781,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Delete this box permanently.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async delete(): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}`);
@@ -2555,6 +2791,8 @@ export class Box<TProvider = unknown> {
   /**
    * Save workspace state as a snapshot for later restore.
    * Creates the snapshot asynchronously and polls until ready.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async snapshot(options: { name: string }): Promise<Snapshot> {
     const data = await this._request<Snapshot>("POST", `/v2/box/${this.id}/snapshots`, {
@@ -2586,6 +2824,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * List all snapshots for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async listSnapshots(): Promise<Snapshot[]> {
     const data = await this._request<{ snapshots: Snapshot[] }>(
@@ -2597,6 +2837,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Delete a snapshot.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async deleteSnapshot(snapshotId: string): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/snapshots/${snapshotId}`);
@@ -2604,6 +2846,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Create a new box from a saved snapshot.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   static async fromSnapshot<TProvider = unknown>(
     snapshotId: string,
@@ -2686,6 +2930,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * Get structured logs for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async logs(options?: { offset?: number; limit?: number }): Promise<LogEntry[]> {
     const params = new URLSearchParams();
@@ -2698,6 +2944,8 @@ export class Box<TProvider = unknown> {
 
   /**
    * List all runs for this box, newest first.
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   async listRuns(): Promise<BoxRunData[]> {
     const data = await this._request<{ runs: BoxRunData[] }>("GET", `/v2/box/${this.id}/runs`);
@@ -3189,6 +3437,9 @@ export class Box<TProvider = unknown> {
 
   // ==================== Public URLs ====================
 
+  /**
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async getPublicURL(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
@@ -3202,6 +3453,9 @@ export class Box<TProvider = unknown> {
     });
   }
 
+  /**
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async listPublicURLs(): Promise<{ publicURLs: PublicURL[] }> {
     const data = await this._request<{ previews: PublicURL[] }>(
       "GET",
@@ -3210,11 +3464,18 @@ export class Box<TProvider = unknown> {
     return { publicURLs: data.previews };
   }
 
+  /**
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async deletePublicURL(port: number): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/preview/${port}`);
   }
 
-  /** @deprecated Use `getPublicURL` instead. */
+  /**
+   * @deprecated Use `getPublicURL` instead.
+   *
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async getPreviewUrl(
     port: number,
     options?: { bearerToken?: boolean; basicAuth?: boolean },
@@ -3222,13 +3483,21 @@ export class Box<TProvider = unknown> {
     return this.getPublicURL(port, options);
   }
 
-  /** @deprecated Use `listPublicURLs` instead. */
+  /**
+   * @deprecated Use `listPublicURLs` instead.
+   *
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async listPreviews(): Promise<{ previews: Preview[] }> {
     const data = await this.listPublicURLs();
     return { previews: data.publicURLs };
   }
 
-  /** @deprecated Use `deletePublicURL` instead. */
+  /**
+   * @deprecated Use `deletePublicURL` instead.
+   *
+   * @see node_modules/@upstash/box/docs/overall/preview.mdx
+   */
   async deletePreview(port: number): Promise<void> {
     await this.deletePublicURL(port);
   }
@@ -3250,6 +3519,8 @@ export class Box<TProvider = unknown> {
  * console.log(run.result); // "hello"
  * await box.delete();
  * ```
+ *
+ * @see node_modules/@upstash/box/docs/overall/ephemeral-box.mdx
  */
 export class EphemeralBox {
   readonly id: string;
@@ -3257,7 +3528,11 @@ export class EphemeralBox {
   /** Unix timestamp (seconds) when this box will be auto-deleted. */
   readonly expiresAt: number;
 
-  /** File operations namespace */
+  /**
+   * File operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/files.mdx
+   */
   readonly files: {
     /**
      * Read a file from the box. Passing `length` reads a bounded byte range
@@ -3270,6 +3545,8 @@ export class EphemeralBox {
      * const b64 = await box.files.read("image.png", { encoding: "base64" });
      * const head = await box.files.read("big.log", { length: 64 * 1024 });
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     read: (
       path: string,
@@ -3282,6 +3559,8 @@ export class EphemeralBox {
      * ```ts
      * await box.files.write({ path: "hello.txt", content: "Hello!" });
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     write: (options: { path: string; content: string; encoding?: "base64" }) => Promise<void>;
     /**
@@ -3291,15 +3570,33 @@ export class EphemeralBox {
      * ```ts
      * const files = await box.files.list("src");
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     list: (path?: string) => Promise<FileEntry[]>;
-    /** Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat). */
+    /**
+     * Return filesystem metadata for a path. `follow` dereferences a final symlink (default: lstat).
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     stat: (path: string, options?: { follow?: boolean }) => Promise<FileStat>;
-    /** Create a directory. `parents` mirrors `mkdir -p`. */
+    /**
+     * Create a directory. `parents` mirrors `mkdir -p`.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     mkdir: (path: string, options?: { parents?: boolean }) => Promise<void>;
-    /** Move/rename a path. */
+    /**
+     * Move/rename a path.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     rename: (from: string, to: string) => Promise<void>;
-    /** Remove a path. `recursive` is required to remove a directory. */
+    /**
+     * Remove a path. `recursive` is required to remove a directory.
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
+     */
     remove: (path: string, options?: { recursive?: boolean }) => Promise<void>;
     /**
      * Upload local files to the box.
@@ -3308,6 +3605,8 @@ export class EphemeralBox {
      * ```ts
      * await box.files.upload([{ path: "./local.txt", destination: "remote.txt" }]);
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     upload: (files: UploadFileEntry[]) => Promise<void>;
     /**
@@ -3317,25 +3616,46 @@ export class EphemeralBox {
      * ```ts
      * await box.files.download({ folder: "src" });
      * ```
+     *
+     * @see node_modules/@upstash/box/docs/overall/files.mdx
      */
     download: (options?: { folder?: string }) => Promise<void>;
   };
 
-  /** Execution namespace — shell commands and inline code */
+  /**
+   * Execution namespace — shell commands and inline code
+   *
+   * @see node_modules/@upstash/box/docs/overall/shell.mdx
+   */
   readonly exec: {
+    /**
+     * @see node_modules/@upstash/box/docs/overall/shell.mdx
+     */
     command: (command: string) => Promise<Run<string>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/shell.mdx
+     */
     code: (options: CodeExecutionOptions) => Promise<Run<string>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
+     */
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
     /**
      * Open a live, interactive command session over a WebSocket: stdin,
      * streamed stdout/stderr, resize, and signals. Node-only. See
      * {@link ExecSessionOptions}.
+     *
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
      */
     session: (options: ExecSessionOptions) => Promise<ExecSessionHandle>;
   };
 
-  /** Schedule operations namespace */
+  /**
+   * Schedule operations namespace
+   *
+   * @see node_modules/@upstash/box/docs/overall/schedules.mdx
+   */
   readonly schedule: Box["schedule"];
 
   private _box: Box;
@@ -3354,7 +3674,11 @@ export class EphemeralBox {
    * The current working directory tracked in the SDK.
    * Every new session starts at `/workspace/home`.
    */
-  /** Current network access policy for this box. */
+  /**
+   * Current network access policy for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/network-policy.mdx
+   */
   get networkPolicy(): NetworkPolicy {
     return this._box.networkPolicy;
   }
@@ -3376,6 +3700,8 @@ export class EphemeralBox {
 
   /**
    * Get the current box status.
+   *
+   * @see node_modules/@upstash/box/docs/overall/ephemeral-box.mdx
    */
   async getStatus(): Promise<{ status: string }> {
     return this._box.getStatus();
@@ -3383,6 +3709,8 @@ export class EphemeralBox {
 
   /**
    * Delete this ephemeral box before its TTL expires.
+   *
+   * @see node_modules/@upstash/box/docs/overall/ephemeral-box.mdx
    */
   async delete(): Promise<void> {
     return this._box.delete();
@@ -3391,6 +3719,8 @@ export class EphemeralBox {
   /**
    * Save workspace state as a snapshot for later restore.
    * Creates the snapshot asynchronously and polls until ready.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async snapshot(options: { name: string }): Promise<Snapshot> {
     return this._box.snapshot(options);
@@ -3398,6 +3728,8 @@ export class EphemeralBox {
 
   /**
    * List all snapshots for this box.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async listSnapshots(): Promise<Snapshot[]> {
     return this._box.listSnapshots();
@@ -3405,6 +3737,8 @@ export class EphemeralBox {
 
   /**
    * Delete a snapshot.
+   *
+   * @see node_modules/@upstash/box/docs/overall/snapshots.mdx
    */
   async deleteSnapshot(snapshotId: string): Promise<void> {
     return this._box.deleteSnapshot(snapshotId);
@@ -3427,6 +3761,8 @@ export class EphemeralBox {
    * // Default runtime and max TTL
    * const box = await EphemeralBox.create();
    * ```
+   *
+   * @see node_modules/@upstash/box/docs/overall/ephemeral-box.mdx
    */
   static async create(config?: EphemeralBoxConfig): Promise<EphemeralBox> {
     const apiKey = config?.apiKey ?? process.env.UPSTASH_BOX_API_KEY;
@@ -3488,6 +3824,8 @@ export class EphemeralBox {
    * ```ts
    * const box = await EphemeralBox.fromSnapshot("snap-abc123", { ttl: 3600 });
    * ```
+   *
+   * @see node_modules/@upstash/box/docs/overall/ephemeral-box.mdx
    */
   static async fromSnapshot(
     snapshotId: string,
@@ -3547,6 +3885,8 @@ export class EphemeralBox {
 
   /**
    * Get an existing ephemeral box by name
+   *
+   * @see node_modules/@upstash/box/docs/overall/how-it-works.mdx
    */
   static getByName = Box.get;
 

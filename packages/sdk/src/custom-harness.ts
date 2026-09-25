@@ -110,6 +110,8 @@ function createEmitter(write: (chunk: string) => void): CustomHarnessEmitter {
  *   return { output, inputTokens: prompt.split(/\s+/).length, outputTokens: output.split(/\s+/).length };
  * });
  * ```
+ *
+ * @see node_modules/@upstash/box/docs/overall/custom-agent.mdx
  */
 export async function runCustomHarness(
   handler: CustomHarnessHandler,
