@@ -526,7 +526,7 @@ program
   .option("--name <name>", "Human-readable name for the box")
   .option("--size <size>", "Resource size (small, medium, large)")
   .option("--keep-alive", "Keep the box running instead of pausing when idle")
-  .option("--init-command <command>", "Startup script, for keep-alive boxes")
+  .option("--init-command <command>", "Startup script, run once each time the box starts")
   .option("--browser", "Provision a headless Chromium in the box")
   .option("--clone-repo <repo>", "Clone this repository into the box after creating it")
   .option(

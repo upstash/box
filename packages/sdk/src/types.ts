@@ -50,6 +50,7 @@ export enum ClaudeCode {
   Opus_4_6 = "anthropic/claude-opus-4-6",
   Opus_4_7 = "anthropic/claude-opus-4-7",
   Opus_4_8 = "anthropic/claude-opus-4-8",
+  Opus_5_5 = "anthropic/claude-opus-5-5",
   Opus_5 = "anthropic/claude-opus-5",
   Sonnet_4 = "anthropic/claude-sonnet-4",
   Sonnet_4_5 = "anthropic/claude-sonnet-4-5",
@@ -63,6 +64,8 @@ export enum ClaudeCode {
  */
 export enum OpenAICodex {
   GPT_6_Astra = "openai/gpt-6-astra",
+  GPT_6_Sol = "openai/gpt-6-sol",
+  GPT_6_Luna = "openai/gpt-6-luna",
   GPT_5_6 = "openai/gpt-5.6",
   GPT_5_6_Sol = "openai/gpt-5.6-sol",
   GPT_5_6_Terra = "openai/gpt-5.6-terra",
@@ -83,6 +86,7 @@ export enum OpenAICodex {
 export enum OpenRouterModel {
   Claude_Fable_5_1 = "openrouter/anthropic/claude-fable-5.1",
   Claude_Fable_5 = "openrouter/anthropic/claude-fable-5",
+  Claude_Opus_5_5 = "openrouter/anthropic/claude-opus-5.5",
   Claude_Opus_5 = "openrouter/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "openrouter/anthropic/claude-sonnet-5",
   Claude_Sonnet_4 = "openrouter/anthropic/claude-sonnet-4",
@@ -92,6 +96,8 @@ export enum OpenRouterModel {
   Gemini_2_5_Pro = "openrouter/google/gemini-2.5-pro",
   Gemini_2_5_Flash = "openrouter/google/gemini-2.5-flash",
   GPT_6_Astra = "openrouter/openai/gpt-6-astra",
+  GPT_6_Sol = "openrouter/openai/gpt-6-sol",
+  GPT_6_Luna = "openrouter/openai/gpt-6-luna",
   GPT_5_6_Sol = "openrouter/openai/gpt-5.6-sol",
   GPT_5_6_Terra = "openrouter/openai/gpt-5.6-terra",
   GPT_5_6_Luna = "openrouter/openai/gpt-5.6-luna",
@@ -106,6 +112,7 @@ export enum OpenRouterModel {
 export enum VercelModel {
   Claude_Fable_5_1 = "vercel/anthropic/claude-fable-5.1",
   Claude_Fable_5 = "vercel/anthropic/claude-fable-5",
+  Claude_Opus_5_5 = "vercel/anthropic/claude-opus-5.5",
   Claude_Opus_5 = "vercel/anthropic/claude-opus-5",
   Claude_Sonnet_5 = "vercel/anthropic/claude-sonnet-5",
   Claude_Opus_4_7 = "vercel/anthropic/claude-opus-4.7",
@@ -113,6 +120,8 @@ export enum VercelModel {
   Claude_Opus_4_6 = "vercel/anthropic/claude-opus-4.6",
   Claude_Haiku_4_5 = "vercel/anthropic/claude-haiku-4.5",
   GPT_6_Astra = "vercel/openai/gpt-6-astra",
+  GPT_6_Sol = "vercel/openai/gpt-6-sol",
+  GPT_6_Luna = "vercel/openai/gpt-6-luna",
   GPT_5_6_Sol = "vercel/openai/gpt-5.6-sol",
   GPT_5_6_Terra = "vercel/openai/gpt-5.6-terra",
   GPT_5_6_Luna = "vercel/openai/gpt-5.6-luna",
@@ -120,12 +129,15 @@ export enum VercelModel {
   GPT_5_5_Pro = "vercel/openai/gpt-5.5-pro",
   GPT_5_4 = "vercel/openai/gpt-5.4",
   GPT_5_4_Mini = "vercel/openai/gpt-5.4-mini",
+  Gemini_3_8_Flash = "vercel/google/gemini-3.8-flash",
   Gemini_3_5_Flash = "vercel/google/gemini-3.5-flash",
   Gemini_3_1_Flash_Lite = "vercel/google/gemini-3.1-flash-lite",
   Gemini_3_1_Pro_Preview = "vercel/google/gemini-3.1-pro-preview",
-  Grok_Build_0_1 = "vercel/xai/grok-build-0.1",
-  Grok_4_3 = "vercel/xai/grok-4.3",
-  Grok_4_20_Reasoning = "vercel/xai/grok-4.20-reasoning",
+  // xAI models moved from the xai/ to the spacexai/ namespace on the gateway.
+  Grok_Build_0_1 = "vercel/spacexai/grok-build-0.1",
+  Grok_4_7 = "vercel/spacexai/grok-4.7",
+  Grok_4_3 = "vercel/spacexai/grok-4.3",
+  Grok_4_20_Reasoning = "vercel/spacexai/grok-4.20-reasoning",
 }
 
 /**
@@ -135,6 +147,7 @@ export enum OpenCodeModel {
   // Anthropic-backed OpenCode models
   Claude_Fable_5_1 = "opencode/claude-fable-5-1",
   Claude_Fable_5 = "opencode/claude-fable-5",
+  Claude_Opus_5_5 = "opencode/claude-opus-5-5",
   Claude_Opus_5 = "opencode/claude-opus-5",
   Claude_Opus_4_5 = "opencode/claude-opus-4-5",
   Claude_Opus_4_6 = "opencode/claude-opus-4-6",
@@ -147,6 +160,8 @@ export enum OpenCodeModel {
   Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   // OpenAI-backed OpenCode models
   GPT_6_Astra = "opencode/gpt-6-astra",
+  GPT_6_Sol = "opencode/gpt-6-sol",
+  GPT_6_Luna = "opencode/gpt-6-luna",
   GPT_5_5 = "opencode/gpt-5.5",
   GPT_5_4 = "opencode/gpt-5.4",
   GPT_5_4_Pro = "opencode/gpt-5.4-pro",
@@ -167,6 +182,7 @@ export enum OpenCodeModel {
   Zen_MiniMax_M2_7 = "opencode/minimax-m2.7",
   Zen_Claude_Fable_5_1 = "opencode/claude-fable-5-1",
   Zen_Claude_Fable_5 = "opencode/claude-fable-5",
+  Zen_Claude_Opus_5_5 = "opencode/claude-opus-5-5",
   Zen_Claude_Opus_5 = "opencode/claude-opus-5",
   Zen_Claude_Sonnet_4_6 = "opencode/claude-sonnet-4-6",
   Zen_Claude_Sonnet_4_5 = "opencode/claude-sonnet-4-5",
@@ -202,6 +218,7 @@ export enum CursorModel {
   GPT_5_1_Codex_Mini = "cursor/gpt-5.1-codex-mini",
   GPT_5_Mini = "cursor/gpt-5-mini",
   Claude_Fable_5 = "cursor/claude-fable-5",
+  Claude_Opus_5_5 = "cursor/claude-opus-5-5",
   Claude_Opus_5 = "cursor/claude-opus-5",
   Claude_Opus_4_8 = "cursor/claude-opus-4-8",
   Claude_Opus_4_7 = "cursor/claude-opus-4-7",
@@ -475,7 +492,11 @@ export interface BoxConfig extends BoxConnectionOptions {
   browser?: boolean;
   /** Keep the box alive instead of allowing pause-based idle lifecycle. */
   keepAlive?: boolean;
-  /** Optional startup script for keep-alive boxes. */
+  /**
+   * Startup script run once per container start: after create and on every resume.
+   * A box restored from a snapshot does not inherit it; pass `initCommand` to
+   * `fromSnapshot` to set one there.
+   */
   initCommand?: string;
   agent?: AgentConfig;
   git?: {
@@ -1238,6 +1259,22 @@ export interface PublicURL {
   username?: string;
   /** Basic auth password (only returned when basicAuth is true) */
   password?: string;
+}
+
+/** One entry returned by `listPublicURLs()`. Secrets are only returned at creation time. */
+export interface PublicURLListItem {
+  /** Preview id, `{boxId}-{port}` */
+  id: string;
+  /** Port number exposed */
+  port: number;
+  /** Public URL to access the exposed port */
+  url: string;
+  /** Unix seconds */
+  created_at: number;
+  /** Whether the URL is protected by basic auth */
+  basic_auth: boolean;
+  /** Whether the URL is protected by a bearer token */
+  bearer_token: boolean;
 }
 
 /** @deprecated Use `PublicURL` instead. */

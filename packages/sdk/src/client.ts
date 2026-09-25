@@ -40,6 +40,7 @@ import {
   type UploadFileEntry,
   type Snapshot,
   type Preview,
+  type PublicURLListItem,
   type PublicURL,
   type EphemeralBoxConfig,
   type EphemeralBoxData,
@@ -80,6 +81,19 @@ function apiHeaders(apiKey: string, enableTelemetry?: boolean): Record<string, s
 }
 
 /** Decode base64 to bytes in both Node and edge runtimes. */
+/**
+ * Normalizes the ids for a bulk delete and rejects a list that names nothing.
+ * The bulk endpoints delete whatever they are scoped to, so an empty or blank
+ * scope must never reach them: it would read as "everything".
+ */
+function requireIds(value: string | string[], name: string): string[] {
+  const ids = Array.isArray(value) ? value : [value];
+  if (ids.length === 0 || ids.some((id) => typeof id !== "string" || id.trim() === "")) {
+    throw new BoxError(`${name} must contain at least one non-empty id`);
+  }
+  return ids;
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
   if (typeof globalThis.atob !== "function") {
@@ -1172,9 +1186,6 @@ export class Box<TProvider = unknown> {
       );
     }
     if (config?.agent) resolveAgentModel(config.agent);
-    if (config?.initCommand !== undefined && !config.keepAlive) {
-      throw new BoxError("initCommand requires keepAlive: true");
-    }
     const baseUrl = (
       config?.baseUrl ??
       process.env.UPSTASH_BOX_BASE_URL ??
@@ -1285,6 +1296,7 @@ export class Box<TProvider = unknown> {
   /**
    * Delete snapshots for the authenticated user.
    * Omit snapshotIds to delete all snapshots, or pass a single ID / array of IDs to delete specific ones.
+   * An empty snapshotIds is rejected rather than read as "all".
    */
   static async deleteSnapshots(
     options?: BoxConnectionOptions & { snapshotIds?: string | string[] },
@@ -1306,12 +1318,16 @@ export class Box<TProvider = unknown> {
       "Content-Type": "application/json",
     };
 
+    // Deleting everything is asked for explicitly, never implied by a missing list.
     const body: { ids?: string[] } = {};
-    if (options?.snapshotIds !== undefined) {
-      body.ids = Array.isArray(options.snapshotIds) ? options.snapshotIds : [options.snapshotIds];
+    let url = `${baseUrl}/v2/box/snapshots`;
+    if (options?.snapshotIds === undefined) {
+      url += "?all=true";
+    } else {
+      body.ids = requireIds(options.snapshotIds, "snapshotIds");
     }
 
-    const response = await fetch(`${baseUrl}/v2/box/snapshots`, {
+    const response = await fetch(url, {
       method: "DELETE",
       headers,
       body: JSON.stringify(body),
@@ -1346,7 +1362,7 @@ export class Box<TProvider = unknown> {
       "Content-Type": "application/json",
     };
 
-    const ids = Array.isArray(options.boxIds) ? options.boxIds : [options.boxIds];
+    const ids = requireIds(options.boxIds, "boxIds");
     const response = await fetch(`${baseUrl}/v2/box`, {
       method: "DELETE",
       headers,
@@ -2720,12 +2736,11 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Read the current init command for a keep-alive box.
+   * Read the current init command.
    *
    * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async getInitCommand(): Promise<string> {
-    this._requireKeepAlive("Init command");
     const data = await this._request<{ init_command?: string }>(
       "GET",
       `/v2/box/${this.id}/startup`,
@@ -2734,12 +2749,12 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Set or replace the init command for a keep-alive box.
+   * Set or replace the init command. On a paused box the change is stored and
+   * applied on the next resume.
    *
    * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async setInitCommand(initCommand: string): Promise<void> {
-    this._requireKeepAlive("Init command");
     if (!initCommand) {
       throw new BoxError("initCommand is required");
     }
@@ -2749,12 +2764,11 @@ export class Box<TProvider = unknown> {
   }
 
   /**
-   * Delete the init command for a keep-alive box.
+   * Delete the init command.
    *
    * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
    */
   async deleteInitCommand(): Promise<void> {
-    this._requireKeepAlive("Init command");
     await this._request("DELETE", `/v2/box/${this.id}/startup`);
   }
 
@@ -2956,12 +2970,6 @@ export class Box<TProvider = unknown> {
 
   private log(...args: unknown[]) {
     if (this._debug) console.log("[Box]", ...args);
-  }
-
-  private _requireKeepAlive(feature: string): void {
-    if (!this.keepAlive) {
-      throw new BoxError(`${feature} is only available for keep-alive boxes`);
-    }
   }
 
   private async _browserCreateTab(url: string, options?: BrowserTabCreateOptions): Promise<Tab> {
@@ -3438,6 +3446,9 @@ export class Box<TProvider = unknown> {
   // ==================== Public URLs ====================
 
   /**
+   * Expose a port on a public URL. A request to the URL resumes the box if it
+   * is paused and is held until the port is listening.
+   *
    * @see node_modules/@upstash/box/docs/overall/preview.mdx
    */
   async getPublicURL(
@@ -3456,8 +3467,8 @@ export class Box<TProvider = unknown> {
   /**
    * @see node_modules/@upstash/box/docs/overall/preview.mdx
    */
-  async listPublicURLs(): Promise<{ publicURLs: PublicURL[] }> {
-    const data = await this._request<{ previews: PublicURL[] }>(
+  async listPublicURLs(): Promise<{ publicURLs: PublicURLListItem[] }> {
+    const data = await this._request<{ previews: PublicURLListItem[] }>(
       "GET",
       `/v2/box/${this.id}/preview`,
     );
@@ -3488,7 +3499,7 @@ export class Box<TProvider = unknown> {
    *
    * @see node_modules/@upstash/box/docs/overall/preview.mdx
    */
-  async listPreviews(): Promise<{ previews: Preview[] }> {
+  async listPreviews(): Promise<{ previews: PublicURLListItem[] }> {
     const data = await this.listPublicURLs();
     return { previews: data.publicURLs };
   }

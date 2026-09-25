@@ -314,13 +314,14 @@ describe("Box.create", () => {
     expect(box.keepAlive).toBe(true);
   });
 
-  it("throws when initCommand is provided without keepAlive", async () => {
-    await expect(
-      Box.create({
-        ...TEST_CONFIG,
-        initCommand: "echo hi",
-      }),
-    ).rejects.toThrow("initCommand requires keepAlive: true");
+  it("sends initCommand without keepAlive", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    await Box.create({ ...TEST_CONFIG, initCommand: "echo hi" });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0]![1]?.body as string);
+    expect(body.init_command).toBe("echo hi");
+    expect(body.keep_alive).toBeUndefined();
   });
 
   it("sends skills and mcpServers in body", async () => {

@@ -65,7 +65,7 @@ export async function* handlePublicUrl(box: Box, args: string): AsyncGenerator<B
       // when the command that launched it finishes, and the URL then 502s.
       yield {
         type: "log",
-        message: "Start the server detached — ( npm run dev & ) — or it stops with the command.",
+        message: "Start the server detached, ( npm run dev & ), or it stops with the command.",
       };
     }
   }

@@ -170,15 +170,17 @@ describe("createCommand", () => {
     if (key !== undefined) process.env.UPSTASH_BOX_API_KEY = key;
   });
 
-  it("rejects --init-command without --keep-alive, which the backend would 400", async () => {
-    await expect(
-      createCommand({
-        token: "key",
-        initCommand: "npm start",
-        repl: false,
-      }),
-    ).rejects.toThrow(/keep-alive/);
-    expect(Box.create).not.toHaveBeenCalled();
+  it("accepts --init-command without --keep-alive", async () => {
+    const mockBox = { id: "box-1" };
+    vi.mocked(Box.create).mockResolvedValueOnce(mockBox as any);
+
+    await createCommand({
+      token: "key",
+      initCommand: "npm start",
+      repl: false,
+    });
+
+    expect(Box.create).toHaveBeenCalledWith(expect.objectContaining({ initCommand: "npm start" }));
   });
 
   it("passes runtime, git token, and env vars", async () => {

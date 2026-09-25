@@ -47,7 +47,7 @@ export async function publicUrlCommand(portArg: string, flags: PublicUrlFlags): 
   emit(created, lines, flags);
   // A server started as a plain background job is reaped when the command that
   // launched it finishes, and the URL then 502s.
-  note("Start the server detached — ( npm run dev & ) — or it stops with the command.");
+  note("Start the server detached, ( npm run dev & ), or it stops with the command.");
 }
 
 /** List the box's public URLs. */

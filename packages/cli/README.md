@@ -217,7 +217,7 @@ box create --no-repl \
 | `--name <name>`            | Human-readable name                                                                      |                               |
 | `--size <size>`            | Resource size                                                                            | `small`                       |
 | `--keep-alive`             | Keep the box running instead of pausing when idle                                        |                               |
-| `--init-command <cmd>`     | Startup script, for keep-alive boxes                                                     |                               |
+| `--init-command <cmd>`     | Startup script, run once each time the box starts                                        |                               |
 | `--browser`                | Provision a headless Chromium                                                            |                               |
 | `--clone-repo <repo>`      | Clone this repository after creating the box                                             |                               |
 | `--agent-model <model>`    | Agent model identifier                                                                   |                               |

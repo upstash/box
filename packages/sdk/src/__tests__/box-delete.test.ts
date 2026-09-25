@@ -34,6 +34,18 @@ describe("Box.delete (static)", () => {
     expect(body.ids).toEqual(["box-1", "box-2", "box-3"]);
   });
 
+  it.each([
+    ["an empty array", []],
+    ["an empty string", ""],
+    ["a blank id in the list", ["box-1", " "]],
+    ["a missing boxIds", undefined as unknown as string[]],
+  ])("rejects %s instead of deleting every box", async (_label, boxIds) => {
+    await expect(
+      Box.delete({ apiKey: TEST_CONFIG.apiKey, baseUrl: TEST_CONFIG.baseUrl, boxIds }),
+    ).rejects.toThrow("boxIds must contain at least one non-empty id");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("throws when apiKey is missing", async () => {
     await expect(Box.delete({ boxIds: "box-1" })).rejects.toThrow("apiKey is required");
   });

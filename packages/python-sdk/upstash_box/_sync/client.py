@@ -873,10 +873,6 @@ class Box(Generic[T]):
                 "No agent configured. Pass an `agent` option to create() to use box.agent.run()."
             )
 
-    def _require_keep_alive(self, feature: str) -> None:
-        if not self.keep_alive:
-            raise BoxError(f"{feature} is only available for keep-alive boxes")
-
     def _log(self, *args: Any) -> None:
         if self._debug:
             _logger.debug("[Box] %s", " ".join(str(a) for a in args))
@@ -1510,18 +1506,15 @@ class Box(Generic[T]):
         self._network_policy = policy
 
     def get_init_command(self) -> str:
-        self._require_keep_alive("Init command")
         data = self._request("GET", f"/v2/box/{self.id}/startup")
         return data.get("init_command", "")
 
     def set_init_command(self, init_command: str) -> None:
-        self._require_keep_alive("Init command")
         if not init_command:
             raise BoxError("init_command is required")
         self._request("PUT", f"/v2/box/{self.id}/startup", body={"init_command": init_command})
 
     def delete_init_command(self) -> None:
-        self._require_keep_alive("Init command")
         self._request("DELETE", f"/v2/box/{self.id}/startup")
 
     def pause(self) -> None:
@@ -1940,8 +1933,6 @@ class Box(Generic[T]):
         agent = config.get("agent")
         if agent:
             common.resolve_agent_model(agent)
-        if config.get("init_command") is not None and not config.get("keep_alive"):
-            raise BoxError("init_command requires keep_alive=True")
         base_url = common.resolve_base_url(config.get("base_url"))
         headers = common.build_headers(api_key)
         timeout = config.get("timeout", _DEFAULT_TIMEOUT_MS)
@@ -2101,7 +2092,7 @@ class Box(Generic[T]):
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
-        ids = box_ids if isinstance(box_ids, list) else [box_ids]
+        ids = common.require_ids(box_ids, "box_ids")
         with httpx.Client() as client:
             response = client.request(
                 "DELETE",
@@ -2121,14 +2112,19 @@ class Box(Generic[T]):
         api_key = common.resolve_api_key(options.get("api_key"))
         base_url = common.resolve_base_url(options.get("base_url"))
         headers = common.build_headers(api_key)
+        # Deleting everything is asked for explicitly, never implied by a missing list.
         body: Dict[str, Any] = {}
-        if snapshot_ids is not None:
-            body["ids"] = snapshot_ids if isinstance(snapshot_ids, list) else [snapshot_ids]
+        params: Dict[str, str] = {}
+        if snapshot_ids is None:
+            params["all"] = "true"
+        else:
+            body["ids"] = common.require_ids(snapshot_ids, "snapshot_ids")
         with httpx.Client() as client:
             response = client.request(
                 "DELETE",
                 f"{base_url}/v2/box/snapshots",
                 headers={**headers, "Content-Type": "application/json"},
+                params=params,
                 content=json.dumps(body),
             )
             common.raise_for_status(response)

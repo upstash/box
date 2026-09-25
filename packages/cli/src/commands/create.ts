@@ -262,11 +262,6 @@ export async function createCommand(flags: CreateFlags): Promise<void> {
     );
   }
 
-  // The backend rejects a startup script on a box that is allowed to pause.
-  if (flags.initCommand !== undefined && !flags.keepAlive) {
-    throw new CliError("--init-command only applies to a keep-alive box; add --keep-alive");
-  }
-
   // In headless mode stdout carries the box id and nothing else, so progress
   // goes to stderr.
   if (headless) note("Creating box...");

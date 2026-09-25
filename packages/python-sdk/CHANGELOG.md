@@ -4,6 +4,22 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Init commands now work on every box, not only keep-alive ones. `create(init_command=...)`
+  no longer requires `keep_alive=True`, and `get_init_command()`, `set_init_command()`
+  and `delete_init_command()` no longer raise on a non-keep-alive box.
+- Add Claude Opus 5.5 model constants for Claude Code, OpenRouter, Vercel AI
+  Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
+- Fix Vercel AI Gateway Grok identifiers: the gateway moved xAI models from the
+  `xai/` to the `spacexai/` namespace, so `VercelModel.GROK_*` now resolve again.
+  Add `VercelModel.GROK_4_7`, `GPT_6_SOL`, `GPT_6_LUNA`, and `GEMINI_3_8_FLASH`.
+- Add GPT-6 Sol and GPT-6 Luna to `OpenAICodex`, `OpenRouterModel`, and
+  `OpenCodeModel`.
+- Fix `delete_boxes(box_ids=[])` deleting every box on the account. The API read
+  an empty id list as "no filter". `delete_boxes` and `delete_snapshots` now raise
+  `BoxError` before any request is made when the list is empty or contains a
+  blank id.
+- `delete_snapshots()` with no `snapshot_ids` still deletes every snapshot, and
+  now says so explicitly by sending `?all=true`.
 - Add `git.create_issue()`, which opens a GitHub issue from a box.
 - Add `attach` to `git.create_pr()` and `git.create_issue()`. It takes image or
   video files, relative to the working directory, and uploads them to the new

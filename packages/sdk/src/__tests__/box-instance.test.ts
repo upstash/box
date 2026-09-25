@@ -380,20 +380,40 @@ describe("Box instance methods", () => {
       await expect(box.setInitCommand("")).rejects.toThrow("initCommand is required");
     });
 
-    it("throws for non-keep-alive boxes", async () => {
+    // All three used to reject a box that was not keep-alive, so all three are
+    // covered here: one of them could otherwise regress unnoticed.
+    it("reads the init command on a box that is not keep-alive", async () => {
       const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ init_command: "npm run dev" }));
 
-      await expect(box.getInitCommand()).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
-      await expect(box.setInitCommand("echo hi")).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
-      await expect(box.deleteInitCommand()).rejects.toThrow(
-        "Init command is only available for keep-alive boxes",
-      );
+      await expect(box.getInitCommand()).resolves.toBe("npm run dev");
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("GET");
+    });
+
+    it("sets the init command on a box that is not keep-alive", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ message: "startup script saved" }));
+
+      await expect(box.setInitCommand("npm run dev")).resolves.toBeUndefined();
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("PUT");
+      expect(JSON.parse(init?.body as string)).toEqual({ init_command: "npm run dev" });
+    });
+
+    it("deletes the init command on a box that is not keep-alive", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock.mockResolvedValueOnce(mockResponse({ message: "startup script deleted" }));
+
+      await expect(box.deleteInitCommand()).resolves.toBeUndefined();
+
+      const [url, init] = fetchMock.mock.calls[1]!;
+      expect(url).toContain("/v2/box/box-123/startup");
+      expect(init?.method).toBe("DELETE");
     });
   });
 

@@ -97,3 +97,46 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     expect(res.publicURLs.every((p) => p.port !== 3000)).toBe(true);
   });
 });
+
+const WAKE_SECRET = "box-paused-url-integration-secret-7";
+
+describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: paused box", () => {
+  let box: Box;
+
+  beforeAll(async () => {
+    // The init command is what restarts the server after a resume, so it is
+    // part of the behaviour under test rather than setup convenience.
+    box = await Box.create({
+      apiKey: UPSTASH_BOX_API_KEY!,
+      runtime: "node",
+      initCommand: `node -e 'require("http").createServer((_,r)=>r.end("${WAKE_SECRET}")).listen(3000)' &`,
+    });
+    await new Promise((r) => setTimeout(r, 4000));
+  }, 180000);
+
+  afterAll(async () => {
+    try {
+      await box?.delete();
+    } catch {
+      // cleanup best-effort
+    }
+  }, 30000);
+
+  it("a request to the URL resumes the box and serves the app's own response", async () => {
+    const created = await box.getPublicURL(3000);
+
+    const awake = await fetch(created.url, { signal: AbortSignal.timeout(60_000) });
+    expect(await awake.text()).toBe(WAKE_SECRET);
+
+    await box.pause();
+    expect((await box.getStatus()).status).toBe("paused");
+
+    // The wait is bounded at 30s server-side, so allow more than that here.
+    const woken = await fetch(created.url, { signal: AbortSignal.timeout(90_000) });
+    expect(woken.status).toBe(200);
+    expect(await woken.text()).toBe(WAKE_SECRET);
+    expect((await box.getStatus()).status).not.toBe("paused");
+
+    await box.deletePublicURL(3000);
+  }, 240000);
+});
