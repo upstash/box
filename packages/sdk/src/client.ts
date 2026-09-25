@@ -810,6 +810,9 @@ export class Box<TProvider = unknown> {
      * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
      */
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
+     */
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
     /**
      * Open a live, interactive command session over a WebSocket: stdin,
@@ -3651,6 +3654,9 @@ export class EphemeralBox {
      * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
      */
     stream: (command: string) => Promise<StreamRun<string, ExecStreamChunk>>;
+    /**
+     * @see node_modules/@upstash/box/docs/overall/live-sessions.mdx
+     */
     streamCode: (options: CodeExecutionOptions) => Promise<StreamRun<string, ExecStreamChunk>>;
     /**
      * Open a live, interactive command session over a WebSocket: stdin,
