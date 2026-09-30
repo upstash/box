@@ -47,6 +47,13 @@ def test_gpt_6_sol_and_luna_model_identifiers():
     assert OpenCodeModel.GPT_6_LUNA.value == "opencode/gpt-6-luna"
 
 
+def test_gpt_6_1_sol_model_identifiers():
+    assert OpenAICodex.GPT_6_1_SOL.value == "openai/gpt-6.1-sol"
+    assert OpenRouterModel.GPT_6_1_SOL.value == "openrouter/openai/gpt-6.1-sol"
+    assert VercelModel.GPT_6_1_SOL.value == "vercel/openai/gpt-6.1-sol"
+    assert OpenCodeModel.GPT_6_1_SOL.value == "opencode/gpt-6.1-sol"
+
+
 def test_vercel_gateway_model_identifiers():
     # xAI models moved from the xai/ to the spacexai/ namespace on the gateway.
     assert VercelModel.GROK_BUILD_0_1.value == "vercel/spacexai/grok-build-0.1"

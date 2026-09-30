@@ -403,6 +403,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 | Enum                              | Value                          |
 | --------------------------------- | ------------------------------ |
+| `OpenAICodex.GPT_6_1_Sol`         | `openai/gpt-6.1-sol`           |
 | `OpenAICodex.GPT_6_Astra`         | `openai/gpt-6-astra`           |
 | `OpenAICodex.GPT_6_Sol`           | `openai/gpt-6-sol`             |
 | `OpenAICodex.GPT_6_Luna`          | `openai/gpt-6-luna`            |
@@ -433,6 +434,7 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 | `OpenRouterModel.DeepSeek_R1`      | `openrouter/deepseek/deepseek-r1`       |
 | `OpenRouterModel.Gemini_2_5_Pro`   | `openrouter/google/gemini-2.5-pro`      |
 | `OpenRouterModel.Gemini_2_5_Flash` | `openrouter/google/gemini-2.5-flash`    |
+| `OpenRouterModel.GPT_6_1_Sol`      | `openrouter/openai/gpt-6.1-sol`         |
 | `OpenRouterModel.GPT_5_6_Sol`      | `openrouter/openai/gpt-5.6-sol`         |
 | `OpenRouterModel.GPT_5_6_Terra`    | `openrouter/openai/gpt-5.6-terra`       |
 | `OpenRouterModel.GPT_5_6_Luna`     | `openrouter/openai/gpt-5.6-luna`        |

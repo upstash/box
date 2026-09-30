@@ -63,6 +63,7 @@ export enum ClaudeCode {
  * OpenAI Codex model identifiers
  */
 export enum OpenAICodex {
+  GPT_6_1_Sol = "openai/gpt-6.1-sol",
   GPT_6_Astra = "openai/gpt-6-astra",
   GPT_6_Sol = "openai/gpt-6-sol",
   GPT_6_Luna = "openai/gpt-6-luna",
@@ -95,6 +96,7 @@ export enum OpenRouterModel {
   DeepSeek_R1 = "openrouter/deepseek/deepseek-r1",
   Gemini_2_5_Pro = "openrouter/google/gemini-2.5-pro",
   Gemini_2_5_Flash = "openrouter/google/gemini-2.5-flash",
+  GPT_6_1_Sol = "openrouter/openai/gpt-6.1-sol",
   GPT_6_Astra = "openrouter/openai/gpt-6-astra",
   GPT_6_Sol = "openrouter/openai/gpt-6-sol",
   GPT_6_Luna = "openrouter/openai/gpt-6-luna",
@@ -119,6 +121,7 @@ export enum VercelModel {
   Claude_Sonnet_4_6 = "vercel/anthropic/claude-sonnet-4.6",
   Claude_Opus_4_6 = "vercel/anthropic/claude-opus-4.6",
   Claude_Haiku_4_5 = "vercel/anthropic/claude-haiku-4.5",
+  GPT_6_1_Sol = "vercel/openai/gpt-6.1-sol",
   GPT_6_Astra = "vercel/openai/gpt-6-astra",
   GPT_6_Sol = "vercel/openai/gpt-6-sol",
   GPT_6_Luna = "vercel/openai/gpt-6-luna",
@@ -159,6 +162,7 @@ export enum OpenCodeModel {
   Claude_Sonnet_5 = "opencode/claude-sonnet-5",
   Claude_Haiku_4_5 = "opencode/claude-haiku-4-5",
   // OpenAI-backed OpenCode models
+  GPT_6_1_Sol = "opencode/gpt-6.1-sol",
   GPT_6_Astra = "opencode/gpt-6-astra",
   GPT_6_Sol = "opencode/gpt-6-sol",
   GPT_6_Luna = "opencode/gpt-6-luna",
