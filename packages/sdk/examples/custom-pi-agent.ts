@@ -9,42 +9,32 @@ import { Agent, Box } from "@upstash/box";
 //   OpenAI    → OPENAI_API_KEY
 //
 // Model format: "<provider>/<model-id>"
-//   e.g. "anthropic/claude-sonnet-4-5"
-//        "google/gemini-2.5-pro"
-//        "openai/gpt-4o"
+//   e.g. "anthropic/claude-sonnet-5-5"
+//        "google/gemini-3.5-flash"
+//        "openai/gpt-6.1-sol"
+//
+// MCP servers are written to the session's mcp.json and loaded by Pi's MCP
+// extension. Images are passed to Pi natively; text files are inlined; other
+// files are saved under /workspace/home/.box-attachments.
+
+const PI_VERSION = "0.99.2";
 
 const agentSource = String.raw`
-import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
-import { getModel } from "@earendil-works/pi-ai";
+import {
+  createAgentSession,
+  createMcpExtension,
+  DefaultResourceLoader,
+  ModelRuntime,
+  SessionManager,
+} from "@earendil-works/pi-coding-agent";
 import { randomUUID } from "crypto";
-import { mkdir } from "fs/promises";
-import { readFileSync, unlinkSync } from "fs";
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
+import { basename } from "path";
 
 const WORK_DIR = "/workspace/home";
-const SESSIONS_DIR = "/workspace/home/.pi-sessions";
-const MCP_CONFIG_PATH = "/workspace/home/.box-internal/mcp-config.json";
-
-function loadMcpServers() {
-  try {
-    const configs = JSON.parse(readFileSync(MCP_CONFIG_PATH, "utf-8"));
-    if (!configs.length) return { urls: [], warned: false };
-    const urls = [];
-    let warned = false;
-    for (const cfg of configs) {
-      if (cfg.source === "url") {
-        urls.push(cfg.package_or_url);
-        if (cfg.headers && Object.keys(cfg.headers).length) {
-          console.error("[pi] Warning: headers for MCP server '" + cfg.name + "' are not supported by extensionUrls — headers will be ignored");
-        }
-      } else {
-        console.error("[pi] Warning: npm MCP server '" + cfg.name + "' not supported; only HTTP MCP servers are applied");
-        warned = true;
-      }
-    }
-    if (urls.length) console.error("[pi] MCP servers: " + urls.join(", "));
-    return { urls, warned };
-  } catch { return { urls: [], warned: false }; }
-}
+const SESSIONS_DIR = WORK_DIR + "/.pi-sessions";
+const ATTACHMENTS_DIR = WORK_DIR + "/.box-attachments";
+const MCP_CONFIG_PATH = WORK_DIR + "/.box-internal/mcp-config.json";
 
 const args = process.argv.slice(2);
 
@@ -63,7 +53,7 @@ function emit(event, data) {
 }
 
 const prompt = readArg("-p");
-const modelStr = readArg("--model", "anthropic/claude-sonnet-4-5");
+const modelStr = readArg("--model", "anthropic/claude-sonnet-5-5");
 const sessionId = readArg("--session") || randomUUID();
 const sessionDir = SESSIONS_DIR + "/" + sessionId;
 
@@ -72,31 +62,49 @@ if (!prompt) {
   process.exit(1);
 }
 
-function isTextMimeType(mime) {
-  if (mime.startsWith("text/")) return true;
-  return ["application/json","application/javascript","application/typescript",
-    "application/xml","application/yaml","application/x-yaml","application/toml",
-    "application/sql","application/graphql"].includes(mime.split(";")[0]);
+const TEXT_TYPES = ["application/json", "application/javascript", "application/typescript",
+  "application/xml", "application/yaml", "application/x-yaml", "application/toml",
+  "application/sql", "application/graphql"];
+const isText = (mime) => mime.startsWith("text/") || TEXT_TYPES.includes(mime.split(";")[0]);
+
+// Text files are inlined, images go to Pi as image content, other files are saved
+// so Pi can read them by path.
+function buildPrompt(base) {
+  const filesPath = process.env.PROMPT_FILES_PATH;
+  if (!filesPath) return { text: base, images: [] };
+  const files = JSON.parse(readFileSync(filesPath, "utf-8"));
+  try { unlinkSync(filesPath); } catch {}
+  const fence = String.fromCharCode(96, 96, 96);
+  let text = base;
+  const images = [];
+  files.forEach((f, i) => {
+    const name = basename(f.filename || "file-" + i);
+    if (f.media_type.startsWith("image/")) {
+      images.push({ type: "image", data: f.data, mimeType: f.media_type });
+    } else if (isText(f.media_type)) {
+      text += "\n\nAttached file: " + name + "\n" + fence + "\n" + Buffer.from(f.data, "base64").toString("utf-8") + "\n" + fence;
+    } else {
+      const dir = ATTACHMENTS_DIR + "/" + randomUUID();
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(dir + "/" + name, Buffer.from(f.data, "base64"));
+      text += "\n\nAttached file: " + dir + "/" + name;
+    }
+  });
+  return { text, images };
 }
 
-function buildPrompt(base) {
-  if (!process.env.PROMPT_FILES_PATH) return base;
-  try {
-    const raw = readFileSync(process.env.PROMPT_FILES_PATH, "utf-8");
-    try { unlinkSync(process.env.PROMPT_FILES_PATH); } catch {}
-    const files = JSON.parse(raw);
-    const fence = String.fromCharCode(96,96,96);
-    const parts = [base];
-    for (const f of files) {
-      if (isTextMimeType(f.media_type)) {
-        const content = Buffer.from(f.data, "base64").toString("utf-8");
-        parts.push("\n\nAttached file: " + (f.filename || "unnamed") + "\n" + fence + "\n" + content + "\n" + fence);
-      } else {
-        console.error("[pi] Skipping unsupported file type: " + f.media_type + " (" + (f.filename || "unnamed") + ")");
-      }
-    }
-    return parts.join("");
-  } catch { return base; }
+// Pi's MCP extension reads mcp.json from the agent directory (PI_CODING_AGENT_DIR).
+// "direct" exposure declares the tools to the model instead of hiding them behind codemode.
+function writeMcpConfig() {
+  let servers;
+  try { servers = JSON.parse(readFileSync(MCP_CONFIG_PATH, "utf-8")); } catch { return; }
+  const mcpServers = {};
+  for (const s of servers) {
+    mcpServers[s.name] = s.source === "npm"
+      ? { command: "npx", args: ["-y", s.package_or_url, ...(s.args ?? [])], env: s.headers ?? {}, exposure: "direct" }
+      : { url: s.package_or_url, headers: s.headers ?? {}, exposure: "direct" };
+  }
+  writeFileSync(sessionDir + "/mcp.json", JSON.stringify({ mcpServers }, null, 2));
 }
 
 if (process.env.JSON_SCHEMA) {
@@ -115,41 +123,48 @@ function agentOptions() {
   }
 }
 
-// Parse "provider/model-id" → getModel(provider, modelId)
-function resolveModel(str) {
-  const slash = str.indexOf("/");
-  if (slash !== -1) {
-    return getModel(str.slice(0, slash), str.slice(slash + 1));
-  }
-  return getModel("anthropic", str);
-}
+const toolOutput = (result) =>
+  (result?.content ?? []).map((c) => (c.type === "text" ? c.text : "[" + c.type + "]")).join("\n");
+
+let inputTokens = 0;
+let outputTokens = 0;
+let cachedInputTokens = 0;
+let totalCostUSD = 0;
 
 try {
   process.chdir(WORK_DIR);
-  await mkdir(sessionDir, { recursive: true });
+  mkdirSync(sessionDir, { recursive: true });
+  process.env.PI_CODING_AGENT_DIR = sessionDir;
+  writeMcpConfig();
 
-  const model = resolveModel(modelStr);
-  const fullPrompt = buildPrompt(prompt);
-  const extraOpts = agentOptions();
-  const { urls: mcpUrls } = loadMcpServers();
+  // Parse "provider/model-id"; a bare id defaults to Anthropic
+  const slash = modelStr.indexOf("/");
+  const provider = slash === -1 ? "anthropic" : modelStr.slice(0, slash);
+  const modelId = slash === -1 ? modelStr : modelStr.slice(slash + 1);
+  const modelRuntime = await ModelRuntime.create();
+  const model = modelRuntime.getModel(provider, modelId);
+  if (!model) throw new Error("Unknown Pi model: " + modelStr);
+
+  const resourceLoader = new DefaultResourceLoader({
+    cwd: WORK_DIR,
+    agentDir: sessionDir,
+    extensionFactories: [createMcpExtension()],
+  });
+  await resourceLoader.reload();
 
   // Each session gets its own agentDir so continueRecent() is scoped to it
   const { session } = await createAgentSession({
-    model,
-    workingDir: WORK_DIR,
+    cwd: WORK_DIR,
     agentDir: sessionDir,
+    model,
+    modelRuntime,
+    resourceLoader,
     sessionManager: SessionManager.continueRecent(WORK_DIR, sessionDir),
-    ...(mcpUrls.length ? { extensionUrls: mcpUrls } : {}),
-    ...extraOpts,
+    ...agentOptions(),
   });
-
-  emit("tool", { name: "pi_agent", toolCallId: sessionId, input: { model: modelStr } });
+  await session.bindExtensions({});
 
   let output = "";
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let cachedInputTokens = 0;
-  let totalCostUSD = 0;
 
   // Pi attaches usage to each AssistantMessage as { input, output, cacheRead,
   // cacheWrite, cost: { total } }. We sum across all assistant messages
@@ -157,13 +172,14 @@ try {
   function accumulateUsage(messages) {
     for (const m of messages ?? []) {
       if (m?.role !== "assistant" || !m.usage) continue;
-      inputTokens += m.usage.input ?? 0;
+      inputTokens += (m.usage.input ?? 0) + (m.usage.cacheWrite ?? 0);
       outputTokens += m.usage.output ?? 0;
       cachedInputTokens += m.usage.cacheRead ?? 0;
       totalCostUSD += m.usage.cost?.total ?? 0;
     }
   }
 
+  let lastAssistant;
   let resolveEnd;
   const agentEndPromise = new Promise((resolve) => { resolveEnd = resolve; });
 
@@ -177,39 +193,42 @@ try {
         emit("thinking", { text: ae.delta });
       }
     } else if (event.type === "tool_execution_start") {
-      emit("tool", {
-        name: event.toolName,
-        toolCallId: event.toolCallId,
-        input: event.args ?? {},
-      });
+      output = "";
+      emit("tool", { name: event.toolName, toolCallId: event.toolCallId, input: event.args ?? {} });
     } else if (event.type === "tool_execution_end") {
-      emit("tool_result", {
-        toolCallId: event.toolCallId,
-        output: String(event.result ?? ""),
-        is_error: event.isError ?? false,
-      });
+      emit("tool_result", { toolCallId: event.toolCallId, output: toolOutput(event.result), is_error: event.isError ?? false });
     } else if (event.type === "agent_end") {
       accumulateUsage(event.messages);
+      lastAssistant = (event.messages ?? []).filter((m) => m?.role === "assistant").pop();
       resolveEnd();
     }
   });
 
-  await session.prompt(fullPrompt);
+  const { text, images } = buildPrompt(prompt);
+  await session.prompt(text, images.length ? { images } : undefined);
   await agentEndPromise;
+  session.dispose();
+
+  // Pi reports model errors (bad key, rate limit) on the message instead of throwing
+  if (lastAssistant?.stopReason === "error") throw new Error(lastAssistant.errorMessage ?? "Pi run failed");
 
   emit("done", {
-    output,
+    output: output.trim(),
     input_tokens: inputTokens,
     output_tokens: outputTokens,
     cached_input_tokens: cachedInputTokens,
     total_cost_usd: totalCostUSD,
     session_id: sessionId,
   });
+  process.exit(0);
 } catch (error) {
-  const msg = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : "";
+  console.error(error);
   emit("error", {
-    error: msg + "\n" + stack,
+    error: error instanceof Error ? error.message : String(error),
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cached_input_tokens: cachedInputTokens,
+    total_cost_usd: totalCostUSD,
     session_id: sessionId,
   });
   process.exit(1);
@@ -222,7 +241,7 @@ const box = await Box.create({
   runtime: "node",
   agent: {
     harness: Agent.Custom,
-    model: "anthropic/claude-sonnet-4-5",
+    model: "anthropic/claude-sonnet-5-5",
     customHarness: {
       command: "node",
       args: ["/workspace/home/custom-pi-agent.mjs"],
@@ -241,7 +260,7 @@ console.log(`Created box: ${box.id}`);
 try {
   console.log("Installing @earendil-works/pi-coding-agent...");
   await box.exec.command(
-    "cd /workspace/home && npm install @earendil-works/pi-coding-agent @earendil-works/pi-ai --silent"
+    `cd /workspace/home && npm install @earendil-works/pi-coding-agent@${PI_VERSION} --silent`
   );
 
   await box.files.write({

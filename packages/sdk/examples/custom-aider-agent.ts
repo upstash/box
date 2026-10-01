@@ -8,7 +8,7 @@ import { Agent, Box } from "@upstash/box";
 // aider-chat with Python 3.12 and runs it with --message for headless execution.
 
 const agentSource = `
-import sys, os, json, subprocess, uuid, re
+import sys, os, json, subprocess, uuid, re, glob
 
 args = sys.argv[1:]
 
@@ -26,6 +26,9 @@ def emit(event, data):
 
 def strip_ansi(text):
     return re.sub(r"\\x1b\\[[0-9;]*m", "", text)
+
+ATTACHMENTS_DIR = "/workspace/home/.box-attachments"
+read_files = []  # non-text attachments, passed to aider with --read
 
 def is_text_mime(mime):
     if mime.startswith("text/"): return True
@@ -46,7 +49,13 @@ def build_prompt(base):
                 content = base64.b64decode(fi["data"]).decode("utf-8")
                 parts.append("\\n\\nAttached file: " + (fi.get("filename") or "unnamed") + "\\n" + content)
             else:
-                print("[aider] Skipping unsupported file type: " + fi.get("media_type","") + " (" + (fi.get("filename") or "unnamed") + ")", file=sys.stderr)
+                name = os.path.basename(fi.get("filename") or "file")
+                file_dir = os.path.join(ATTACHMENTS_DIR, str(uuid.uuid4()))
+                os.makedirs(file_dir, exist_ok=True)
+                file_path = os.path.join(file_dir, name)
+                with open(file_path, "wb") as out: out.write(base64.b64decode(fi["data"]))
+                read_files.append(file_path)
+                parts.append("\\n\\nAttached file: " + file_path)
         return "".join(parts)
     except: return base
 
@@ -54,8 +63,14 @@ def build_prompt(base):
 #   "Tokens: 12,345 sent, 678 received. Cost: $0.02 message, $0.05 session."
 #   "Tokens: 1.2k sent, 304 received. Cost: $0.02 message, $0.05 session."
 # We surface the per-message numbers as input/output tokens.
-TOKEN_RE = re.compile(
-    r"Tokens:\\s+([\\d.,]+)\\s*([kKmM]?)\\s+sent,\\s+([\\d.,]+)\\s*([kKmM]?)\\s+received"
+TOKEN_RE = re.compile(r"([\\d.,]+)\\s*([kKmM]?)\\s+(sent|received|cache write|cache hit)")
+
+# Startup and bookkeeping lines aider prints around the answer; sent to stderr
+NOISE_RE = re.compile(
+    r"^(Warning: Input is not a terminal|Aider respects your privacy|personal info\\.|"
+    r"For more info: https://aider\\.chat|Aider v\\d|Model:|Main model:|Weak model:|Editor model:|"
+    r"Git repo:|Repo-map:|https://aider\\.chat/HISTORY|Added .* to the chat|"
+    r"Restored previous conversation history|Analytics have been permanently disabled|Tokens:)"
 )
 COST_RE = re.compile(r"Cost:\\s+\\$([\\d.]+)\\s+message")
 
@@ -105,6 +120,23 @@ input_history_file = os.path.join(session_dir, "input.history")
 llm_history_file   = os.path.join(session_dir, "llm.history")
 is_resume = os.path.exists(chat_history_file)
 
+# Claude models newer than this aider release reject the temperature it sends to
+# models it doesn't know. A settings entry replaces aider's built-in one, so only
+# add it for models missing from aider's bundled model-settings.yml.
+def aider_knows(name):
+    pattern = os.path.expanduser("~/.local/share/uv/tools/aider-chat/lib/python*/site-packages/aider/resources/model-settings.yml")
+    for path in glob.glob(pattern):
+        with open(path) as f:
+            if ("- name: " + name + "\\n") in f.read(): return True
+    return False
+
+settings_args = []
+if "claude" in model and not aider_knows(model):
+    model_settings_file = os.path.join(session_dir, "model-settings.yml")
+    with open(model_settings_file, "w") as f:
+        f.write("- name: " + json.dumps(model) + "\\n  use_temperature: false\\n")
+    settings_args = ["--model-settings-file", model_settings_file]
+
 full_prompt = build_prompt(prompt)
 
 extra_args = []
@@ -125,8 +157,6 @@ if agent_opts:
     except Exception as e:
         print("[aider] Warning: Failed to parse AGENT_OPTIONS: " + str(e), file=sys.stderr)
 
-emit("tool", {"name": "aider", "toolCallId": session_id, "input": {"model": model, "session": session_id, "resume": is_resume}})
-
 output = ""
 input_tokens = 0
 output_tokens = 0
@@ -140,6 +170,9 @@ aider_cmd = [
     "--yes-always",
     "--no-auto-commits",
     "--no-pretty",
+    "--no-check-update",
+    "--no-show-release-notes",
+    "--no-analytics",
     "--chat-history-file", chat_history_file,
     "--input-history-file", input_history_file,
     "--llm-history-file", llm_history_file,
@@ -147,34 +180,51 @@ aider_cmd = [
 if is_resume:
     aider_cmd.append("--restore-chat-history")
 
+for path in read_files:
+    aider_cmd += ["--read", path]
+
 proc = subprocess.Popen(
-    aider_cmd + extra_args + context_files,
+    aider_cmd + settings_args + extra_args + context_files,
     cwd=WORK_DIR,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,  # merge stderr so all output reaches us
     text=True,
+    env={**os.environ, "COLUMNS": "10000"},  # stop aider wrapping long lines
 )
 
+cached_input_tokens = 0
+llm_error = ""  # aider prints model errors (bad key, unknown model) and still exits 0
 for line in proc.stdout:
     clean = strip_ansi(line)
+    if clean.startswith("litellm.") and "Error" in clean.split(":")[0]:
+        llm_error = clean.strip()
+    if clean.startswith("Tokens:"):
+        # e.g. "Tokens: 4.4k sent, 2.3k cache write, 1.8k cache hit, 215 received. Cost: $0.02 message, ..."
+        counts = {kind: parse_count(num, suffix) for num, suffix, kind in TOKEN_RE.findall(clean)}
+        input_tokens += counts.get("sent", 0) - counts.get("cache hit", 0)
+        cached_input_tokens += counts.get("cache hit", 0)
+        output_tokens += counts.get("received", 0)
+        cm = COST_RE.search(clean)
+        if cm:
+            try: total_cost_usd += float(cm.group(1))
+            except: pass
+    if NOISE_RE.match(clean.strip()):
+        sys.stderr.write(clean)
+        continue
     output += clean
     emit("text", {"text": clean})
-    tm = TOKEN_RE.search(clean)
-    if tm:
-        input_tokens  = parse_count(tm.group(1), tm.group(2))
-        output_tokens = parse_count(tm.group(3), tm.group(4))
-    cm = COST_RE.search(clean)
-    if cm:
-        try: total_cost_usd = float(cm.group(1))
-        except: pass
 
 proc.wait()
 
-if proc.returncode != 0:
-    emit("error", {"error": "aider exited with code " + str(proc.returncode) + ": " + output, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": 0, "total_cost_usd": total_cost_usd, "session_id": session_id})
+if proc.returncode == 0 and llm_error and input_tokens + output_tokens == 0:
+    emit("error", {"error": llm_error, "input_tokens": 0, "output_tokens": 0, "cached_input_tokens": 0, "total_cost_usd": 0, "session_id": session_id})
     sys.exit(1)
 
-emit("done", {"output": output.strip(), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": 0, "total_cost_usd": total_cost_usd, "session_id": session_id})
+if proc.returncode != 0:
+    emit("error", {"error": "aider exited with code " + str(proc.returncode) + ": " + output, "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": cached_input_tokens, "total_cost_usd": total_cost_usd, "session_id": session_id})
+    sys.exit(1)
+
+emit("done", {"output": output.strip(), "input_tokens": input_tokens, "output_tokens": output_tokens, "cached_input_tokens": cached_input_tokens, "total_cost_usd": total_cost_usd, "session_id": session_id})
 `;
 
 const box = await Box.create({
