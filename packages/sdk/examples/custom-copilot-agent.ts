@@ -15,6 +15,12 @@ import { Agent, Box } from "@upstash/box";
 //   "Copilot Requests" permission, and use a Copilot model id (or "auto").
 // Token usage is read from Copilot's session store (~/.copilot/session-store.db),
 // since its JSON output does not include it.
+//
+// Cost is reported as 0. With your own model key, Copilot doesn't price the call;
+// your provider bills you directly. With a subscription, Copilot bills in AI credits:
+// the session store has a total_nano_aiu column per call (AI credits = nano_aiu / 1e9)
+// that could be summed here, but check GitHub's billing docs for the credit price
+// before showing it as money, and note that included monthly credits aren't reflected.
 
 const agentSource = String.raw`
 import { spawn } from "child_process";

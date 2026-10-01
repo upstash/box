@@ -8,6 +8,9 @@ import { Agent, Box } from "@upstash/box";
 // (text) or saved under /workspace/home/.box-attachments (images, PDFs).
 //
 // Needs GEMINI_API_KEY from aistudio.google.com/apikey.
+//
+// Cost is reported as 0: Gemini CLI reports token counts but no price. Multiply the
+// tokens by your model's rate if you need a figure (free-tier keys aren't billed).
 
 const agentSource = String.raw`
 import { spawn } from "child_process";
