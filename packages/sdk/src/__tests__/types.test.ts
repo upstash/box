@@ -34,6 +34,17 @@ describe("GPT-6 Sol and Luna model identifiers", () => {
   });
 });
 
+describe("GPT-6.1 Sol model identifiers", () => {
+  it.each([
+    ["OpenAI", OpenAICodex.GPT_6_1_Sol, "openai/gpt-6.1-sol"],
+    ["OpenRouter", OpenRouterModel.GPT_6_1_Sol, "openrouter/openai/gpt-6.1-sol"],
+    ["Vercel", VercelModel.GPT_6_1_Sol, "vercel/openai/gpt-6.1-sol"],
+    ["OpenCode", OpenCodeModel.GPT_6_1_Sol, "opencode/gpt-6.1-sol"],
+  ])("exposes the %s model", (_provider, model, expected) => {
+    expect(model).toBe(expected);
+  });
+});
+
 describe("Vercel AI Gateway model identifiers", () => {
   it.each([
     ["Grok Build 0.1", VercelModel.Grok_Build_0_1, "vercel/spacexai/grok-build-0.1"],

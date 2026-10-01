@@ -75,6 +75,19 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
     expect(group?.options).toContainEqual({ value, label });
   });
 
+  it.each([
+    [Agent.Codex, "OpenAI", OpenAICodex.GPT_6_1_Sol, "GPT-6.1 Sol"],
+    [Agent.Codex, "OpenRouter", OpenRouterModel.GPT_6_1_Sol, "GPT-6.1 Sol (OR)"],
+    [Agent.Codex, "Vercel AI Gateway", VercelModel.GPT_6_1_Sol, "GPT-6.1 Sol (Vercel)"],
+    [Agent.OpenCode, "OpenAI", OpenCodeModel.GPT_6_1_Sol, "GPT-6.1 Sol"],
+    [Agent.OpenCode, "OpenRouter", OpenRouterModel.GPT_6_1_Sol, "GPT-6.1 Sol (OR)"],
+    [Agent.OpenCode, "Vercel AI Gateway", VercelModel.GPT_6_1_Sol, "GPT-6.1 Sol (Vercel)"],
+  ])("includes GPT-6.1 Sol for %s via %s", (agent, groupLabel, value, label) => {
+    const group = MODEL_OPTIONS_BY_AGENT[agent].find(({ label }) => label === groupLabel);
+
+    expect(group?.options).toContainEqual({ value, label });
+  });
+
   it("includes Cursor models", () => {
     const cursorModels = MODEL_OPTIONS_BY_AGENT[Agent.Cursor].flatMap((group) => group.options);
 

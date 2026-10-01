@@ -4,6 +4,8 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Add GPT-6.1 Sol to `OpenAICodex`, `OpenRouterModel`, `VercelModel`, and
+  `OpenCodeModel`.
 - Init commands now work on every box, not only keep-alive ones. `create(init_command=...)`
   no longer requires `keep_alive=True`, and `get_init_command()`, `set_init_command()`
   and `delete_init_command()` no longer raise on a non-keep-alive box.
