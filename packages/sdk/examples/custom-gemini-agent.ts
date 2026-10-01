@@ -22,6 +22,7 @@ const ATTACHMENTS_DIR = WORK_DIR + "/.box-attachments";
 const MCP_CONFIG_PATH = WORK_DIR + "/.box-internal/mcp-config.json";
 const SETTINGS_DIR = homedir() + "/.gemini";
 const SETTINGS_PATH = SETTINGS_DIR + "/settings.json";
+const MANAGED_MCP_PATH = SETTINGS_DIR + "/box-mcp-servers.json";
 
 const args = process.argv.slice(2);
 const readArg = (name) => {
@@ -62,13 +63,20 @@ function buildPrompt(base) {
   return prompt;
 }
 
-// Gemini CLI has no per-run MCP flag, so Box's servers are merged into its user settings.
+// Gemini CLI has no per-run MCP flag, so Box's servers are synced into its user
+// settings. The names the harness added are tracked so servers removed from the box
+// are removed here too, without touching servers configured by hand.
 function writeMcpSettings() {
-  let servers;
-  try { servers = JSON.parse(readFileSync(MCP_CONFIG_PATH, "utf-8")); } catch { return; }
+  let servers = [];
+  try { servers = JSON.parse(readFileSync(MCP_CONFIG_PATH, "utf-8")); } catch {}
+  let managed = [];
+  try { managed = JSON.parse(readFileSync(MANAGED_MCP_PATH, "utf-8")); } catch {}
+  if (!servers.length && !managed.length) return;
+
   let settings = {};
   try { settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")); } catch {}
   settings.mcpServers = settings.mcpServers ?? {};
+  for (const name of managed) delete settings.mcpServers[name];
   for (const s of servers) {
     settings.mcpServers[s.name] = s.source === "npm"
       ? { command: "npx", args: ["-y", s.package_or_url, ...(s.args ?? [])], env: s.headers ?? {} }
@@ -76,6 +84,7 @@ function writeMcpSettings() {
   }
   mkdirSync(SETTINGS_DIR, { recursive: true });
   writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+  writeFileSync(MANAGED_MCP_PATH, JSON.stringify(servers.map((s) => s.name)));
 }
 
 if (process.env.JSON_SCHEMA) console.error("[gemini-cli] Warning: JSON_SCHEMA is not supported by the Gemini CLI harness");
