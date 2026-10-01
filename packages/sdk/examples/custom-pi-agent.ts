@@ -47,9 +47,10 @@ function readArg(name, fallback = "") {
 const _write = process.stdout.write.bind(process.stdout);
 process.stdout.write = process.stderr.write.bind(process.stderr);
 
+// Resolves once the event is written, so it isn't cut off by process.exit()
 function emit(event, data) {
   _write("event: " + event + "\n");
-  _write("data: " + JSON.stringify(data) + "\n\n");
+  return new Promise((resolve) => _write("data: " + JSON.stringify(data) + "\n\n", resolve));
 }
 
 const prompt = readArg("-p");
@@ -58,7 +59,7 @@ const sessionId = readArg("--session") || randomUUID();
 const sessionDir = SESSIONS_DIR + "/" + sessionId;
 
 if (!prompt) {
-  emit("error", { error: "no prompt provided", session_id: sessionId });
+  await emit("error", { error: "no prompt provided", session_id: sessionId });
   process.exit(1);
 }
 
@@ -212,7 +213,7 @@ try {
   // Pi reports model errors (bad key, rate limit) on the message instead of throwing
   if (lastAssistant?.stopReason === "error") throw new Error(lastAssistant.errorMessage ?? "Pi run failed");
 
-  emit("done", {
+  await emit("done", {
     output: output.trim(),
     input_tokens: inputTokens,
     output_tokens: outputTokens,
@@ -223,7 +224,7 @@ try {
   process.exit(0);
 } catch (error) {
   console.error(error);
-  emit("error", {
+  await emit("error", {
     error: error instanceof Error ? error.message : String(error),
     input_tokens: inputTokens,
     output_tokens: outputTokens,

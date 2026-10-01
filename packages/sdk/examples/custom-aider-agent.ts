@@ -70,7 +70,7 @@ NOISE_RE = re.compile(
     r"^(Warning: Input is not a terminal|Aider respects your privacy|personal info\\.|"
     r"For more info: https://aider\\.chat|Aider v\\d|Model:|Main model:|Weak model:|Editor model:|"
     r"Git repo:|Repo-map:|https://aider\\.chat/HISTORY|Added .* to the chat|"
-    r"Restored previous conversation history|Analytics have been permanently disabled|Tokens:)"
+    r"Restored previous conversation history|Analytics have been permanently disabled|Tokens:|Cost:)"
 )
 COST_RE = re.compile(r"Cost:\\s+\\$([\\d.]+)\\s+message")
 
@@ -204,10 +204,11 @@ for line in proc.stdout:
         input_tokens += counts.get("sent", 0) - counts.get("cache hit", 0)
         cached_input_tokens += counts.get("cache hit", 0)
         output_tokens += counts.get("received", 0)
-        cm = COST_RE.search(clean)
-        if cm:
-            try: total_cost_usd += float(cm.group(1))
-            except: pass
+    # Cost follows the token counts, on the same line or (with cache reads and writes) the next
+    cm = COST_RE.search(clean)
+    if cm:
+        try: total_cost_usd += float(cm.group(1))
+        except: pass
     if NOISE_RE.match(clean.strip()):
         sys.stderr.write(clean)
         continue
