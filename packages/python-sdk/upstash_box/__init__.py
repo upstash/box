@@ -52,6 +52,7 @@ from .types import (
     AgentOptions,
     AgentScheduleOptions,
     Base64FileInput,
+    BedrockModel,
     BoxApiKey,
     BoxConfig,
     BoxConnectionOptions,
@@ -169,6 +170,7 @@ __all__ = [
     "CustomHarnessEmitter",
     # Enums
     "Agent",
+    "BedrockModel",
     "BoxApiKey",
     "ClaudeCode",
     "CursorModel",
