@@ -9,6 +9,9 @@ import { Agent, Box } from "@upstash/box";
 //
 // Needs AMP_API_KEY: an access token from ampcode.com/settings (Security),
 // starts with sgamp_. The model is an Amp mode: low, medium, high, or ultra.
+//
+// Cost is reported as 0: Amp's stream JSON has token counts but no price. Amp
+// bills in credits; `amp threads usage <thread-id>` shows a thread's cost.
 
 const agentSource = String.raw`
 import { spawn } from "child_process";
