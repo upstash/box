@@ -1,5 +1,15 @@
 # @upstash/box-cli
 
+## 0.3.4
+
+### Patch Changes
+
+- 5d2619a: Add GPT-6.1 Sol: `OpenAICodex.GPT_6_1_Sol`, `OpenRouterModel.GPT_6_1_Sol`,
+  `VercelModel.GPT_6_1_Sol` and `OpenCodeModel.GPT_6_1_Sol`, and list it in the
+  CLI model picker for Codex and OpenCode.
+- Updated dependencies [5d2619a]
+  - @upstash/box@0.7.8
+
 ## 0.3.3
 
 ### Patch Changes
