@@ -26,6 +26,10 @@ console.log(run.result);
 await box.delete();
 ```
 
+## Docs
+
+The npm package includes TypeScript source in `node_modules/@upstash/box/src/` and documentation in `node_modules/@upstash/box/docs/`. Start with `src/index.ts` to explore the source.
+
 ## Authentication
 
 Pass `apiKey` in the config or set the `UPSTASH_BOX_API_KEY` environment variable.

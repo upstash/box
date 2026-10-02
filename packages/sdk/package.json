@@ -25,7 +25,8 @@
     "format:check": "prettier --check .",
     "lint": "prettier --check . --write",
     "ci:lint": "prettier --check .",
-    "prepublishOnly": "node scripts/gen-version.mjs && npm run build"
+    "prepublishOnly": "node scripts/gen-version.mjs && npm run build",
+    "prepack": "giget gh:upstash/docs/box docs --force-clean 1>&2"
   },
   "keywords": [
     "upstash",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/ws": "^8.18.1",
+    "giget": "3.3.1",
     "prettier": "^3.8.1",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0"
@@ -51,7 +53,15 @@
     "access": "public"
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "docs",
+    "!src/**/*.test.*",
+    "!src/**/*.test-d.*",
+    "!src/**/*.spec.*",
+    "!src/**/test-utils.*",
+    "!src/**/__tests__/**",
+    "!src/**/__snapshots__/**"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -63,5 +73,8 @@
   },
   "peerDependencies": {
     "zod": "^3.25.0 || ^4.0.0"
+  },
+  "directories": {
+    "doc": "./docs"
   }
 }
