@@ -144,6 +144,56 @@ export enum VercelModel {
 }
 
 /**
+ * Neon AI Gateway model identifiers — Neon's short model IDs under the `neon/` namespace.
+ *
+ * These models run on the Codex harness (Responses API) or the OpenCode harness
+ * (chat completions). Box does not run Claude Code with Neon.
+ * Codex-only: `GPT_5_5_Pro`, `GPT_5_3_Codex` (Responses-only on Neon).
+ * OpenCode-only: `GPT_OSS_120B`, `GPT_OSS_20B`, the Claude models and every other
+ * non-OpenAI model (Neon serves them through chat completions, not the Responses API).
+ * Neon credentials are a token plus a per-branch base URL and must be stored via the
+ * console or agent-credentials API; use `BoxApiKey.StoredKey`.
+ */
+export enum NeonModel {
+  GPT_6_Astra = "neon/gpt-6-astra",
+  GPT_5_6_Sol = "neon/gpt-5-6-sol",
+  GPT_5_6_Terra = "neon/gpt-5-6-terra",
+  GPT_5_6_Luna = "neon/gpt-5-6-luna",
+  GPT_5_5 = "neon/gpt-5-5",
+  GPT_5_5_Pro = "neon/gpt-5-5-pro",
+  GPT_5_4 = "neon/gpt-5-4",
+  GPT_5_4_Mini = "neon/gpt-5-4-mini",
+  GPT_5_4_Nano = "neon/gpt-5-4-nano",
+  GPT_5_3_Codex = "neon/gpt-5-3-codex",
+  GPT_5_Mini = "neon/gpt-5-mini",
+  GPT_5_Nano = "neon/gpt-5-nano",
+  GPT_OSS_120B = "neon/gpt-oss-120b",
+  GPT_OSS_20B = "neon/gpt-oss-20b",
+  Gemini_3_6_Flash = "neon/gemini-3-6-flash",
+  Gemini_3_5_Flash = "neon/gemini-3-5-flash",
+  Gemini_3_5_Flash_Lite = "neon/gemini-3-5-flash-lite",
+  Gemini_3_1_Pro = "neon/gemini-3-1-pro",
+  Grok_4_6 = "neon/grok-4-6",
+  Kimi_K3 = "neon/kimi-k3",
+  GLM_5_2 = "neon/glm-5-2",
+  Qwen3_5_122B = "neon/qwen35-122b-a10b",
+  Llama_4_Maverick = "neon/llama-4-maverick",
+  Claude_Opus_5_5 = "neon/claude-opus-5-5",
+  Claude_Fable_5_1 = "neon/claude-fable-5-1",
+  Claude_Opus_5 = "neon/claude-opus-5",
+  Claude_Sonnet_5 = "neon/claude-sonnet-5",
+  Claude_Fable_5 = "neon/claude-fable-5",
+  Claude_Opus_4_8 = "neon/claude-opus-4-8",
+  Claude_Opus_4_7 = "neon/claude-opus-4-7",
+  Claude_Sonnet_4_6 = "neon/claude-sonnet-4-6",
+  Claude_Opus_4_6 = "neon/claude-opus-4-6",
+  Claude_Opus_4_5 = "neon/claude-opus-4-5",
+  Claude_Haiku_4_5 = "neon/claude-haiku-4-5",
+  Claude_Sonnet_4_5 = "neon/claude-sonnet-4-5",
+  Claude_Opus_4_1 = "neon/claude-opus-4-1",
+}
+
+/**
  * OpenCode model identifiers — supports models from multiple providers
  */
 export enum OpenCodeModel {
@@ -291,13 +341,13 @@ type HarnessConfig =
     }
   | {
       harness: Agent.Codex;
-      model: OpenAICodex | OpenRouterModel | VercelModel;
+      model: OpenAICodex | OpenRouterModel | VercelModel | NeonModel;
       provider?: never;
       runner?: never;
     }
   | {
       harness: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | NeonModel;
       provider?: never;
       runner?: never;
     }
@@ -313,14 +363,14 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.Codex;
-      model: OpenAICodex | OpenRouterModel | VercelModel;
+      model: OpenAICodex | OpenRouterModel | VercelModel | NeonModel;
       harness?: never;
       runner?: never;
     }
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.OpenCode;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel;
+      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | NeonModel;
       harness?: never;
       runner?: never;
     }
@@ -341,7 +391,14 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       runner: Exclude<Agent, Agent.Custom>;
-      model: OpenCodeModel | ClaudeCode | OpenAICodex | OpenRouterModel | VercelModel | CursorModel;
+      model:
+        | OpenCodeModel
+        | ClaudeCode
+        | OpenAICodex
+        | OpenRouterModel
+        | VercelModel
+        | NeonModel
+        | CursorModel;
       harness?: never;
       provider?: never;
     }

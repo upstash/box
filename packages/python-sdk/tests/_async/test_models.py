@@ -7,6 +7,7 @@ from upstash_box import (
     CursorModel,
     FinishChunk,
     FinishUsage,
+    NeonModel,
     OpenAICodex,
     OpenCodeModel,
     OpenRouterModel,
@@ -81,6 +82,15 @@ def test_claude_opus_5_model_identifier():
         "openrouter/anthropic/claude-opus-5",
         "vercel/anthropic/claude-opus-5",
     }
+
+
+def test_neon_model_identifiers_use_short_ids():
+    assert NeonModel.GPT_5_5.value == "neon/gpt-5-5"
+    assert NeonModel.GEMINI_3_6_FLASH.value == "neon/gemini-3-6-flash"
+    assert NeonModel.CLAUDE_HAIKU_4_5.value == "neon/claude-haiku-4-5"
+    for member in NeonModel:
+        assert member.value.startswith("neon/")
+        assert "/" not in member.value[len("neon/") :]
 
 
 def test_box_run_data_fields():

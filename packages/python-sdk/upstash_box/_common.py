@@ -107,6 +107,12 @@ def infer_default_provider(model: str) -> Agent:
         return Agent.CODEX
     if model.startswith("vercel/"):
         return Agent.CLAUDE_CODE
+    # Neon AI Gateway has no Anthropic dialect. GPT models go to Codex (Responses
+    # API); GPT OSS and every non-OpenAI model are chat-only, so they go to OpenCode.
+    if model.startswith("neon/gpt-") and not model.startswith("neon/gpt-oss-"):
+        return Agent.CODEX
+    if model.startswith("neon/"):
+        return Agent.OPEN_CODE
     if model.startswith("openrouter/"):
         return Agent.CLAUDE_CODE
     if model.startswith("opencode/"):

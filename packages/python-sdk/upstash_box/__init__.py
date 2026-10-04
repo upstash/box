@@ -93,6 +93,7 @@ from .types import (
     LogEntry,
     McpServerConfig,
     ModelConfig,
+    NeonModel,
     NetworkPolicy,
     OpenAICodex,
     OpenCodeAgentOptions,
@@ -176,6 +177,7 @@ __all__ = [
     "OpenCodeModel",
     "OpenRouterModel",
     "VercelModel",
+    "NeonModel",
     # Config / option types
     "AgentConfig",
     "AgentOptions",

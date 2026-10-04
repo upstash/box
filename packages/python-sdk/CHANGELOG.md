@@ -4,6 +4,11 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Add `NeonModel` (Neon AI Gateway, `neon/<neon-short-id>`) and route `neon/gpt-*`
+  to Codex and chat-only Neon models to OpenCode in `infer_default_provider`.
+  Neon's ``CLAUDE_*`` models run on OpenCode only (chat completions); Box does
+  not run Claude Code with Neon. Neon credentials (token + branch base URL)
+  must be stored via the console or agent-credentials API.
 - Add GPT-6.1 Sol to `OpenAICodex`, `OpenRouterModel`, `VercelModel`, and
   `OpenCodeModel`.
 - Init commands now work on every box, not only keep-alive ones. `create(init_command=...)`

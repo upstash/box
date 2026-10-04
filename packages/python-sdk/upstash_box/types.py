@@ -145,6 +145,56 @@ class VercelModel(str, Enum):
     GROK_4_20_REASONING = "vercel/spacexai/grok-4.20-reasoning"
 
 
+class NeonModel(str, Enum):
+    """Neon AI Gateway model identifiers (``neon/<neon-short-id>``).
+
+    These run on the Codex harness (Responses API) or the OpenCode harness
+    (chat completions); Box does not run Claude Code with Neon.
+    ``GPT_5_5_PRO`` and ``GPT_5_3_CODEX`` are Responses-only (Codex);
+    ``GPT_OSS_*``, the ``CLAUDE_*`` models and every other non-OpenAI model are
+    served through chat completions only (OpenCode).
+    Neon credentials are a token plus a per-branch base URL and must be stored
+    via the console or agent-credentials API; use ``BoxApiKey.STORED_KEY``.
+    """
+
+    GPT_6_ASTRA = "neon/gpt-6-astra"
+    GPT_5_6_SOL = "neon/gpt-5-6-sol"
+    GPT_5_6_TERRA = "neon/gpt-5-6-terra"
+    GPT_5_6_LUNA = "neon/gpt-5-6-luna"
+    GPT_5_5 = "neon/gpt-5-5"
+    GPT_5_5_PRO = "neon/gpt-5-5-pro"
+    GPT_5_4 = "neon/gpt-5-4"
+    GPT_5_4_MINI = "neon/gpt-5-4-mini"
+    GPT_5_4_NANO = "neon/gpt-5-4-nano"
+    GPT_5_3_CODEX = "neon/gpt-5-3-codex"
+    GPT_5_MINI = "neon/gpt-5-mini"
+    GPT_5_NANO = "neon/gpt-5-nano"
+    GPT_OSS_120B = "neon/gpt-oss-120b"
+    GPT_OSS_20B = "neon/gpt-oss-20b"
+    GEMINI_3_6_FLASH = "neon/gemini-3-6-flash"
+    GEMINI_3_5_FLASH = "neon/gemini-3-5-flash"
+    GEMINI_3_5_FLASH_LITE = "neon/gemini-3-5-flash-lite"
+    GEMINI_3_1_PRO = "neon/gemini-3-1-pro"
+    GROK_4_6 = "neon/grok-4-6"
+    KIMI_K3 = "neon/kimi-k3"
+    GLM_5_2 = "neon/glm-5-2"
+    QWEN3_5_122B = "neon/qwen35-122b-a10b"
+    LLAMA_4_MAVERICK = "neon/llama-4-maverick"
+    CLAUDE_OPUS_5_5 = "neon/claude-opus-5-5"
+    CLAUDE_FABLE_5_1 = "neon/claude-fable-5-1"
+    CLAUDE_OPUS_5 = "neon/claude-opus-5"
+    CLAUDE_SONNET_5 = "neon/claude-sonnet-5"
+    CLAUDE_FABLE_5 = "neon/claude-fable-5"
+    CLAUDE_OPUS_4_8 = "neon/claude-opus-4-8"
+    CLAUDE_OPUS_4_7 = "neon/claude-opus-4-7"
+    CLAUDE_SONNET_4_6 = "neon/claude-sonnet-4-6"
+    CLAUDE_OPUS_4_6 = "neon/claude-opus-4-6"
+    CLAUDE_OPUS_4_5 = "neon/claude-opus-4-5"
+    CLAUDE_HAIKU_4_5 = "neon/claude-haiku-4-5"
+    CLAUDE_SONNET_4_5 = "neon/claude-sonnet-4-5"
+    CLAUDE_OPUS_4_1 = "neon/claude-opus-4-1"
+
+
 class OpenCodeModel(str, Enum):
     """OpenCode model identifiers — supports models from multiple providers."""
 

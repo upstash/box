@@ -111,6 +111,10 @@ export function inferDefaultProvider(model: string): Agent {
   if (model.startsWith("cursor/")) return Agent.Cursor;
   if (model.startsWith("vercel/openai/")) return Agent.Codex;
   if (model.startsWith("vercel/")) return Agent.ClaudeCode;
+  // Neon AI Gateway has no Anthropic dialect. GPT models go to Codex (Responses API);
+  // GPT OSS and every non-OpenAI model are chat-completions-only, so they go to OpenCode.
+  if (model.startsWith("neon/gpt-") && !model.startsWith("neon/gpt-oss-")) return Agent.Codex;
+  if (model.startsWith("neon/")) return Agent.OpenCode;
   if (model.startsWith("openrouter/")) return Agent.ClaudeCode;
   if (model.startsWith("opencode/")) return Agent.OpenCode;
   if (model.startsWith("openai/")) return Agent.Codex;
