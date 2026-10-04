@@ -107,8 +107,11 @@ def infer_default_provider(model: str) -> Agent:
         return Agent.CODEX
     if model.startswith("vercel/"):
         return Agent.CLAUDE_CODE
-    # Neon AI Gateway has no Anthropic dialect. GPT models go to Codex (Responses
-    # API); GPT OSS and every non-OpenAI model are chat-only, so they go to OpenCode.
+    # Default routing for Neon AI Gateway (Box does not run Claude Code with Neon).
+    # GPT models default to Codex (Responses API). Every other Neon model defaults
+    # to OpenCode (chat completions), which Neon serves for every text model.
+    # Grok 4.6 is also served on Responses, so Codex can run it when chosen
+    # explicitly; it only defaults to OpenCode here.
     if model.startswith("neon/gpt-") and not model.startswith("neon/gpt-oss-"):
         return Agent.CODEX
     if model.startswith("neon/"):

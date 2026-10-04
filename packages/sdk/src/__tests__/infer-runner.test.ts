@@ -21,11 +21,13 @@ describe("inferDefaultProvider", () => {
     expect(inferDefaultProvider("neon/gpt-6-astra")).toBe(Agent.Codex);
   });
 
-  it("returns OpenCode for chat-only neon models", () => {
+  it("defaults every non-GPT neon model to OpenCode", () => {
+    // Chat-completions-only on Neon.
     expect(inferDefaultProvider("neon/gpt-oss-120b")).toBe(Agent.OpenCode);
     expect(inferDefaultProvider("neon/gemini-3-6-flash")).toBe(Agent.OpenCode);
     expect(inferDefaultProvider("neon/kimi-k3")).toBe(Agent.OpenCode);
     expect(inferDefaultProvider("neon/claude-opus-4-8")).toBe(Agent.OpenCode);
+    // Served on both endpoints; Codex can run it when chosen, but the default is OpenCode.
     expect(inferDefaultProvider("neon/grok-4-6")).toBe(Agent.OpenCode);
   });
 

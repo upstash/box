@@ -117,6 +117,14 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
   result.agentModel = model;
   result.agentProvider = provider;
 
+  // Neon runs only with the stored credential (token plus branch gateway URL):
+  // the backend rejects both the Upstash-managed key and a raw key for neon/.
+  if (model.startsWith("neon/")) {
+    result.agentApiKey = "stored";
+    console.log(dim("  Neon AI Gateway uses your stored Neon credential (token and gateway URL)."));
+    return true;
+  }
+
   const keyOption = await interactiveSelect({
     prompt: cyan("Agent API key:"),
     items: API_KEY_OPTIONS,

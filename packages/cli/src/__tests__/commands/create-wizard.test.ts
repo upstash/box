@@ -82,6 +82,26 @@ describe("createWizard", () => {
     });
   });
 
+  it("Neon model → stored credential without asking for a key", async () => {
+    vi.mocked(interactiveSelect)
+      .mockResolvedValueOnce("node") // runtime
+      .mockResolvedValueOnce("agent") // action: configure agent
+      .mockResolvedValueOnce("opencode") // provider
+      .mockResolvedValueOnce("neon/claude-haiku-4-5") // model
+      .mockResolvedValueOnce("create"); // action: create (no key prompt in between)
+
+    const result = await createWizard();
+
+    expect(result).toEqual({
+      runtime: "node",
+      agentModel: "neon/claude-haiku-4-5",
+      agentProvider: "opencode",
+      agentApiKey: "stored",
+    });
+    // runtime, action, provider, model, action: the key choice was never shown.
+    expect(vi.mocked(interactiveSelect)).toHaveBeenCalledTimes(5);
+  });
+
   it("stored key option → agentApiKey is 'stored'", async () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("node") // runtime
