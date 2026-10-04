@@ -4,8 +4,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
-- Add `NeonModel` (Neon AI Gateway, `neon/<neon-short-id>`) and route `neon/gpt-*`
-  to Codex and chat-only Neon models to OpenCode in `infer_default_provider`.
+- Add `NeonModel` (Neon AI Gateway, `neon/<neon-short-id>`). `infer_default_provider`
+  routes `neon/gpt-*` to Codex, except `neon/gpt-oss-*`, and every other Neon model
+  (GPT OSS, Claude, Gemini, Llama, Qwen, Kimi, GLM, Grok) to OpenCode.
   Neon's ``CLAUDE_*`` models run on OpenCode only (chat completions); Box does
   not run Claude Code with Neon. Neon credentials (token + branch base URL)
   must be stored via the console or agent-credentials API.

@@ -149,8 +149,9 @@ export enum VercelModel {
  * These models run on the Codex harness (Responses API) or the OpenCode harness
  * (chat completions). Box does not run Claude Code with Neon.
  * Codex-only: `GPT_5_5_Pro`, `GPT_5_3_Codex` (Responses-only on Neon).
+ * Both: the other GPT models and `Grok_4_6` (Neon serves them on both endpoints).
  * OpenCode-only: `GPT_OSS_120B`, `GPT_OSS_20B`, the Claude models and every other
- * non-OpenAI model (Neon serves them through chat completions, not the Responses API).
+ * non-OpenAI model except Grok (Neon serves them through chat completions only).
  * Neon credentials are a token plus a per-branch base URL and must be stored via the
  * console or agent-credentials API; use `BoxApiKey.StoredKey`.
  */
