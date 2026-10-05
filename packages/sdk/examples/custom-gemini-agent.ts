@@ -4,8 +4,8 @@ import { Agent, Box } from "@upstash/box";
 //
 // Runs Gemini CLI in headless mode and translates its stream JSON into
 // box-sse-v1 events. Box sessions map to Gemini CLI session ids.
-// MCP servers are written to ~/.gemini/settings.json; prompt files are inlined
-// (text) or saved under /workspace/home/.box-attachments (images, PDFs).
+// MCP servers go in Gemini's system defaults file (/etc/gemini-cli); prompt files
+// are inlined (text) or saved under /workspace/home/.box-attachments (images, PDFs).
 //
 // Needs GEMINI_API_KEY from aistudio.google.com/apikey.
 //
@@ -13,19 +13,16 @@ import { Agent, Box } from "@upstash/box";
 // tokens by your model's rate if you need a figure (free-tier keys aren't billed).
 
 const agentSource = String.raw`
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { randomUUID } from "crypto";
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
-import { homedir } from "os";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { basename } from "path";
 import { createInterface } from "readline";
 
 const WORK_DIR = "/workspace/home";
 const ATTACHMENTS_DIR = WORK_DIR + "/.box-attachments";
 const MCP_CONFIG_PATH = WORK_DIR + "/.box-internal/mcp-config.json";
-const SETTINGS_DIR = homedir() + "/.gemini";
-const SETTINGS_PATH = SETTINGS_DIR + "/settings.json";
-const MANAGED_MCP_PATH = SETTINGS_DIR + "/box-mcp-servers.json";
+const SYSTEM_DEFAULTS_PATH = "/etc/gemini-cli/system-defaults.json";
 
 const args = process.argv.slice(2);
 const readArg = (name) => {
@@ -66,28 +63,25 @@ function buildPrompt(base) {
   return prompt;
 }
 
-// Gemini CLI has no per-run MCP flag, so Box's servers are synced into its user
-// settings. The names the harness added are tracked so servers removed from the box
-// are removed here too, without touching servers configured by hand.
+// Gemini CLI has no per-run MCP flag. Box's servers go in Gemini's system defaults
+// file, the lowest settings scope: it merges under the user's own settings (their
+// ~/.gemini/settings.json is never written) and is replaced on every run, so servers
+// removed from the box go away. Gemini only reads it from a root-owned directory.
 function writeMcpSettings() {
   let servers = [];
   try { servers = JSON.parse(readFileSync(MCP_CONFIG_PATH, "utf-8")); } catch {}
-  let managed = [];
-  try { managed = JSON.parse(readFileSync(MANAGED_MCP_PATH, "utf-8")); } catch {}
-  if (!servers.length && !managed.length) return;
-
-  let settings = {};
-  try { settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")); } catch {}
-  settings.mcpServers = settings.mcpServers ?? {};
-  for (const name of managed) delete settings.mcpServers[name];
+  if (!servers.length && !existsSync(SYSTEM_DEFAULTS_PATH)) return;
+  const mcpServers = {};
   for (const s of servers) {
-    settings.mcpServers[s.name] = s.source === "npm"
+    mcpServers[s.name] = s.source === "npm"
       ? { command: "npx", args: ["-y", s.package_or_url, ...(s.args ?? [])], env: s.headers ?? {} }
       : { httpUrl: s.package_or_url, headers: s.headers ?? {} };
   }
-  mkdirSync(SETTINGS_DIR, { recursive: true });
-  writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
-  writeFileSync(MANAGED_MCP_PATH, JSON.stringify(servers.map((s) => s.name)));
+  const write = spawnSync("sudo", ["-n", "sh", "-c", 'mkdir -p "$(dirname "$1")" && cat > "$1"', "sh", SYSTEM_DEFAULTS_PATH], {
+    input: JSON.stringify({ mcpServers }, null, 2),
+    encoding: "utf-8",
+  });
+  if (write.status !== 0) console.error("[gemini-cli] Warning: MCP servers not applied, could not write " + SYSTEM_DEFAULTS_PATH + ": " + write.stderr);
 }
 
 if (process.env.JSON_SCHEMA) console.error("[gemini-cli] Warning: JSON_SCHEMA is not supported by the Gemini CLI harness");
