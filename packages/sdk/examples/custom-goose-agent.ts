@@ -13,9 +13,11 @@ const agentSource = String.raw`
 import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 import { readFileSync, unlinkSync, writeFileSync, mkdirSync } from "fs";
+import { basename } from "path";
 
 const WORK_DIR = "/workspace/home";
 const GOOSE_BIN = "/home/boxuser/.local/bin/goose";
+const ATTACHMENTS_DIR = WORK_DIR + "/.box-attachments";
 
 const args = process.argv.slice(2);
 
@@ -39,6 +41,7 @@ function isTextMimeType(mime) {
     .includes(mime.split(";")[0]);
 }
 
+// Text files are inlined; other files (images, PDFs) are saved so Goose can read them by path.
 function buildPrompt(base) {
   if (!process.env.PROMPT_FILES_PATH) return base;
   try {
@@ -51,6 +54,12 @@ function buildPrompt(base) {
       if (isTextMimeType(f.media_type)) {
         const content = Buffer.from(f.data, "base64").toString("utf-8");
         parts.push("\n\nAttached file: " + (f.filename || "unnamed") + "\n" + fence + "\n" + content + "\n" + fence);
+      } else {
+        const dir = ATTACHMENTS_DIR + "/" + randomUUID();
+        mkdirSync(dir, { recursive: true });
+        const path = dir + "/" + basename(f.filename || "file");
+        writeFileSync(path, Buffer.from(f.data, "base64"));
+        parts.push("\n\nAttached file: " + path);
       }
     }
     return parts.join("");
@@ -66,17 +75,6 @@ const isResume = !!readArg("--session");
 
 if (process.env.JSON_SCHEMA) {
   console.error("[goose] Warning: JSON_SCHEMA is not supported by the Goose harness");
-}
-
-if (process.env.PROMPT_FILES_PATH) {
-  try {
-    const files = JSON.parse(readFileSync(process.env.PROMPT_FILES_PATH, "utf-8"));
-    for (const f of files) {
-      if (!isTextMimeType(f.media_type)) {
-        console.error("[goose] Skipping unsupported file type: " + f.media_type + " (" + (f.filename || "unnamed") + ")");
-      }
-    }
-  } catch {}
 }
 
 // MCP servers: Goose natively supports MCP via ~/.config/goose/config.yaml extensions
@@ -129,17 +127,16 @@ if (process.env.AGENT_OPTIONS) {
 process.chdir(WORK_DIR);
 const fullPrompt = buildPrompt(prompt);
 
-emit("tool", { name: "goose", toolCallId: sessionId, input: { session: sessionId, resume: isResume } });
-
 let output = "";
 let inputTokens = 0;
 let outputTokens = 0;
-// FIFO queue of synthetic tool-call IDs per tool name. Goose's stream-json
-// does not always include an id on tool_call / tool_result events; we
-// generate one on tool_call and pop it on the matching tool_result. A queue
-// (not a single slot) is required because the same tool can be invoked
-// multiple times before any results arrive.
-const pendingToolIds = new Map();
+let cachedInputTokens = 0;
+let totalCostUSD = 0;
+let stderr = "";
+let afterTool = false;
+
+const toolOutput = (result) =>
+  (result?.value?.content ?? []).map((c) => (c.type === "text" ? c.text : "[" + c.type + "]")).join("\n");
 
 try {
   await new Promise((resolve, reject) => {
@@ -169,61 +166,49 @@ try {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
+        let event;
         try {
-          const event = JSON.parse(trimmed);
-          // stream-json format: {"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"..."}]}}
-          if (event.type === "message" && event.message?.role === "assistant") {
-            for (const part of event.message.content || []) {
-              if (part.type === "text" && part.text) {
-                output += part.text;
-                emit("text", { text: part.text });
-              }
-            }
-          }
-          // Tool calls
-          if (event.type === "tool_call" || event.type === "tool_use") {
-            const toolName = event.name ?? "tool";
-            let toolCallId = event.id;
-            if (!toolCallId) {
-              toolCallId = randomUUID();
-              const queue = pendingToolIds.get(toolName) ?? [];
-              queue.push(toolCallId);
-              pendingToolIds.set(toolName, queue);
-            }
-            emit("tool", { name: toolName, toolCallId, input: event.parameters ?? event.input ?? {} });
-          }
-          if (event.type === "tool_result") {
-            let toolCallId = event.id ?? "";
-            if (!toolCallId && event.name) {
-              const queue = pendingToolIds.get(event.name);
-              toolCallId = queue?.shift() ?? "";
-            }
-            emit("tool_result", { toolCallId, output: String(event.output ?? "") });
-          }
-          // Token usage: only assign split counts when Goose provides them explicitly.
-          // Do not treat total_tokens as output-only because that makes cost accounting misleading.
-          if (event.type === "complete") {
-            const eventInputTokens =
-              typeof event.input_tokens === "number" ? event.input_tokens :
-              typeof event.prompt_tokens === "number" ? event.prompt_tokens :
-              undefined;
-            const eventOutputTokens =
-              typeof event.output_tokens === "number" ? event.output_tokens :
-              typeof event.completion_tokens === "number" ? event.completion_tokens :
-              undefined;
-
-            if (typeof eventInputTokens === "number") { inputTokens = eventInputTokens; }
-            if (typeof eventOutputTokens === "number") { outputTokens = eventOutputTokens; }
-          }
+          event = JSON.parse(trimmed);
         } catch {
-          if (trimmed) { output += trimmed + "\n"; emit("text", { text: trimmed + "\n" }); }
+          // Goose prints a startup banner before the JSON stream
+          console.error(trimmed);
+          continue;
+        }
+        // Tool calls and results are message content parts:
+        // assistant toolRequest -> tool, user toolResponse -> tool_result
+        if (event.type === "message") {
+          for (const part of event.message?.content ?? []) {
+            if (part.type === "text" && part.text && event.message.role === "assistant") {
+              const text = afterTool ? "\n\n" + part.text : part.text;
+              afterTool = false;
+              output += text;
+              emit("text", { text });
+            } else if (part.type === "toolRequest") {
+              output = "";
+              const call = part.toolCall?.value ?? {};
+              emit("tool", { name: call.name ?? "tool", toolCallId: part.id, input: call.arguments ?? {} });
+            } else if (part.type === "toolResponse") {
+              const isError = part.toolResult?.status !== "success" || part.toolResult?.value?.isError === true;
+              emit("tool_result", { toolCallId: part.id, output: toolOutput(part.toolResult), is_error: isError });
+              afterTool = true;
+            }
+          }
+        } else if (event.type === "complete") {
+          // input_tokens includes cache reads and writes
+          cachedInputTokens = event.cache_read_input_tokens ?? 0;
+          inputTokens = (event.input_tokens ?? 0) - cachedInputTokens;
+          outputTokens = event.output_tokens ?? 0;
+          totalCostUSD = event.cost_usd ?? 0;
         }
       }
     });
 
-    proc.stderr.on("data", (data) => process.stderr.write(data));
+    proc.stderr.on("data", (data) => {
+      stderr = (stderr + data).slice(-4000);
+      process.stderr.write(data);
+    });
     proc.on("close", (code) => {
-      if (code !== 0) reject(new Error("goose exited with code " + code));
+      if (code !== 0) reject(new Error("goose exited with code " + code + ": " + stderr.trim().split("\n").slice(-5).join("\n")));
       else resolve(undefined);
     });
     proc.on("error", reject);
@@ -233,15 +218,17 @@ try {
     output: output.trim(),
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    cached_input_tokens: 0,
+    cached_input_tokens: cachedInputTokens,
+    total_cost_usd: totalCostUSD,
     session_id: sessionId,
   });
 } catch (error) {
   emit("error", {
     error: error instanceof Error ? error.message : String(error),
-    input_tokens: 0,
-    output_tokens: 0,
-    cached_input_tokens: 0,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cached_input_tokens: cachedInputTokens,
+    total_cost_usd: totalCostUSD,
     session_id: sessionId,
   });
   process.exit(1);
