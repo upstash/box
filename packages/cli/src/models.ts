@@ -280,17 +280,11 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
       ],
     },
     {
-      // Chat-completions models only: GPT-5.5 Pro and GPT-5.3 Codex are Responses-only on Neon.
+      // Chat-completions models only. GPT-5.5 Pro and GPT-5.3 Codex are Responses-only on
+      // Neon, and GPT-5.4 and newer refuse tools with reasoning on chat completions, so
+      // those run on Codex only.
       label: "Neon AI Gateway",
       options: [
-        { value: NeonModel.GPT_6_Astra, label: "GPT-6 Astra (Neon)" },
-        { value: NeonModel.GPT_5_6_Sol, label: "GPT-5.6 Sol (Neon)" },
-        { value: NeonModel.GPT_5_6_Terra, label: "GPT-5.6 Terra (Neon)" },
-        { value: NeonModel.GPT_5_6_Luna, label: "GPT-5.6 Luna (Neon)" },
-        { value: NeonModel.GPT_5_5, label: "GPT-5.5 (Neon)" },
-        { value: NeonModel.GPT_5_4, label: "GPT-5.4 (Neon)" },
-        { value: NeonModel.GPT_5_4_Mini, label: "GPT-5.4 Mini (Neon)" },
-        { value: NeonModel.GPT_5_4_Nano, label: "GPT-5.4 Nano (Neon)" },
         { value: NeonModel.GPT_5_Mini, label: "GPT-5 Mini (Neon)" },
         { value: NeonModel.GPT_5_Nano, label: "GPT-5 Nano (Neon)" },
         { value: NeonModel.GPT_OSS_120B, label: "GPT OSS 120B (Neon)" },
