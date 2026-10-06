@@ -4,6 +4,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Document that Neon GPT-5.4 and newer (`GPT_6_ASTRA`, `GPT_5_6_*`, `GPT_5_5`,
+  `GPT_5_4*`) run on Codex only: Neon refuses tool calls with reasoning for them
+  on chat completions, which OpenCode needs.
 - Add `NeonModel` (Neon AI Gateway, `neon/<neon-short-id>`). `infer_default_provider`
   routes `neon/gpt-*` to Codex, except `neon/gpt-oss-*`, and every other Neon model
   (GPT OSS, Claude, Gemini, Llama, Qwen, Kimi, GLM, Grok) to OpenCode.

@@ -150,8 +150,11 @@ class NeonModel(str, Enum):
 
     These run on the Codex harness (Responses API) or the OpenCode harness
     (chat completions); Box does not run Claude Code with Neon.
-    ``GPT_5_5_PRO`` and ``GPT_5_3_CODEX`` are Responses-only (Codex);
-    the other GPT models and ``GROK_4_6`` run on both; ``GPT_OSS_*``, the
+    ``GPT_5_5_PRO`` and ``GPT_5_3_CODEX`` are Responses-only (Codex), and
+    GPT-5.4 and newer (``GPT_6_ASTRA``, ``GPT_5_6_*``, ``GPT_5_5``,
+    ``GPT_5_4*``) run on Codex only, because Neon refuses tool calls with
+    reasoning for them on chat completions; ``GPT_5_MINI``, ``GPT_5_NANO``
+    and ``GROK_4_6`` run on both; ``GPT_OSS_*``, the
     ``CLAUDE_*`` models and every other non-OpenAI model except Grok are served
     through chat completions only (OpenCode).
     Neon credentials are a token plus a per-branch base URL and must be stored

@@ -125,6 +125,21 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
     expect(values(Agent.OpenCode)).toContain(NeonModel.Claude_Haiku_4_5);
     expect(values(Agent.OpenCode)).toContain(NeonModel.Claude_Opus_5_5);
     expect(values(Agent.Codex).some((v) => v.startsWith("neon/claude-"))).toBe(false);
+    // GPT-5.4 and newer refuse tools with reasoning on Neon chat completions: Codex only.
+    for (const model of [
+      NeonModel.GPT_6_Astra,
+      NeonModel.GPT_5_6_Sol,
+      NeonModel.GPT_5_6_Terra,
+      NeonModel.GPT_5_6_Luna,
+      NeonModel.GPT_5_5,
+      NeonModel.GPT_5_4,
+      NeonModel.GPT_5_4_Mini,
+      NeonModel.GPT_5_4_Nano,
+    ]) {
+      expect(values(Agent.Codex)).toContain(model);
+      expect(values(Agent.OpenCode)).not.toContain(model);
+    }
+    expect(values(Agent.OpenCode)).toContain(NeonModel.GPT_5_Nano);
   });
 
   it("includes Cursor models", () => {
