@@ -1,5 +1,23 @@
 # @upstash/box-cli
 
+## 0.3.4
+
+### Patch Changes
+
+- 5d2619a: Add GPT-6.1 Sol: `OpenAICodex.GPT_6_1_Sol`, `OpenRouterModel.GPT_6_1_Sol`,
+  `VercelModel.GPT_6_1_Sol` and `OpenCodeModel.GPT_6_1_Sol`, and list it in the
+  CLI model picker for Codex and OpenCode.
+- f12ace8: Add Neon AI Gateway models: `NeonModel` (`neon/<neon-short-id>`) for the Codex and
+  OpenCode harnesses. `inferDefaultProvider` routes `neon/gpt-*` to Codex, except
+  `neon/gpt-oss-*`, and every other Neon model to OpenCode (GPT OSS, Claude, Gemini,
+  Llama, Qwen, Kimi, GLM, Grok). Neon's Claude models run on OpenCode only, because Neon
+  serves them through chat completions and not the Responses API. Box does not run
+  Claude Code with Neon. The CLI model picker lists them for Codex and OpenCode.
+  Runs use the Neon credential (token and branch base URL) saved in the console.
+- Updated dependencies [5d2619a]
+- Updated dependencies [f12ace8]
+  - @upstash/box@0.7.8
+
 ## 0.3.3
 
 ### Patch Changes
