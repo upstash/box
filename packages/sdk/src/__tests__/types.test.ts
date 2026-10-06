@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ClaudeCode,
   CursorModel,
+  NeonModel,
   OpenAICodex,
   OpenCodeModel,
   OpenRouterModel,
@@ -75,5 +76,26 @@ describe("Claude Opus 5 model identifiers", () => {
     ["Cursor", CursorModel.Claude_Opus_5, "cursor/claude-opus-5"],
   ])("exposes the %s model", (_provider, model, expected) => {
     expect(model).toBe(expected);
+  });
+});
+
+describe("Neon AI Gateway model identifiers", () => {
+  it.each([
+    [NeonModel.GPT_5_5, "neon/gpt-5-5"],
+    [NeonModel.GPT_5_3_Codex, "neon/gpt-5-3-codex"],
+    [NeonModel.GPT_OSS_120B, "neon/gpt-oss-120b"],
+    [NeonModel.Gemini_3_6_Flash, "neon/gemini-3-6-flash"],
+    [NeonModel.Kimi_K3, "neon/kimi-k3"],
+    [NeonModel.Claude_Opus_5_5, "neon/claude-opus-5-5"],
+    [NeonModel.Claude_Haiku_4_5, "neon/claude-haiku-4-5"],
+  ])("uses Neon's short id under the neon/ namespace: %s", (model, expected) => {
+    expect(model).toBe(expected);
+  });
+
+  it("never carries a provider segment", () => {
+    for (const value of Object.values(NeonModel)) {
+      expect(value.startsWith("neon/")).toBe(true);
+      expect(value.slice("neon/".length)).not.toContain("/");
+    }
   });
 });

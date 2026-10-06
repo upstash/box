@@ -17,7 +17,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `BoxError`             | `BoxError`                   |
 | `inferDefaultProvider` | `infer_default_provider`     |
 | `runCustomHarness`     | `run_custom_harness`         |
-| `Agent`, `ClaudeCode`, `OpenAICodex`, `OpenCodeModel`, `OpenRouterModel`, `VercelModel`, `CursorModel`, `BoxApiKey` | same names (str-Enums) |
+| `Agent`, `ClaudeCode`, `OpenAICodex`, `OpenCodeModel`, `OpenRouterModel`, `VercelModel`, `NeonModel`, `CursorModel`, `BoxApiKey` | same names (str-Enums) |
 
 ## `Box` instance methods/properties
 

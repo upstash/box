@@ -17,6 +17,7 @@ export {
   OpenCodeModel,
   OpenRouterModel,
   VercelModel,
+  NeonModel,
   Agent,
   BoxApiKey,
 } from "./types.js";

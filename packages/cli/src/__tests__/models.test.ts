@@ -3,6 +3,7 @@ import {
   Agent,
   ClaudeCode,
   CursorModel,
+  NeonModel,
   OpenAICodex,
   OpenCodeModel,
   OpenRouterModel,
@@ -86,6 +87,44 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
     const group = MODEL_OPTIONS_BY_AGENT[agent].find(({ label }) => label === groupLabel);
 
     expect(group?.options).toContainEqual({ value, label });
+  });
+
+  it("offers Neon AI Gateway models only to Codex and OpenCode", () => {
+    const groupFor = (agent: Agent) =>
+      MODEL_OPTIONS_BY_AGENT[agent].find(({ label }) => label === "Neon AI Gateway");
+
+    expect(groupFor(Agent.ClaudeCode)).toBeUndefined();
+    expect(groupFor(Agent.Cursor)).toBeUndefined();
+    expect(groupFor(Agent.Codex)?.options).toContainEqual({
+      value: NeonModel.GPT_5_5,
+      label: "GPT-5.5 (Neon)",
+    });
+    expect(groupFor(Agent.OpenCode)?.options).toContainEqual({
+      value: NeonModel.Gemini_3_6_Flash,
+      label: "Gemini 3.6 Flash (Neon)",
+    });
+  });
+
+  it("splits Neon models by endpoint support", () => {
+    const values = (agent: Agent) =>
+      MODEL_OPTIONS_BY_AGENT[agent]
+        .find(({ label }) => label === "Neon AI Gateway")
+        ?.options.map((o) => o.value) ?? [];
+
+    // Responses-only on Neon: Codex yes, OpenCode no.
+    expect(values(Agent.Codex)).toContain(NeonModel.GPT_5_5_Pro);
+    expect(values(Agent.Codex)).toContain(NeonModel.GPT_5_3_Codex);
+    expect(values(Agent.OpenCode)).not.toContain(NeonModel.GPT_5_5_Pro);
+    expect(values(Agent.OpenCode)).not.toContain(NeonModel.GPT_5_3_Codex);
+    // Chat-only on Neon: OpenCode yes, Codex no.
+    expect(values(Agent.OpenCode)).toContain(NeonModel.GPT_OSS_120B);
+    expect(values(Agent.OpenCode)).toContain(NeonModel.Kimi_K3);
+    expect(values(Agent.Codex)).not.toContain(NeonModel.GPT_OSS_120B);
+    expect(values(Agent.Codex)).not.toContain(NeonModel.Kimi_K3);
+    // Claude on Neon: chat completions only, so OpenCode yes, Codex no.
+    expect(values(Agent.OpenCode)).toContain(NeonModel.Claude_Haiku_4_5);
+    expect(values(Agent.OpenCode)).toContain(NeonModel.Claude_Opus_5_5);
+    expect(values(Agent.Codex).some((v) => v.startsWith("neon/claude-"))).toBe(false);
   });
 
   it("includes Cursor models", () => {
