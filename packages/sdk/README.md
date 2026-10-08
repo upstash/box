@@ -396,7 +396,9 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 | `ClaudeCode.Sonnet_4`   | `anthropic/claude-sonnet-4`   |
 | `ClaudeCode.Sonnet_4_5` | `anthropic/claude-sonnet-4-5` |
 | `ClaudeCode.Sonnet_4_6` | `anthropic/claude-sonnet-4-6` |
+| `ClaudeCode.Sonnet_5_5` | `anthropic/claude-sonnet-5-5` |
 | `ClaudeCode.Sonnet_5`   | `anthropic/claude-sonnet-5`   |
+| `ClaudeCode.Haiku_5_5`  | `anthropic/claude-haiku-5-5`  |
 | `ClaudeCode.Haiku_4_5`  | `anthropic/claude-haiku-4-5`  |
 
 ### OpenAI Codex
@@ -421,26 +423,28 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 ### OpenRouter
 
-| Enum                               | Value                                   |
-| ---------------------------------- | --------------------------------------- |
-| `OpenRouterModel.Claude_Fable_5_1` | `openrouter/anthropic/claude-fable-5.1` |
-| `OpenRouterModel.Claude_Fable_5`   | `openrouter/anthropic/claude-fable-5`   |
-| `OpenRouterModel.Claude_Opus_5_5`  | `openrouter/anthropic/claude-opus-5.5`  |
-| `OpenRouterModel.Claude_Opus_5`    | `openrouter/anthropic/claude-opus-5`    |
-| `OpenRouterModel.Claude_Sonnet_5`  | `openrouter/anthropic/claude-sonnet-5`  |
-| `OpenRouterModel.Claude_Opus_4_5`  | `openrouter/anthropic/claude-opus-4-5`  |
-| `OpenRouterModel.Claude_Sonnet_4`  | `openrouter/anthropic/claude-sonnet-4`  |
-| `OpenRouterModel.Claude_Haiku_4_5` | `openrouter/anthropic/claude-haiku-4-5` |
-| `OpenRouterModel.DeepSeek_R1`      | `openrouter/deepseek/deepseek-r1`       |
-| `OpenRouterModel.Gemini_2_5_Pro`   | `openrouter/google/gemini-2.5-pro`      |
-| `OpenRouterModel.Gemini_2_5_Flash` | `openrouter/google/gemini-2.5-flash`    |
-| `OpenRouterModel.GPT_6_1_Sol`      | `openrouter/openai/gpt-6.1-sol`         |
-| `OpenRouterModel.GPT_5_6_Sol`      | `openrouter/openai/gpt-5.6-sol`         |
-| `OpenRouterModel.GPT_5_6_Terra`    | `openrouter/openai/gpt-5.6-terra`       |
-| `OpenRouterModel.GPT_5_6_Luna`     | `openrouter/openai/gpt-5.6-luna`        |
-| `OpenRouterModel.GPT_4_1`          | `openrouter/openai/gpt-4.1`             |
-| `OpenRouterModel.O3`               | `openrouter/openai/o3`                  |
-| `OpenRouterModel.O4_Mini`          | `openrouter/openai/o4-mini`             |
+| Enum                                | Value                                    |
+| ----------------------------------- | ---------------------------------------- |
+| `OpenRouterModel.Claude_Fable_5_1`  | `openrouter/anthropic/claude-fable-5.1`  |
+| `OpenRouterModel.Claude_Fable_5`    | `openrouter/anthropic/claude-fable-5`    |
+| `OpenRouterModel.Claude_Opus_5_5`   | `openrouter/anthropic/claude-opus-5.5`   |
+| `OpenRouterModel.Claude_Opus_5`     | `openrouter/anthropic/claude-opus-5`     |
+| `OpenRouterModel.Claude_Sonnet_5_5` | `openrouter/anthropic/claude-sonnet-5.5` |
+| `OpenRouterModel.Claude_Sonnet_5`   | `openrouter/anthropic/claude-sonnet-5`   |
+| `OpenRouterModel.Claude_Opus_4_5`   | `openrouter/anthropic/claude-opus-4-5`   |
+| `OpenRouterModel.Claude_Sonnet_4`   | `openrouter/anthropic/claude-sonnet-4`   |
+| `OpenRouterModel.Claude_Haiku_5_5`  | `openrouter/anthropic/claude-haiku-5.5`  |
+| `OpenRouterModel.Claude_Haiku_4_5`  | `openrouter/anthropic/claude-haiku-4-5`  |
+| `OpenRouterModel.DeepSeek_R1`       | `openrouter/deepseek/deepseek-r1`        |
+| `OpenRouterModel.Gemini_2_5_Pro`    | `openrouter/google/gemini-2.5-pro`       |
+| `OpenRouterModel.Gemini_2_5_Flash`  | `openrouter/google/gemini-2.5-flash`     |
+| `OpenRouterModel.GPT_6_1_Sol`       | `openrouter/openai/gpt-6.1-sol`          |
+| `OpenRouterModel.GPT_5_6_Sol`       | `openrouter/openai/gpt-5.6-sol`          |
+| `OpenRouterModel.GPT_5_6_Terra`     | `openrouter/openai/gpt-5.6-terra`        |
+| `OpenRouterModel.GPT_5_6_Luna`      | `openrouter/openai/gpt-5.6-luna`         |
+| `OpenRouterModel.GPT_4_1`           | `openrouter/openai/gpt-4.1`              |
+| `OpenRouterModel.O3`                | `openrouter/openai/o3`                   |
+| `OpenRouterModel.O4_Mini`           | `openrouter/openai/o4-mini`              |
 
 ## Box Sizes
 
