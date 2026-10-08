@@ -336,7 +336,9 @@ run, not a gap between events. When it elapses, the call raises `BoxError`
 ("Run timed out" / "Stream timed out") and the run's status is `cancelled`.
 A timed-out or cancelled run is never retried by `max_retries`, because it may
 still be executing server-side. Calling `cancel()` on a `StreamRun` stops the
-stream, and the next iteration raises `BoxError("Run cancelled")`.
+stream, and the next iteration raises `BoxError("Run cancelled")`; cancelling
+before the first iteration never submits the run. `timeout=0` means no
+timeout at all.
 
 The deadline covers sending the request and opening the response too, and a
 stream whose deadline passed before its first iteration never submits a run.

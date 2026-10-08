@@ -85,9 +85,18 @@ async def anext_before(iterator: AsyncIterator[T], deadline: Optional[float], me
 
 def next_before(iterator: Iterator[T], deadline: Optional[float], message: str) -> T:
     """Sync counterpart of ``anext_before``. A blocking read cannot be
-    interrupted here, so the deadline is checked between reads; a stream that
-    goes silent is still bounded by the request's read timeout, which is set to
-    the run timeout."""
-    if deadline is not None:
+    interrupted here, so the deadline is checked before and after each read; a
+    stream that goes silent is still bounded by the request's read timeout,
+    which is set to the run timeout."""
+    if deadline is None:
+        return next(iterator)
+    _remaining(deadline, message)
+    try:
+        item = next(iterator)
+    except StopIteration:
+        # EOF that arrived after the deadline is a timeout, not a completed run.
         _remaining(deadline, message)
-    return next(iterator)
+        raise
+    # So is an event (including an error event) that arrived after it.
+    _remaining(deadline, message)
+    return item

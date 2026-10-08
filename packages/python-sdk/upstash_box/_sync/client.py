@@ -1016,12 +1016,14 @@ class Box(Generic[T]):
         try:
             events = iter_sse_events(response)
             while True:
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED)
                 try:
                     event_type, data = next_before(events, deadline, "Run timed out")
                 except StopIteration:
                     break
                 if run._cancel_requested:
-                    raise _RunAbortedError("Run cancelled")
+                    raise _RunAbortedError(_CANCELLED)
                 parsed = _safe_json(data)
                 if parsed is None:
                     continue
@@ -1057,7 +1059,7 @@ class Box(Generic[T]):
                 elif event_type == "error":
                     raise BoxError(parsed.get("error") or "Stream error")
             if run._cancel_requested:
-                raise _RunAbortedError("Run cancelled")
+                raise _RunAbortedError(_CANCELLED)
         except Exception as e:
             mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
             if mapped is e:
@@ -1125,7 +1127,10 @@ class Box(Generic[T]):
             raw_output = ""
             finished = False
             try:
-                # The deadline started at stream(); never submit a run after it.
+                # StreamRun is lazy: cancel() may run before the first iteration,
+                # and the deadline started at stream(). Never submit a run after either.
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED)
                 check_deadline(deadline, "Stream timed out")
                 request = box._build_run_stream_request(request_body, files, timeout)
                 # Building the request reads attachments from disk; recheck so a slow
@@ -1141,12 +1146,14 @@ class Box(Generic[T]):
             try:
                 events = iter_sse_events(response)
                 while True:
+                    if run._cancel_requested:
+                        raise _RunAbortedError(_CANCELLED)
                     try:
                         event_type, data = next_before(events, deadline, "Stream timed out")
                     except StopIteration:
                         break
                     if run._cancel_requested:
-                        raise _RunAbortedError("Run cancelled")
+                        raise _RunAbortedError(_CANCELLED)
                     parsed = _safe_json(data)
                     if parsed is None:
                         continue
@@ -1217,7 +1224,7 @@ class Box(Generic[T]):
                         yield UnknownChunk(event=event_type, data=parsed)
 
                 if run._cancel_requested:
-                    raise _RunAbortedError("Run cancelled")
+                    raise _RunAbortedError(_CANCELLED)
                 finished = True
                 run._result = raw_output.strip()
                 run._status = "completed"
@@ -1249,7 +1256,14 @@ class Box(Generic[T]):
 
     def _build_stream_request(self, url, mode, prepared, file_paths, timeout) -> httpx.Request:
         headers = dict(self._headers)
-        resolved_timeout = _ms_to_seconds(timeout if timeout else self._timeout_ms)
+        # None uses the box's default; an explicit 0 means no timeout at all,
+        # matching the run deadline (run_deadline treats 0 as none).
+        if timeout is None:
+            resolved_timeout = _ms_to_seconds(self._timeout_ms)
+        elif timeout == 0:
+            resolved_timeout = None
+        else:
+            resolved_timeout = _ms_to_seconds(timeout)
         kwargs: Dict[str, Any] = {"timeout": resolved_timeout}
         if mode == "multipart":
             kwargs["data"] = common.multipart_field_data(prepared)
@@ -2407,6 +2421,9 @@ def _ms_to_seconds(ms: Optional[float]) -> Optional[float]:
     return ms / 1000.0
 
 
+_CANCELLED = "Run cancelled"
+
+
 def _map_stream_error(
     run: Run[Any],
     error: Exception,
@@ -2422,15 +2439,17 @@ def _map_stream_error(
     Anything else is returned unchanged.
     """
     if run._cancel_requested:
+        # An explicit cancel wins, even if the deadline also passed meanwhile.
         run._status = "cancelled"
         run._compute_ms = time.time() * 1000 - start
-        return error if isinstance(error, _RunAbortedError) else _RunAbortedError("Run cancelled")
-    # A transport failure that lands after the deadline (e.g. a sync open that
-    # outlasted it, which the sync client cannot interrupt) is a timeout too.
+        if isinstance(error, _RunAbortedError) and str(error) == _CANCELLED:
+            return error
+        return _RunAbortedError(_CANCELLED)
+    # Any failure observed after the deadline is a timeout, not retryable: e.g.
+    # a sync open or error body that outlasted it, which sync cannot interrupt.
+    # Errors received before the deadline keep their own message.
     timed_out = isinstance(error, (httpx.TimeoutException, _RunAbortedError)) or (
-        isinstance(error, httpx.TransportError)
-        and deadline is not None
-        and time.monotonic() >= deadline
+        deadline is not None and time.monotonic() >= deadline
     )
     if deadline is not None and timed_out:
         run._status = "cancelled"

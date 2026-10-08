@@ -335,3 +335,58 @@ async def test_stream_deadline_bounds_a_slowly_opening_response(slow_headers_ser
     assert time.monotonic() - started < 0.5
     assert stream.status == "cancelled"
     await box.aclose()
+
+
+# ---------- cancel and timeout edge cases ----------
+
+
+@respx.mock
+async def test_cancel_before_first_iteration_never_submits_a_run():
+    # StreamRun is lazy, so cancel() can run before the request is sent.
+    box = await make_async_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=sse_response([{"event": "done", "data": {"output": "x"}}])
+    )
+    respx.route(method="POST", path__regex=r".*/cancel$").mock(
+        return_value=httpx.Response(200, json={})
+    )
+
+    stream = await box.agent.stream(prompt="never mind")
+    await stream.cancel()
+    with pytest.raises(BoxError, match="Run cancelled"):
+        async for _chunk in stream:
+            pass
+
+    assert route.call_count == 0
+    assert stream.status == "cancelled"
+    await box.aclose()
+
+
+@respx.mock
+async def test_zero_timeout_sends_no_httpx_timeout():
+    box = await make_async_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=sse_response([{"event": "done", "data": {"output": "x"}}])
+    )
+
+    await box.agent.run(prompt="no limit", timeout=0)
+
+    sent = route.calls.last.request.extensions["timeout"]
+    assert sent == {"connect": None, "read": None, "write": None, "pool": None}
+    await box.aclose()
+
+
+@respx.mock
+async def test_cancel_wins_over_a_deadline_that_passes_while_suspended():
+    box = await make_async_box(respx.mock)
+    respx.post(RUN_URL).mock(return_value=_slow_response(count=5, gap=0.01))
+    respx.post(CANCEL_URL).mock(return_value=httpx.Response(200, json={}))
+
+    stream = await box.agent.stream(prompt="long job", timeout=100)
+    with pytest.raises(BoxError, match="Run cancelled"):
+        async for _chunk in stream:
+            await stream.cancel()
+            await asyncio.sleep(0.15)  # resume only after the deadline
+
+    assert stream.status == "cancelled"
+    await box.aclose()

@@ -24,9 +24,11 @@ All notable changes to `upstash-box` (Python) are documented here.
 - Fix `StreamRun.cancel()` leaving the stream running and the status flipping
   back to `completed` when the stream ended. Cancel now closes the stream
   locally, the next iteration raises `BoxError("Run cancelled")`, and the status
-  stays `cancelled`.
-- `timeout=0` on `agent.run()` / `agent.stream()` means no timeout, as in the
-  JS SDK. It previously made the request time out immediately.
+  stays `cancelled`. Cancelling a stream before its first iteration never
+  submits the run.
+- `timeout=0` on `agent.run()` / `agent.stream()` means no timeout at all, as
+  in the JS SDK, including no httpx request timeout. It previously made the
+  request time out immediately. Omitting `timeout` keeps the box's default.
 - `Tab.act()` accepts a pre-resolved action as a plain dict, as well as the
   `BrowserObserveElement` and `BrowserActAction` models.
 - Type the remaining `BoxData` fields from the API (`customer_id`,

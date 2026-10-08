@@ -194,3 +194,76 @@ def test_slow_request_build_past_the_deadline_never_submits_a_stream(monkeypatch
 
     assert route.call_count == 0
     box.close()
+
+
+class _LateBody(httpx.SyncByteStream):
+    """Delivers ``body`` (possibly empty) only after ``delay`` seconds."""
+
+    def __init__(self, body: bytes, delay: float) -> None:
+        self.body = body
+        self.delay = delay
+
+    def __iter__(self):
+        time.sleep(self.delay)
+        if self.body:
+            yield self.body
+
+
+@respx.mock
+def test_cancel_before_first_iteration_never_submits_a_run():
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(return_value=_slow_response(count=0, gap=0))
+    respx.route(method="POST", path__regex=r".*/cancel$").mock(
+        return_value=httpx.Response(200, json={})
+    )
+
+    stream = box.agent.stream(prompt="never mind")
+    stream.cancel()
+    with pytest.raises(BoxError, match="Run cancelled"):
+        for _chunk in stream:
+            pass
+
+    assert route.call_count == 0
+    box.close()
+
+
+@respx.mock
+def test_api_error_body_arriving_after_the_deadline_is_a_timeout_and_not_retried():
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=httpx.Response(500, stream=_LateBody(b'{"error": "boom"}', 0.1))
+    )
+
+    with pytest.raises(BoxError, match="Run timed out"):
+        box.agent.run(prompt="p", timeout=50, max_retries=2)
+
+    assert route.call_count == 1
+    box.close()
+
+
+@respx.mock
+def test_api_error_before_the_deadline_keeps_its_message():
+    box = make_sync_box(respx.mock)
+    respx.post(RUN_URL).mock(return_value=httpx.Response(500, json={"error": "boom"}))
+
+    with pytest.raises(BoxError, match="boom"):
+        box.agent.run(prompt="p", timeout=5000)
+    box.close()
+
+
+@respx.mock
+def test_eof_after_the_deadline_is_a_timeout_not_completion():
+    box = make_sync_box(respx.mock)
+    respx.post(RUN_URL).mock(
+        return_value=httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=_LateBody(b"", 0.1)
+        )
+    )
+
+    stream = box.agent.stream(prompt="p", timeout=50)
+    with pytest.raises(BoxError, match="Stream timed out"):
+        for _chunk in stream:
+            pass
+
+    assert stream.status == "cancelled"
+    box.close()
