@@ -22,6 +22,21 @@ from upstash_box import (
 )
 
 
+def test_claude_sonnet_5_5_and_haiku_5_5_model_identifiers():
+    assert ClaudeCode.SONNET_5_5.value == "anthropic/claude-sonnet-5-5"
+    assert ClaudeCode.HAIKU_5_5.value == "anthropic/claude-haiku-5-5"
+    assert OpenRouterModel.CLAUDE_SONNET_5_5.value == "openrouter/anthropic/claude-sonnet-5.5"
+    assert OpenRouterModel.CLAUDE_HAIKU_5_5.value == "openrouter/anthropic/claude-haiku-5.5"
+    assert VercelModel.CLAUDE_SONNET_5_5.value == "vercel/anthropic/claude-sonnet-5.5"
+    assert VercelModel.CLAUDE_HAIKU_5_5.value == "vercel/anthropic/claude-haiku-5.5"
+    assert OpenCodeModel.CLAUDE_SONNET_5_5.value == "opencode/claude-sonnet-5-5"
+    assert OpenCodeModel.CLAUDE_HAIKU_5_5.value == "opencode/claude-haiku-5-5"
+    assert OpenCodeModel.ZEN_CLAUDE_SONNET_5_5.value == "opencode/claude-sonnet-5-5"
+    assert OpenCodeModel.ZEN_CLAUDE_HAIKU_5_5.value == "opencode/claude-haiku-5-5"
+    assert CursorModel.CLAUDE_SONNET_5_5.value == "cursor/claude-sonnet-5-5"
+    assert CursorModel.CLAUDE_HAIKU_5_5.value == "cursor/claude-haiku-5-5"
+
+
 def test_claude_opus_5_5_model_identifier():
     assert {
         ClaudeCode.OPUS_5_5.value,
