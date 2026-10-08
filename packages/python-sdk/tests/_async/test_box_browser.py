@@ -581,3 +581,31 @@ async def test_recordings_list_paginates_and_get():
     assert "limit=100" in str(first)
     assert "cursor=cursor-2" in str(second)
     await box.aclose()
+
+
+@respx.mock
+async def test_act_replays_a_plain_dict_action():
+    # The JS SDK accepts a plain object; a dict works the same way here.
+    box = await make_async_box(respx.mock)
+    act = respx.post(f"{BASE}/browser/act").mock(
+        return_value=httpx.Response(200, json={"success": True, "actions": []})
+    )
+
+    result = await box.browser.get_tab("tab-2").act(
+        {"selector": "xpath=/html/body/button", "description": "Sign in", "method": None}
+    )
+
+    assert result.success is True
+    assert last_json_body(act) == {
+        "action": {"selector": "xpath=/html/body/button", "description": "Sign in"},
+        "tab": "tab-2",
+    }
+    await box.aclose()
+
+
+@respx.mock
+async def test_act_rejects_dict_action_without_selector():
+    box = await make_async_box(respx.mock)
+    with pytest.raises(BoxError, match="requires a selector"):
+        await box.browser.get_tab("tab-2").act({"description": "unresolved"})
+    await box.aclose()

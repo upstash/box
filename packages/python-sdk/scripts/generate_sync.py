@@ -67,6 +67,9 @@ _RULES = [
             # (asyncio task vs reader thread); swap in the sync pair by name.
             "AsyncExecSessionHandle": "ExecSessionHandle",
             "open_async_exec_session": "open_exec_session",
+            # Run deadlines need asyncio.wait_for on the async side; see _deadline.py.
+            "anext_before": "next_before",
+            "aopen_before": "open_before",
             "AsyncIterator": "Iterator",
             "aiter_bytes": "iter_bytes",
             "aclose": "close",

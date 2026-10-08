@@ -14,9 +14,14 @@ async def test_public_url_crud(opts):
         assert url.url
         assert url.port == 3000
 
-        # The list endpoint returns leaner records; just assert the preview exists.
+        # List items carry auth flags, never the secrets from create.
         listed = await box.list_public_urls()
-        assert len(listed["public_urls"]) >= 1
+        item = next(p for p in listed["public_urls"] if p.port == 3000)
+        assert item.id
+        assert item.url == url.url
+        assert item.created_at > 0
+        assert isinstance(item.basic_auth, bool)
+        assert isinstance(item.bearer_token, bool)
 
         await box.delete_public_url(3000)
     finally:

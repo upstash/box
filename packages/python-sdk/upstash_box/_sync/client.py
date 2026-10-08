@@ -32,6 +32,7 @@ import httpx
 from typing_extensions import Unpack
 
 from .. import _common as common
+from .._deadline import next_before, open_before, check_deadline, run_deadline
 from .._exec_session import (
     ExecSessionHandle,
     StdoutCallback,
@@ -39,7 +40,7 @@ from .._exec_session import (
     open_exec_session,
     session_url,
 )
-from ..errors import BoxError
+from ..errors import _CANCELLED_MESSAGE, BoxError, _RunAbortedError
 from ..types import (
     Agent,
     AgentOptions,
@@ -67,6 +68,7 @@ from ..types import (
     FinishUsage,
     GitCommitResult,
     GitConfigResult,
+    GitExecResult,
     Issue,
     ListOptions,
     LogEntry,
@@ -74,6 +76,7 @@ from ..types import (
     NetworkPolicy,
     PromptFiles,
     PublicURL,
+    PublicURLListItem,
     PullRequest,
     ReasoningChunk,
     ResponseSchema,
@@ -146,6 +149,11 @@ class Run(Generic[T]):
         self._total_usd = 0.0
         self._compute_ms = 0.0
         self._start_time = time.time() * 1000
+        # The open streaming response, so cancel() can stop it locally.
+        self._response: Optional[httpx.Response] = None
+        # The pending open of a stream (async task), so cancel() can interrupt it.
+        self._opening: Optional[Any] = None
+        self._cancel_requested = False
 
     @property
     def id(self) -> str:
@@ -186,6 +194,18 @@ class Run(Generic[T]):
         )
 
     def cancel(self) -> None:
+        """Cancel the run. An open stream is closed locally first, so iterating
+        a cancelled ``StreamRun`` raises ``BoxError`` instead of continuing."""
+        self._cancel_requested = True
+        opening = self._opening
+        if opening is not None:
+            opening.cancel()
+        response = self._response
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
         try:
             self._box._request("POST", f"/v2/box/{self._box.id}/runs/{self._id}/cancel")
         except Exception:
@@ -443,7 +463,9 @@ class GitNamespace:
     ) -> Issue:
         return self._box._git_create_issue(title, body, attach)
 
-    def exec(self, *, args: List[str]) -> str:
+    def exec(self, *, args: List[str]) -> GitExecResult:
+        """Run a git command. Returns its output and git's own exit code
+        (128 when the folder is not a repository)."""
         return self._box._git_exec(args)
 
     def checkout(self, *, branch: str) -> None:
@@ -680,7 +702,7 @@ class Tab:
 
     def act(
         self,
-        instruction: Union[str, BrowserObserveElement, BrowserActAction],
+        instruction: Union[str, BrowserObserveElement, BrowserActAction, Dict[str, Any]],
         *,
         model: Optional[str] = None,
     ) -> BrowserActResult:
@@ -694,9 +716,14 @@ class Tab:
             if model:
                 body["model"] = model
         else:
-            if not instruction.selector:
+            action = (
+                {k: v for k, v in instruction.items() if v is not None}
+                if isinstance(instruction, dict)
+                else instruction.model_dump(exclude_none=True)
+            )
+            if not action.get("selector"):
                 raise BoxError("act(action) requires a selector; observe() did not resolve one")
-            body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
+            body = {"action": action, "tab": self.id}
         resp = self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",
@@ -939,6 +966,11 @@ class Box(Generic[T]):
                     on_tool_use,
                     on_tool_result,
                 )
+            except _RunAbortedError:
+                # A cancelled or timed-out run must not be retried: the run may
+                # still be executing server-side, so a retry starts a second
+                # billed run the caller never sees.
+                raise
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:
@@ -972,10 +1004,31 @@ class Box(Generic[T]):
             request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
 
         raw_output = ""
-        request = self._build_run_stream_request(request_body, files, timeout)
-        response = self._open_stream(request)
+        deadline = run_deadline(timeout)
         try:
-            for event_type, data in iter_sse_events(response):
+            check_deadline(deadline, "Run timed out")
+            request = self._build_run_stream_request(request_body, files, timeout)
+            # Building the request reads attachments from disk; recheck so a slow
+            # read never submits a run after the deadline (the sync open can't be cut short).
+            check_deadline(deadline, "Run timed out")
+            response = open_before(self._open_stream(request), deadline, "Run timed out", run)
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
+        run._response = response
+        try:
+            events = iter_sse_events(response)
+            while True:
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                try:
+                    event_type, data = next_before(events, deadline, "Run timed out")
+                except StopIteration:
+                    break
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 parsed = _safe_json(data)
                 if parsed is None:
                     continue
@@ -1010,7 +1063,15 @@ class Box(Generic[T]):
                         raw_output = parsed["output"]
                 elif event_type == "error":
                     raise BoxError(parsed.get("error") or "Stream error")
+            if run._cancel_requested:
+                raise _RunAbortedError(_CANCELLED_MESSAGE)
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
         finally:
+            run._response = None
             response.close()
 
         output: Any = raw_output.strip()
@@ -1064,14 +1125,40 @@ class Box(Generic[T]):
             request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
 
         box: "Box" = self
+        # The deadline starts now, not on first iteration, matching the JS SDK.
+        deadline = run_deadline(timeout)
 
         def iterate() -> Iterator[Chunk]:
             raw_output = ""
             finished = False
-            request = box._build_run_stream_request(request_body, files, timeout)
-            response = box._open_stream(request)
             try:
-                for event_type, data in iter_sse_events(response):
+                # StreamRun is lazy: cancel() may run before the first iteration,
+                # and the deadline started at stream(). Never submit a run after either.
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
+                check_deadline(deadline, "Stream timed out")
+                request = box._build_run_stream_request(request_body, files, timeout)
+                # Building the request reads attachments from disk; recheck so a slow
+                # read never submits a run after the deadline (the sync open can't be cut short).
+                check_deadline(deadline, "Stream timed out")
+                response = open_before(box._open_stream(request), deadline, "Stream timed out", run)
+            except Exception as e:
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if mapped is e:
+                    raise
+                raise mapped from e
+            run._response = response
+            try:
+                events = iter_sse_events(response)
+                while True:
+                    if run._cancel_requested:
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
+                    try:
+                        event_type, data = next_before(events, deadline, "Stream timed out")
+                    except StopIteration:
+                        break
+                    if run._cancel_requested:
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
                     parsed = _safe_json(data)
                     if parsed is None:
                         continue
@@ -1141,16 +1228,23 @@ class Box(Generic[T]):
                     else:
                         yield UnknownChunk(event=event_type, data=parsed)
 
+                if run._cancel_requested:
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 finished = True
                 run._result = raw_output.strip()
                 run._status = "completed"
                 run._compute_ms = time.time() * 1000 - start
-            except BoxError:
+            except Exception as e:
                 run._result = raw_output.strip()
-                run._status = "failed"
-                run._compute_ms = time.time() * 1000 - start
-                raise
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if not isinstance(mapped, _RunAbortedError):
+                    run._status = "failed"
+                    run._compute_ms = time.time() * 1000 - start
+                if mapped is e:
+                    raise
+                raise mapped from e
             finally:
+                run._response = None
                 response.close()
                 if not finished and run._status == "running":
                     run._result = raw_output.strip()
@@ -1167,7 +1261,14 @@ class Box(Generic[T]):
 
     def _build_stream_request(self, url, mode, prepared, file_paths, timeout) -> httpx.Request:
         headers = dict(self._headers)
-        resolved_timeout = _ms_to_seconds(self._timeout_ms if timeout is None else timeout)
+        # None uses the box's default; an explicit 0 means no timeout at all,
+        # matching the run deadline (run_deadline treats 0 as none).
+        if timeout is None:
+            resolved_timeout = _ms_to_seconds(self._timeout_ms)
+        elif timeout == 0:
+            resolved_timeout = None
+        else:
+            resolved_timeout = _ms_to_seconds(timeout)
         kwargs: Dict[str, Any] = {"timeout": resolved_timeout}
         if mode == "multipart":
             kwargs["data"] = common.multipart_field_data(prepared)
@@ -1726,13 +1827,13 @@ class Box(Generic[T]):
         data = self._request("POST", f"/v2/box/{self.id}/git/create-issue", body=body)
         return Issue.model_validate(data)
 
-    def _git_exec(self, args) -> str:
+    def _git_exec(self, args) -> GitExecResult:
         folder = self._get_folder()
         body: Dict[str, Any] = {"args": args}
         if folder:
             body["folder"] = folder
         data = self._request("POST", f"/v2/box/{self.id}/git/exec", body=body)
-        return data.get("output", "")
+        return GitExecResult.model_validate(data)
 
     def _git_checkout(self, branch) -> None:
         folder = self._get_folder()
@@ -1778,9 +1879,12 @@ class Box(Generic[T]):
         data = self._request("POST", f"/v2/box/{self.id}/preview", body=body)
         return PublicURL.model_validate(data)
 
-    def list_public_urls(self) -> Dict[str, List[PublicURL]]:
+    def list_public_urls(self) -> Dict[str, List[PublicURLListItem]]:
+        """List this box's public URLs. Secrets (token, password) are only
+        returned when a URL is created, so list items carry auth flags instead."""
         data = self._request("GET", f"/v2/box/{self.id}/preview")
-        return {"public_urls": [PublicURL.model_validate(p) for p in data.get("previews", [])]}
+        previews = data.get("previews") or []
+        return {"public_urls": [PublicURLListItem.model_validate(p) for p in previews]}
 
     def delete_public_url(self, port: int) -> None:
         self._request("DELETE", f"/v2/box/{self.id}/preview/{port}")
@@ -2320,6 +2424,53 @@ def _ms_to_seconds(ms: Optional[float]) -> Optional[float]:
     if ms is None:
         return None
     return ms / 1000.0
+
+
+def _map_stream_error(
+    run: Run[Any],
+    error: Exception,
+    deadline: Optional[float],
+    start: float,
+    timed_out_message: str,
+) -> Exception:
+    """Translate a failure of a streaming run into what the caller sees.
+
+    A run the caller cancelled, or one that hit its ``timeout``, becomes a
+    non-retryable ``_RunAbortedError`` with status ``cancelled``. Without a run
+    ``timeout``, a read or write timeout is non-retryable ``Request timeout``
+    too, since the run may have started; a connect or pool timeout stays a
+    retryable ``BoxError("Request timeout")``.
+    Anything else is returned unchanged.
+    """
+    if run._cancel_requested:
+        # An explicit cancel wins, even if the deadline also passed meanwhile.
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        if isinstance(error, _RunAbortedError) and str(error) == _CANCELLED_MESSAGE:
+            return error
+        return _RunAbortedError(_CANCELLED_MESSAGE)
+    # Any failure observed after the deadline is a timeout, not retryable: e.g.
+    # a sync open or error body that outlasted it, which sync cannot interrupt.
+    # Errors received before the deadline keep their own message.
+    timed_out = isinstance(error, (httpx.TimeoutException, _RunAbortedError)) or (
+        deadline is not None and time.monotonic() >= deadline
+    )
+    if deadline is not None and timed_out:
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        if isinstance(error, _RunAbortedError):
+            return error
+        return _RunAbortedError(timed_out_message)
+    if isinstance(error, (httpx.ReadTimeout, httpx.WriteTimeout)):
+        # The request reached the server, so the run may already be executing;
+        # retrying would start a second billed run. Not retryable.
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        return _RunAbortedError("Request timeout")
+    if isinstance(error, httpx.TimeoutException):
+        # Connect/pool timeouts: the request never left, so a retry is safe.
+        return BoxError("Request timeout")
+    return error
 
 
 def _q(value: str) -> str:

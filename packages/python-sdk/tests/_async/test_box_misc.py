@@ -5,7 +5,7 @@ import pytest
 import respx
 from helpers import TEST_BASE_URL, last_json_body, make_async_box
 
-from upstash_box import BoxError
+from upstash_box import BoxError, PublicURLListItem
 
 BASE = f"{TEST_BASE_URL}/v2/box/box-123"
 
@@ -107,7 +107,21 @@ async def test_public_urls():
         return_value=httpx.Response(200, json={"url": "https://x", "port": 3000, "token": "t"})
     )
     respx.get(f"{BASE}/preview").mock(
-        return_value=httpx.Response(200, json={"previews": [{"url": "https://x", "port": 3000}]})
+        return_value=httpx.Response(
+            200,
+            json={
+                "previews": [
+                    {
+                        "id": "box-123-3000",
+                        "url": "https://x",
+                        "port": 3000,
+                        "created_at": 1700000000,
+                        "basic_auth": False,
+                        "bearer_token": True,
+                    }
+                ]
+            },
+        )
     )
     respx.delete(f"{BASE}/preview/3000").mock(return_value=httpx.Response(200, json={}))
 
@@ -115,7 +129,12 @@ async def test_public_urls():
     assert url.url == "https://x"
     assert url.token == "t"
     listed = await box.list_public_urls()
-    assert listed["public_urls"][0].port == 3000
+    item = listed["public_urls"][0]
+    assert isinstance(item, PublicURLListItem)
+    assert item.port == 3000
+    assert item.id == "box-123-3000"
+    assert item.bearer_token is True
+    assert item.basic_auth is False
     await box.delete_public_url(3000)
     await box.aclose()
 

@@ -4,6 +4,41 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- **Breaking:** `git.exec()` returns a `GitExecResult` with `output` and
+  `exit_code` instead of the output string, matching `@upstash/box`. git's exit
+  code was previously dropped, so a failing command looked like a success.
+  Read `result.output` where you used the string.
+- `list_public_urls()` returns `PublicURLListItem` entries with `id`, `port`,
+  `url`, `created_at`, `basic_auth`, and `bearer_token`, instead of `PublicURL`
+  objects whose list fields were untyped.
+- Fix the `timeout` on `agent.run()` and `agent.stream()` being applied per
+  socket read, so a run that kept streaming never timed out. It is now a total
+  limit for the run, as in the JS SDK, and raises `BoxError("Run timed out")` or
+  `BoxError("Stream timed out")` with the run's status set to `cancelled`. The
+  limit covers opening the response, and a stream iterated after its deadline
+  never submits the run.
+- Fix `max_retries` retrying a run that timed out, which started a second
+  billed run while the first could still be running. Timed-out and cancelled
+  runs are no longer retried. A transport timeout now raises `BoxError` instead
+  of a raw `httpx` exception. Without a run `timeout`, a read or write timeout
+  raises a non-retryable `BoxError("Request timeout")`, because the run may
+  already be executing; connect timeouts are still retried.
+- Fix `StreamRun.cancel()` leaving the stream running and the status flipping
+  back to `completed` when the stream ended. Cancel now closes the stream
+  locally, the next iteration raises `BoxError("Run cancelled")`, and the status
+  stays `cancelled`. Cancelling a stream before its first iteration never
+  submits the run.
+- `timeout=0` on `agent.run()` / `agent.stream()` means no timeout at all, as
+  in the JS SDK, including no httpx request timeout. It previously made the
+  request time out immediately. Omitting `timeout` keeps the box's default.
+- `Tab.act()` accepts a pre-resolved action as a plain dict, as well as the
+  `BrowserObserveElement` and `BrowserActAction` models.
+- Type the remaining `BoxData` fields from the API (`customer_id`,
+  `total_prompts`, `total_input_tokens`, `total_output_tokens`, `total_cpu_ns`,
+  `total_compute_cost_usd`, `total_token_cost_usd`, `use_managed_key`,
+  `last_activity_at`, `agent_id`, `clone_repo`).
+- Export `GitExecResult`, `PublicURLListItem`, `WebhookPayload`,
+  `CustomHarnessHandler`, `LabelsNamespace`, and `AsyncLabelsNamespace`.
 - Document that Neon GPT-5.4 and newer (`GPT_6_ASTRA`, `GPT_5_6_*`, `GPT_5_5`,
   `GPT_5_4*`) run on Codex only: Neon refuses tool calls with reasoning for them
   on chat completions, which OpenCode needs.

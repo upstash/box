@@ -103,13 +103,17 @@ async def test_push_and_create_pr_and_exec_and_checkout():
             200, json={"url": "u", "number": 5, "title": "t", "base": "main"}
         )
     )
-    respx.post(f"{BASE}/git/exec").mock(return_value=httpx.Response(200, json={"output": "log"}))
+    respx.post(f"{BASE}/git/exec").mock(
+        return_value=httpx.Response(200, json={"output": "log", "exit_code": 0})
+    )
     respx.post(f"{BASE}/git/checkout").mock(return_value=httpx.Response(200, json={}))
 
     await box.git.push(branch="main")
     pr = await box.git.create_pr(title="t", body="b")
     assert pr.number == 5
-    assert await box.git.exec(args=["log", "--oneline"]) == "log"
+    result = await box.git.exec(args=["log", "--oneline"])
+    assert result.output == "log"
+    assert result.exit_code == 0
     await box.git.checkout(branch="feature")
     await box.aclose()
 
@@ -158,4 +162,19 @@ async def test_create_pr_omits_empty_attach():
     )
     await box.git.create_pr(title="t", attach=[])
     assert "attach" not in last_json_body(route)
+    await box.aclose()
+
+
+@respx.mock
+async def test_git_exec_reports_nonzero_exit_code():
+    # git's own exit status must reach the caller, e.g. 128 outside a repository.
+    box = await make_async_box(respx.mock)
+    respx.post(f"{BASE}/git/exec").mock(
+        return_value=httpx.Response(
+            200, json={"output": "fatal: not a git repository", "exit_code": 128}
+        )
+    )
+    result = await box.git.exec(args=["status"])
+    assert result.exit_code == 128
+    assert "not a git repository" in result.output
     await box.aclose()

@@ -214,6 +214,7 @@ diff = await box.git.diff()
 await box.git.commit(message="feat: add feature")
 await box.git.push(branch="main")
 pr = await box.git.create_pr(title="New feature", body="Description")
+result = await box.git.exec(args=["log", "--oneline", "-5"])  # result.output, result.exit_code
 ```
 
 ### Schedules
@@ -329,6 +330,24 @@ their Alpine variants (`"node-alpine"`, `"python-alpine"`, `"golang-alpine"`,
 
 All `timeout` values are in **milliseconds**, matching the TypeScript SDK
 (default `600000`).
+
+The `timeout` on `agent.run()` and `agent.stream()` is a total limit for the
+run, not a gap between events. When it elapses, the call raises `BoxError`
+("Run timed out" / "Stream timed out") and the run's status is `cancelled`.
+A timed-out or cancelled run is never retried by `max_retries`, because it may
+still be executing server-side. Calling `cancel()` on a `StreamRun` stops the
+stream, and the next iteration raises `BoxError("Run cancelled")`; cancelling
+before the first iteration never submits the run. `timeout=0` means no
+timeout at all.
+
+The deadline covers sending the request and opening the response too, and a
+stream whose deadline passed before its first iteration never submits a run.
+
+The sync client cannot interrupt a blocking read, so it checks the deadline
+before sending, after the response opens, and between events. Each read is
+still bounded by the request's read timeout, which is set to the run `timeout`,
+so a sync run can overrun its deadline while a read is blocked, but it still
+raises "timed out" and is not retried.
 
 ## Telemetry
 

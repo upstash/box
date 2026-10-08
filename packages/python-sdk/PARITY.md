@@ -29,6 +29,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `files.stat/mkdir/rename/remove` | `files.stat/mkdir/rename/remove` |
 | `exec.session` (live WebSocket session) | `exec.session` |
 | `git.clone/diff/status/commit/updateConfig/push/createPR/createIssue/exec/checkout` | `git.clone/diff/status/commit/update_config/push/create_pr/create_issue/exec/checkout` |
+| `git.exec` → `GitExecResult` (`output`, `exit_code`) | `git.exec` → `GitExecResult` (`output`, `exit_code`) |
 | `schedule.exec/agent/list/get/update/pause/resume/delete` | same (snake) |
 | `skills.add/remove/list` | `skills.add/remove/list` |
 | `labels.add/remove/list` | `labels.add/remove/list` |
@@ -40,6 +41,7 @@ JS `Run`/`StreamRun` → Python `Run`/`StreamRun` (+ `AsyncRun`/`AsyncStreamRun`
 | `getInitCommand`, `setInitCommand`, `deleteInitCommand` | `get_init_command`, `set_init_command`, `delete_init_command` |
 | `logs`, `listRuns` | `logs`, `list_runs` |
 | `getPublicURL`, `listPublicURLs`, `deletePublicURL` | `get_public_url`, `list_public_urls`, `delete_public_url` |
+| `listPublicURLs()` → `{ publicURLs: PublicURLListItem[] }` | `list_public_urls()` → `{"public_urls": [PublicURLListItem]}` |
 | `id`, `size`, `keepAlive` | `id`, `size`, `keep_alive` |
 | `browser.tab.create` | `browser.tab.create` |
 | `browser.listTabs` / `browser.getTab` / `browser.cdpUrl` | `browser.list_tabs` / `browser.get_tab` / `browser.cdp_url` |
@@ -99,14 +101,24 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | Browser `schema` = Pydantic model or raw dict (Python) vs Zod (JS) | Same `ResponseSchema` contract as `agent.run`; raw dicts skip client-side validation. |
 | `screenshot` `type: "png"\|"base64"` (JS) → `encoding: "bytes"\|"base64"` (Python) | Python returns native `bytes`; `encoding` matches `files.read` naming. |
 | `browser` on `from_snapshot` (Python) | Python's shared create-body builder forwards `browser=True` on `from_snapshot`; JS `fromSnapshot` currently omits it (JS gap). |
-| `PublicURLListItem` type (JS) | JS types `listPublicURLs()` as a distinct list item (`id`, `created_at`, `basic_auth`, `bearer_token`, no secrets); Python reuses `PublicURL` for create and list, so the list-only fields arrive through `extra="allow"` untyped (Python gap). |
+| Sync run `timeout` checked between blocking reads (Python) | JS and the async client stop a run at its deadline even while the request is opening or a read is blocked. The sync client cannot interrupt a blocking read without a thread, so it checks the deadline before sending, after the response opens, and between events. Each read is bounded by the read timeout, which is the run `timeout`; a failure that lands after the deadline still reports "timed out" and is not retried. |
 
 ## Behavioral quirks mirrored exactly
 
 - Polling loops (2s/300s) in `create`, `from_snapshot`, `snapshot`.
 - `is_agent_configured`: `bool(data.agent)` on `create`; `bool(data.model)` on `get`/`from_snapshot`.
 - `Run.logs()`: epoch→ISO, **lower-bound-only** time filter.
-- `Run.cancel()`: swallows endpoint errors, always sets `cancelled`.
+- `Run.cancel()`: swallows endpoint errors, always sets `cancelled`, and first
+  closes an open stream locally (JS aborts its `AbortController`), so the next
+  iteration raises `BoxError("Run cancelled")` and the status stays `cancelled`.
+- Run `timeout` is a total wall-clock limit (`_deadline.py`), not httpx's
+  per-read timeout. It bounds opening the response as well as the stream, and
+  a `StreamRun` whose deadline passed before first iteration never sends its
+  request (the deadline starts at `stream()`, as in JS). It raises `BoxError("Run timed out")` / `("Stream timed out")`
+  and sets status `cancelled`; `timeout=0` means none.
+- `max_retries` never retries a cancelled or timed-out run (`_RunAbortedError`),
+  since it may still be executing server-side. Other failures back off 1s, 2s,
+  4s… capped at 30s.
 - `files.download` destination: `./{basename}` | `./workspace` | `./{basename(cwd)}`.
 - 3-mode run request: file paths → multipart, base64 objects → JSON `files`, else plain JSON.
 - Init commands on any box (not just keep-alive): both SDKs dropped the keep-alive guard together.
