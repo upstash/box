@@ -390,3 +390,71 @@ async def test_cancel_wins_over_a_deadline_that_passes_while_suspended():
 
     assert stream.status == "cancelled"
     await box.aclose()
+
+
+# ---------- transport timeouts without a run timeout ----------
+
+
+class _StartsThenTimesOut(httpx.AsyncByteStream):
+    """Sends run_start, then fails the next read with a ReadTimeout."""
+
+    async def __aiter__(self):
+        yield _sse("run_start", {"run_id": "r1"})
+        raise httpx.ReadTimeout("read timed out")
+
+
+@respx.mock
+async def test_read_timeout_after_run_start_is_not_retried():
+    # The run is already executing server-side; a retry would bill a second one.
+    box = await make_async_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=_StartsThenTimesOut()
+        )
+    )
+
+    with pytest.raises(BoxError, match="Request timeout"):
+        await box.agent.run(prompt="slow", max_retries=2)
+
+    assert route.call_count == 1
+    await box.aclose()
+
+
+@respx.mock
+async def test_read_timeout_without_run_timeout_marks_stream_cancelled():
+    box = await make_async_box(respx.mock)
+    respx.post(RUN_URL).mock(
+        return_value=httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=_StartsThenTimesOut()
+        )
+    )
+
+    stream = await box.agent.stream(prompt="slow")
+    with pytest.raises(BoxError, match="Request timeout"):
+        async for _chunk in stream:
+            pass
+
+    assert stream.status == "cancelled"
+    await box.aclose()
+
+
+@respx.mock
+async def test_connect_timeout_is_still_retried(monkeypatch):
+    # The request never reached the server, so retrying cannot double-bill.
+    async def no_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", no_sleep)
+    box = await make_async_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        side_effect=[
+            httpx.ConnectTimeout("connect timed out"),
+            sse_response([{"event": "done", "data": {"output": "second try"}}]),
+        ]
+    )
+
+    run = await box.agent.run(prompt="flaky", max_retries=1)
+
+    assert route.call_count == 2
+    assert run.result == "second try"
+    await box.aclose()

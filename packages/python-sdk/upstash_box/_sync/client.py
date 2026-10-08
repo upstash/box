@@ -2434,8 +2434,10 @@ def _map_stream_error(
     """Translate a failure of a streaming run into what the caller sees.
 
     A run the caller cancelled, or one that hit its ``timeout``, becomes a
-    non-retryable ``_RunAbortedError`` with status ``cancelled``. A transport
-    timeout without a run ``timeout`` becomes ``BoxError("Request timeout")``.
+    non-retryable ``_RunAbortedError`` with status ``cancelled``. Without a run
+    ``timeout``, a read or write timeout is non-retryable ``Request timeout``
+    too, since the run may have started; a connect or pool timeout stays a
+    retryable ``BoxError("Request timeout")``.
     Anything else is returned unchanged.
     """
     if run._cancel_requested:
@@ -2457,7 +2459,14 @@ def _map_stream_error(
         if isinstance(error, _RunAbortedError):
             return error
         return _RunAbortedError(timed_out_message)
+    if isinstance(error, (httpx.ReadTimeout, httpx.WriteTimeout)):
+        # The request reached the server, so the run may already be executing;
+        # retrying would start a second billed run. Not retryable.
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        return _RunAbortedError("Request timeout")
     if isinstance(error, httpx.TimeoutException):
+        # Connect/pool timeouts: the request never left, so a retry is safe.
         return BoxError("Request timeout")
     return error
 

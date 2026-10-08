@@ -267,3 +267,47 @@ def test_eof_after_the_deadline_is_a_timeout_not_completion():
 
     assert stream.status == "cancelled"
     box.close()
+
+
+class _StartsThenTimesOut(httpx.SyncByteStream):
+    def __iter__(self):
+        yield _sse("run_start", {"run_id": "r1"})
+        raise httpx.ReadTimeout("read timed out")
+
+
+@respx.mock
+def test_read_timeout_after_run_start_is_not_retried():
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=_StartsThenTimesOut()
+        )
+    )
+
+    with pytest.raises(BoxError, match="Request timeout"):
+        box.agent.run(prompt="slow", max_retries=2)
+
+    assert route.call_count == 1
+    box.close()
+
+
+@respx.mock
+def test_connect_timeout_is_still_retried(monkeypatch):
+    monkeypatch.setattr(time, "sleep", lambda _seconds: None)
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        side_effect=[
+            httpx.ConnectTimeout("connect timed out"),
+            httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                text='event: done\ndata: {"output": "second try"}\n\n',
+            ),
+        ]
+    )
+
+    run = box.agent.run(prompt="flaky", max_retries=1)
+
+    assert route.call_count == 2
+    assert run.result == "second try"
+    box.close()

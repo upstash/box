@@ -20,7 +20,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 - Fix `max_retries` retrying a run that timed out, which started a second
   billed run while the first could still be running. Timed-out and cancelled
   runs are no longer retried. A transport timeout now raises `BoxError` instead
-  of a raw `httpx` exception.
+  of a raw `httpx` exception. Without a run `timeout`, a read or write timeout
+  raises a non-retryable `BoxError("Request timeout")`, because the run may
+  already be executing; connect timeouts are still retried.
 - Fix `StreamRun.cancel()` leaving the stream running and the status flipping
   back to `completed` when the stream ended. Cancel now closes the stream
   locally, the next iteration raises `BoxError("Run cancelled")`, and the status
