@@ -13,3 +13,9 @@ class BoxError(Exception):
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         return self.message
+
+
+class _RunAbortedError(BoxError):
+    """A run that stopped because its ``timeout`` elapsed or ``cancel()`` was
+    called. It is never retried: the run may still be executing server-side, so
+    a retry would start a second billed run. Internal; callers see ``BoxError``."""

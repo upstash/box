@@ -359,6 +359,18 @@ class WebhookConfig(TypedDict):
     headers: NotRequired[Dict[str, str]]
 
 
+class WebhookPayload(TypedDict):
+    """POST body the backend sends to your webhook URL when a run completes."""
+
+    box_id: str
+    status: Literal["completed", "failed"]
+    run_id: NotRequired[str]
+    output: NotRequired[str]
+    metadata: NotRequired[Dict[str, Any]]
+    # Error message when status is "failed".
+    error: NotRequired[str]
+
+
 # ==================== Prompt files ====================
 
 
@@ -621,6 +633,14 @@ class GitConfigResult(_Model):
     git_user_email: str
 
 
+class GitExecResult(_Model):
+    """Result of ``git.exec``."""
+
+    output: str = ""
+    # git's own exit status; 128 when the folder is not a repository.
+    exit_code: int = 0
+
+
 class GitCommitResult(_Model):
     sha: str
     message: str
@@ -671,6 +691,20 @@ class PublicURL(_Model):
     password: Optional[str] = None
 
 
+class PublicURLListItem(_Model):
+    """One entry returned by ``list_public_urls()``. Secrets are only
+    returned when the URL is created."""
+
+    # Preview id, ``{box_id}-{port}``.
+    id: str
+    port: int
+    url: str
+    # Unix seconds.
+    created_at: int = 0
+    basic_auth: bool = False
+    bearer_token: bool = False
+
+
 class BoxData(_Model):
     id: str
     status: str
@@ -687,6 +721,17 @@ class BoxData(_Model):
     browser: Optional[bool] = None
     network_policy: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    clone_repo: Optional[str] = None
+    total_input_tokens: Optional[int] = None
+    total_output_tokens: Optional[int] = None
+    total_prompts: Optional[int] = None
+    agent_id: Optional[str] = None
+    total_cpu_ns: Optional[int] = None
+    total_compute_cost_usd: Optional[float] = None
+    total_token_cost_usd: Optional[float] = None
+    use_managed_key: Optional[bool] = None
+    last_activity_at: Optional[int] = None
 
 
 class EphemeralBoxData(BoxData):

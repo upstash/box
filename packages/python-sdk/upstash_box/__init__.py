@@ -15,6 +15,7 @@ from ._async import (
     AsyncExecNamespace,
     AsyncFilesNamespace,
     AsyncGitNamespace,
+    AsyncLabelsNamespace,
     AsyncRun,
     AsyncScheduleNamespace,
     AsyncSkillsNamespace,
@@ -32,6 +33,7 @@ from ._sync import (
     ExecNamespace,
     FilesNamespace,
     GitNamespace,
+    LabelsNamespace,
     Run,
     ScheduleNamespace,
     SkillsNamespace,
@@ -43,6 +45,7 @@ from .custom_harness import (
     CustomHarnessContext,
     CustomHarnessDone,
     CustomHarnessEmitter,
+    CustomHarnessHandler,
     run_custom_harness,
 )
 from .errors import BoxError
@@ -88,6 +91,7 @@ from .types import (
     GitCommitResult,
     GitConfigInput,
     GitConfigResult,
+    GitExecResult,
     Issue,
     ListOptions,
     LogEntry,
@@ -101,6 +105,7 @@ from .types import (
     OpenRouterModel,
     PromptFiles,
     PublicURL,
+    PublicURLListItem,
     PullRequest,
     ReasoningChunk,
     RunCost,
@@ -126,6 +131,7 @@ from .types import (
     UploadFileEntry,
     VercelModel,
     WebhookConfig,
+    WebhookPayload,
 )
 
 __all__ = [
@@ -147,6 +153,7 @@ __all__ = [
     "ExecNamespace",
     "FilesNamespace",
     "GitNamespace",
+    "LabelsNamespace",
     "ScheduleNamespace",
     "SkillsNamespace",
     "AsyncAgentNamespace",
@@ -154,6 +161,7 @@ __all__ = [
     "AsyncExecNamespace",
     "AsyncFilesNamespace",
     "AsyncGitNamespace",
+    "AsyncLabelsNamespace",
     "AsyncScheduleNamespace",
     "AsyncSkillsNamespace",
     # Browser
@@ -168,6 +176,7 @@ __all__ = [
     "CustomHarnessContext",
     "CustomHarnessDone",
     "CustomHarnessEmitter",
+    "CustomHarnessHandler",
     # Enums
     "Agent",
     "BoxApiKey",
@@ -209,6 +218,7 @@ __all__ = [
     "RunOptions",
     "StreamOptions",
     "WebhookConfig",
+    "WebhookPayload",
     "Runtime",
     "BoxSize",
     "RunStatus",
@@ -229,8 +239,10 @@ __all__ = [
     "FileStat",
     "GitCommitResult",
     "GitConfigResult",
+    "GitExecResult",
     "LogEntry",
     "PublicURL",
+    "PublicURLListItem",
     "Issue",
     "PullRequest",
     "RunCost",

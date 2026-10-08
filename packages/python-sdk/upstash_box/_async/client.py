@@ -33,6 +33,7 @@ import httpx
 from typing_extensions import Unpack
 
 from .. import _common as common
+from .._deadline import anext_before, run_deadline
 from .._exec_session import (
     AsyncExecSessionHandle,
     StdoutCallback,
@@ -40,7 +41,7 @@ from .._exec_session import (
     open_async_exec_session,
     session_url,
 )
-from ..errors import BoxError
+from ..errors import BoxError, _RunAbortedError
 from ..types import (
     Agent,
     AgentOptions,
@@ -68,6 +69,7 @@ from ..types import (
     FinishUsage,
     GitCommitResult,
     GitConfigResult,
+    GitExecResult,
     Issue,
     ListOptions,
     LogEntry,
@@ -75,6 +77,7 @@ from ..types import (
     NetworkPolicy,
     PromptFiles,
     PublicURL,
+    PublicURLListItem,
     PullRequest,
     ReasoningChunk,
     ResponseSchema,
@@ -147,6 +150,9 @@ class AsyncRun(Generic[T]):
         self._total_usd = 0.0
         self._compute_ms = 0.0
         self._start_time = time.time() * 1000
+        # The open streaming response, so cancel() can stop it locally.
+        self._response: Optional[httpx.Response] = None
+        self._cancel_requested = False
 
     @property
     def id(self) -> str:
@@ -187,6 +193,15 @@ class AsyncRun(Generic[T]):
         )
 
     async def cancel(self) -> None:
+        """Cancel the run. An open stream is closed locally first, so iterating
+        a cancelled ``StreamRun`` raises ``BoxError`` instead of continuing."""
+        self._cancel_requested = True
+        response = self._response
+        if response is not None:
+            try:
+                await response.aclose()
+            except Exception:
+                pass
         try:
             await self._box._request("POST", f"/v2/box/{self._box.id}/runs/{self._id}/cancel")
         except Exception:
@@ -448,7 +463,9 @@ class AsyncGitNamespace:
     ) -> Issue:
         return await self._box._git_create_issue(title, body, attach)
 
-    async def exec(self, *, args: List[str]) -> str:
+    async def exec(self, *, args: List[str]) -> GitExecResult:
+        """Run a git command. Returns its output and git's own exit code
+        (128 when the folder is not a repository)."""
         return await self._box._git_exec(args)
 
     async def checkout(self, *, branch: str) -> None:
@@ -687,7 +704,7 @@ class AsyncTab:
 
     async def act(
         self,
-        instruction: Union[str, BrowserObserveElement, BrowserActAction],
+        instruction: Union[str, BrowserObserveElement, BrowserActAction, Dict[str, Any]],
         *,
         model: Optional[str] = None,
     ) -> BrowserActResult:
@@ -701,9 +718,14 @@ class AsyncTab:
             if model:
                 body["model"] = model
         else:
-            if not instruction.selector:
+            action = (
+                {k: v for k, v in instruction.items() if v is not None}
+                if isinstance(instruction, dict)
+                else instruction.model_dump(exclude_none=True)
+            )
+            if not action.get("selector"):
                 raise BoxError("act(action) requires a selector; observe() did not resolve one")
-            body = {"action": instruction.model_dump(exclude_none=True), "tab": self.id}
+            body = {"action": action, "tab": self.id}
         resp = await self._box._request(
             "POST",
             f"/v2/box/{self._box.id}/browser/act",
@@ -948,6 +970,11 @@ class AsyncBox(Generic[T]):
                     on_tool_use,
                     on_tool_result,
                 )
+            except _RunAbortedError:
+                # A cancelled or timed-out run must not be retried: the run may
+                # still be executing server-side, so a retry starts a second
+                # billed run the caller never sees.
+                raise
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:
@@ -981,10 +1008,25 @@ class AsyncBox(Generic[T]):
             request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
 
         raw_output = ""
+        deadline = run_deadline(timeout)
         request = self._build_run_stream_request(request_body, files, timeout)
-        response = await self._open_stream(request)
         try:
-            async for event_type, data in iter_sse_events(response):
+            response = await self._open_stream(request)
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
+        run._response = response
+        try:
+            events = iter_sse_events(response)
+            while True:
+                try:
+                    event_type, data = await anext_before(events, deadline, "Run timed out")
+                except StopAsyncIteration:
+                    break
+                if run._cancel_requested:
+                    raise _RunAbortedError("Run cancelled")
                 parsed = _safe_json(data)
                 if parsed is None:
                     continue
@@ -1019,7 +1061,15 @@ class AsyncBox(Generic[T]):
                         raw_output = parsed["output"]
                 elif event_type == "error":
                     raise BoxError(parsed.get("error") or "Stream error")
+            if run._cancel_requested:
+                raise _RunAbortedError("Run cancelled")
+        except Exception as e:
+            mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
+            if mapped is e:
+                raise
+            raise mapped from e
         finally:
+            run._response = None
             await response.aclose()
 
         output: Any = raw_output.strip()
@@ -1075,14 +1125,30 @@ class AsyncBox(Generic[T]):
             request_body["agent_options"] = common.to_backend_agent_options(self._agent, options)
 
         box: "AsyncBox" = self
+        # The deadline starts now, not on first iteration, matching the JS SDK.
+        deadline = run_deadline(timeout)
 
         async def iterate() -> AsyncIterator[Chunk]:
             raw_output = ""
             finished = False
             request = box._build_run_stream_request(request_body, files, timeout)
-            response = await box._open_stream(request)
             try:
-                async for event_type, data in iter_sse_events(response):
+                response = await box._open_stream(request)
+            except Exception as e:
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if mapped is e:
+                    raise
+                raise mapped from e
+            run._response = response
+            try:
+                events = iter_sse_events(response)
+                while True:
+                    try:
+                        event_type, data = await anext_before(events, deadline, "Stream timed out")
+                    except StopAsyncIteration:
+                        break
+                    if run._cancel_requested:
+                        raise _RunAbortedError("Run cancelled")
                     parsed = _safe_json(data)
                     if parsed is None:
                         continue
@@ -1152,16 +1218,23 @@ class AsyncBox(Generic[T]):
                     else:
                         yield UnknownChunk(event=event_type, data=parsed)
 
+                if run._cancel_requested:
+                    raise _RunAbortedError("Run cancelled")
                 finished = True
                 run._result = raw_output.strip()
                 run._status = "completed"
                 run._compute_ms = time.time() * 1000 - start
-            except BoxError:
+            except Exception as e:
                 run._result = raw_output.strip()
-                run._status = "failed"
-                run._compute_ms = time.time() * 1000 - start
-                raise
+                mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
+                if not isinstance(mapped, _RunAbortedError):
+                    run._status = "failed"
+                    run._compute_ms = time.time() * 1000 - start
+                if mapped is e:
+                    raise
+                raise mapped from e
             finally:
+                run._response = None
                 await response.aclose()
                 if not finished and run._status == "running":
                     run._result = raw_output.strip()
@@ -1178,7 +1251,7 @@ class AsyncBox(Generic[T]):
 
     def _build_stream_request(self, url, mode, prepared, file_paths, timeout) -> httpx.Request:
         headers = dict(self._headers)
-        resolved_timeout = _ms_to_seconds(self._timeout_ms if timeout is None else timeout)
+        resolved_timeout = _ms_to_seconds(timeout if timeout else self._timeout_ms)
         kwargs: Dict[str, Any] = {"timeout": resolved_timeout}
         if mode == "multipart":
             kwargs["data"] = common.multipart_field_data(prepared)
@@ -1741,13 +1814,13 @@ class AsyncBox(Generic[T]):
         data = await self._request("POST", f"/v2/box/{self.id}/git/create-issue", body=body)
         return Issue.model_validate(data)
 
-    async def _git_exec(self, args) -> str:
+    async def _git_exec(self, args) -> GitExecResult:
         folder = self._get_folder()
         body: Dict[str, Any] = {"args": args}
         if folder:
             body["folder"] = folder
         data = await self._request("POST", f"/v2/box/{self.id}/git/exec", body=body)
-        return data.get("output", "")
+        return GitExecResult.model_validate(data)
 
     async def _git_checkout(self, branch) -> None:
         folder = self._get_folder()
@@ -1795,9 +1868,12 @@ class AsyncBox(Generic[T]):
         data = await self._request("POST", f"/v2/box/{self.id}/preview", body=body)
         return PublicURL.model_validate(data)
 
-    async def list_public_urls(self) -> Dict[str, List[PublicURL]]:
+    async def list_public_urls(self) -> Dict[str, List[PublicURLListItem]]:
+        """List this box's public URLs. Secrets (token, password) are only
+        returned when a URL is created, so list items carry auth flags instead."""
         data = await self._request("GET", f"/v2/box/{self.id}/preview")
-        return {"public_urls": [PublicURL.model_validate(p) for p in data.get("previews", [])]}
+        previews = data.get("previews") or []
+        return {"public_urls": [PublicURLListItem.model_validate(p) for p in previews]}
 
     async def delete_public_url(self, port: int) -> None:
         await self._request("DELETE", f"/v2/box/{self.id}/preview/{port}")
@@ -2347,6 +2423,35 @@ def _ms_to_seconds(ms: Optional[float]) -> Optional[float]:
     if ms is None:
         return None
     return ms / 1000.0
+
+
+def _map_stream_error(
+    run: AsyncRun[Any],
+    error: Exception,
+    deadline: Optional[float],
+    start: float,
+    timed_out_message: str,
+) -> Exception:
+    """Translate a failure of a streaming run into what the caller sees.
+
+    A run the caller cancelled, or one that hit its ``timeout``, becomes a
+    non-retryable ``_RunAbortedError`` with status ``cancelled``. A transport
+    timeout without a run ``timeout`` becomes ``BoxError("Request timeout")``.
+    Anything else is returned unchanged.
+    """
+    if run._cancel_requested:
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        return error if isinstance(error, _RunAbortedError) else _RunAbortedError("Run cancelled")
+    if deadline is not None and isinstance(error, (httpx.TimeoutException, _RunAbortedError)):
+        run._status = "cancelled"
+        run._compute_ms = time.time() * 1000 - start
+        if isinstance(error, _RunAbortedError):
+            return error
+        return _RunAbortedError(timed_out_message)
+    if isinstance(error, httpx.TimeoutException):
+        return BoxError("Request timeout")
+    return error
 
 
 def _q(value: str) -> str:
