@@ -32,7 +32,7 @@ import httpx
 from typing_extensions import Unpack
 
 from .. import _common as common
-from .._deadline import next_before, run_deadline
+from .._deadline import next_before, open_before, check_deadline, run_deadline
 from .._exec_session import (
     ExecSessionHandle,
     StdoutCallback,
@@ -1000,9 +1000,10 @@ class Box(Generic[T]):
 
         raw_output = ""
         deadline = run_deadline(timeout)
-        request = self._build_run_stream_request(request_body, files, timeout)
         try:
-            response = self._open_stream(request)
+            check_deadline(deadline, "Run timed out")
+            request = self._build_run_stream_request(request_body, files, timeout)
+            response = open_before(self._open_stream(request), deadline, "Run timed out")
         except Exception as e:
             mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
             if mapped is e:
@@ -1120,9 +1121,11 @@ class Box(Generic[T]):
         def iterate() -> Iterator[Chunk]:
             raw_output = ""
             finished = False
-            request = box._build_run_stream_request(request_body, files, timeout)
             try:
-                response = box._open_stream(request)
+                # The deadline started at stream(); never submit a run after it.
+                check_deadline(deadline, "Stream timed out")
+                request = box._build_run_stream_request(request_body, files, timeout)
+                response = open_before(box._open_stream(request), deadline, "Stream timed out")
             except Exception as e:
                 mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
                 if mapped is e:
@@ -2416,7 +2419,14 @@ def _map_stream_error(
         run._status = "cancelled"
         run._compute_ms = time.time() * 1000 - start
         return error if isinstance(error, _RunAbortedError) else _RunAbortedError("Run cancelled")
-    if deadline is not None and isinstance(error, (httpx.TimeoutException, _RunAbortedError)):
+    # A transport failure that lands after the deadline (e.g. a sync open that
+    # outlasted it, which the sync client cannot interrupt) is a timeout too.
+    timed_out = isinstance(error, (httpx.TimeoutException, _RunAbortedError)) or (
+        isinstance(error, httpx.TransportError)
+        and deadline is not None
+        and time.monotonic() >= deadline
+    )
+    if deadline is not None and timed_out:
         run._status = "cancelled"
         run._compute_ms = time.time() * 1000 - start
         if isinstance(error, _RunAbortedError):

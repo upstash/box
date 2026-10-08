@@ -106,3 +106,52 @@ def test_transport_timeout_without_run_timeout_is_a_box_error():
     with pytest.raises(BoxError, match="Request timeout"):
         box.agent.run(prompt="slow")
     box.close()
+
+
+@respx.mock
+def test_expired_stream_never_submits_a_run():
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(return_value=_slow_response(count=0, gap=0))
+
+    stream = box.agent.stream(prompt="late", timeout=20)
+    time.sleep(0.05)
+    with pytest.raises(BoxError, match="Stream timed out"):
+        for _chunk in stream:
+            pass
+
+    assert route.call_count == 0
+    box.close()
+
+
+@respx.mock
+def test_response_opened_after_the_deadline_is_a_timeout():
+    # The sync client cannot interrupt the open, but it must not use a response
+    # that arrived after the deadline.
+    def slow_open(_request):
+        time.sleep(0.1)
+        return _slow_response(count=1, gap=0)
+
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(side_effect=slow_open)
+
+    with pytest.raises(BoxError, match="Run timed out"):
+        box.agent.run(prompt="slow open", timeout=50, max_retries=2)
+
+    assert route.call_count == 1
+    box.close()
+
+
+@respx.mock
+def test_transport_failure_after_the_deadline_is_a_timeout_and_not_retried():
+    def slow_failure(request):
+        time.sleep(0.1)
+        raise httpx.RemoteProtocolError("Server disconnected", request=request)
+
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(side_effect=slow_failure)
+
+    with pytest.raises(BoxError, match="Run timed out"):
+        box.agent.run(prompt="slow open", timeout=50, max_retries=2)
+
+    assert route.call_count == 1
+    box.close()

@@ -14,7 +14,9 @@ All notable changes to `upstash-box` (Python) are documented here.
 - Fix the `timeout` on `agent.run()` and `agent.stream()` being applied per
   socket read, so a run that kept streaming never timed out. It is now a total
   limit for the run, as in the JS SDK, and raises `BoxError("Run timed out")` or
-  `BoxError("Stream timed out")` with the run's status set to `cancelled`.
+  `BoxError("Stream timed out")` with the run's status set to `cancelled`. The
+  limit covers opening the response, and a stream iterated after its deadline
+  never submits the run.
 - Fix `max_retries` retrying a run that timed out, which started a second
   billed run while the first could still be running. Timed-out and cancelled
   runs are no longer retried. A transport timeout now raises `BoxError` instead

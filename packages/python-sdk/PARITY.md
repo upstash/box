@@ -101,7 +101,7 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 | Browser `schema` = Pydantic model or raw dict (Python) vs Zod (JS) | Same `ResponseSchema` contract as `agent.run`; raw dicts skip client-side validation. |
 | `screenshot` `type: "png"\|"base64"` (JS) → `encoding: "bytes"\|"base64"` (Python) | Python returns native `bytes`; `encoding` matches `files.read` naming. |
 | `browser` on `from_snapshot` (Python) | Python's shared create-body builder forwards `browser=True` on `from_snapshot`; JS `fromSnapshot` currently omits it (JS gap). |
-| Sync run `timeout` checked between events (Python) | JS and the async client stop a run at its deadline even while a read is blocked. The sync client cannot interrupt a blocking read without a thread, so it checks the deadline between events; a silent stream is bounded by the read timeout, which is the run `timeout`. |
+| Sync run `timeout` checked between blocking reads (Python) | JS and the async client stop a run at its deadline even while the request is opening or a read is blocked. The sync client cannot interrupt a blocking read without a thread, so it checks the deadline before sending, after the response opens, and between events. Each read is bounded by the read timeout, which is the run `timeout`; a failure that lands after the deadline still reports "timed out" and is not retried. |
 
 ## Behavioral quirks mirrored exactly
 
@@ -112,7 +112,9 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
   closes an open stream locally (JS aborts its `AbortController`), so the next
   iteration raises `BoxError("Run cancelled")` and the status stays `cancelled`.
 - Run `timeout` is a total wall-clock limit (`_deadline.py`), not httpx's
-  per-read timeout. It raises `BoxError("Run timed out")` / `("Stream timed out")`
+  per-read timeout. It bounds opening the response as well as the stream, and
+  a `StreamRun` whose deadline passed before first iteration never sends its
+  request (the deadline starts at `stream()`, as in JS). It raises `BoxError("Run timed out")` / `("Stream timed out")`
   and sets status `cancelled`; `timeout=0` means none.
 - `max_retries` never retries a cancelled or timed-out run (`_RunAbortedError`),
   since it may still be executing server-side. Other failures back off 1s, 2s,

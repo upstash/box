@@ -237,3 +237,101 @@ async def test_silent_stream_times_out_at_the_deadline_not_a_full_timeout_later(
 
     assert 0.9 < elapsed < 1.3
     await box.aclose()
+
+
+# ---------- the deadline also bounds submitting and opening the run ----------
+
+
+@respx.mock
+async def test_expired_stream_never_submits_a_run():
+    # The deadline starts at stream(); the request is sent on first iteration.
+    box = await make_async_box(respx.mock)
+    route = respx.post(RUN_URL).mock(
+        return_value=sse_response([{"event": "done", "data": {"output": "x"}}])
+    )
+
+    stream = await box.agent.stream(prompt="late", timeout=20)
+    await asyncio.sleep(0.05)
+    with pytest.raises(BoxError, match="Stream timed out"):
+        async for _chunk in stream:
+            pass
+
+    assert route.call_count == 0
+    assert stream.status == "cancelled"
+    await box.aclose()
+
+
+class _SlowHeadersHandler(BaseHTTPRequestHandler):
+    """Sends the status line, then one header line every 60ms for ~1.8s."""
+
+    def do_POST(self):  # noqa: N802
+        self.rfile.read(int(self.headers.get("content-length", 0)))
+        self.wfile.write(b"HTTP/1.1 200 OK\r\n")
+        self.wfile.flush()
+        for i in range(30):
+            time.sleep(0.06)
+            self.wfile.write(f"X-Slow-{i}: v\r\n".encode())
+            self.wfile.flush()
+
+    def log_message(self, *_args):
+        pass
+
+
+@pytest.fixture
+def slow_headers_server():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SlowHeadersHandler)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+    server.server_close()
+
+
+def _box_at(base_url: str) -> AsyncBox:
+    data = {
+        "id": "box-123",
+        "model": "anthropic/claude-sonnet-4-5",
+        "agent": "claude-code",
+        "status": "idle",
+        "created_at": 0,
+        "updated_at": 0,
+    }
+    return AsyncBox(
+        data,
+        {
+            "base_url": base_url,
+            "headers": {},
+            "timeout": 600000,
+            "debug": False,
+            "is_agent_configured": True,
+            "client": httpx.AsyncClient(),
+        },
+    )
+
+
+async def test_run_deadline_bounds_a_slowly_opening_response(slow_headers_server):
+    # Each header fragment resets httpx's per-read timeout, so only the run
+    # deadline can stop this.
+    box = _box_at(slow_headers_server)
+
+    started = time.monotonic()
+    with pytest.raises(BoxError, match="Run timed out"):
+        await box.agent.run(prompt="slow open", timeout=100, max_retries=2)
+
+    assert time.monotonic() - started < 0.5
+    await box.aclose()
+
+
+async def test_stream_deadline_bounds_a_slowly_opening_response(slow_headers_server):
+    box = _box_at(slow_headers_server)
+
+    stream = await box.agent.stream(prompt="slow open", timeout=100)
+    started = time.monotonic()
+    with pytest.raises(BoxError, match="Stream timed out"):
+        async for _chunk in stream:
+            pass
+
+    assert time.monotonic() - started < 0.5
+    assert stream.status == "cancelled"
+    await box.aclose()

@@ -338,9 +338,14 @@ A timed-out or cancelled run is never retried by `max_retries`, because it may
 still be executing server-side. Calling `cancel()` on a `StreamRun` stops the
 stream, and the next iteration raises `BoxError("Run cancelled")`.
 
-The sync client checks the run deadline between events. If a stream goes
-silent, the request's read timeout, which is set to the run `timeout`, bounds
-the wait, so a silent sync run can overrun by up to one `timeout`.
+The deadline covers sending the request and opening the response too, and a
+stream whose deadline passed before its first iteration never submits a run.
+
+The sync client cannot interrupt a blocking read, so it checks the deadline
+before sending, after the response opens, and between events. Each read is
+still bounded by the request's read timeout, which is set to the run `timeout`,
+so a sync run can overrun its deadline while a read is blocked, but it still
+raises "timed out" and is not retried.
 
 ## Telemetry
 
