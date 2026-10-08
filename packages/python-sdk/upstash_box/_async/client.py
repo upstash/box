@@ -1012,6 +1012,9 @@ class AsyncBox(Generic[T]):
         try:
             check_deadline(deadline, "Run timed out")
             request = self._build_run_stream_request(request_body, files, timeout)
+            # Building the request reads attachments from disk; recheck so a slow
+            # read never submits a run after the deadline (the sync open can't be cut short).
+            check_deadline(deadline, "Run timed out")
             response = await aopen_before(self._open_stream(request), deadline, "Run timed out")
         except Exception as e:
             mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
@@ -1136,6 +1139,9 @@ class AsyncBox(Generic[T]):
                 # The deadline started at stream(); never submit a run after it.
                 check_deadline(deadline, "Stream timed out")
                 request = box._build_run_stream_request(request_body, files, timeout)
+                # Building the request reads attachments from disk; recheck so a slow
+                # read never submits a run after the deadline (the sync open can't be cut short).
+                check_deadline(deadline, "Stream timed out")
                 response = await aopen_before(
                     box._open_stream(request), deadline, "Stream timed out"
                 )

@@ -10,7 +10,7 @@ import pytest
 import respx
 from helpers import TEST_BASE_URL, make_sync_box
 
-from upstash_box import BoxError
+from upstash_box import Box, BoxError
 
 RUN_URL = f"{TEST_BASE_URL}/v2/box/box-123/run/stream"
 CANCEL_URL = f"{TEST_BASE_URL}/v2/box/box-123/runs/r1/cancel"
@@ -154,4 +154,43 @@ def test_transport_failure_after_the_deadline_is_a_timeout_and_not_retried():
         box.agent.run(prompt="slow open", timeout=50, max_retries=2)
 
     assert route.call_count == 1
+    box.close()
+
+
+def _slow_request_build(monkeypatch):
+    """Simulate a slow attachment read while the run request is being built."""
+    original = Box._build_run_stream_request
+
+    def slow(self, *args):
+        time.sleep(0.05)
+        return original(self, *args)
+
+    monkeypatch.setattr(Box, "_build_run_stream_request", slow)
+
+
+@respx.mock
+def test_slow_request_build_past_the_deadline_never_submits_a_run(monkeypatch):
+    _slow_request_build(monkeypatch)
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(return_value=_slow_response(count=0, gap=0))
+
+    with pytest.raises(BoxError, match="Run timed out"):
+        box.agent.run(prompt="with attachments", timeout=20)
+
+    assert route.call_count == 0
+    box.close()
+
+
+@respx.mock
+def test_slow_request_build_past_the_deadline_never_submits_a_stream(monkeypatch):
+    _slow_request_build(monkeypatch)
+    box = make_sync_box(respx.mock)
+    route = respx.post(RUN_URL).mock(return_value=_slow_response(count=0, gap=0))
+
+    stream = box.agent.stream(prompt="with attachments", timeout=20)
+    with pytest.raises(BoxError, match="Stream timed out"):
+        for _chunk in stream:
+            pass
+
+    assert route.call_count == 0
     box.close()
