@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import AsyncIterator, Awaitable, Iterator, Optional, TypeVar
+from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, TypeVar
 
 import httpx
 
-from .errors import _RunAbortedError
+from .errors import _CANCELLED_MESSAGE, _RunAbortedError
 
 T = TypeVar("T")
 
@@ -41,26 +41,48 @@ def check_deadline(deadline: Optional[float], message: str) -> None:
 
 
 async def aopen_before(
-    opening: Awaitable[httpx.Response], deadline: Optional[float], message: str
+    opening: Awaitable[httpx.Response],
+    deadline: Optional[float],
+    message: str,
+    run: Any = None,
 ) -> httpx.Response:
     """Await the response to a run request, bounded by the time left. httpx
     timeouts apply per operation, so connection setup, a slow upload, or a
-    server sending headers slowly could otherwise outlast the deadline."""
-    if deadline is None:
-        return await opening
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
+    server sending headers slowly could otherwise outlast the deadline.
+
+    The open runs as a task stored on ``run._opening`` so that ``run.cancel()``
+    from another task interrupts it; that surfaces as
+    ``_RunAbortedError("Run cancelled")`` rather than ``CancelledError``.
+    """
+    if deadline is not None and deadline - time.monotonic() <= 0:
         if hasattr(opening, "close"):
             opening.close()  # never awaited; close the coroutine cleanly
         raise _RunAbortedError(message)
+    task = asyncio.ensure_future(opening)
+    if run is not None:
+        run._opening = task
     try:
-        return await asyncio.wait_for(opening, remaining)
+        if deadline is None:
+            return await task
+        return await asyncio.wait_for(task, deadline - time.monotonic())
     except asyncio.TimeoutError:
         raise _RunAbortedError(message) from None
+    except asyncio.CancelledError:
+        # Our own cancel() cancelled the open; a cancellation of the caller's
+        # task (run._cancel_requested unset) still propagates unchanged.
+        if run is not None and run._cancel_requested and task.cancelled():
+            raise _RunAbortedError(_CANCELLED_MESSAGE) from None
+        raise
+    finally:
+        if run is not None:
+            run._opening = None
 
 
 def open_before(
-    response: httpx.Response, deadline: Optional[float], message: str
+    response: httpx.Response,
+    deadline: Optional[float],
+    message: str,
+    run: Any = None,
 ) -> httpx.Response:
     """Sync counterpart of ``aopen_before``. The request has already completed
     here, bounded only by httpx's per-operation timeouts, so this closes the
@@ -78,9 +100,16 @@ async def anext_before(iterator: AsyncIterator[T], deadline: Optional[float], me
         return await iterator.__anext__()
     remaining = _remaining(deadline, message)
     try:
-        return await asyncio.wait_for(iterator.__anext__(), remaining)
+        item = await asyncio.wait_for(iterator.__anext__(), remaining)
     except asyncio.TimeoutError:
         raise _RunAbortedError(message) from None
+    except StopAsyncIteration:
+        # wait_for cannot fire while parsing runs without yielding to the loop,
+        # so EOF reached after the deadline is a timeout, not a completed run.
+        _remaining(deadline, message)
+        raise
+    _remaining(deadline, message)
+    return item
 
 
 def next_before(iterator: Iterator[T], deadline: Optional[float], message: str) -> T:

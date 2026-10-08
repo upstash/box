@@ -15,6 +15,10 @@ class BoxError(Exception):
         return self.message
 
 
+# Message for a run stopped by ``cancel()``; shared by the client and helpers.
+_CANCELLED_MESSAGE = "Run cancelled"
+
+
 class _RunAbortedError(BoxError):
     """A run that stopped because its ``timeout`` elapsed or ``cancel()`` was
     called. It is never retried: the run may still be executing server-side, so

@@ -458,3 +458,87 @@ async def test_connect_timeout_is_still_retried(monkeypatch):
     assert route.call_count == 2
     assert run.result == "second try"
     await box.aclose()
+
+
+# ---------- cancel during the open, and EOF after the deadline ----------
+
+
+async def _headers_after_3s(request):
+    if request.url.path.endswith("/cancel"):
+        return httpx.Response(200, json={})
+    await asyncio.sleep(3)
+    return sse_response([{"event": "done", "data": {"output": "late"}}])
+
+
+@respx.mock
+async def test_cancel_interrupts_a_stream_waiting_for_response_headers():
+    # With timeout=0 nothing else would ever stop the pending open.
+    box = await make_async_box(respx.mock)
+    respx.route(method="POST", path__regex=r".*/(run/stream|cancel)$").mock(
+        side_effect=_headers_after_3s
+    )
+
+    stream = await box.agent.stream(prompt="slow open", timeout=0)
+
+    async def consume():
+        async for _chunk in stream:
+            pass
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.1)  # the open is now waiting for headers
+    started = time.monotonic()
+    await stream.cancel()
+
+    with pytest.raises(BoxError, match="Run cancelled"):
+        await task
+    assert time.monotonic() - started < 0.5
+    assert stream.status == "cancelled"
+    await box.aclose()
+
+
+@respx.mock
+async def test_cancelling_the_callers_task_during_the_open_still_propagates():
+    # Only run.cancel() becomes "Run cancelled"; task cancellation is untouched.
+    box = await make_async_box(respx.mock)
+    respx.post(RUN_URL).mock(side_effect=_headers_after_3s)
+
+    stream = await box.agent.stream(prompt="slow open")
+
+    async def consume():
+        async for _chunk in stream:
+            pass
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.1)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await box.aclose()
+
+
+class _BusyThenEOF(httpx.AsyncByteStream):
+    """Works past the deadline without yielding to the event loop, then ends."""
+
+    async def __aiter__(self):
+        time.sleep(0.1)
+        return
+        yield
+
+
+@respx.mock
+async def test_eof_reached_after_the_deadline_is_a_timeout_not_completion():
+    box = await make_async_box(respx.mock)
+    respx.post(RUN_URL).mock(
+        return_value=httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, stream=_BusyThenEOF()
+        )
+    )
+
+    stream = await box.agent.stream(prompt="p", timeout=50)
+    with pytest.raises(BoxError, match="Stream timed out"):
+        async for _chunk in stream:
+            pass
+
+    assert stream.status == "cancelled"
+    await box.aclose()

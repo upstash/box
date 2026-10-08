@@ -40,7 +40,7 @@ from .._exec_session import (
     open_exec_session,
     session_url,
 )
-from ..errors import BoxError, _RunAbortedError
+from ..errors import _CANCELLED_MESSAGE, BoxError, _RunAbortedError
 from ..types import (
     Agent,
     AgentOptions,
@@ -151,6 +151,8 @@ class Run(Generic[T]):
         self._start_time = time.time() * 1000
         # The open streaming response, so cancel() can stop it locally.
         self._response: Optional[httpx.Response] = None
+        # The pending open of a stream (async task), so cancel() can interrupt it.
+        self._opening: Optional[Any] = None
         self._cancel_requested = False
 
     @property
@@ -195,6 +197,9 @@ class Run(Generic[T]):
         """Cancel the run. An open stream is closed locally first, so iterating
         a cancelled ``StreamRun`` raises ``BoxError`` instead of continuing."""
         self._cancel_requested = True
+        opening = self._opening
+        if opening is not None:
+            opening.cancel()
         response = self._response
         if response is not None:
             try:
@@ -1006,7 +1011,7 @@ class Box(Generic[T]):
             # Building the request reads attachments from disk; recheck so a slow
             # read never submits a run after the deadline (the sync open can't be cut short).
             check_deadline(deadline, "Run timed out")
-            response = open_before(self._open_stream(request), deadline, "Run timed out")
+            response = open_before(self._open_stream(request), deadline, "Run timed out", run)
         except Exception as e:
             mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
             if mapped is e:
@@ -1017,13 +1022,13 @@ class Box(Generic[T]):
             events = iter_sse_events(response)
             while True:
                 if run._cancel_requested:
-                    raise _RunAbortedError(_CANCELLED)
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 try:
                     event_type, data = next_before(events, deadline, "Run timed out")
                 except StopIteration:
                     break
                 if run._cancel_requested:
-                    raise _RunAbortedError(_CANCELLED)
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 parsed = _safe_json(data)
                 if parsed is None:
                     continue
@@ -1059,7 +1064,7 @@ class Box(Generic[T]):
                 elif event_type == "error":
                     raise BoxError(parsed.get("error") or "Stream error")
             if run._cancel_requested:
-                raise _RunAbortedError(_CANCELLED)
+                raise _RunAbortedError(_CANCELLED_MESSAGE)
         except Exception as e:
             mapped = _map_stream_error(run, e, deadline, start, "Run timed out")
             if mapped is e:
@@ -1130,13 +1135,13 @@ class Box(Generic[T]):
                 # StreamRun is lazy: cancel() may run before the first iteration,
                 # and the deadline started at stream(). Never submit a run after either.
                 if run._cancel_requested:
-                    raise _RunAbortedError(_CANCELLED)
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 check_deadline(deadline, "Stream timed out")
                 request = box._build_run_stream_request(request_body, files, timeout)
                 # Building the request reads attachments from disk; recheck so a slow
                 # read never submits a run after the deadline (the sync open can't be cut short).
                 check_deadline(deadline, "Stream timed out")
-                response = open_before(box._open_stream(request), deadline, "Stream timed out")
+                response = open_before(box._open_stream(request), deadline, "Stream timed out", run)
             except Exception as e:
                 mapped = _map_stream_error(run, e, deadline, start, "Stream timed out")
                 if mapped is e:
@@ -1147,13 +1152,13 @@ class Box(Generic[T]):
                 events = iter_sse_events(response)
                 while True:
                     if run._cancel_requested:
-                        raise _RunAbortedError(_CANCELLED)
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
                     try:
                         event_type, data = next_before(events, deadline, "Stream timed out")
                     except StopIteration:
                         break
                     if run._cancel_requested:
-                        raise _RunAbortedError(_CANCELLED)
+                        raise _RunAbortedError(_CANCELLED_MESSAGE)
                     parsed = _safe_json(data)
                     if parsed is None:
                         continue
@@ -1224,7 +1229,7 @@ class Box(Generic[T]):
                         yield UnknownChunk(event=event_type, data=parsed)
 
                 if run._cancel_requested:
-                    raise _RunAbortedError(_CANCELLED)
+                    raise _RunAbortedError(_CANCELLED_MESSAGE)
                 finished = True
                 run._result = raw_output.strip()
                 run._status = "completed"
@@ -2421,9 +2426,6 @@ def _ms_to_seconds(ms: Optional[float]) -> Optional[float]:
     return ms / 1000.0
 
 
-_CANCELLED = "Run cancelled"
-
-
 def _map_stream_error(
     run: Run[Any],
     error: Exception,
@@ -2444,9 +2446,9 @@ def _map_stream_error(
         # An explicit cancel wins, even if the deadline also passed meanwhile.
         run._status = "cancelled"
         run._compute_ms = time.time() * 1000 - start
-        if isinstance(error, _RunAbortedError) and str(error) == _CANCELLED:
+        if isinstance(error, _RunAbortedError) and str(error) == _CANCELLED_MESSAGE:
             return error
-        return _RunAbortedError(_CANCELLED)
+        return _RunAbortedError(_CANCELLED_MESSAGE)
     # Any failure observed after the deadline is a timeout, not retryable: e.g.
     # a sync open or error body that outlasted it, which sync cannot interrupt.
     # Errors received before the deadline keep their own message.
