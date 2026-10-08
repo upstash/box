@@ -28,12 +28,17 @@ async def test_clone_status_commit_exec(opts):
         assert "add file" in commit.message
 
         log = await box.git.exec(args=["log", "--oneline", "-1"])
-        assert "add file" in log
+        assert log.exit_code == 0
+        assert "add file" in log.output
 
         # checkout an existing branch
         await box.git.exec(args=["branch", "feature-x"])
         await box.git.checkout(branch="feature-x")
         branch = await box.git.exec(args=["rev-parse", "--abbrev-ref", "HEAD"])
-        assert "feature-x" in branch
+        assert "feature-x" in branch.output
+
+        # git's own exit status reaches the caller.
+        missing = await box.git.exec(args=["rev-parse", "--verify", "no-such-branch"])
+        assert missing.exit_code != 0
     finally:
         await box.delete()
