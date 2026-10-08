@@ -2,7 +2,7 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
-## Unreleased
+## 0.4.0
 
 - **Breaking:** `git.exec()` returns a `GitExecResult` with `output` and
   `exit_code` instead of the output string, matching `@upstash/box`. git's exit
@@ -74,9 +74,6 @@ All notable changes to `upstash-box` (Python) are documented here.
 - Add `warning` to `PullRequest` and the new `Issue` model. It is set when `gh`
   exits non-zero but still returns a URL, which means the item exists while an
   attachment is missing, or the pull request was already open.
-
-## 0.3.1
-
 - Fix `git.update_config()` sending its request to `/v2/box/{id}/git-config`,
   which the coordinator does not serve. The identity endpoint is
   `/v2/box/{id}/config/git`, so every call returned 404 and no git identity was
