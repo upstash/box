@@ -146,14 +146,16 @@ export enum VercelModel {
 /**
  * Neon AI Gateway model identifiers — Neon's short model IDs under the `neon/` namespace.
  *
- * These models run on the Codex harness (Responses API) or the OpenCode harness
- * (chat completions). Box does not run Claude Code with Neon.
+ * These models run on the Codex harness (Responses API), the OpenCode harness
+ * (chat completions) or, for the Claude models, the Claude Code harness (Neon's
+ * Anthropic Messages API; see `NeonClaudeModel`).
  * Codex-only: `GPT_5_5_Pro`, `GPT_5_3_Codex` (Responses-only on Neon), and GPT-5.4 and
  * newer (`GPT_6_Astra`, `GPT_5_6_*`, `GPT_5_5`, `GPT_5_4*`): Neon refuses tool calls with
  * reasoning for them on chat completions, which OpenCode needs.
  * Both: `GPT_5_Mini`, `GPT_5_Nano` and `Grok_4_6`.
- * OpenCode-only: `GPT_OSS_120B`, `GPT_OSS_20B`, the Claude models and every other
- * non-OpenAI model except Grok (Neon serves them through chat completions only).
+ * Claude models: Claude Code and OpenCode, never Codex (Neon's Responses API does not
+ * serve them). OpenCode-only: `GPT_OSS_120B`, `GPT_OSS_20B` and every other non-OpenAI,
+ * non-Claude model except Grok (Neon serves them through chat completions only).
  * Neon credentials are a token plus a per-branch base URL and must be stored via the
  * console or agent-credentials API; use `BoxApiKey.StoredKey`.
  */
@@ -195,6 +197,25 @@ export enum NeonModel {
   Claude_Sonnet_4_5 = "neon/claude-sonnet-4-5",
   Claude_Opus_4_1 = "neon/claude-opus-4-1",
 }
+
+/**
+ * The Neon AI Gateway models the Claude Code harness can run: the Claude models,
+ * which Neon serves on its Anthropic Messages API.
+ */
+export type NeonClaudeModel =
+  | NeonModel.Claude_Opus_5_5
+  | NeonModel.Claude_Fable_5_1
+  | NeonModel.Claude_Opus_5
+  | NeonModel.Claude_Sonnet_5
+  | NeonModel.Claude_Fable_5
+  | NeonModel.Claude_Opus_4_8
+  | NeonModel.Claude_Opus_4_7
+  | NeonModel.Claude_Sonnet_4_6
+  | NeonModel.Claude_Opus_4_6
+  | NeonModel.Claude_Opus_4_5
+  | NeonModel.Claude_Haiku_4_5
+  | NeonModel.Claude_Sonnet_4_5
+  | NeonModel.Claude_Opus_4_1;
 
 /**
  * OpenCode model identifiers — supports models from multiple providers
@@ -338,7 +359,7 @@ type ManagedAgentApiKeyConfig = {
 type HarnessConfig =
   | {
       harness: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | NeonClaudeModel;
       provider?: never;
       runner?: never;
     }
@@ -359,7 +380,7 @@ type HarnessConfig =
   | {
       /** @deprecated Use `harness` instead. */
       provider: Agent.ClaudeCode;
-      model: ClaudeCode | OpenRouterModel | VercelModel;
+      model: ClaudeCode | OpenRouterModel | VercelModel | NeonClaudeModel;
       harness?: never;
       runner?: never;
     }

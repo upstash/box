@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  Agent,
+  type AgentConfig,
   ClaudeCode,
   CursorModel,
   NeonModel,
@@ -97,5 +99,17 @@ describe("Neon AI Gateway model identifiers", () => {
       expect(value.startsWith("neon/")).toBe(true);
       expect(value.slice("neon/".length)).not.toContain("/");
     }
+  });
+});
+
+describe("Claude Code accepts the Neon Claude models", () => {
+  it("type-checks neon/claude-* for the claude-code harness", () => {
+    const config: AgentConfig = { harness: Agent.ClaudeCode, model: NeonModel.Claude_Opus_5_5 };
+    const legacy: AgentConfig = { provider: Agent.ClaudeCode, model: NeonModel.Claude_Haiku_4_5 };
+    // @ts-expect-error Claude Code on Neon runs Claude models only
+    const gpt: AgentConfig = { harness: Agent.ClaudeCode, model: NeonModel.GPT_5_5 };
+    expect(config.model).toBe("neon/claude-opus-5-5");
+    expect(legacy.model).toBe("neon/claude-haiku-4-5");
+    expect(gpt.model).toBe("neon/gpt-5-5");
   });
 });

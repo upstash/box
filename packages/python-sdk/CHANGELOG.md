@@ -2,6 +2,12 @@
 
 All notable changes to `upstash-box` (Python) are documented here.
 
+## Unreleased
+
+- Neon AI Gateway: document that the Claude Code harness runs the ``CLAUDE_*``
+  ``NeonModel`` values (Neon's Anthropic Messages API). The default harness from
+  ``infer_default_provider`` for ``neon/claude-*`` stays OpenCode.
+
 ## 0.4.0
 
 - **Breaking:** `git.exec()` returns a `GitExecResult` with `output` and
