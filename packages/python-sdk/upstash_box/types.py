@@ -148,15 +148,17 @@ class VercelModel(str, Enum):
 class NeonModel(str, Enum):
     """Neon AI Gateway model identifiers (``neon/<neon-short-id>``).
 
-    These run on the Codex harness (Responses API) or the OpenCode harness
-    (chat completions); Box does not run Claude Code with Neon.
+    These run on the Codex harness (Responses API), the OpenCode harness
+    (chat completions) or, for the ``CLAUDE_*`` models, the Claude Code harness
+    (Neon's Anthropic Messages API).
     ``GPT_5_5_PRO`` and ``GPT_5_3_CODEX`` are Responses-only (Codex), and
     GPT-5.4 and newer (``GPT_6_ASTRA``, ``GPT_5_6_*``, ``GPT_5_5``,
     ``GPT_5_4*``) run on Codex only, because Neon refuses tool calls with
     reasoning for them on chat completions; ``GPT_5_MINI``, ``GPT_5_NANO``
-    and ``GROK_4_6`` run on both; ``GPT_OSS_*``, the
-    ``CLAUDE_*`` models and every other non-OpenAI model except Grok are served
-    through chat completions only (OpenCode).
+    and ``GROK_4_6`` run on both; the ``CLAUDE_*`` models run on Claude Code
+    and OpenCode, never Codex; ``GPT_OSS_*`` and every other non-OpenAI,
+    non-Claude model except Grok are served through chat completions only
+    (OpenCode).
     Neon credentials are a token plus a per-branch base URL and must be stored
     via the console or agent-credentials API; use ``BoxApiKey.STORED_KEY``.
     """
