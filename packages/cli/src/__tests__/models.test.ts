@@ -150,10 +150,8 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
       MODEL_OPTIONS_BY_AGENT[Agent.ClaudeCode]
         .find(({ label }) => label === "Neon AI Gateway")
         ?.options.map((o) => o.value) ?? [];
-    expect(claudeNeon).toHaveLength(13);
-    expect(claudeNeon.every((v) => v.startsWith("neon/claude-"))).toBe(true);
-    expect(claudeNeon).toContain(NeonModel.Claude_Opus_5_5);
-    expect(claudeNeon).toContain(NeonModel.Claude_Haiku_4_5);
+    const allClaude = Object.values(NeonModel).filter((v) => v.startsWith("neon/claude-"));
+    expect([...claudeNeon].sort()).toEqual([...allClaude].sort());
     expect(claudeNeon).not.toContain(NeonModel.GPT_5_5);
   });
 

@@ -8,11 +8,17 @@ import { Agent, type AgentConfig, NeonModel, type NeonClaudeModel } from "../typ
 type ClaudeHarnessModel = Extract<AgentConfig, { harness: Agent.ClaudeCode }>["model"];
 type ClaudeProviderModel = Extract<AgentConfig, { provider: Agent.ClaudeCode }>["model"];
 
+// Every NeonModel member whose value is a neon/claude-* id.
+type AllNeonClaude = Extract<NeonModel, `neon/claude-${string}`>;
+
 describe("Claude Code on Neon AI Gateway (type level)", () => {
-  it("accepts the Neon Claude models on both Claude Code branches", () => {
-    expectTypeOf<NeonModel.Claude_Opus_5_5>().toExtend<NeonClaudeModel>();
-    expectTypeOf<NeonModel.Claude_Haiku_4_5>().toExtend<ClaudeHarnessModel>();
-    expectTypeOf<NeonModel.Claude_Fable_5_1>().toExtend<ClaudeProviderModel>();
+  it("covers exactly the neon/claude-* models", () => {
+    expectTypeOf<NeonClaudeModel>().toEqualTypeOf<AllNeonClaude>();
+  });
+
+  it("accepts every Neon Claude model on both Claude Code branches", () => {
+    expectTypeOf<AllNeonClaude>().toExtend<ClaudeHarnessModel>();
+    expectTypeOf<AllNeonClaude>().toExtend<ClaudeProviderModel>();
   });
 
   it("rejects non-Claude Neon models", () => {
