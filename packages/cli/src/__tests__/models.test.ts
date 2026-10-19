@@ -119,11 +119,14 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
     expect(group?.options).toContainEqual({ value, label });
   });
 
-  it("offers Neon AI Gateway models only to Codex and OpenCode", () => {
+  it("offers Neon AI Gateway models to Codex, OpenCode and (Claude only) Claude Code", () => {
     const groupFor = (agent: Agent) =>
       MODEL_OPTIONS_BY_AGENT[agent].find(({ label }) => label === "Neon AI Gateway");
 
-    expect(groupFor(Agent.ClaudeCode)).toBeUndefined();
+    expect(groupFor(Agent.ClaudeCode)?.options).toContainEqual({
+      value: NeonModel.Claude_Opus_5_5,
+      label: "Claude Opus 5.5 (Neon)",
+    });
     expect(groupFor(Agent.Cursor)).toBeUndefined();
     expect(groupFor(Agent.Codex)?.options).toContainEqual({
       value: NeonModel.GPT_5_5,
@@ -170,6 +173,16 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
       expect(values(Agent.OpenCode)).not.toContain(model);
     }
     expect(values(Agent.OpenCode)).toContain(NeonModel.GPT_5_Nano);
+  });
+
+  it("offers only Neon Claude models to Claude Code", () => {
+    const claudeNeon =
+      MODEL_OPTIONS_BY_AGENT[Agent.ClaudeCode]
+        .find(({ label }) => label === "Neon AI Gateway")
+        ?.options.map((o) => o.value) ?? [];
+    const allClaude = Object.values(NeonModel).filter((v) => v.startsWith("neon/claude-"));
+    expect([...claudeNeon].sort()).toEqual([...allClaude].sort());
+    expect(claudeNeon).not.toContain(NeonModel.GPT_5_5);
   });
 
   it("includes Cursor models", () => {

@@ -84,6 +84,25 @@ export const MODEL_OPTIONS_BY_AGENT: Record<
         { value: VercelModel.Grok_4_3, label: "Grok 4.3 (Vercel)" },
       ],
     },
+    {
+      // Neon AI Gateway serves only the Claude models on its Anthropic Messages API.
+      label: "Neon AI Gateway",
+      options: [
+        { value: NeonModel.Claude_Opus_5_5, label: "Claude Opus 5.5 (Neon)" },
+        { value: NeonModel.Claude_Fable_5_1, label: "Claude Fable 5.1 (Neon)" },
+        { value: NeonModel.Claude_Opus_5, label: "Claude Opus 5 (Neon)" },
+        { value: NeonModel.Claude_Sonnet_5, label: "Claude Sonnet 5 (Neon)" },
+        { value: NeonModel.Claude_Fable_5, label: "Claude Fable 5 (Neon)" },
+        { value: NeonModel.Claude_Opus_4_8, label: "Claude Opus 4.8 (Neon)" },
+        { value: NeonModel.Claude_Opus_4_7, label: "Claude Opus 4.7 (Neon)" },
+        { value: NeonModel.Claude_Sonnet_4_6, label: "Claude Sonnet 4.6 (Neon)" },
+        { value: NeonModel.Claude_Opus_4_6, label: "Claude Opus 4.6 (Neon)" },
+        { value: NeonModel.Claude_Opus_4_5, label: "Claude Opus 4.5 (Neon)" },
+        { value: NeonModel.Claude_Haiku_4_5, label: "Claude Haiku 4.5 (Neon)" },
+        { value: NeonModel.Claude_Sonnet_4_5, label: "Claude Sonnet 4.5 (Neon)" },
+        { value: NeonModel.Claude_Opus_4_1, label: "Claude Opus 4.1 (Neon)" },
+      ],
+    },
   ],
   [Agent.Codex]: [
     {

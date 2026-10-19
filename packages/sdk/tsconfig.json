@@ -11,6 +11,7 @@
     "examples",
     "src/__tests__",
     "**/*.test.ts",
+    "**/*.test-d.ts",
     "**/*.integration.test.ts"
   ]
 }
