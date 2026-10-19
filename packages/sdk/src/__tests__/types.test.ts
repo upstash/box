@@ -9,6 +9,29 @@ import {
   VercelModel,
 } from "../types.js";
 
+describe("Claude Sonnet 5.5 and Haiku 5.5 model identifiers", () => {
+  it.each([
+    ["Claude Code Sonnet", ClaudeCode.Sonnet_5_5, "anthropic/claude-sonnet-5-5"],
+    ["Claude Code Haiku", ClaudeCode.Haiku_5_5, "anthropic/claude-haiku-5-5"],
+    [
+      "OpenRouter Sonnet",
+      OpenRouterModel.Claude_Sonnet_5_5,
+      "openrouter/anthropic/claude-sonnet-5.5",
+    ],
+    ["OpenRouter Haiku", OpenRouterModel.Claude_Haiku_5_5, "openrouter/anthropic/claude-haiku-5.5"],
+    ["Vercel Sonnet", VercelModel.Claude_Sonnet_5_5, "vercel/anthropic/claude-sonnet-5.5"],
+    ["Vercel Haiku", VercelModel.Claude_Haiku_5_5, "vercel/anthropic/claude-haiku-5.5"],
+    ["OpenCode Anthropic Sonnet", OpenCodeModel.Claude_Sonnet_5_5, "opencode/claude-sonnet-5-5"],
+    ["OpenCode Anthropic Haiku", OpenCodeModel.Claude_Haiku_5_5, "opencode/claude-haiku-5-5"],
+    ["OpenCode Zen Sonnet", OpenCodeModel.Zen_Claude_Sonnet_5_5, "opencode/claude-sonnet-5-5"],
+    ["OpenCode Zen Haiku", OpenCodeModel.Zen_Claude_Haiku_5_5, "opencode/claude-haiku-5-5"],
+    ["Cursor Sonnet", CursorModel.Claude_Sonnet_5_5, "cursor/claude-sonnet-5-5"],
+    ["Cursor Haiku", CursorModel.Claude_Haiku_5_5, "cursor/claude-haiku-5-5"],
+  ])("exposes the %s model", (_provider, model, expected) => {
+    expect(model).toBe(expected);
+  });
+});
+
 describe("Claude Opus 5.5 model identifiers", () => {
   it.each([
     ["Claude Code", ClaudeCode.Opus_5_5, "anthropic/claude-opus-5-5"],

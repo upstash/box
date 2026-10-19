@@ -7,6 +7,8 @@ All notable changes to `upstash-box` (Python) are documented here.
 - Neon AI Gateway: document that the Claude Code harness runs the ``CLAUDE_*``
   ``NeonModel`` values (Neon's Anthropic Messages API). The default harness from
   ``infer_default_provider`` for ``neon/claude-*`` stays OpenCode.
+- Add Claude Sonnet 5.5 and Claude Haiku 5.5 model constants for Claude Code,
+  OpenRouter, Vercel AI Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
 
 ## 0.4.0
 
