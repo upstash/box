@@ -1,5 +1,13 @@
 # @upstash/box-pi
 
+## 0.1.16
+
+### Patch Changes
+
+- Updated dependencies [19ff023]
+- Updated dependencies [e2d6d7a]
+  - @upstash/box@0.7.10
+
 ## 0.1.15
 
 ### Patch Changes

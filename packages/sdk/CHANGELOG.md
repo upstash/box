@@ -1,5 +1,16 @@
 # @upstash/box
 
+## 0.7.10
+
+### Patch Changes
+
+- 19ff023: Add Claude Sonnet 5.5 and Claude Haiku 5.5 model constants and CLI options for
+  Claude Code, OpenRouter, Vercel AI Gateway, OpenCode/Zen, and Cursor.
+- e2d6d7a: Claude Code on Neon AI Gateway: the Claude Code harness accepts the Neon Claude
+  models (`NeonClaudeModel`, e.g. `NeonModel.Claude_Opus_5_5`), which Neon serves on
+  its Anthropic Messages API, and the CLI picker lists them under Claude Code. The
+  default harness inferred for `neon/claude-*` stays OpenCode.
+
 ## 0.7.9
 
 ### Patch Changes
