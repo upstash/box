@@ -2741,7 +2741,7 @@ export class Box<TProvider = unknown> {
   /**
    * Read the current init command.
    *
-   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
+   * @see node_modules/@upstash/box/docs/overall/quickstart.mdx
    */
   async getInitCommand(): Promise<string> {
     const data = await this._request<{ init_command?: string }>(
@@ -2755,7 +2755,7 @@ export class Box<TProvider = unknown> {
    * Set or replace the init command. On a paused box the change is stored and
    * applied on the next resume.
    *
-   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
+   * @see node_modules/@upstash/box/docs/overall/quickstart.mdx
    */
   async setInitCommand(initCommand: string): Promise<void> {
     if (!initCommand) {
@@ -2769,7 +2769,7 @@ export class Box<TProvider = unknown> {
   /**
    * Delete the init command.
    *
-   * @see node_modules/@upstash/box/docs/overall/keep-alive.mdx
+   * @see node_modules/@upstash/box/docs/overall/quickstart.mdx
    */
   async deleteInitCommand(): Promise<void> {
     await this._request("DELETE", `/v2/box/${this.id}/startup`);
