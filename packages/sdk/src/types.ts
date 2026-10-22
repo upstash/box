@@ -21,11 +21,11 @@ export type Runtime =
 /**
  * Resource size presets for boxes.
  *
- * | Size     | CPU      | Memory |
- * |----------|----------|--------|
- * | `small`  | 2 cores  | 4 GB   |
- * | `medium` | 4 cores  | 8 GB   |
- * | `large`  | 8 cores  | 16 GB  |
+ * | Size     | CPU      | Memory | Storage |
+ * |----------|----------|--------|---------|
+ * | `small`  | 2 cores  | 4 GB   | 10 GB   |
+ * | `medium` | 4 cores  | 8 GB   | 20 GB   |
+ * | `large`  | 8 cores  | 16 GB  | 30 GB   |
  */
 export type BoxSize = "small" | "medium" | "large";
 

@@ -450,11 +450,11 @@ The preferred field in agent config is `harness`, and it is required. Deprecated
 
 Boxes have configurable resource sizes, set at creation time via the `size` option. Defaults to `"small"`.
 
-| Size     | CPU     | Memory |
-| -------- | ------- | ------ |
-| `small`  | 2 cores | 4 GB   |
-| `medium` | 4 cores | 8 GB   |
-| `large`  | 8 cores | 16 GB  |
+| Size     | CPU     | Memory | Storage |
+| -------- | ------- | ------ | ------- |
+| `small`  | 2 cores | 4 GB   | 10 GB   |
+| `medium` | 4 cores | 8 GB   | 20 GB   |
+| `large`  | 8 cores | 16 GB  | 30 GB   |
 
 ```ts
 const box = await Box.create({
