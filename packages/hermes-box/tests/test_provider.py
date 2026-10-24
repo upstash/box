@@ -158,7 +158,20 @@ def test_persistent_by_default_and_image_override_names_the_runtime(monkeypatch)
     monkeypatch.setattr(upstash_box_env, "UpstashBoxEnvironment", lambda **kw: seen.update(kw) or SimpleNamespace())
     UpstashBoxProvider().create_environment(cwd="", timeout=30, image="golang")
     assert seen["persistent"] is True and seen["runtime"] == "golang" and seen["cwd"] == "~"
-    assert seen["task_id"] == "default" and seen["base_url"] is None
+    assert seen["task_id"] == "default" and seen["base_url"] == upstash_box_env.DEFAULT_BASE_URL
+
+
+def test_scoped_secrets_win_over_another_profiles_process_env(monkeypatch):
+    """Profile multiplexing: secrets come from the active profile's scope only. Profile A's
+    endpoint in os.environ must not receive profile B's key."""
+    monkeypatch.setenv("UPSTASH_BOX_BASE_URL", "https://profile-a.example.test")
+    scoped = {"UPSTASH_BOX_API_KEY": "profile-b-key-not-real"}
+    monkeypatch.setattr("agent.secret_scope.get_secret", lambda name, *a, **k: scoped.get(name))
+    seen = {}
+    monkeypatch.setattr(upstash_box_env, "UpstashBoxEnvironment", lambda **kw: seen.update(kw) or SimpleNamespace())
+    UpstashBoxProvider().create_environment(cwd="~", timeout=30)
+    assert seen["api_key"] == "profile-b-key-not-real"
+    assert seen["base_url"] == upstash_box_env.DEFAULT_BASE_URL
 
 
 def test_create_environment_without_a_key_fails_clearly():

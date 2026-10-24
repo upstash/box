@@ -161,7 +161,7 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
             else f"Set {API_KEY_ENV} in ~/.hermes/.env (create a Box API key at {CONSOLE_URL}).",
             f"Box size: {cfg['size']} (change it with `hermes config set terminal.upstash_box_size medium`).",
             "With terminal.container_persistent: true (the default) each task's Box is paused on exit and "
-            "resumed next time; with false every session gets its own Box, deleted on exit.",
+            "resumed next time; with false every session gets its own Box, deleted when the session ends.",
         ]
         if not sdk_installed():
             lines.insert(0, "The upstash-box package is missing: pip install 'upstash-box>=0.4,<1'.")
@@ -188,7 +188,7 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
         container_config: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ):
-        from .upstash_box_env import UpstashBoxEnvironment
+        from .upstash_box_env import DEFAULT_BASE_URL, UpstashBoxEnvironment
 
         cc = container_config or {}
         cfg = settings()
@@ -208,5 +208,7 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
             labels=cfg["labels"],
             name_prefix=cfg["name_prefix"],
             api_key=api_key,
-            base_url=_secret(BASE_URL_ENV),
+            # Always explicit: without it the SDK reads UPSTASH_BOX_BASE_URL from os.environ,
+            # which under profile multiplexing may be another profile's endpoint.
+            base_url=_secret(BASE_URL_ENV) or DEFAULT_BASE_URL,
         )

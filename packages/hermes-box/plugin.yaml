@@ -10,8 +10,9 @@ description: >
   tools run inside an Upstash Box cloud container while the agent stays on
   your machine. Select it with `terminal.backend: upstash_box`. With
   `terminal.container_persistent: true` each task's Box is paused on exit and
-  resumed by name; with `false` each session gets its own Box, deleted on exit.
-requires_hermes: ">=0.21.6"
+  resumed by name; with `false` each session gets its own Box, deleted when the
+  session ends.
+requires_hermes: ">=0.22.3"
 requires_env:
   - name: UPSTASH_BOX_API_KEY
     description: "Upstash Box API key (Upstash console, Box section)"

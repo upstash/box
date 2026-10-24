@@ -64,6 +64,9 @@ def _hermes_home(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_HOME", str(home))
     for var in ("UPSTASH_BOX_API_KEY", "UPSTASH_BOX_BASE_URL"):
         monkeypatch.delenv(var, raising=False)
+    # The plugin sets the SDK telemetry opt-out in os.environ; restore it after every test.
+    monkeypatch.setenv("UPSTASH_DISABLE_TELEMETRY", "")
+    monkeypatch.delenv("UPSTASH_DISABLE_TELEMETRY")
     return home
 
 
@@ -199,6 +202,7 @@ class _FakeExec:
 
     def session(self, *, argv=None, cmd=None, on_stdout=None, on_stderr=None, **kwargs):
         box = self._box
+        box._check_gone()
         if box.status == "paused" and box.refuse_sessions_when_paused:
             raise FakeBoxError("box is paused", 409)
         if box.session_error is not None:
@@ -237,18 +241,28 @@ class FakeBox:
         self.calls, self.commands, self.uploads, self.reads, self.sessions = [], [], [], [], []
         self.refuse_sessions_when_paused = False
         self.session_error = None
+        self.gone = False  # deleted behind the plugin's back: every call answers 404
+        self.delete_errors: list = []  # raised by delete(), one per call
+        self.pause_errors: list = []
         self.exec = _FakeExec(self)
         self.files = _FakeFiles(self)
 
     def process_env(self):
         return {"HOME": self.home, "PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C.UTF-8"}
 
+    def _check_gone(self):
+        if self.gone:
+            raise FakeBoxError(f"box {self.id} not found", 404)
+
     def get_status(self):
         self.calls.append("get_status")
+        self._check_gone()
         return {"status": self.status}
 
     def pause(self):
         self.calls.append("pause")
+        if self.pause_errors:
+            raise self.pause_errors.pop(0)
         if self.keep_alive:
             raise FakeBoxError("Keep-alive boxes cannot be paused")
         self.status = "paused"
@@ -259,6 +273,9 @@ class FakeBox:
 
     def delete(self):
         self.calls.append("delete")
+        if self.delete_errors:
+            raise self.delete_errors.pop(0)
+        self._check_gone()
         self.status = "deleted"
         self.cloud.boxes.pop(self.name, None)
 
@@ -304,6 +321,12 @@ class FakeCloud:
         self.created.append(box)
         return box
 
+    def vanish(self, box):
+        """Delete ``box`` outside the plugin (console, CLI, another tool)."""
+        box.gone = True
+        box.status = "deleted"
+        self.boxes.pop(box.name, None)
+
     def add_existing(self, name, *, status="paused", **config):
         box = self.create(name=name, **config)
         self.created.remove(box)
@@ -322,6 +345,28 @@ def cloud(tmp_path, monkeypatch):
     monkeypatch.setattr("tools.environments.base.is_interrupted", lambda: False)
     monkeypatch.setattr("tools.credential_files.get_credential_file_mounts", list)
     return fake
+
+
+_SERVER_SPEC = importlib.util.spec_from_file_location(
+    "hermes_box_test_server", Path(__file__).with_name("box_server.py")
+)
+box_server_module = importlib.util.module_from_spec(_SERVER_SPEC)
+_SERVER_SPEC.loader.exec_module(box_server_module)
+
+
+@pytest.fixture
+def box_server(tmp_path, monkeypatch):
+    """A local Box API for the real ``upstash-box`` SDK: REST through a mocked httpx transport,
+    exec sessions over a real local WebSocket. See ``box_server.py``."""
+    pytest.importorskip("upstash_box")
+    pytest.importorskip("websockets.sync.server")
+    server = box_server_module.BoxServer(tmp_path / "server-boxes")
+    box_server_module.install(server, monkeypatch)
+    monkeypatch.setattr("hermes_box_plugin.upstash_box_env.iter_sync_files", lambda base: [])
+    monkeypatch.setattr("tools.environments.base.is_interrupted", lambda: False)
+    monkeypatch.setattr("tools.credential_files.get_credential_file_mounts", list)
+    yield server
+    server.close()
 
 
 @pytest.fixture
