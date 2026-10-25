@@ -1,0 +1,27 @@
+[project]
+name = "hermes-box"
+version = "0.1.0"
+description = "Upstash Box terminal backend for Hermes Agent"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Upstash" }]
+requires-python = ">=3.11"
+dependencies = [
+    "upstash-box>=0.4,<1",
+]
+
+[project.urls]
+Homepage = "https://github.com/upstash/box/tree/main/packages/hermes-box"
+Repository = "https://github.com/upstash/box"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.ruff.lint.isort]
+# Hermes core packages resolve from a hermes-agent checkout, not from this tree.
+known-first-party = ["hermes_box_plugin"]
+known-third-party = ["agent", "tools", "hermes_cli", "upstash_box"]
