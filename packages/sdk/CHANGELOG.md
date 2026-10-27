@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.7.11
+
+### Patch Changes
+
+- 170dd8b: Include TypeScript source and documentation in the npm package.
+
 ## 0.7.10
 
 ### Patch Changes
