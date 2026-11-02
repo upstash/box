@@ -80,7 +80,6 @@ def test_interrupt_kills_the_remote_process(real_env):
 
     env = real_env(task_id=f"it-{uuid.uuid4().hex[:8]}", persistent=False)
     proc = env._run_bash("echo started > ~/int.txt; sleep 60; echo finished >> ~/int.txt")
-    proc.poll(), proc.poll()  # as Hermes's wait loop does: the command may start now
     deadline = time.monotonic() + 30
     while env.execute("cat ~/int.txt 2>/dev/null")["output"].strip() != "started":
         assert time.monotonic() < deadline, "the command never started"

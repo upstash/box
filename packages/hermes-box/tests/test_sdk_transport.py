@@ -43,7 +43,7 @@ def test_commands_run_through_real_sessions(box_server, sdk_env):
     assert "out" in result["output"] and "err" in result["output"]
     assert env.execute("cat", stdin_data="über\nline")["output"] == "über\nline"
     session = box_server.sessions[-1]
-    assert session.stdin.startswith(b"go\n") and session.stdin_closed
+    assert session.stdin == "über\nline".encode() and session.stdin_closed
     env.execute("mkdir -p proj && cd proj")
     assert env.execute("pwd")["output"].strip() == f"{box['home']}/proj"
 

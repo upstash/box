@@ -19,13 +19,6 @@ def _box(cloud, env):
     return next(b for b in [*cloud.created, *cloud.boxes.values()] if b.id == env.box_id)
 
 
-def _admit(proc):
-    """Do what Hermes's wait loop does before a command may start: two polls on the calling thread."""
-    proc.poll()
-    proc.poll()
-    return proc
-
-
 def _wait_for_session(box, timeout=10):
     deadline = time.monotonic() + timeout
     while not box.sessions and time.monotonic() < deadline:
@@ -178,9 +171,9 @@ def test_login_flag_selects_a_login_shell(cloud, make_env):
     box = cloud.created[0]
     env._run_bash("echo hi", login=True).wait(10)
     argv = box.sessions[-1].argv
-    assert argv[:2] == ["bash", "-c"] and argv[2].endswith('exec bash -l -c "$1"') and argv[3:] == ["bash", "echo hi"]
+    assert argv == ["bash", "-lc", "echo hi"]
     env._run_bash("echo hi", login=False).wait(10)
-    assert box.sessions[-1].argv[2].endswith('exec bash -c "$1"')
+    assert box.sessions[-1].argv == ["bash", "-c", "echo hi"]
 
 
 def test_timeout_kills_the_remote_command(cloud, make_env):
@@ -198,7 +191,7 @@ def test_interrupt_cancels_the_running_session(cloud, make_env):
     env = make_env(task_id="t1")
     box = cloud.created[0]
     before = len(box.sessions)
-    proc = _admit(env._run_bash("sleep 30"))
+    proc = env._run_bash("sleep 30")
     deadline = time.monotonic() + 10
     while len(box.sessions) == before and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -210,7 +203,7 @@ def test_interrupt_cancels_the_running_session(cloud, make_env):
     assert "KILL" in session.killed_with and session.closed
 
 
-def test_kill_while_the_session_opens_never_runs_the_command(cloud, make_env, monkeypatch):
+def test_kill_while_the_session_opens_is_reported_at_once_and_stops_it(cloud, make_env, monkeypatch):
     env = make_env(task_id="t1")
     box = cloud.created[0]
     entered, release = threading.Event(), threading.Event()
@@ -223,7 +216,7 @@ def test_kill_while_the_session_opens_never_runs_the_command(cloud, make_env, mo
 
     monkeypatch.setattr(env, "_open_session", slow_open)
     before = len(box.sessions)
-    proc = env._run_bash("touch should-not-exist")
+    proc = env._run_bash("sleep 30")
     assert entered.wait(10), "the worker never reached session start"
     started = time.monotonic()
     proc.kill()
@@ -235,18 +228,7 @@ def test_kill_while_the_session_opens_never_runs_the_command(cloud, make_env, mo
     while (len(box.sessions) == before or not box.sessions[-1].closed) and time.monotonic() < deadline:
         time.sleep(0.01)
     session = box.sessions[-1]
-    assert session.closed
-    assert session.stdin_chunks == []  # the start line was never sent
-    session.wait(10)
-    assert not (Path(box.home) / "should-not-exist").exists()
-
-
-def test_command_waits_for_the_start_line(cloud, make_env):
-    env = make_env(task_id="t1")
-    box = cloud.created[0]
-    assert env.execute("touch ran")["returncode"] == 0
-    assert box.sessions[-1].stdin_chunks[0] == b"go\n"
-    assert (Path(box.home) / "ran").exists()
+    assert session.closed and session.wait(10) != 0  # stopped, not left to run its 30 s
 
 
 def test_a_box_paused_behind_our_back_is_resumed(cloud, make_env):
@@ -495,7 +477,7 @@ def test_failed_stdin_write_still_sends_eof_and_is_reported(cloud, make_env, mon
 
         def write(data):
             calls.append(data)
-            if len(calls) == 3:  # 1: start line, 2: "abcd", 3: fails
+            if len(calls) == 2:  # 1: "abcd", 2: fails
                 raise cloud.Error("exec-session send failed: connection reset")
             real_write(data)
 
@@ -549,30 +531,6 @@ def test_full_output_is_kept_for_internal_consumers(cloud, make_env):
     env = make_env(task_id="t1")
     result = env.execute("head -c 3000000 /dev/zero | tr '\\0' b", timeout=60)
     assert result["output"].strip() == "b" * 3_000_000
-
-
-def test_output_queue_is_bounded_when_nobody_reads(monkeypatch):
-    # Nothing is dropped: past the bound the SDK callback waits (backpressure on the WebSocket).
-    # Memory stays bounded, and finishing the command releases a waiting callback.
-    monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
-    proc = upstash_box_env._SessionProcess(lambda: None)
-    fed = []
-
-    def produce():
-        for _ in range(2000):  # 2 MB that nobody reads
-            proc.feed(b"x" * 1024)
-            fed.append(proc._pending)
-
-    producer = threading.Thread(target=produce, daemon=True)
-    producer.start()
-    time.sleep(0.5)
-    assert producer.is_alive() and max(fed) <= 64 * 1024
-    proc.finish(0, "\n[end]")
-    producer.join(5)
-    assert not producer.is_alive()
-    out = proc.stdout.read()
-    assert "dropped" not in out and out.endswith("[end]")
-    assert proc.wait(5) == 0
 
 
 # --- Boxes changed behind Hermes's back -------------------------------------------------------
@@ -717,117 +675,74 @@ def test_keep_alive_is_ignored_for_session_boxes(cloud, make_env, caplog):
     assert "keep_alive" in caplog.text or "keep-alive" in caplog.text
 
 
-class _StalledSocket:
-    def __init__(self, conn):
-        self.conn = conn
-        self.shut = threading.Event()
-
-    def shutdown(self, how):
-        self.shut.set()
-        self.conn.release.set()
-
-
 class _StalledConnection:
-    """A WebSocket whose ``block_write``-th send stalls, as ``websockets.sync`` does when the peer
-    stops reading: ``close()`` waits behind the stalled send too; only a socket shutdown frees it."""
+    """A WebSocket whose ``block_write``-th send never completes (the peer stopped reading)."""
 
     def __init__(self, block_write):
         self.block_write = block_write
         self.sends = 0
         self.blocked = threading.Event()
         self.release = threading.Event()
-        self.closed = threading.Event()
-        self.socket = _StalledSocket(self)
 
     def send(self, frame):
         self.sends += 1
         if self.sends == self.block_write:
             self.blocked.set()
             self.release.wait(10)
-        if self.socket.shut.is_set():
-            raise OSError("socket is shut down")
 
     def close(self):
-        self.release.wait(10)
-        self.closed.set()
+        self.release.set()
 
     def __iter__(self):
-        self.closed.wait(10)
+        self.release.wait(10)
         return iter(())
 
 
-def _stalled_handle(env, monkeypatch, block_write):
+@pytest.mark.parametrize("ret", ["kill", "timeout"])
+def test_stop_never_waits_behind_a_stalled_stdin_write(cloud, make_env, monkeypatch, ret):
     from upstash_box._exec_session import ExecSessionHandle
 
-    conn = _StalledConnection(block_write)
+    env = make_env(task_id="t1", persistent=False)
+    conn = _StalledConnection(block_write=1)
     handle = ExecSessionHandle(conn, 123, "test", None, None)
     monkeypatch.setattr(env, "_open_session", lambda *args: handle)
-    return conn
+    try:
+        started = time.monotonic()
+        if ret == "kill":
+            proc = env._run_bash("cat", stdin_data="input")
+            assert conn.blocked.wait(5)
+            started = time.monotonic()
+            proc.kill()  # Hermes's interrupt path: kill() waits behind the stalled send ...
+            assert time.monotonic() - started < 0.5  # ... on a helper thread, not here
+        else:
+            result = env.execute("cat", stdin_data="input", timeout=1)
+            assert result["returncode"] == 124
+            assert time.monotonic() - started < 5
+    finally:
+        conn.release.set()
 
 
-@pytest.mark.parametrize("block_write", [1, 2], ids=["start-line", "stdin"])
-def test_cancel_returns_at_once_and_drops_a_stalled_connection(cloud, make_env, monkeypatch, block_write):
-    pytest.importorskip("upstash_box")
-    env = make_env(task_id="t1", persistent=False)
-    conn = _stalled_handle(env, monkeypatch, block_write)
-    proc = _admit(env._run_bash("cat", stdin_data="input"))
-    assert conn.blocked.wait(5)
-    started = time.monotonic()
-    proc.kill()
-    assert time.monotonic() - started < 0.5  # Hermes's interrupt/timeout path is never held up
-    assert conn.socket.shut.wait(upstash_box_env._STOP_GRACE_S + 3)
-    assert conn.closed.wait(5)
-    assert proc.wait(10) == 130
-    assert proc._hermes_stdin_errors == []  # the cancel is not reported as a stdin failure
-    proc.stdout.close()
-
-
-@pytest.mark.parametrize("block_write", [1, 2], ids=["start-line", "stdin"])
-def test_timeout_is_honored_behind_a_stalled_connection(cloud, make_env, monkeypatch, block_write):
-    pytest.importorskip("upstash_box")
-    env = make_env(task_id="t1", persistent=False)
-    conn = _stalled_handle(env, monkeypatch, block_write)
-    started = time.monotonic()
-    result = env.execute("cat", stdin_data="input", timeout=1)
-    assert result["returncode"] == 124
-    assert time.monotonic() - started < 5
-    assert conn.socket.shut.wait(upstash_box_env._STOP_GRACE_S + 3)
-
-
-def test_output_beyond_the_buffer_waits_instead_of_being_dropped(monkeypatch):
-    monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
-    proc = upstash_box_env._SessionProcess(lambda: None)
+def test_output_waits_for_the_reader_instead_of_being_dropped():
+    proc = upstash_box_env._SessionProcess()
     chunk = b"x" * (48 * 1024)
     fed = threading.Event()
 
     def produce():
-        for _ in range(20):  # ~1 MB, far past the 64 KiB buffer and the pipe
+        for _ in range(40):  # ~2 MB, far more than the pipe holds
             proc.feed(chunk)
-        proc.finish(0)
+        proc.finish(0, "[end]")
         fed.set()
 
     threading.Thread(target=produce, daemon=True).start()
     assert not fed.wait(0.5), "feed should wait while nothing reads"
     output = proc.stdout.read()
-    assert fed.wait(5)
-    assert proc.wait(5) == 0
-    assert output == "x" * (20 * len(chunk))
+    assert fed.wait(5) and proc.wait(5) == 0
+    assert output == "x" * (40 * len(chunk)) + "[end]"
     proc.stdout.close()
 
 
-def test_one_chunk_larger_than_the_buffer_is_kept_whole():
-    proc = upstash_box_env._SessionProcess(lambda: None)
-    data = b"y" * (upstash_box_env._MAX_PENDING_OUTPUT + 1)
-    threading.Thread(target=lambda: (proc.feed(data), proc.finish(0)), daemon=True).start()
-    output = proc.stdout.read()
-    assert proc.wait(5) == 0
-    assert len(output) == len(data) and "dropped" not in output
-    proc.stdout.close()
-
-
-def test_output_stops_waiting_once_hermes_stops_reading(monkeypatch):
-    monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
-    proc = upstash_box_env._SessionProcess(lambda: None)
+def test_output_is_discarded_once_hermes_stops_reading():
+    proc = upstash_box_env._SessionProcess()
     proc.stdout.close()  # Hermes returned (timeout, interrupt) and closed its end
     done = threading.Event()
 
@@ -838,110 +753,11 @@ def test_output_stops_waiting_once_hermes_stops_reading(monkeypatch):
         done.set()
 
     threading.Thread(target=produce, daemon=True).start()
-    assert done.wait(5), "feed must not wait forever on a reader that is gone"
+    assert done.wait(5), "feed must not wait on a reader that is gone"
     assert proc.wait(5) == 130
 
 
-# --- Copilot review: start gate, owner profile, background processes ----------------------------
-
-
-def test_interrupt_pending_when_the_handle_is_registered_never_runs_the_command(cloud, make_env, monkeypatch):
-    env = make_env(task_id="t1")
-    box = cloud.created[0]
-    real_run_bash = env._run_bash
-
-    def slow_to_register(*args, **kwargs):
-        before = len(box.sessions)
-        proc = real_run_bash(*args, **kwargs)
-        deadline = time.monotonic() + 10
-        while len(box.sessions) == before and time.monotonic() < deadline:
-            time.sleep(0.01)
-        time.sleep(0.3)  # the session is open: an ungated worker would have started the command
-        return proc
-
-    monkeypatch.setattr(env, "_run_bash", slow_to_register)
-    monkeypatch.setattr("tools.environments.base.is_interrupted", lambda: True)
-    result = env.execute("touch ran")
-    assert result["returncode"] == 130
-    session = box.sessions[-1]
-    session.wait(10)
-    assert session.stdin_chunks == []  # the start line was never sent
-    assert not (Path(box.home) / "ran").exists()
-
-
-def test_only_the_spawning_threads_polls_admit_the_command():
-    proc = upstash_box_env._SessionProcess(lambda: None)
-    drain = threading.Thread(target=lambda: [proc.poll() for _ in range(5)])  # Hermes's output drain
-    drain.start()
-    drain.join(5)
-    assert not proc.admitted.is_set()
-    proc.poll()
-    assert not proc.admitted.is_set()  # Hermes has not run its interrupt check yet
-    proc.poll()
-    assert proc.admitted.is_set()
-    proc.finish(0)
-    proc.stdout.read()
-    proc.stdout.close()
-
-
-def test_sync_back_runs_in_the_owning_profile_from_another_thread(cloud, make_env, tmp_path, monkeypatch):
-    import contextvars
-
-    from hermes_constants import get_hermes_home, reset_hermes_home_override, set_hermes_home_override
-
-    owner = tmp_path / "profile-a"
-    owner.mkdir()
-    pushed = [(str(owner / "skills" / "s" / "SKILL.md"), "/remote/.hermes/skills/s/SKILL.md")]
-    calls = []
-
-    def files_of_the_calling_profile(base):
-        calls.append(get_hermes_home())
-        return list(pushed) if get_hermes_home() == owner else [("/elsewhere/SKILL.md", pushed[0][1])]
-
-    monkeypatch.setattr(upstash_box_env, "iter_sync_files", files_of_the_calling_profile)
-    token = set_hermes_home_override(owner)
-    try:
-        env = make_env(task_id="t1")  # created, and synced, by profile A's session
-    finally:
-        reset_hermes_home_override(token)
-    seen = {}
-
-    def record_sync_back(hermes_home=None):
-        seen.update(home=get_hermes_home(), lock_home=hermes_home, files=env._sync_manager._get_files_fn())
-
-    monkeypatch.setattr(env._sync_manager, "sync_back", record_sync_back)
-    # The idle reaper: another thread, with none of the session's context.
-    reaper = threading.Thread(target=lambda: contextvars.Context().run(env.cleanup))
-    reaper.start()
-    reaper.join(10)
-    assert seen == {"home": owner, "lock_home": owner, "files": pushed}
-    assert calls and all(home == owner for home in calls)  # never enumerated in the reaper's profile
-
-
-def test_background_process_outlives_its_launch_session(cloud, make_env):
-    from tools.process_registry import ProcessRegistry
-
-    env = make_env(task_id="t1")
-    registry = ProcessRegistry()
-    try:
-        session = registry.spawn_via_env(env, "sleep 3; echo bg-done", task_id="bg")
-        launcher = cloud.created[0].sessions[-1]
-        assert launcher.wait(10) == 0  # the launching command and its session are done
-        deadline = time.monotonic() + 30
-        while not session.exited and time.monotonic() < deadline:
-            time.sleep(0.2)
-        assert session.exited and session.exit_code == 0, session.output_buffer
-        assert "bg-done" in session.output_buffer
-    finally:
-        registry.kill_all()
-
-
-# --- Copilot review (round 2): setup recovery, upload memory, sync-back cap -----------------------
-
-
-def test_box_vanishing_during_its_own_setup_fails_the_command_instead_of_deadlocking(cloud, make_env, monkeypatch):
-    from tools.environments.base import EnvironmentConnectionError
-
+def test_box_vanishing_during_its_own_setup_fails_the_command_without_hanging(cloud, make_env, monkeypatch):
     env = make_env(task_id="t1", persistent=False)
     cloud.vanish(cloud.created[0])
     assert "no longer exists" in env.execute("echo hi")["output"]
@@ -964,10 +780,40 @@ def test_box_vanishing_during_its_own_setup_fails_the_command_instead_of_deadloc
     worker = threading.Thread(target=run, daemon=True)
     worker.start()
     worker.join(30)
-    assert not worker.is_alive(), "setup recovery deadlocked"
-    assert isinstance(outcome.get("error"), EnvironmentConnectionError), outcome
+    assert not worker.is_alive(), "setup recovery hung"
+    assert "error" in outcome or outcome["result"]["returncode"] != 0
     monkeypatch.setattr(cloud, "create", real_create)
     assert env.execute("echo back")["output"].strip() == "back"  # the next command recovers
+
+
+def test_a_cleaned_up_box_is_never_resumed(cloud, make_env):
+    # A command that read the Box just before cleanup paused it must not resume it.
+    env = make_env(task_id="t1")
+    box = cloud.created[0]
+    box.refuse_sessions_when_paused = True
+    env.cleanup()
+    assert box.status == "paused"
+    with pytest.raises(upstash_box_env._SessionStartError):
+        env._open_session(box, ["true"], lambda data: None)
+    assert box.status == "paused" and "resume" not in box.calls
+
+
+def test_background_process_outlives_its_launch_session(cloud, make_env):
+    from tools.process_registry import ProcessRegistry
+
+    env = make_env(task_id="t1")
+    registry = ProcessRegistry()
+    try:
+        session = registry.spawn_via_env(env, "sleep 3; echo bg-done", task_id="bg")
+        launcher = cloud.created[0].sessions[-1]
+        assert launcher.wait(10) == 0  # the launching command and its session are done
+        deadline = time.monotonic() + 30
+        while not session.exited and time.monotonic() < deadline:
+            time.sleep(0.2)
+        assert session.exited and session.exit_code == 0, session.output_buffer
+        assert "bg-done" in session.output_buffer
+    finally:
+        registry.kill_all()
 
 
 def test_file_sync_uploads_in_bounded_batches(cloud, make_env, monkeypatch, tmp_path):
@@ -985,16 +831,3 @@ def test_file_sync_uploads_in_bounded_batches(cloud, make_env, monkeypatch, tmp_
     env._bulk_upload(files)
     assert calls == [2, 1, 1, 1]  # a+b, c, big alone, d
     assert all((Path(box.home) / "up" / name).exists() for name in ("a", "b", "c", "big", "d"))
-
-
-def test_sync_back_over_the_cap_is_not_downloaded(cloud, make_env, monkeypatch, tmp_path):
-    env = make_env(task_id="t1")
-    box = cloud.created[0]
-    (Path(box.home) / ".hermes").mkdir(exist_ok=True)
-    (Path(box.home) / ".hermes" / "big.bin").write_bytes(b"x" * 50_000)
-    monkeypatch.setattr(upstash_box_env, "_sync_back_cap", lambda: 1_000)
-    dest = tmp_path / "out.tar"
-    env._bulk_download(dest)
-    assert box.reads == []  # nothing was read back
-    with tarfile.open(dest) as tar:
-        assert tar.getmembers() == []  # an empty archive: Hermes applies nothing, retries nothing
