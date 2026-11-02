@@ -653,8 +653,19 @@ def test_failed_pause_keeps_the_box_for_a_retry(cloud, make_env, monkeypatch):
 # --- Review fixes -------------------------------------------------------------------------------
 
 
-def test_explicit_absolute_cwd_is_kept(cloud, make_env):
+def test_explicit_absolute_cwd_is_kept_and_commands_run_there(cloud, make_env, tmp_path):
+    work = tmp_path / "work"  # exists on any host, unlike /workspace/home
+    work.mkdir()
+    env = make_env(task_id="t1", cwd=str(work))
+    assert env.cwd == str(work)
+    assert env.execute("pwd")["output"].strip() == str(work)
+
+
+def test_workspace_home_is_not_remapped_to_the_box_home(cloud, make_env, monkeypatch):
+    # The mapping alone: the shell snapshot, which would cd on this host, is skipped.
+    monkeypatch.setattr(upstash_box_env.UpstashBoxEnvironment, "init_session", lambda self: None)
     env = make_env(task_id="t1", cwd="/workspace/home")
+    assert env.remote_home != "/workspace/home"
     assert env.cwd == "/workspace/home"
 
 
