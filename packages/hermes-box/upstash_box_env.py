@@ -15,6 +15,8 @@ import logging
 import os
 import re
 import shlex
+import tarfile
+import tempfile
 import threading
 import time
 import uuid
@@ -33,13 +35,7 @@ except ImportError:  # older Hermes: same shape, reported as an ordinary tool fa
             self.reason, self.retry_hint = reason, retry_hint
 
 
-from tools.environments.file_sync import (
-    FileSyncManager,
-    iter_sync_files,
-    quoted_mkdir_command,
-    quoted_rm_command,
-    unique_parent_dirs,
-)
+from tools.environments.file_sync import FileSyncManager, iter_sync_files, quoted_rm_command
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +61,9 @@ _MAX_TASK_SLUG_LEN = 32
 _HASH_LEN = 8
 # files.read caps a bounded range at 8 MiB; stay well under it.
 _READ_CHUNK = 4 * 1024 * 1024
-# The SDK reads every file of an upload into memory, so file sync uploads in batches of at most
-# this many bytes (a larger single file goes alone).
+# File sync uploads one tar archive per batch: the Box files endpoint spends ~0.2 s per file, so
+# 329 skill files took 67 s as separate files and 8 s as one archive. The SDK reads an upload into
+# memory, so a batch holds at most this many bytes (a larger single file goes alone).
 _UPLOAD_BATCH_BYTES = 32 * 1024 * 1024
 # Stdin is sent as session frames; keep each frame small.
 _STDIN_CHUNK = 256 * 1024
@@ -451,21 +448,34 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._bulk_upload([(host_path, remote_path)])
 
     def _bulk_upload(self, files: list[tuple[str, str]]) -> None:
-        if not files:
-            return
-        parents = unique_parent_dirs(files)
-        if parents:
-            self._sh(quoted_mkdir_command(parents), "mkdir")
-        batch: list[dict[str, str]] = []
+        batch: list[tuple[str, str]] = []
         batch_bytes = 0
         for host, remote in files:
             size = os.path.getsize(host) if os.path.exists(host) else 0
             if batch and batch_bytes + size > _UPLOAD_BATCH_BYTES:
-                self._box.files.upload(batch)
+                self._upload_archive(batch)
                 batch, batch_bytes = [], 0
-            batch.append({"path": host, "destination": remote})
+            batch.append((host, remote))
             batch_bytes += size
-        self._box.files.upload(batch)
+        if batch:
+            self._upload_archive(batch)
+
+    def _upload_archive(self, files: list[tuple[str, str]]) -> None:
+        """Upload ``files`` as one tar archive and unpack it in the Box at their absolute paths
+        (``tar`` creates missing parent directories)."""
+        fd, archive = tempfile.mkstemp(prefix="hermes-box-upload-", suffix=".tar")
+        os.close(fd)
+        remote_tar = f"/tmp/.hermes_upload.{uuid.uuid4().hex}.tar"  # no-tmp: ok, Box path
+        try:
+            with tarfile.open(archive, "w", dereference=True) as tar:
+                for host, remote in files:
+                    tar.add(host, arcname=remote.lstrip("/"), recursive=False)
+            self._box.files.upload([{"path": archive, "destination": remote_tar}])
+            quoted = shlex.quote(remote_tar)
+            self._sh(f"tar xf {quoted} --no-same-owner -C /; rc=$?; rm -f {quoted}; exit $rc", "upload")
+        finally:
+            with contextlib.suppress(OSError):
+                os.unlink(archive)
 
     def _delete(self, remote_paths: list[str]) -> None:
         if remote_paths:

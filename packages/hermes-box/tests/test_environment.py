@@ -282,8 +282,10 @@ def test_sync_uploads_hermes_files_under_the_box_home(cloud, make_env, synced_sk
     remote = Path(box.home) / ".hermes" / "skills" / "demo" / "SKILL.md"
     assert seen["base"] == f"{box.home}/.hermes"
     assert remote.read_text() == "original\n"
-    assert any(c.startswith("mkdir -p ") for c in box.commands)
-    assert [u["destination"] for u in box.uploads] == [str(remote)]
+    # One tar archive per batch, unpacked in the Box and then removed there.
+    assert len(box.uploads) == 1 and box.uploads[0]["destination"].endswith(".tar")
+    assert any(c.startswith("tar xf ") for c in box.commands)
+    assert not Path(box.uploads[0]["destination"]).exists()
 
 
 def test_cleanup_syncs_changed_files_back_to_the_host(cloud, make_env, synced_skill):
@@ -816,18 +818,23 @@ def test_background_process_outlives_its_launch_session(cloud, make_env):
         registry.kill_all()
 
 
-def test_file_sync_uploads_in_bounded_batches(cloud, make_env, monkeypatch, tmp_path):
+def test_file_sync_uploads_one_archive_per_bounded_batch(cloud, make_env, monkeypatch, tmp_path):
     monkeypatch.setattr(upstash_box_env, "_UPLOAD_BATCH_BYTES", 10)
     env = make_env(task_id="t1")
     box = cloud.created[0]
-    calls = []
-    real_upload = box.files.upload
-    monkeypatch.setattr(box.files, "upload", lambda files: (calls.append(len(files)), real_upload(files)))
+    before = len(box.uploads)
     files = []
     for name, size in [("a", 4), ("b", 4), ("c", 4), ("big", 25), ("d", 1)]:
         host = tmp_path / name
-        host.write_bytes(b"x" * size)
+        host.write_bytes(name.encode() * size)
         files.append((str(host), f"{box.home}/up/{name}"))
+    target = tmp_path / "target.md"
+    target.write_text("via symlink\n")
+    (tmp_path / "link.md").symlink_to(target)
+    files.append((str(tmp_path / "link.md"), f"{box.home}/up/nested/link.md"))
     env._bulk_upload(files)
-    assert calls == [2, 1, 1, 1]  # a+b, c, big alone, d
-    assert all((Path(box.home) / "up" / name).exists() for name in ("a", "b", "c", "big", "d"))
+    assert len(box.uploads) - before == 5  # a+b, c, big alone, d, link (each batch one archive)
+    for name, size in [("a", 4), ("b", 4), ("c", 4), ("big", 25), ("d", 1)]:
+        assert (Path(box.home) / "up" / name).read_bytes() == name.encode() * size
+    linked = Path(box.home) / "up" / "nested" / "link.md"
+    assert linked.read_text() == "via symlink\n" and not linked.is_symlink()  # contents, not a link
