@@ -15,6 +15,11 @@ API_KEY_ENV = "UPSTASH_BOX_API_KEY"
 BASE_URL_ENV = "UPSTASH_BOX_BASE_URL"
 CONSOLE_URL = "https://console.upstash.com"
 SIZES = ("small", "medium", "large")
+# Hermes builds a throwaway environment under this task id to run one ``uname`` for the system
+# prompt (``agent.prompt_builder._run_backend_probe``). For a Box that costs a create, a file sync,
+# a sync-back and a pause, about 30 s before the first reply, plus a Box left in the account in
+# persistent mode. It is declined: Hermes then describes the backend with ``env_description``.
+PROBE_TASK_ID = "prompt-backend-probe"
 
 
 def _terminal_config() -> dict:
@@ -194,6 +199,8 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
         container_config: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ):
+        if task_id == PROBE_TASK_ID or kwargs.get("probe_only"):
+            raise RuntimeError("Upstash Box: the prompt-time backend probe does not get a Box")
         from .upstash_box_env import DEFAULT_BASE_URL, UpstashBoxEnvironment
 
         cc = container_config or {}

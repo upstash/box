@@ -183,3 +183,26 @@ def test_register_hands_the_provider_to_the_context():
     registered = []
     hermes_box_plugin.register(SimpleNamespace(register_terminal_environment_provider=registered.append))
     assert len(registered) == 1 and isinstance(registered[0], UpstashBoxProvider)
+
+
+def test_prompt_backend_probe_never_creates_a_box(monkeypatch):
+    built = []
+    monkeypatch.setattr(upstash_box_env, "UpstashBoxEnvironment", lambda **kwargs: built.append(kwargs))
+    monkeypatch.setenv("UPSTASH_BOX_API_KEY", "test-key-not-real")
+    for kwargs in ({"task_id": provider_mod.PROBE_TASK_ID}, {"task_id": "t1", "probe_only": True}):
+        with pytest.raises(RuntimeError, match="probe"):
+            UpstashBoxProvider().create_environment(cwd="~", timeout=30, **kwargs)
+    assert built == []
+
+
+def test_hermes_prompt_probe_falls_back_without_a_box(monkeypatch):
+    # Hermes's own probe path: it must fail fast (no Box) so the prompt uses env_description.
+    from agent import prompt_builder
+    from tools import terminal_tool, terminal_tool_backends
+
+    built = []
+    monkeypatch.setattr(upstash_box_env, "UpstashBoxEnvironment", lambda **kwargs: built.append(kwargs))
+    monkeypatch.setattr(terminal_tool_backends, "_get_plugin_env_provider", lambda name: UpstashBoxProvider())
+    with pytest.raises(RuntimeError, match="probe"):
+        prompt_builder._run_backend_probe("upstash_box", terminal_tool)
+    assert built == []
