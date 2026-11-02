@@ -37,10 +37,16 @@ jobs:
           path: hermes-agent
       - uses: actions/setup-python@v5
         with:
-          # 3.13: on 3.14 Hermes pins Pillow 13, which its browser-harness dependency rejects.
-          python-version: "3.13"
+          # Hermes declares its runtime dependencies for Python >= 3.14 only.
+          python-version: "3.14"
       - name: Install
-        run: pip install -e ./hermes-agent -e ./packages/python-sdk pytest ruff
+        # Hermes from its own lockfile, as its installer does (a plain pip resolve hits a Pillow
+        # conflict), then the SDK from this checkout and the test tools into the same venv.
+        run: |
+          pip install uv
+          uv sync --frozen --project hermes-agent --python "$(which python)"
+          uv pip install --python hermes-agent/.venv -e ./packages/python-sdk pytest ruff
+          echo "$PWD/hermes-agent/.venv/bin" >> "$GITHUB_PATH"
       - name: Ruff
         working-directory: packages/hermes-box
         run: |
