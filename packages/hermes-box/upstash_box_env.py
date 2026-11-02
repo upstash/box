@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import shlex
+import socket
 import threading
 import time
 import uuid
@@ -23,6 +24,17 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from tools.environments.base import BaseEnvironment
+
+try:
+    from tools.environments.base import EnvironmentConnectionError
+except ImportError:  # older Hermes: same shape, reported as an ordinary tool failure
+
+    class EnvironmentConnectionError(RuntimeError):  # type: ignore[no-redef]
+        def __init__(self, reason: str, *, retry_hint: str = ""):
+            super().__init__(reason)
+            self.reason, self.retry_hint = reason, retry_hint
+
+
 from tools.environments.file_sync import (
     FileSyncManager,
     iter_sync_files,
@@ -60,9 +72,12 @@ _STDIN_CHUNK = 256 * 1024
 # Extra seconds the session wait allows past the command timeout. The base class enforces
 # the timeout itself (it kills the handle); this only bounds a wedged connection.
 _WAIT_GRACE_S = 15
-# Output received but not yet handed to Hermes's reader. Hermes drains continuously, so this only
-# fills when nothing reads; past it, output is dropped (with a marker) instead of growing memory.
+# Output received but not yet handed to Hermes's reader. Past it, the SDK reader thread waits for
+# room (backpressure on the WebSocket) instead of dropping bytes, so output is never lost.
 _MAX_PENDING_OUTPUT = 8 * 1024 * 1024
+# A stop first asks the Box to kill the process and closes the session. If that does not finish in
+# this many seconds (a stalled WebSocket write holds the SDK's send lock), the socket is shut down.
+_STOP_GRACE_S = 1.0
 # The remote command waits for this line on stdin before it starts (see ``_GATE_SCRIPT``).
 _GATE_LINE = b"go\n"
 # Runs first in every session. It reads one line from stdin and only then execs the real
@@ -162,6 +177,51 @@ def _transient(exc: BaseException) -> bool:
     return code is None or code == 429 or code >= 500
 
 
+def _is_name_conflict(exc: BaseException) -> bool:
+    """409 ``Box name "..." is already in use``: another process created this Box first."""
+    return getattr(exc, "status_code", None) == 409 and "already in use" in str(exc).lower()
+
+
+def _is_box_limit(exc: BaseException) -> bool:
+    """``Box limit reached``: the account has as many Boxes as its plan allows (paused ones count)."""
+    return "box limit" in str(exc).lower()
+
+
+def _abort_transport(handle: Any) -> None:
+    """Shut down the session's socket. A write stalled in ``sendall`` then fails at once and the
+    SDK's send lock is released; the Box kills the process when the connection drops. The SDK has
+    no public abort, so this reaches its WebSocket (``websockets.sync``) through ``_conn.socket``."""
+    sock = getattr(getattr(handle, "_conn", None), "socket", None)
+    if sock is not None:
+        with contextlib.suppress(OSError):
+            sock.shutdown(socket.SHUT_RDWR)
+
+
+def _stop_session(handle: Any) -> None:
+    """Kill the remote process and close the session without blocking the caller.
+
+    ``kill`` and ``close`` can block behind a stalled write (``kill`` waits for the SDK's send lock,
+    ``close`` for the WebSocket's), and the caller is Hermes's interrupt or timeout path. Both run on
+    a helper thread; if they have not finished after ``_STOP_GRACE_S`` the socket is shut down."""
+
+    def graceful() -> None:
+        with contextlib.suppress(Exception):
+            handle.kill("KILL")
+        with contextlib.suppress(Exception):
+            handle.close()  # closing the session also kills the process
+
+    def run() -> None:
+        worker = threading.Thread(target=graceful, name="upstash-box-stop", daemon=True)
+        worker.start()
+        worker.join(_STOP_GRACE_S)
+        if worker.is_alive():
+            _abort_transport(handle)
+            with contextlib.suppress(Exception):
+                handle.close()
+
+    threading.Thread(target=run, name="upstash-box-stop-watch", daemon=True).start()
+
+
 class _SessionStartError(Exception):
     def __init__(self, state: str, cause: BaseException):
         super().__init__(str(cause))
@@ -172,10 +232,12 @@ class _SessionStartError(Exception):
 class _SessionProcess:
     """``ProcessHandle`` for one exec session, with output streamed as it arrives.
 
-    The SDK calls ``feed`` on its WebSocket reader thread, so ``feed`` only appends to a bounded
-    queue and returns. A writer thread moves the queue into a pipe that Hermes's drain thread reads
-    into its own collector, which applies ``bounded_capture`` (or keeps everything for internal
-    consumers). ``poll()`` reports the exit only after every byte has reached the pipe.
+    The SDK calls ``feed`` on its WebSocket reader thread. ``feed`` appends to a bounded queue; when
+    the queue is full it waits for room, which pushes back on the WebSocket rather than dropping
+    output. A writer thread moves the queue into a pipe that Hermes's drain thread reads into its own
+    collector, which applies ``bounded_capture`` (or keeps everything for internal consumers). Once
+    Hermes stops reading (the pipe is closed) the writer discards, so ``feed`` never waits forever.
+    ``poll()`` reports the exit only after every byte has reached the pipe.
     """
 
     def __init__(self, cancel_fn: Callable[[], None]):
@@ -185,7 +247,6 @@ class _SessionProcess:
         self._cond = threading.Condition()
         self._chunks: deque[bytes] = deque()
         self._pending = 0
-        self._dropped = 0
         self._ended = False
         self._code: Optional[int] = None
         self._trailer = ""
@@ -202,10 +263,10 @@ class _SessionProcess:
         if not isinstance(data, bytes):
             data = str(data).encode("utf-8", "replace")
         with self._cond:
+            # Wait for room. An oversized chunk is let through once the queue is empty.
+            while self._pending and self._pending + len(data) > _MAX_PENDING_OUTPUT and not self._ended:
+                self._cond.wait()
             if self._ended:
-                return
-            if self._pending + len(data) > _MAX_PENDING_OUTPUT:
-                self._dropped += len(data)
                 return
             self._chunks.append(data)
             self._pending += len(data)
@@ -219,7 +280,7 @@ class _SessionProcess:
             self._ended = True
             self._code = code
             self._trailer = trailer
-            self._cond.notify()
+            self._cond.notify_all()
 
     def _write_loop(self) -> None:
         broken = False
@@ -235,23 +296,18 @@ class _SessionProcess:
                     return
                 view = view[written:]
 
-        reported = 0
         try:
             while True:
                 with self._cond:
                     while not self._chunks and not self._ended:
                         self._cond.wait()
                     chunk = self._chunks.popleft() if self._chunks else None
-                    dropped, reported = self._dropped - reported, self._dropped
                     last = chunk is None and self._ended
                 if chunk is not None:
-                    write(chunk)
+                    write(chunk)  # returns at once when the reader is gone
                     with self._cond:
                         self._pending -= len(chunk)
-                if dropped:
-                    write(
-                        f"\n[... {dropped} bytes of output dropped: it arrived faster than it was read ...]\n".encode()
-                    )
+                        self._cond.notify_all()  # room for a waiting ``feed``
                 if last:
                     if self._trailer:
                         write(self._trailer.encode("utf-8", "replace"))
@@ -323,6 +379,13 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._size = size or "small"
         self._runtime = runtime or None
         self._keep_alive = bool(keep_alive)
+        if self._keep_alive and not self._persistent:
+            # A keep-alive Box is billed monthly; one per session, deleted at its end, is never wanted.
+            logger.warning(
+                "Upstash Box: terminal.upstash_box_keep_alive only applies with container_persistent: true; "
+                "this session's Box is created without keep-alive"
+            )
+            self._keep_alive = False
         self._labels = box_labels(labels)
         self._name_prefix = name_prefix or BASE_LABEL
         # Credentials stay in this object only; they are never logged or sent into the Box.
@@ -332,6 +395,9 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._box_lock = threading.Lock()
         self._box: Any = None
         self._created = False
+        # Set by cleanup(). Hermes unregisters an environment before cleaning it up, so a later call
+        # comes from a stale reference; it is refused rather than given a Box nothing would release.
+        self._closed = False
         self._remote_home = DEFAULT_HOME
         self._sync_manager: Optional[FileSyncManager] = None
 
@@ -348,6 +414,48 @@ class UpstashBoxEnvironment(BaseEnvironment):
     def remote_home(self) -> str:
         return self._remote_home
 
+    def _find(self, Box: Any, BoxError: Any, name: str) -> Any:
+        """This task's existing Box by name, resumed if paused, or None when there is none."""
+        try:
+            box = Box.get_by_name(name, **self._conn)
+        except BoxError as exc:
+            if getattr(exc, "status_code", None) != 404:
+                raise RuntimeError(f"Upstash Box: could not look up Box {name!r}: {exc}") from exc
+            return None
+        status = _status_of(box)
+        if status == "error":
+            with contextlib.suppress(Exception):
+                box.close()
+            raise RuntimeError(
+                f"Upstash Box: Box {name!r} is in the error state. Delete it in the Upstash "
+                "console (or with `box delete`) and Hermes will create a new one."
+            )
+        if status == "deleted":
+            with contextlib.suppress(Exception):
+                box.close()
+            return None
+        if status == "paused":
+            box.resume()
+        logger.info("Upstash Box: resumed Box %s (%s) for task %s", name, box.id, self._task_id)
+        return box
+
+    def _create(self, Box: Any, BoxError: Any, name: str) -> Any:
+        create: dict[str, Any] = {"name": name, "labels": list(self._labels), "size": self._size}
+        if self._runtime:
+            create["runtime"] = self._runtime
+        if self._keep_alive:
+            create["keep_alive"] = True
+        try:
+            return Box.create(**create, **self._conn)
+        except BoxError as exc:
+            if _is_box_limit(exc):
+                raise RuntimeError(
+                    f"Upstash Box: your account has reached its Box limit ({exc}). Paused Boxes count "
+                    "toward it, and persistent mode keeps one Box per task. Delete Boxes you no longer "
+                    "need (`box list --label hermes`, then `box delete <id>`) or upgrade your plan."
+                ) from exc
+            raise
+
     def _attach(self) -> None:
         """Resume this task's Box (persistent) or create one, then resolve home and file sync."""
         _disable_sdk_telemetry()
@@ -356,44 +464,26 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._created = False
         if self._persistent:
             name = box_name(self._name_prefix, self._task_id)
-            try:
-                box = Box.get_by_name(name, **self._conn)
-            except BoxError as exc:
-                if getattr(exc, "status_code", None) != 404:
-                    raise RuntimeError(f"Upstash Box: could not look up Box {name!r}: {exc}") from exc
-                box = None
-            if box is not None:
-                status = _status_of(box)
-                if status == "error":
-                    with contextlib.suppress(Exception):
-                        box.close()
-                    raise RuntimeError(
-                        f"Upstash Box: Box {name!r} is in the error state. Delete it in the Upstash "
-                        "console (or with `box delete`) and Hermes will create a new one."
-                    )
-                if status == "deleted":
-                    with contextlib.suppress(Exception):
-                        box.close()
-                    box = None
-                else:
-                    if status == "paused":
-                        box.resume()
-                    logger.info("Upstash Box: resumed Box %s (%s) for task %s", name, box.id, self._task_id)
+            box = self._find(Box, BoxError, name)
         else:
             name = box_name(self._name_prefix, self._task_id, unique=True)
         if box is None:
-            create: dict[str, Any] = {"name": name, "labels": list(self._labels), "size": self._size}
-            if self._runtime:
-                create["runtime"] = self._runtime
-            if self._keep_alive:
-                create["keep_alive"] = True
-            box = Box.create(**create, **self._conn)
-            self._created = True
-            logger.info("Upstash Box: created Box %s (%s) for task %s", name, box.id, self._task_id)
+            try:
+                box = self._create(Box, BoxError, name)
+                self._created = True
+                logger.info("Upstash Box: created Box %s (%s) for task %s", name, box.id, self._task_id)
+            except BoxError as exc:
+                # Another Hermes process created this task's Box between our lookup and create.
+                if not (self._persistent and _is_name_conflict(exc)):
+                    raise
+                box = self._find(Box, BoxError, name)
+                if box is None:
+                    raise
         with self._box_lock:
             self._box = box
         self._remote_home = self._detect_home()
-        if self._requested_cwd in {"~", "", DEFAULT_HOME}:
+        # ``~`` (Hermes's default for this backend) is the Box user's home; an explicit path is kept.
+        if self._requested_cwd in {"~", ""}:
             self.cwd = self._remote_home
         elif self._requested_cwd.startswith("~/"):
             self.cwd = f"{self._remote_home.rstrip('/')}/{self._requested_cwd[2:]}"
@@ -419,9 +509,15 @@ class UpstashBoxEnvironment(BaseEnvironment):
         return home if home.startswith("/") else fallback
 
     def _ensure_box(self) -> Any:
+        """The attached Box, attaching a new one when the last was found deleted. Caller holds ``_lock``."""
+        if self._closed:
+            raise EnvironmentConnectionError(
+                "Upstash Box: this environment was cleaned up and has no Box any more.",
+                retry_hint="Retry the command; Hermes starts a new Upstash Box environment for it.",
+            )
         if self._box is None:
-            # Cleaned up, or the Box was found deleted: attach anew. A newly created Box is an
-            # empty workspace, and the model is told so. The shell snapshot lived in the old Box.
+            # The Box was found deleted: attach anew. A newly created Box is an empty workspace,
+            # and the model is told so. The shell snapshot lived in the old Box.
             self._attach()
             if self._created:
                 self._mark_recreated()
@@ -440,6 +536,16 @@ class UpstashBoxEnvironment(BaseEnvironment):
         with contextlib.suppress(Exception):
             box.close()
         logger.warning("Upstash Box: Box %s no longer exists; the next command gets a new one", getattr(box, "id", "?"))
+
+    def _current_box(self) -> Any:
+        """The Box for a command. ``execute`` attached it in ``_before_execute``; a command started
+        another way (a probe) attaches under the lock here, never outside it."""
+        with self._box_lock:
+            box = self._box
+        if box is not None and not self._closed:
+            return box
+        with self._lock:
+            return self._ensure_box()
 
     def _before_execute(self) -> None:
         with self._lock:
@@ -500,18 +606,15 @@ class UpstashBoxEnvironment(BaseEnvironment):
 
     # --- Command execution ---
     def _run_bash(self, cmd_string: str, *, login: bool = False, timeout: int = 120, stdin_data: str | None = None):
-        box = self._ensure_box()
+        box = self._current_box()
         argv = ["bash", "-c", _GATE_SCRIPT.format(flags="-l -c" if login else "-c"), "bash", cmd_string]
+        # Guards ``state`` only. Never held across a network call, so a cancel can always take it.
         run_lock = threading.Lock()
         state: dict[str, Any] = {"cancelled": False, "handle": None}
 
-        def stop(handle: Any) -> None:
-            with contextlib.suppress(Exception):
-                handle.kill("KILL")
-            with contextlib.suppress(Exception):
-                handle.close()  # closing the session also kills the process
-
         def cancel() -> None:
+            # Called on Hermes's interrupt and timeout path: must return promptly, so the stop
+            # itself runs on a helper thread (see ``_stop_session``).
             with run_lock:
                 state["cancelled"] = True
                 handle = state["handle"]
@@ -520,7 +623,7 @@ class UpstashBoxEnvironment(BaseEnvironment):
                 # and the gate never opens, so the command never runs.
                 proc.finish(130)
             else:
-                stop(handle)
+                _stop_session(handle)
 
         proc = _SessionProcess(cancel)
 
@@ -540,28 +643,30 @@ class UpstashBoxEnvironment(BaseEnvironment):
                 handle = self._open_session(box, argv, proc.feed)
             except _SessionStartError as exc:
                 return 1, self._start_failure(box, exc)
-            started, gate_error = False, None
             with run_lock:
-                state["handle"] = handle
-                if not state["cancelled"]:
-                    try:
-                        handle.write(_GATE_LINE)  # from here on the command runs
-                        started = True
-                    except Exception as exc:
-                        gate_error = exc
-            if state["cancelled"]:
-                stop(handle)
+                state["handle"] = handle  # from here on a cancel stops this session itself
+                cancelled = state["cancelled"]
+            if cancelled:
+                _stop_session(handle)
                 return 130, ""
-            if not started:
-                stop(handle)
-                return 1, f"[Upstash Box: could not start the command: {gate_error}]"
-            stdin_error = self._send_stdin(handle, payload)
-            if stdin_error is not None:
-                proc._hermes_stdin_errors.append(stdin_error)
+            try:
+                handle.write(_GATE_LINE)  # from here on the command runs
+            except Exception as exc:
+                with run_lock:
+                    cancelled = state["cancelled"]
+                if not cancelled:
+                    _stop_session(handle)
+                    return 1, f"[Upstash Box: could not start the command: {exc}]"
+                # A cancel stopped the session mid-write; it reports below.
+            if not state["cancelled"]:
+                stdin_error = self._send_stdin(handle, payload)
+                # A write broken by a cancel is the cancel, not a stdin failure.
+                if stdin_error is not None and not state["cancelled"]:
+                    proc._hermes_stdin_errors.append(stdin_error)
             try:
                 code = handle.wait(timeout=max(int(timeout or 0), 1) + _WAIT_GRACE_S)
             except TimeoutError:
-                stop(handle)
+                _stop_session(handle)
                 return 124, f"\n[Command timed out after {timeout}s]"
             finally:
                 with contextlib.suppress(Exception):
@@ -649,6 +754,7 @@ class UpstashBoxEnvironment(BaseEnvironment):
         if lock is None:  # __init__ failed before the lock existed
             return
         with lock:
+            self._closed = True
             box = self._box
             if box is None:
                 return

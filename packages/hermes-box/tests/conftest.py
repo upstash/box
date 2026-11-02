@@ -295,6 +295,7 @@ class FakeCloud:
         self.lookups: list[str] = []
         self.connections: list[dict] = []
         self.get_error = None
+        self.box_limit = None  # like the plan limit: create fails once this many Boxes exist
         self._ids = itertools.count(1)
 
     def _connection(self, options):
@@ -313,6 +314,16 @@ class FakeCloud:
 
     def create(self, **config):
         self._connection(config)
+        # The real API keeps names unique per account and enforces the plan's Box limit, both as 409.
+        name = config["name"]
+        if name in self.boxes:
+            raise FakeBoxError(f'Box name "{name}" is already in use', 409)
+        if self.box_limit is not None and len(self.boxes) >= self.box_limit:
+            raise FakeBoxError(
+                f"Box limit reached. Maximum {self.box_limit} boxes allowed in the Free plan. "
+                "Please upgrade by adding a payment method",
+                409,
+            )
         box_id = f"box-{next(self._ids)}"
         home = self.root / box_id
         home.mkdir(parents=True)

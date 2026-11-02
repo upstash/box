@@ -102,13 +102,18 @@ def test_non_persistent_gets_its_own_box_and_deletes_it(cloud, make_env):
     assert cloud.boxes == {}
 
 
-def test_non_persistent_env_used_after_cleanup_gets_a_fresh_box(cloud, make_env):
-    env = make_env(task_id="t1", persistent=False)
+@pytest.mark.parametrize("persistent", [False, True])
+def test_env_used_after_cleanup_is_refused_and_creates_no_box(cloud, make_env, persistent):
+    # Hermes unregisters an environment before cleaning it up, so a later call comes from a stale
+    # reference (a background poller, say). A Box made for it would never be released.
+    from tools.environments.base import EnvironmentConnectionError
+
+    env = make_env(task_id="t1", persistent=persistent)
     env.cleanup()
-    result = env.execute("echo again")
-    assert result["output"].strip() == "again"
-    assert result.get("environment_recreated") is True
-    assert len(cloud.created) == 2
+    lookups = len(cloud.lookups)
+    with pytest.raises(EnvironmentConnectionError, match="cleaned up"):
+        env.execute("echo again")
+    assert len(cloud.created) == 1 and len(cloud.lookups) == lookups
 
 
 # --- Command execution ------------------------------------------------------------------------
@@ -540,17 +545,26 @@ def test_full_output_is_kept_for_internal_consumers(cloud, make_env):
 
 
 def test_output_queue_is_bounded_when_nobody_reads(monkeypatch):
+    # Nothing is dropped: past the bound the SDK callback waits (backpressure on the WebSocket).
+    # Memory stays bounded, and finishing the command releases a waiting callback.
     monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
     proc = upstash_box_env._SessionProcess(lambda: None)
-    started = time.monotonic()
-    for _ in range(2000):  # 2 MB that nobody reads
-        proc.feed(b"x" * 1024)
-        assert proc._pending <= 64 * 1024
-    assert time.monotonic() - started < 2  # the SDK callback never blocks
-    assert proc._dropped > 0
+    fed = []
+
+    def produce():
+        for _ in range(2000):  # 2 MB that nobody reads
+            proc.feed(b"x" * 1024)
+            fed.append(proc._pending)
+
+    producer = threading.Thread(target=produce, daemon=True)
+    producer.start()
+    time.sleep(0.5)
+    assert producer.is_alive() and max(fed) <= 64 * 1024
     proc.finish(0, "\n[end]")
+    producer.join(5)
+    assert not producer.is_alive()
     out = proc.stdout.read()
-    assert "bytes of output dropped" in out and out.endswith("[end]")
+    assert "dropped" not in out and out.endswith("[end]")
     assert proc.wait(5) == 0
 
 
@@ -634,3 +648,177 @@ def test_failed_pause_keeps_the_box_for_a_retry(cloud, make_env, monkeypatch):
     assert env.box_id == box.id and box.status == "running"
     env.cleanup()
     assert box.status == "paused" and env.box_id is None
+
+
+# --- Review fixes -------------------------------------------------------------------------------
+
+
+def test_explicit_absolute_cwd_is_kept(cloud, make_env):
+    env = make_env(task_id="t1", cwd="/workspace/home")
+    assert env.cwd == "/workspace/home"
+
+
+def test_concurrent_persistent_create_attaches_the_winner(cloud, monkeypatch, make_env):
+    real_create = cloud.create
+
+    def lose_the_race(**config):
+        winner = real_create(**dict(config))  # another Hermes process creates it first ...
+        cloud.created.remove(winner)
+        return real_create(**config)  # ... so ours is refused: name already in use (409)
+
+    monkeypatch.setattr(cloud, "create", lose_the_race)
+    env = make_env(task_id="race")
+    assert env.box_id == cloud.boxes["hermes-race"].id
+    assert env.execute("echo ok")["output"].strip() == "ok"
+
+
+def test_name_conflict_in_non_persistent_mode_is_not_attached(cloud, monkeypatch, make_env):
+    # A session Box is deleted at session end: attaching someone else's would delete it.
+    def conflict(**config):
+        raise cloud.Error(f'Box name "{config["name"]}" is already in use', 409)
+
+    monkeypatch.setattr(cloud, "create", conflict)
+    with pytest.raises(cloud.Error, match="already in use"):
+        make_env(task_id="t1", persistent=False)
+    assert cloud.lookups == []
+
+
+def test_box_limit_is_reported_with_what_to_do(cloud, make_env):
+    cloud.box_limit = 1
+    make_env(task_id="first")
+    with pytest.raises(RuntimeError, match="Box limit") as raised:
+        make_env(task_id="second")
+    assert "box list --label hermes" in str(raised.value)
+    assert cloud.lookups.count("hermes-second") == 1  # not mistaken for a name conflict
+
+
+def test_keep_alive_is_ignored_for_session_boxes(cloud, make_env, caplog):
+    with caplog.at_level(logging.WARNING):
+        make_env(task_id="t1", persistent=False, keep_alive=True)
+    assert "keep_alive" not in cloud.created[0].config
+    assert "keep_alive" in caplog.text or "keep-alive" in caplog.text
+
+
+class _StalledSocket:
+    def __init__(self, conn):
+        self.conn = conn
+        self.shut = threading.Event()
+
+    def shutdown(self, how):
+        self.shut.set()
+        self.conn.release.set()
+
+
+class _StalledConnection:
+    """A WebSocket whose ``block_write``-th send stalls, as ``websockets.sync`` does when the peer
+    stops reading: ``close()`` waits behind the stalled send too; only a socket shutdown frees it."""
+
+    def __init__(self, block_write):
+        self.block_write = block_write
+        self.sends = 0
+        self.blocked = threading.Event()
+        self.release = threading.Event()
+        self.closed = threading.Event()
+        self.socket = _StalledSocket(self)
+
+    def send(self, frame):
+        self.sends += 1
+        if self.sends == self.block_write:
+            self.blocked.set()
+            self.release.wait(10)
+        if self.socket.shut.is_set():
+            raise OSError("socket is shut down")
+
+    def close(self):
+        self.release.wait(10)
+        self.closed.set()
+
+    def __iter__(self):
+        self.closed.wait(10)
+        return iter(())
+
+
+def _stalled_handle(env, monkeypatch, block_write):
+    from upstash_box._exec_session import ExecSessionHandle
+
+    conn = _StalledConnection(block_write)
+    handle = ExecSessionHandle(conn, 123, "test", None, None)
+    monkeypatch.setattr(env, "_open_session", lambda *args: handle)
+    return conn
+
+
+@pytest.mark.parametrize("block_write", [1, 2], ids=["start-line", "stdin"])
+def test_cancel_returns_at_once_and_drops_a_stalled_connection(cloud, make_env, monkeypatch, block_write):
+    pytest.importorskip("upstash_box")
+    env = make_env(task_id="t1", persistent=False)
+    conn = _stalled_handle(env, monkeypatch, block_write)
+    proc = env._run_bash("cat", stdin_data="input")
+    assert conn.blocked.wait(5)
+    started = time.monotonic()
+    proc.kill()
+    assert time.monotonic() - started < 0.5  # Hermes's interrupt/timeout path is never held up
+    assert conn.socket.shut.wait(upstash_box_env._STOP_GRACE_S + 3)
+    assert conn.closed.wait(5)
+    assert proc.wait(10) == 130
+    assert proc._hermes_stdin_errors == []  # the cancel is not reported as a stdin failure
+    proc.stdout.close()
+
+
+@pytest.mark.parametrize("block_write", [1, 2], ids=["start-line", "stdin"])
+def test_timeout_is_honored_behind_a_stalled_connection(cloud, make_env, monkeypatch, block_write):
+    pytest.importorskip("upstash_box")
+    env = make_env(task_id="t1", persistent=False)
+    conn = _stalled_handle(env, monkeypatch, block_write)
+    started = time.monotonic()
+    result = env.execute("cat", stdin_data="input", timeout=1)
+    assert result["returncode"] == 124
+    assert time.monotonic() - started < 5
+    assert conn.socket.shut.wait(upstash_box_env._STOP_GRACE_S + 3)
+
+
+def test_output_beyond_the_buffer_waits_instead_of_being_dropped(monkeypatch):
+    monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
+    proc = upstash_box_env._SessionProcess(lambda: None)
+    chunk = b"x" * (48 * 1024)
+    fed = threading.Event()
+
+    def produce():
+        for _ in range(20):  # ~1 MB, far past the 64 KiB buffer and the pipe
+            proc.feed(chunk)
+        proc.finish(0)
+        fed.set()
+
+    threading.Thread(target=produce, daemon=True).start()
+    assert not fed.wait(0.5), "feed should wait while nothing reads"
+    output = proc.stdout.read()
+    assert fed.wait(5)
+    assert proc.wait(5) == 0
+    assert output == "x" * (20 * len(chunk))
+    proc.stdout.close()
+
+
+def test_one_chunk_larger_than_the_buffer_is_kept_whole():
+    proc = upstash_box_env._SessionProcess(lambda: None)
+    data = b"y" * (upstash_box_env._MAX_PENDING_OUTPUT + 1)
+    threading.Thread(target=lambda: (proc.feed(data), proc.finish(0)), daemon=True).start()
+    output = proc.stdout.read()
+    assert proc.wait(5) == 0
+    assert len(output) == len(data) and "dropped" not in output
+    proc.stdout.close()
+
+
+def test_output_stops_waiting_once_hermes_stops_reading(monkeypatch):
+    monkeypatch.setattr(upstash_box_env, "_MAX_PENDING_OUTPUT", 64 * 1024)
+    proc = upstash_box_env._SessionProcess(lambda: None)
+    proc.stdout.close()  # Hermes returned (timeout, interrupt) and closed its end
+    done = threading.Event()
+
+    def produce():
+        for _ in range(100):
+            proc.feed(b"z" * (48 * 1024))
+        proc.finish(130)
+        done.set()
+
+    threading.Thread(target=produce, daemon=True).start()
+    assert done.wait(5), "feed must not wait forever on a reader that is gone"
+    assert proc.wait(5) == 130

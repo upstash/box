@@ -130,7 +130,7 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
         if not sdk_installed():
             logger.error(
                 "Upstash Box backend selected but the upstash-box package is not installed. "
-                "Reinstall the plugin or run: pip install 'upstash-box>=0.4,<1'"
+                "Run `hermes plugins enable upstash-box` to let Hermes install it."
             )
             return False
         if not api_key_present():
@@ -164,13 +164,19 @@ class UpstashBoxProvider(TerminalEnvironmentProvider):
             "resumed next time; with false every session gets its own Box, deleted when the session ends.",
         ]
         if not sdk_installed():
-            lines.insert(0, "The upstash-box package is missing: pip install 'upstash-box>=0.4,<1'.")
+            lines.insert(
+                0, "The upstash-box package is missing: run `hermes plugins enable upstash-box` to install it."
+            )
         return lines
 
     def doctor_checks(self) -> list[tuple[bool, str, str]]:
         sdk, key = sdk_installed(), api_key_present()
         return [
-            (sdk, "Upstash Box SDK", "(upstash-box installed)" if sdk else "(missing: pip install upstash-box)"),
+            (
+                sdk,
+                "Upstash Box SDK",
+                "(upstash-box installed)" if sdk else "(missing: run `hermes plugins enable upstash-box`)",
+            ),
             (
                 key,
                 "Upstash Box API key",
