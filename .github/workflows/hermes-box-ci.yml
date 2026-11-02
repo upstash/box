@@ -1,0 +1,61 @@
+name: Hermes Box plugin CI
+
+on:
+  push:
+    # Only on the default branch (i.e. merges). PR branches are covered by
+    # `pull_request`, so feature-branch pushes don't run the suite twice.
+    branches: [main]
+    paths:
+      - "packages/hermes-box/**"
+      - "packages/python-sdk/**"
+      - ".github/workflows/hermes-box-ci.yml"
+  pull_request:
+    paths:
+      - "packages/hermes-box/**"
+      - "packages/python-sdk/**"
+      - ".github/workflows/hermes-box-ci.yml"
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: hermes-box-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The tests import Hermes core. Pinned so a Hermes change cannot break CI unannounced;
+  # bump it deliberately (the plugin needs Hermes >= 0.22.3).
+  HERMES_AGENT_REF: 7a82aa6698e98f34c7ed104556403e3cc72ef25b
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: ${{ env.HERMES_AGENT_REF }}
+          path: hermes-agent
+      - uses: actions/setup-python@v5
+        with:
+          # Hermes declares its runtime dependencies for Python >= 3.14 only.
+          python-version: "3.14"
+      - name: Install
+        # Hermes from its own lockfile, as its installer does (a plain pip resolve hits a Pillow
+        # conflict), then the SDK from this checkout and the test tools into the same venv.
+        run: |
+          pip install uv
+          uv sync --frozen --project hermes-agent --python "$(which python)"
+          uv pip install --python hermes-agent/.venv -e ./packages/python-sdk pytest ruff
+          echo "$PWD/hermes-agent/.venv/bin" >> "$GITHUB_PATH"
+      - name: Ruff
+        working-directory: packages/hermes-box
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Unit tests (integration tests are deselected; they need a key and create real Boxes)
+        working-directory: packages/hermes-box
+        run: pytest -q
+      - name: Hermes plugin validation
+        run: hermes plugins validate packages/hermes-box
+        env:
+          HERMES_HOME: ${{ runner.temp }}/hermes-home
