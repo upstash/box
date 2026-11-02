@@ -37,7 +37,8 @@ jobs:
           path: hermes-agent
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          # 3.13: on 3.14 Hermes pins Pillow 13, which its browser-harness dependency rejects.
+          python-version: "3.13"
       - name: Install
         run: pip install -e ./hermes-agent -e ./packages/python-sdk pytest ruff
       - name: Ruff
