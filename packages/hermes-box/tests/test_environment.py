@@ -19,6 +19,13 @@ def _box(cloud, env):
     return next(b for b in [*cloud.created, *cloud.boxes.values()] if b.id == env.box_id)
 
 
+def _admit(proc):
+    """Do what Hermes's wait loop does before a command may start: two polls on the calling thread."""
+    proc.poll()
+    proc.poll()
+    return proc
+
+
 def _wait_for_session(box, timeout=10):
     deadline = time.monotonic() + timeout
     while not box.sessions and time.monotonic() < deadline:
@@ -191,7 +198,7 @@ def test_interrupt_cancels_the_running_session(cloud, make_env):
     env = make_env(task_id="t1")
     box = cloud.created[0]
     before = len(box.sessions)
-    proc = env._run_bash("sleep 30")
+    proc = _admit(env._run_bash("sleep 30"))
     deadline = time.monotonic() + 10
     while len(box.sessions) == before and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -763,7 +770,7 @@ def test_cancel_returns_at_once_and_drops_a_stalled_connection(cloud, make_env, 
     pytest.importorskip("upstash_box")
     env = make_env(task_id="t1", persistent=False)
     conn = _stalled_handle(env, monkeypatch, block_write)
-    proc = env._run_bash("cat", stdin_data="input")
+    proc = _admit(env._run_bash("cat", stdin_data="input"))
     assert conn.blocked.wait(5)
     started = time.monotonic()
     proc.kill()
@@ -833,3 +840,97 @@ def test_output_stops_waiting_once_hermes_stops_reading(monkeypatch):
     threading.Thread(target=produce, daemon=True).start()
     assert done.wait(5), "feed must not wait forever on a reader that is gone"
     assert proc.wait(5) == 130
+
+
+# --- Copilot review: start gate, owner profile, background processes ----------------------------
+
+
+def test_interrupt_pending_when_the_handle_is_registered_never_runs_the_command(cloud, make_env, monkeypatch):
+    env = make_env(task_id="t1")
+    box = cloud.created[0]
+    real_run_bash = env._run_bash
+
+    def slow_to_register(*args, **kwargs):
+        before = len(box.sessions)
+        proc = real_run_bash(*args, **kwargs)
+        deadline = time.monotonic() + 10
+        while len(box.sessions) == before and time.monotonic() < deadline:
+            time.sleep(0.01)
+        time.sleep(0.3)  # the session is open: an ungated worker would have started the command
+        return proc
+
+    monkeypatch.setattr(env, "_run_bash", slow_to_register)
+    monkeypatch.setattr("tools.environments.base.is_interrupted", lambda: True)
+    result = env.execute("touch ran")
+    assert result["returncode"] == 130
+    session = box.sessions[-1]
+    session.wait(10)
+    assert session.stdin_chunks == []  # the start line was never sent
+    assert not (Path(box.home) / "ran").exists()
+
+
+def test_only_the_spawning_threads_polls_admit_the_command():
+    proc = upstash_box_env._SessionProcess(lambda: None)
+    drain = threading.Thread(target=lambda: [proc.poll() for _ in range(5)])  # Hermes's output drain
+    drain.start()
+    drain.join(5)
+    assert not proc.admitted.is_set()
+    proc.poll()
+    assert not proc.admitted.is_set()  # Hermes has not run its interrupt check yet
+    proc.poll()
+    assert proc.admitted.is_set()
+    proc.finish(0)
+    proc.stdout.read()
+    proc.stdout.close()
+
+
+def test_sync_back_runs_in_the_owning_profile_from_another_thread(cloud, make_env, tmp_path, monkeypatch):
+    import contextvars
+
+    from hermes_constants import get_hermes_home, reset_hermes_home_override, set_hermes_home_override
+
+    owner = tmp_path / "profile-a"
+    owner.mkdir()
+    pushed = [(str(owner / "skills" / "s" / "SKILL.md"), "/remote/.hermes/skills/s/SKILL.md")]
+    calls = []
+
+    def files_of_the_calling_profile(base):
+        calls.append(get_hermes_home())
+        return list(pushed) if get_hermes_home() == owner else [("/elsewhere/SKILL.md", pushed[0][1])]
+
+    monkeypatch.setattr(upstash_box_env, "iter_sync_files", files_of_the_calling_profile)
+    token = set_hermes_home_override(owner)
+    try:
+        env = make_env(task_id="t1")  # created, and synced, by profile A's session
+    finally:
+        reset_hermes_home_override(token)
+    seen = {}
+
+    def record_sync_back(hermes_home=None):
+        seen.update(home=get_hermes_home(), lock_home=hermes_home, files=env._sync_manager._get_files_fn())
+
+    monkeypatch.setattr(env._sync_manager, "sync_back", record_sync_back)
+    # The idle reaper: another thread, with none of the session's context.
+    reaper = threading.Thread(target=lambda: contextvars.Context().run(env.cleanup))
+    reaper.start()
+    reaper.join(10)
+    assert seen == {"home": owner, "lock_home": owner, "files": pushed}
+    assert calls and all(home == owner for home in calls)  # never enumerated in the reaper's profile
+
+
+def test_background_process_outlives_its_launch_session(cloud, make_env):
+    from tools.process_registry import ProcessRegistry
+
+    env = make_env(task_id="t1")
+    registry = ProcessRegistry()
+    try:
+        session = registry.spawn_via_env(env, "sleep 3; echo bg-done", task_id="bg")
+        launcher = cloud.created[0].sessions[-1]
+        assert launcher.wait(10) == 0  # the launching command and its session are done
+        deadline = time.monotonic() + 30
+        while not session.exited and time.monotonic() < deadline:
+            time.sleep(0.2)
+        assert session.exited and session.exit_code == 0, session.output_buffer
+        assert "bg-done" in session.output_buffer
+    finally:
+        registry.kill_all()

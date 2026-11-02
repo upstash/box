@@ -23,6 +23,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from hermes_constants import get_hermes_home
 from tools.environments.base import BaseEnvironment
 
 try:
@@ -34,6 +35,11 @@ except ImportError:  # older Hermes: same shape, reported as an ordinary tool fa
             super().__init__(reason)
             self.reason, self.retry_hint = reason, retry_hint
 
+
+try:
+    from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+except ImportError:  # older Hermes has no per-context profile homes: the process home is the profile
+    set_hermes_home_override = reset_hermes_home_override = None  # type: ignore[assignment]
 
 from tools.environments.file_sync import (
     FileSyncManager,
@@ -81,9 +87,10 @@ _STOP_GRACE_S = 1.0
 # The remote command waits for this line on stdin before it starts (see ``_GATE_SCRIPT``).
 _GATE_LINE = b"go\n"
 # Runs first in every session. It reads one line from stdin and only then execs the real
-# command (``$1``), so nothing model-authored runs until Hermes has registered the session and
-# rechecked cancellation. bash's ``read`` takes a pipe byte by byte, so the rest of stdin is left
-# for the command. A session closed without the line exits 125 without running anything.
+# command (``$1``), so nothing model-authored runs until Hermes has registered the handle and
+# rechecked cancellation (see ``_SessionProcess.poll``). bash's ``read`` takes a pipe byte by byte,
+# so the rest of stdin is left for the command. A session closed without the line exits 125
+# without running anything.
 _GATE_SCRIPT = 'IFS= read -r _hermes_gate || exit 125; [ "$_hermes_gate" = go ] || exit 125; exec bash {flags} "$1"'
 # Cleanup retries a transient pause/delete failure this many times in total.
 _CLEANUP_ATTEMPTS = 3
@@ -244,6 +251,11 @@ class _SessionProcess:
         read_fd, self._write_fd = os.pipe()
         self._stdout = os.fdopen(read_fd, "r", encoding="utf-8", errors="replace")
         self._cancel_fn = cancel_fn
+        # Set once the caller is ready for the command to run (see ``poll``); the worker sends the
+        # start line only after it. ``_spawn_tid`` is the thread that called ``_run_bash``.
+        self.admitted = threading.Event()
+        self._spawn_tid = threading.get_ident()
+        self._spawn_polls = 0
         self._cond = threading.Condition()
         self._chunks: deque[bytes] = deque()
         self._pending = 0
@@ -328,13 +340,24 @@ class _SessionProcess:
         return self._returncode
 
     def poll(self) -> Optional[int]:
+        # Hermes registers the handle when ``_run_bash`` returns, then waits on the same thread with
+        # ``while proc.poll() is None: <interrupt check>; <deadline check>; sleep``. That thread's
+        # second ``poll`` therefore comes after one full interrupt check, so an interrupt that was
+        # already pending kills the command before its start line is sent. Polls from other
+        # threads (Hermes's output drain) do not count.
+        if not self.admitted.is_set() and threading.get_ident() == self._spawn_tid:
+            self._spawn_polls += 1
+            if self._spawn_polls >= 2:
+                self.admitted.set()
         return self._returncode if self._done.is_set() else None
 
     def kill(self) -> None:
         with contextlib.suppress(Exception):
             self._cancel_fn()
+        self.admitted.set()  # wake the worker; it sees the cancel and never starts the command
 
     def wait(self, timeout: Optional[float] = None) -> Optional[int]:
+        self.admitted.set()  # a caller blocking on the result is ready for the command to run
         self._done.wait(timeout)
         return self._returncode
 
@@ -400,6 +423,12 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._closed = False
         self._remote_home = DEFAULT_HOME
         self._sync_manager: Optional[FileSyncManager] = None
+        # The profile that created this environment. Hermes can clean it up from another thread (the
+        # idle reaper) whose profile is the process default; sync-back must still use this one.
+        self._owner_home = get_hermes_home()
+        # Files from the last sync, enumerated in the owner's context (see ``_sync_files``).
+        self._last_sync_files: list[tuple[str, str]] = []
+        self._replay_sync_files = False
 
         self._attach()
         self._sync_manager.sync(force=True)
@@ -491,12 +520,34 @@ class UpstashBoxEnvironment(BaseEnvironment):
             self.cwd = self._requested_cwd
         container_base = f"{self._remote_home.rstrip('/')}/.hermes"
         self._sync_manager = FileSyncManager(
-            get_files_fn=lambda: iter_sync_files(container_base),
+            get_files_fn=lambda: self._sync_files(container_base),
             upload_fn=self._upload,
             delete_fn=self._delete,
             bulk_upload_fn=self._bulk_upload,
             bulk_download_fn=self._bulk_download,
         )
+
+    def _sync_files(self, container_base: str) -> list[tuple[str, str]]:
+        """Host/remote pairs for file sync. Uploads enumerate them in the calling session, the one
+        that owns this environment. Sync-back replays the last upload's list instead: it can run on
+        another thread, where the profile home and the session's registered credential files differ,
+        and a Box's changed files must only ever be mapped onto the files that were pushed to it."""
+        if self._replay_sync_files:
+            return list(self._last_sync_files)
+        files = list(iter_sync_files(container_base))
+        self._last_sync_files = files
+        return files
+
+    def _sync_back(self) -> None:
+        """``sync_back`` in the owning profile: its home for the lock and for host paths."""
+        self._replay_sync_files = True
+        token = set_hermes_home_override(self._owner_home) if set_hermes_home_override else None
+        try:
+            self._sync_manager.sync_back(hermes_home=self._owner_home)
+        finally:
+            if token is not None:
+                reset_hermes_home_override(token)
+            self._replay_sync_files = False
 
     def _detect_home(self) -> str:
         fallback = getattr(self._box, "cwd", None) or DEFAULT_HOME
@@ -645,6 +696,12 @@ class UpstashBoxEnvironment(BaseEnvironment):
                 return 1, self._start_failure(box, exc)
             with run_lock:
                 state["handle"] = handle  # from here on a cancel stops this session itself
+            # Hold the start line until Hermes has registered the handle and checked for an
+            # interrupt (see ``_SessionProcess.poll``), or a cancel arrives.
+            if not proc.admitted.wait(max(int(timeout or 0), 1) + _WAIT_GRACE_S):
+                _stop_session(handle)
+                return 1, "[Upstash Box: command not started: nothing waited for it]"
+            with run_lock:
                 cancelled = state["cancelled"]
             if cancelled:
                 _stop_session(handle)
@@ -760,7 +817,7 @@ class UpstashBoxEnvironment(BaseEnvironment):
                 return
             if self._sync_manager is not None:
                 try:
-                    self._sync_manager.sync_back()
+                    self._sync_back()
                 except Exception as exc:
                     logger.warning("Upstash Box: sync_back failed: %s", exc)
             if not self._release(box):
