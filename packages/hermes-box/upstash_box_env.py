@@ -16,6 +16,7 @@ import os
 import re
 import shlex
 import socket
+import tarfile
 import threading
 import time
 import uuid
@@ -73,6 +74,9 @@ _MAX_TASK_SLUG_LEN = 32
 _HASH_LEN = 8
 # files.read caps a bounded range at 8 MiB; stay well under it.
 _READ_CHUNK = 4 * 1024 * 1024
+# The SDK reads every file of an upload into memory and posts them in one request, so file sync
+# uploads in batches of at most this many bytes (a larger single file goes alone).
+_UPLOAD_BATCH_BYTES = 32 * 1024 * 1024
 # Stdin is sent as session frames; keep each frame small.
 _STDIN_CHUNK = 256 * 1024
 # Extra seconds the session wait allows past the command timeout. The base class enforces
@@ -111,6 +115,16 @@ def _disable_sdk_telemetry() -> None:
     ``get_by_name``. It only sets the variable when it is unset, as Hermes does for the Vercel
     SDK, and changes nothing else in the environment."""
     os.environ.setdefault(TELEMETRY_OPT_OUT_ENV, "1")
+
+
+def _sync_back_cap() -> Optional[int]:
+    """Hermes's sync-back size cap (``terminal.sync_back_max_bytes``), or None when unknown."""
+    try:
+        from tools.environments.file_sync import _sync_back_max_bytes
+
+        return int(_sync_back_max_bytes())
+    except Exception:  # older Hermes, or an unreadable config: Hermes applies its own check
+        return None
 
 
 def _slug(value: str) -> str:
@@ -418,6 +432,7 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._box_lock = threading.Lock()
         self._box: Any = None
         self._created = False
+        self._setup_tid: Optional[int] = None  # the thread inside ``_set_up``, if any
         # Set by cleanup(). Hermes unregisters an environment before cleaning it up, so a later call
         # comes from a stale reference; it is refused rather than given a Box nothing would release.
         self._closed = False
@@ -430,9 +445,7 @@ class UpstashBoxEnvironment(BaseEnvironment):
         self._last_sync_files: list[tuple[str, str]] = []
         self._replay_sync_files = False
 
-        self._attach()
-        self._sync_manager.sync(force=True)
-        self.init_session()
+        self._set_up(recreated=False)
 
     # --- Box lifecycle ---
     @property
@@ -569,13 +582,31 @@ class UpstashBoxEnvironment(BaseEnvironment):
         if self._box is None:
             # The Box was found deleted: attach anew. A newly created Box is an empty workspace,
             # and the model is told so. The shell snapshot lived in the old Box.
+            self._set_up(recreated=True)
+        return self._box
+
+    def _set_up(self, *, recreated: bool) -> None:
+        """Attach a Box, sync files and take the shell snapshot, once.
+
+        The snapshot runs commands. If the Box disappears meanwhile, those commands must not try to
+        attach yet another one from inside this setup (``_current_box`` would wait on ``_lock``,
+        which this thread may hold, and retries would nest without bound). They fail instead, and
+        the next command starts a fresh setup."""
+        self._setup_tid = threading.get_ident()
+        try:
             self._attach()
-            if self._created:
+            if recreated and self._created:
                 self._mark_recreated()
             self._sync_manager.sync(force=True)
             self._snapshot_ready = False
             self.init_session()
-        return self._box
+        finally:
+            self._setup_tid = None
+        if self._box is None:
+            raise EnvironmentConnectionError(
+                "Upstash Box: the Box disappeared while it was being set up.",
+                retry_hint="Retry the command; Hermes sets up a new Box for it.",
+            )
 
     def _forget_box(self, box: Any) -> None:
         """Drop a Box the API reports as gone, so the next command attaches a new one. Nothing is
@@ -595,6 +626,8 @@ class UpstashBoxEnvironment(BaseEnvironment):
             box = self._box
         if box is not None and not self._closed:
             return box
+        if self._setup_tid == threading.get_ident():
+            raise EnvironmentConnectionError("Upstash Box: the Box disappeared while it was being set up.")
         with self._lock:
             return self._ensure_box()
 
@@ -622,7 +655,20 @@ class UpstashBoxEnvironment(BaseEnvironment):
         parents = unique_parent_dirs(files)
         if parents:
             self._sh(quoted_mkdir_command(parents), "mkdir")
-        self._box.files.upload([{"path": host, "destination": remote} for host, remote in files])
+        batch: list[dict[str, str]] = []
+        batch_bytes = 0
+        for host, remote in files:
+            try:
+                size = os.path.getsize(host)
+            except OSError:
+                size = 0  # the SDK's own open() reports a missing file
+            if batch and batch_bytes + size > _UPLOAD_BATCH_BYTES:
+                self._box.files.upload(batch)
+                batch, batch_bytes = [], 0
+            batch.append({"path": host, "destination": remote})
+            batch_bytes += size
+        if batch:
+            self._box.files.upload(batch)
 
     def _delete(self, remote_paths: list[str]) -> None:
         if remote_paths:
@@ -641,6 +687,19 @@ class UpstashBoxEnvironment(BaseEnvironment):
                 "bulk download",
             )
             size = int(self._box.files.stat(remote_tar).size)
+            cap = _sync_back_cap()
+            if cap is not None and size > cap:
+                # Hermes would discard an archive this large after downloading it. Skip the download
+                # and hand it an empty archive, so nothing is applied and nothing is retried.
+                logger.warning(
+                    "Upstash Box: ~/.hermes in the Box is a %d-byte archive, over terminal.sync_back_max_bytes "
+                    "(%d); not syncing it back",
+                    size,
+                    cap,
+                )
+                with tarfile.open(dest, "w"):
+                    pass
+                return
             with open(dest, "wb") as out:
                 offset = 0
                 while offset < size:

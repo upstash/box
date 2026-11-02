@@ -934,3 +934,67 @@ def test_background_process_outlives_its_launch_session(cloud, make_env):
         assert "bg-done" in session.output_buffer
     finally:
         registry.kill_all()
+
+
+# --- Copilot review (round 2): setup recovery, upload memory, sync-back cap -----------------------
+
+
+def test_box_vanishing_during_its_own_setup_fails_the_command_instead_of_deadlocking(cloud, make_env, monkeypatch):
+    from tools.environments.base import EnvironmentConnectionError
+
+    env = make_env(task_id="t1", persistent=False)
+    cloud.vanish(cloud.created[0])
+    assert "no longer exists" in env.execute("echo hi")["output"]
+    real_create = cloud.create
+
+    def create_then_vanish(**config):
+        box = real_create(**config)
+        cloud.vanish(box)  # gone before the shell snapshot can run in it
+        return box
+
+    monkeypatch.setattr(cloud, "create", create_then_vanish)
+    outcome = {}
+
+    def run():
+        try:
+            outcome["result"] = env.execute("echo hi", timeout=10)
+        except Exception as exc:
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(30)
+    assert not worker.is_alive(), "setup recovery deadlocked"
+    assert isinstance(outcome.get("error"), EnvironmentConnectionError), outcome
+    monkeypatch.setattr(cloud, "create", real_create)
+    assert env.execute("echo back")["output"].strip() == "back"  # the next command recovers
+
+
+def test_file_sync_uploads_in_bounded_batches(cloud, make_env, monkeypatch, tmp_path):
+    monkeypatch.setattr(upstash_box_env, "_UPLOAD_BATCH_BYTES", 10)
+    env = make_env(task_id="t1")
+    box = cloud.created[0]
+    calls = []
+    real_upload = box.files.upload
+    monkeypatch.setattr(box.files, "upload", lambda files: (calls.append(len(files)), real_upload(files)))
+    files = []
+    for name, size in [("a", 4), ("b", 4), ("c", 4), ("big", 25), ("d", 1)]:
+        host = tmp_path / name
+        host.write_bytes(b"x" * size)
+        files.append((str(host), f"{box.home}/up/{name}"))
+    env._bulk_upload(files)
+    assert calls == [2, 1, 1, 1]  # a+b, c, big alone, d
+    assert all((Path(box.home) / "up" / name).exists() for name in ("a", "b", "c", "big", "d"))
+
+
+def test_sync_back_over_the_cap_is_not_downloaded(cloud, make_env, monkeypatch, tmp_path):
+    env = make_env(task_id="t1")
+    box = cloud.created[0]
+    (Path(box.home) / ".hermes").mkdir(exist_ok=True)
+    (Path(box.home) / ".hermes" / "big.bin").write_bytes(b"x" * 50_000)
+    monkeypatch.setattr(upstash_box_env, "_sync_back_cap", lambda: 1_000)
+    dest = tmp_path / "out.tar"
+    env._bulk_download(dest)
+    assert box.reads == []  # nothing was read back
+    with tarfile.open(dest) as tar:
+        assert tar.getmembers() == []  # an empty archive: Hermes applies nothing, retries nothing
