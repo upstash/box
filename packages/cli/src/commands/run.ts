@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
+import { effortOptions } from "../core/effort.js";
 import { CliError } from "../core/errors.js";
 import { emit, note, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
 export type RunFlags = GlobalFlags & {
   timeout?: string;
   quiet?: boolean;
+  effort?: string;
 };
 
 /**
@@ -54,7 +56,7 @@ function toolLine(name: string, input: Record<string, unknown>): string {
  * it. `--json` waits for the run to finish and prints the result instead, which
  * is the only form that carries the session id and token usage.
  * @param parts - the prompt, already split by the shell.
- * @param flags - global flags plus --timeout and --quiet.
+ * @param flags - global flags plus --timeout, --quiet and --effort.
  */
 export async function runCommandAction(parts: string[], flags: RunFlags): Promise<void> {
   const prompt = promptFrom(parts);
@@ -64,9 +66,13 @@ export async function runCommandAction(parts: string[], flags: RunFlags): Promis
   announceBox(resolved);
   const box = await Box.get(resolved.id, { apiKey: requireToken(flags.token) });
 
+  const options =
+    flags.effort === undefined ? undefined : effortOptions(box.modelConfig.harness, flags.effort);
+
   const run = await box.agent.stream({
     prompt,
     ...(timeout === undefined ? {} : { timeout }),
+    ...(options === undefined ? {} : { options }),
   });
 
   let output = "";

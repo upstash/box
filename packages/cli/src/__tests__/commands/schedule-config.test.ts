@@ -98,6 +98,27 @@ describe("schedule and config", () => {
       );
     });
 
+    it("sends --effort under the option name the box's harness uses", async () => {
+      const agent = vi.fn().mockResolvedValue({ id: "sch-2" });
+      getBox.mockResolvedValue({ schedule: { agent }, modelConfig: { harness: "codex" } });
+
+      await scheduleAgentCommand(["x"], { ...flags, cron: "@daily", effort: "xhigh" });
+
+      expect(agent).toHaveBeenCalledWith(
+        expect.objectContaining({ options: { modelReasoningEffort: "xhigh" } }),
+      );
+    });
+
+    it("rejects an effort level the harness does not take, before scheduling", async () => {
+      const agent = vi.fn();
+      getBox.mockResolvedValue({ schedule: { agent }, modelConfig: { harness: "claude-code" } });
+
+      await expect(
+        scheduleAgentCommand(["x"], { ...flags, cron: "@daily", effort: "xhigh" }),
+      ).rejects.toThrow(/low, medium, high, max/);
+      expect(agent).not.toHaveBeenCalled();
+    });
+
     it("rejects a timeout that is not a positive number", async () => {
       getBox.mockResolvedValue({ schedule: { agent: vi.fn() } });
 
@@ -150,6 +171,46 @@ describe("schedule and config", () => {
       // that rejects every other non-positive value.
       await scheduleUpdateCommand("sch-1", [], { ...flags, timeout: "0" });
       expect(update).toHaveBeenLastCalledWith("sch-1", { timeout: 0 });
+    });
+
+    it("merges --effort into the schedule's current agent options", async () => {
+      // The backend replaces agent_options whole, so sending only the effort
+      // would drop every other option the schedule was created with.
+      const get = vi.fn().mockResolvedValue({
+        id: "sch-1",
+        agent_options: { maxTurns: 5, effort: "high" },
+      });
+      const update = vi
+        .fn()
+        .mockResolvedValue({ id: "sch-1", type: "prompt", cron: "@daily", status: "active" });
+      getBox.mockResolvedValue({
+        schedule: { get, update },
+        modelConfig: { harness: "claude-code" },
+      });
+
+      await scheduleUpdateCommand("sch-1", [], { ...flags, effort: "low" });
+
+      expect(update).toHaveBeenCalledWith("sch-1", {
+        options: { maxTurns: 5, effort: "low" },
+      });
+    });
+
+    it("sets --effort on a schedule that had no agent options", async () => {
+      const get = vi.fn().mockResolvedValue({ id: "sch-1" });
+      const update = vi
+        .fn()
+        .mockResolvedValue({ id: "sch-1", type: "prompt", cron: "@daily", status: "active" });
+      getBox.mockResolvedValue({
+        schedule: { get, update },
+        modelConfig: { harness: "opencode" },
+      });
+
+      await scheduleUpdateCommand("sch-1", [], { ...flags, cron: "@hourly", effort: "medium" });
+
+      expect(update).toHaveBeenCalledWith("sch-1", {
+        cron: "@hourly",
+        options: { reasoningEffort: "medium" },
+      });
     });
 
     it("refuses an update that changes nothing", async () => {
