@@ -1,114 +1,75 @@
-# hermes-box
+# Upstash Box backend for Hermes Agent
 
-Run [Hermes Agent](https://github.com/NousResearch/hermes-agent) terminal work inside a remote [Upstash Box](https://upstash.com/docs/box).
+Run [Hermes Agent](https://github.com/NousResearch/hermes-agent)'s terminal in an [Upstash Box](https://upstash.com/docs/box), a cloud Linux container.
 
-The agent keeps running locally: your model calls, sessions, memory and approvals stay on your machine. Only the execution world moves. The `terminal`, `execute_code` and file tools (`read_file`, `write_file`, `patch`, `search_files`) run in a Box, a cloud Linux container with its own filesystem. Commands execute there, not on your machine. Two things do cross over, both through Hermes file sync: your skills, cache and skill-registered credential files are uploaded to the Box, and skill and cache files changed in the Box are copied back onto your machine (see below).
+The agent, your model calls and your sessions stay on your machine. The `terminal`, `execute_code` and file tools run in the Box.
 
-This is a Hermes terminal backend plugin. It registers the backend `upstash_box`, which you select like a built-in one with `terminal.backend`.
-
-## Install
+## Quick start
 
 ```bash
-hermes plugins install upstash/box#packages/hermes-box
+hermes plugins install upstash-box
 hermes plugins enable upstash-box
-```
-
-The install prompts for `UPSTASH_BOX_API_KEY` and saves it to `~/.hermes/.env`. Create a Box API key in the [Upstash console](https://console.upstash.com). The plugin depends on the [`upstash-box`](https://pypi.org/project/upstash-box/) Python SDK, which Hermes installs from `pyproject.toml` after you consent.
-
-Then select the backend:
-
-```bash
 hermes config set terminal.backend upstash_box
 ```
 
-or pick **Upstash Box** in `hermes setup terminal`. `hermes doctor` shows whether the SDK and the key are in place.
+The install asks for `UPSTASH_BOX_API_KEY`. Create one in the [Upstash console](https://console.upstash.com).
+
+Then start Hermes and ask it to run something, for example `uname -a`. The first command of a session takes about 10–15 seconds while the Box starts. After that, commands start right away.
+
+## How it works
+
+- **One Box per task, kept between runs.** Each chat or task gets its own Box. On exit it is paused, and the next time that task runs it resumes with your files and installed tools still there.
+- **Throwaway Boxes, if you prefer.** With `container_persistent: false`, each session gets a new Box, which is deleted when the session ends.
+- **Your skills come along.** Hermes skills and cache are uploaded to `~/.hermes` in the Box, and changes made there are copied back when the session ends.
+- **Commands start in `/home/boxuser`.** To start in the Box workspace instead, set `terminal.cwd: /workspace/home`.
+- **Background jobs keep running** after the command that started them returns.
+- **Timeouts and interrupts** kill the remote command, and Hermes gets the output produced so far.
 
 ## Configure
 
-The defaults work as-is. All keys are optional and live under `terminal:` in `~/.hermes/config.yaml`:
+All settings are optional and go under `terminal:` in `~/.hermes/config.yaml`:
 
 ```yaml
 terminal:
   backend: upstash_box
-  container_persistent: true      # pause and resume one Box per task (false: one Box per session, deleted when it ends)
-  upstash_box_size: small         # small | medium | large
-  upstash_box_runtime: python     # Box base image: node, python, golang, ruby, rust, ... (default: the Box default)
-  upstash_box_keep_alive: false   # create keep-alive Boxes (never paused; paid plans)
-  upstash_box_labels: [laptop]    # extra labels next to "hermes" (at most 4 extra, 20 characters each)
-  upstash_box_name_prefix: hermes # Box names are <prefix>-<task id>
+  container_persistent: true       # false: a new Box per session, deleted at the end
+  upstash_box_size: small          # small | medium | large
+  upstash_box_runtime: python      # base image: node (default), python, golang, ruby, rust, ...
+  upstash_box_keep_alive: false    # never pause Boxes (paid plans)
+  upstash_box_labels: [laptop]     # extra labels next to "hermes"
+  upstash_box_name_prefix: hermes  # Boxes are named <prefix>-<task id>
 ```
 
-| Setting / env var                 | Default                    | Meaning                                                                                    |
-| --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ |
-| `UPSTASH_BOX_API_KEY`             | required                   | Account credential. Read through Hermes's secret scope, never sent into the Box.           |
-| `UPSTASH_BOX_BASE_URL`            | the SDK default            | API endpoint, read through the secret scope like the key. Unset means the SDK default endpoint, never another profile's value. |
-| `terminal.container_persistent`   | `true`                     | Persistence mode, see below.                                                               |
-| `terminal.upstash_box_size`       | `small`                    | Box size. An unknown value falls back to `small` with a warning.                           |
-| `terminal.upstash_box_runtime`    | Box default                | Base image of new Boxes. A batch run's per-task image override is used as the runtime.     |
-| `terminal.upstash_box_keep_alive` | `false`                    | Keep-alive Boxes are left running on exit instead of paused. Persistent mode only: with `container_persistent: false` it is ignored, with a warning. |
-| `terminal.upstash_box_labels`     | none                       | Extra labels, as a list or a comma-separated string.                                       |
-| `terminal.upstash_box_name_prefix`| `hermes`                   | Prefix of Box names. Set a different one per machine to keep their Boxes apart.            |
+Set `UPSTASH_BOX_BASE_URL` only to use a different API endpoint.
 
-`terminal.container_cpu`, `container_memory` and `container_disk` do not apply: Boxes come in fixed sizes.
+## Good to know
 
-## How it behaves
-
-- **Persistent mode** (`container_persistent: true`, the default). Each task gets a Box named `hermes-<task id>`. When Hermes starts the task again it looks the Box up by name and resumes it, so files and installed tools are still there. On exit the Box is paused, not deleted. A Box in the error state is reported rather than replaced, so nothing is lost silently.
-- **Per-session isolation** (`container_persistent: false`). Every session creates its own Box, `hermes-<task id>-<random suffix>`, and deletes it when the session ends. The Box lasts for the whole session, so files carry over from one turn to the next. Two sessions never attach the same Box, so one can never delete the other's. The plugin only ever deletes the Box it created in that session; it never deletes by name, label or list. If the delete fails it retries a temporary failure a few times, and otherwise keeps the Box so a later cleanup can try again; a Box that is already gone counts as deleted.
-- **The first command of a new session takes a few seconds longer**, about 10–15 s: the Box is created (or resumed), your Hermes files are uploaded as one archive and the shell is set up. Later commands start at once. Hermes's prompt-time backend probe does not get a Box, so the system prompt describes the backend as an Upstash Box cloud container (Linux) rather than listing its kernel.
-- **Commands run in exec sessions.** Each command is a live Box exec session running `bash`. Stdout and stderr stream back merged, in arrival order, into Hermes's usual output handling, which caps what the terminal tool keeps. Stdin is streamed into the session and then always closed, so a command reading stdin sees EOF instead of hanging; a failed stdin write is reported with the result.
-- **Timeouts and interrupts kill the remote process tree.** A command that runs past its timeout, or that you interrupt, gets `SIGKILL` through the session and comes back as exit code `124` (timeout) or `130` (interrupt) with the output so far. The stop runs in the background, so Hermes never waits on the network for it.
-- **Output is never dropped.** When output arrives faster than Hermes reads it, the plugin stops reading from the connection until Hermes catches up.
-- **Commands start in the Box user's home** (`$HOME`, `/home/boxuser` on current Boxes). The Box workspace that the console, `box exec` and `git clone` use is `/workspace/home`; set `terminal.cwd: /workspace/home` to start there. An explicit absolute `terminal.cwd` is used as given. A `cd` carries over to later commands, like the other Hermes backends.
-- **A Box paused behind Hermes's back is resumed.** If a command finds its Box paused (from the console, or an idle pause), the plugin resumes it once and retries.
-- **A Box deleted behind Hermes's back is replaced.** If a command finds that its Box no longer exists, it says so and does not run; the next command runs in a new Box, and Hermes tells the model the environment was recreated. A Box in the error state is reported, not replaced.
-- **Your Hermes files are synced.** Skills, the cache and credential files registered by skills are uploaded to `~/.hermes` in the Box before commands run and kept in sync. When the Box is cleaned up, skill and cache files changed in the Box are copied back to your machine, replacing the host copy even if you changed it in the meantime (credential files are upload-only).
-- **The API key stays on your machine.** It is listed in the backend's `strip_env_keys`, so Hermes strips it from every process it spawns, and it is never passed into the Box or logged.
-- **Dangerous-command approval is skipped inside the Box**, as for the other cloud backends (Daytona, Modal), because commands run in the Box, not on your machine. Sync-back can still change skill and cache files on your machine.
+- **Paused Boxes count toward your Box limit.** The Free plan allows 10 Boxes, which is about ten chats. Clean up with `box list --label hermes`, then delete the Boxes you don't need.
+- **The default `node` image has no `pip`.** For Python work, set `upstash_box_runtime: python`. The change applies to newly created Boxes.
+- **Use one name prefix per machine.** Two machines with the same prefix share Boxes. Give each its own `upstash_box_name_prefix`.
+- **Computer use is not available.** Hermes's `computer_use` does not reach into the Box.
 
 ## What leaves your machine
 
-Before you install, know that this plugin:
-
-- sends every command the agent runs, and the files the file tools read and write, to Upstash Box over the network;
-- uploads your Hermes skills, cache and skill-registered credential files to `~/.hermes` in the Box;
-- copies skill and cache files changed in the Box back onto your machine when the Box is cleaned up;
-- creates, pauses, resumes and deletes Boxes in the Upstash account of your API key. Boxes are billed to that account, and paused Boxes keep their storage and count toward the account's Box limit;
-- runs commands in Boxes that already hold some of your account's credentials: if your Upstash account has GitHub connected, every Box has your GitHub credentials in `~/.git-credentials`, and every Box gets an `UPSTASH_BLOB_TOKEN` environment variable; commands the agent runs can read and use both;
-- reads `UPSTASH_BOX_API_KEY` (and `UPSTASH_BOX_BASE_URL` if set) through Hermes's secret scope. It reads no other credential store.
-
-It sends no telemetry: the `upstash-box` SDK adds anonymous telemetry headers (SDK version, Python version, platform) unless `UPSTASH_DISABLE_TELEMETRY` is set, so the plugin sets `UPSTASH_DISABLE_TELEMETRY=1` in the Hermes process when it is unset, before it creates any SDK client. It never updates itself.
+- Every command, and every file the file tools read or write, goes to Upstash Box.
+- Your Hermes skills, cache and skill credential files are uploaded to the Box. Changed skill and cache files are copied back.
+- Boxes are created, paused and deleted in your account and billed to it.
+- If your Upstash account has GitHub connected, every Box holds those credentials in `~/.git-credentials`. Every Box also has an `UPSTASH_BLOB_TOKEN`. Commands the agent runs can use both.
+- Your API key is never sent into the Box. No telemetry is sent.
 
 ## Requirements
 
-- Hermes Agent `>=0.22.3` (the first release that uses a plugin backend's `default_cwd`, so commands start in the Box home) with `plugins.isolation: in_process` (the default). A terminal backend cannot run in the plugin host.
-- Python `>=3.11` and `upstash-box>=0.4,<1`.
-- An Upstash account with a Box API key.
-
-## Limitations
-
-- **No Bot Desktop or `computer_use` in the Box.** The backend does not declare `supports_streams`, because no local command reaches a Box session with stdin and stdout open. The screen stays where Hermes puts it without this backend.
-- **Sessions cannot be reattached.** A dropped connection ends the command. Background processes started with `nohup ... &` (as Hermes's `terminal(background=true)` does) keep running after their command's session closes.
-- **Box names are per account.** Two machines, or two Hermes profiles, with the same `name_prefix` and task id resume the same persistent Box (CLI runs all use the task id `default`, so `hermes-default`). When one of them exits it pauses the Box, which stops a command the other is running. Give each machine or profile its own `upstash_box_name_prefix` if that matters. If two processes create the same Box at once, the second attaches the Box the first created.
-- **Persistent Boxes add up.** Persistent mode keeps one Box per task, paused between uses, and every gateway chat session and every new Hermes Desktop chat is its own task, so each gets its own Box. On the Free plan that is about ten chats. Paused Boxes count toward your plan's Box limit (10 on the Free plan); when it is reached, creating a Box fails with a message saying so. List them with `box list --label hermes` and delete the ones you no longer need.
-- **The default image has no `pip`.** Boxes use the Box default runtime (`node`) unless you set `upstash_box_runtime`; it has Python 3 but no `pip`. For Python work run `hermes config set terminal.upstash_box_runtime python` (Python 3.13 with `pip`); it applies to Boxes created after the change. Otherwise the agent can install it with `sudo apt-get install -y python3-pip`.
-- **Other Box states get no special handling.** Running, paused, deleted and error are handled as above. A Box in any other state (for example stopped) is used as it is; if a command cannot start, the error is reported.
-- **Pausing a keep-alive Box is not possible.** Keep-alive Boxes stay running after Hermes exits until you pause or delete them yourself.
-- **Leftover Boxes after a crash.** If Hermes is killed before cleanup, a non-persistent Box stays in your account. Find them with the `hermes` label (`box list --label hermes`) and delete them.
+Hermes Agent 0.22.3 or later, and an Upstash account with a Box API key.
 
 ## Development
-
-The tests import Hermes core, so install a hermes-agent checkout first:
 
 ```bash
 pip install -e /path/to/hermes-agent "upstash-box>=0.4,<1" pytest ruff
 cd packages/hermes-box
 ruff check . && ruff format --check .
-pytest                                   # unit tests, no network (integration tests are deselected)
+pytest                                          # unit tests, no network
 UPSTASH_BOX_API_KEY=... pytest -m integration   # real Boxes, billed to the key's account
 ```
-
-Unit tests run against a fake SDK whose Boxes are temporary directories and whose exec sessions are local `bash` processes, so the real Hermes command path (snapshot, cwd tracking, stdin, timeouts, kills, file sync) is exercised without network. `tests/test_sdk_transport.py` runs the plugin on the real `upstash-box` SDK against a local stand-in for the Box API: REST calls go through a mocked `httpx` transport and exec sessions over a local WebSocket. `hermes plugins validate packages/hermes-box` runs the catalog checks.
 
 ## License
 
