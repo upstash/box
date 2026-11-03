@@ -37,3 +37,45 @@ export function effortOptions(harness: string | undefined, level: string): Recor
   }
   return { [option.key]: level };
 }
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Set the effort in a schedule's stored agent options, keeping the rest.
+ *
+ * The backend replaces agent options whole on update, so the new effort has to
+ * be merged into what is stored. Two stored shapes would otherwise win over
+ * it: Codex options come back snake_case (`model_reasoning_effort`), and an
+ * OpenCode `extra_body.reasoning` overrides `reasoningEffort` on OpenRouter.
+ * @param harness - the box's harness, from `box.modelConfig.harness`.
+ * @param current - the schedule's stored agent options.
+ * @param level - the level the user passed.
+ * @returns the full options to send.
+ */
+export function mergeEffort(
+  harness: string | undefined,
+  current: Record<string, unknown> | undefined,
+  level: string,
+): Record<string, unknown> {
+  const effort = effortOptions(harness, level);
+  const merged: Record<string, unknown> = { ...current };
+
+  // Drop the stored snake_case key rather than rely on the SDK's key mapping
+  // to let the new camelCase key overwrite it.
+  if (harness === "codex") delete merged.model_reasoning_effort;
+
+  // The runner sends a stored extra_body.reasoning as-is on OpenRouter, so the
+  // effort is set there too. OpenRouter takes effort or max_tokens, not both.
+  if (
+    harness === "opencode" &&
+    isPlainObject(merged.extra_body) &&
+    isPlainObject(merged.extra_body.reasoning)
+  ) {
+    const { max_tokens: _maxTokens, ...reasoning } = merged.extra_body.reasoning;
+    merged.extra_body = { ...merged.extra_body, reasoning: { ...reasoning, effort: level } };
+  }
+
+  return { ...merged, ...effort };
+}

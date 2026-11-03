@@ -1,6 +1,6 @@
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
-import { effortOptions } from "../core/effort.js";
+import { effortOptions, mergeEffort } from "../core/effort.js";
 import { CliError } from "../core/errors.js";
 import { emit, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
@@ -115,7 +115,8 @@ export async function scheduleGetCommand(id: string, flags: ScheduleFlags): Prom
  *
  * Only the fields named are sent, so an update that changes the cron leaves the
  * command and the webhook alone. The backend replaces agent options whole, so
- * --effort is merged into the schedule's current options to keep the rest.
+ * --effort is merged into the schedule's current options to keep the rest
+ * (see `mergeEffort`).
  * @param id - the schedule id.
  * @param command - a replacement command, when given after `--`.
  * @param flags - the merged flags.
@@ -143,9 +144,12 @@ export async function scheduleUpdateCommand(
 
   const box = await open(flags);
   if (flags.effort !== undefined) {
-    const effort = effortOptions(box.modelConfig.harness, flags.effort);
+    // Validate before the extra request, so a bad level fails without it.
+    effortOptions(box.modelConfig.harness, flags.effort);
     const current = await box.schedule.get(id);
-    Object.assign(changes, { options: { ...current.agent_options, ...effort } });
+    Object.assign(changes, {
+      options: mergeEffort(box.modelConfig.harness, current.agent_options, flags.effort),
+    });
   }
   const schedule = await box.schedule.update(id, changes);
   emit(schedule, [line(schedule)], flags);
