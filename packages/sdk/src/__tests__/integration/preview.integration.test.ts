@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 const SERVER_SECRET = "box-preview-integration-test-secret-42";
 
@@ -10,7 +10,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
 
     // Start a simple HTTP server on port 3000 that responds with our secret

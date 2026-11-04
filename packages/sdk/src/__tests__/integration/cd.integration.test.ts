@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   let snapshotId: string;
@@ -13,7 +13,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeAll(async () => {
     const setupBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
 
     tmpDir = join(tmpdir(), `box-cd-test-${Date.now()}`);
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
   beforeEach(async () => {
     box = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { z } from "zod/v3";
-import { Agent, Box, ClaudeCode, OpenAICodex } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Agent, Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent, codexAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
   let box: Box;
@@ -9,7 +9,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 
@@ -78,7 +78,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI GPT-5.4)", () => {
   beforeAll(async () => {
     box = await Box.create<Agent.Codex>({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { harness: Agent.Codex, model: OpenAICodex.GPT_5_4 },
+      agent: codexAgent(),
     });
   }, 120000);
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
   let sourceBox: Box | undefined;
@@ -30,7 +30,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     // Create source box with an agent
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
 
     // Write a file with random content using exec

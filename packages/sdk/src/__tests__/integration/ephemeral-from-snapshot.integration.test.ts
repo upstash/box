@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { Box, EphemeralBox, ClaudeCode, Agent } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box, EphemeralBox } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regular Box", () => {
   let sourceBox: Box;
@@ -28,7 +28,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regula
   it("creates a source box and writes files", async () => {
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
 
     await sourceBox.files.write({ path: "hello.txt", content: "hello from snapshot" });
