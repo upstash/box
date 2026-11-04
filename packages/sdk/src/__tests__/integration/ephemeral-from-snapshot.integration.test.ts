@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { Box, EphemeralBox } from "../../index.js";
-import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
+import { UPSTASH_BOX_API_KEY } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regular Box", () => {
   let sourceBox: Box;
@@ -26,9 +26,10 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regula
   }, 30000);
 
   it("creates a source box and writes files", async () => {
+    // No agent: EphemeralBox.fromSnapshot cannot pass an agent key, and a
+    // direct key is not stored in the snapshot.
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: claudeAgent(),
     });
 
     await sourceBox.files.write({ path: "hello.txt", content: "hello from snapshot" });

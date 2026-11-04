@@ -42,10 +42,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     expect(snap.id).toBeTruthy();
     snapshotId = snap.id;
 
-    // Restore from snapshot with an agent configured
+    // Restore from snapshot. A direct agent key is not stored in the snapshot,
+    // so pass the agent again.
     restoredBox = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      // don't pass an agent, is should be restored from the snapshot
+      agent: claudeAgent(),
     });
 
     // Ask the agent to read the file and reply with its content
