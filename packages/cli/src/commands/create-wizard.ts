@@ -132,8 +132,8 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
 
   if (keyOption === "custom") {
     const key = await askQuestion("  Enter API key: ");
-    // An empty key falls back to the key saved on the account.
-    result.agentApiKey = key || "stored";
+    // An empty key is omitted: the server uses the account's saved key if there is one.
+    result.agentApiKey = key || undefined;
   } else {
     result.agentApiKey = "stored";
   }

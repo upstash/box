@@ -27,8 +27,9 @@ const box = await Box.create({
     provider: Agent.ClaudeCode, // Agent.Codex | Agent.OpenCode
     model: ClaudeCode.Sonnet_4_5,
     // apiKey options:
-    //   omit / BoxApiKey.StoredKey → use the key saved in the Upstash Console
-    //   "sk-..."                  → direct API key string
+    //   omit                 → key saved in the Upstash Console, if any
+    //   BoxApiKey.StoredKey  → same, but create fails if no key is saved
+    //   "sk-..."             → direct API key string
     // Agent runs fail until the box or the account has a key.
     apiKey: BoxApiKey.StoredKey,
   },

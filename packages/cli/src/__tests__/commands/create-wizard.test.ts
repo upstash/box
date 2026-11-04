@@ -172,7 +172,7 @@ describe("createWizard", () => {
     expect(result).toBeUndefined();
   });
 
-  it("empty custom key → falls back to the stored key", async () => {
+  it("empty custom key → omitted, server uses the account key", async () => {
     __answers.push("");
 
     vi.mocked(interactiveSelect)
@@ -185,6 +185,6 @@ describe("createWizard", () => {
 
     const result = await createWizard();
 
-    expect(result?.agentApiKey).toBe("stored");
+    expect(result?.agentApiKey).toBeUndefined();
   });
 });
