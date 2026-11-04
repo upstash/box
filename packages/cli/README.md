@@ -222,7 +222,7 @@ box create --no-repl \
 | `--clone-repo <repo>`      | Clone this repository after creating the box                                             |                               |
 | `--agent-model <model>`    | Agent model identifier                                                                   |                               |
 | `--agent-harness <name>`   | `claude-code`, `codex`, `opencode`, `cursor`                                             | required with `--agent-model` |
-| `--agent-api-key [key]`    | Omit for the Upstash-managed key, `stored` for a key saved in the console, or pass a key | Upstash                       |
+| `--agent-api-key [key]`    | Pass a key, or `stored` for the key saved in the console                                 | key saved in the console      |
 | `--git-token <token>`      | GitHub personal access token                                                             |                               |
 | `--git-user-name <name>`   | Git `user.name` inside the box                                                           | `Upstash Box`                 |
 | `--git-user-email <email>` | Git `user.email` inside the box                                                          | `box@upstash.com`             |

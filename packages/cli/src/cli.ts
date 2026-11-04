@@ -506,7 +506,7 @@ program
   .option("--agent-runner <runner>")
   .option(
     "--agent-api-key [key]",
-    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+    'Agent API key — pass a key, or "stored" to use the key saved in the Upstash console. Omitted, agent runs use the saved key',
   )
   .option("--git-token <token>", "GitHub personal access token")
   .option("--git-user-name <name>", "Git user.name to set in the box")
@@ -597,7 +597,7 @@ program
   .option("--agent-runner <runner>")
   .option(
     "--agent-api-key [key]",
-    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+    'Agent API key — pass a key, or "stored" to use the key saved in the Upstash console. Omitted, agent runs use the saved key',
   )
   .option("--git-token <token>", "GitHub personal access token")
   .option(
@@ -956,7 +956,7 @@ program
   .option("--agent-model <model>", "Agent model identifier")
   .option(
     "--agent-api-key [key]",
-    'Agent API key — omit to use Upstash-managed key, or pass "stored" to use a key saved in the Upstash console',
+    'Agent API key — pass a key, or "stored" to use the key saved in the Upstash console. Omitted, agent runs use the saved key',
   )
   .option("--runtime <runtime>", "Runtime environment", "node")
   .option("--git-token <token>", "GitHub personal access token")

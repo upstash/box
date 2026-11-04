@@ -82,7 +82,7 @@ box = await AsyncBox.create(
     agent={
         "harness": Agent.CLAUDE_CODE,
         "model": "anthropic/claude-sonnet-5",
-        "api_key": BoxApiKey.UPSTASH_KEY,  # or BoxApiKey.STORED_KEY, or a direct key
+        "api_key": BoxApiKey.STORED_KEY,  # key saved in the console, or a direct key
     },
     git={"token": "...", "user_name": "Jane", "user_email": "jane@example.com"},
     env={"NODE_ENV": "production"},

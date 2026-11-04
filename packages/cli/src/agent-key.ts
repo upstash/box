@@ -3,8 +3,8 @@ import { BoxApiKey } from "@upstash/box";
 /**
  * Resolve the --agent-api-key flag value to a BoxApiKey or direct key string.
  *
- * - undefined                                     → undefined (server decides)
- * - true (flag present with no value)             → undefined (server decides)
+ * - undefined                                     → undefined (server uses the account's saved key)
+ * - true (flag present with no value)             → undefined (server uses the account's saved key)
  * - "stored"                                      → BoxApiKey.StoredKey
  * - any other string                              → passed through as a direct API key
  */

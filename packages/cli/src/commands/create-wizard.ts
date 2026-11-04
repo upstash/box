@@ -22,10 +22,9 @@ const PROVIDERS: SelectItem<Agent>[] = [
   { label: "Cursor", value: Agent.Cursor },
 ];
 
-type ApiKeyOption = "upstash" | "stored" | "custom";
+type ApiKeyOption = "stored" | "custom";
 
 const API_KEY_OPTIONS: SelectItem<ApiKeyOption>[] = [
-  { label: "Upstash-managed", value: "upstash" },
   { label: "Use stored key", value: "stored", description: "previously saved via UI or API" },
   { label: "Enter your own", value: "custom" },
 ];
@@ -78,7 +77,7 @@ function printSummary(flags: Partial<CreateFlags>) {
         ? "stored key"
         : flags.agentApiKey && flags.agentApiKey !== true
           ? "custom key"
-          : "Upstash-managed";
+          : "account key";
     console.log(`  ${cyan("API key:")}    ${keyLabel}`);
   } else {
     console.log(`  ${cyan("Agent:")}      ${dim("none")}`);
@@ -118,7 +117,7 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
   result.agentProvider = provider;
 
   // Neon runs only with the stored credential (token plus branch gateway URL):
-  // the backend rejects both the Upstash-managed key and a raw key for neon/.
+  // the backend rejects a raw key for neon/.
   if (model.startsWith("neon/")) {
     result.agentApiKey = "stored";
     console.log(dim("  Neon AI Gateway uses your stored Neon credential (token and gateway URL)."));
@@ -133,15 +132,10 @@ async function configureAgent(result: Partial<CreateFlags>): Promise<boolean> {
 
   if (keyOption === "custom") {
     const key = await askQuestion("  Enter API key: ");
-    if (key) {
-      result.agentApiKey = key;
-    } else {
-      result.agentApiKey = undefined;
-    }
-  } else if (keyOption === "stored") {
-    result.agentApiKey = "stored";
+    // An empty key falls back to the key saved on the account.
+    result.agentApiKey = key || "stored";
   } else {
-    result.agentApiKey = undefined;
+    result.agentApiKey = "stored";
   }
 
   return true;
