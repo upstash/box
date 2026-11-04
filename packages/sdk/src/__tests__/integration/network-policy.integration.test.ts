@@ -63,18 +63,18 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — custom networkPolicy", () 
       apiKey: UPSTASH_BOX_API_KEY!,
       networkPolicy: {
         mode: "custom",
-        allowedDomains: ["mock.httpstatus.io"],
+        allowedDomains: ["example.com"],
       },
     });
 
     expect(box.id).toBeTruthy();
     expect(box.networkPolicy).toEqual({
       mode: "custom",
-      allowedDomains: ["mock.httpstatus.io"],
+      allowedDomains: ["example.com"],
     });
 
     // Allowed domain should succeed
-    const allowed = await box.exec.command("curl -s --max-time 10 https://mock.httpstatus.io/200");
+    const allowed = await box.exec.command("curl -s --max-time 10 https://example.com");
     expect(allowed.exitCode).toBe(0);
 
     // Non-allowed domain should fail
@@ -103,7 +103,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("box.updateNetworkPolicy", () => {
     expect(box.networkPolicy).toEqual({ mode: "allow-all" });
 
     // Should work under allow-all
-    const before = await box.exec.command("curl -s --max-time 10 https://mock.httpstatus.io/200");
+    const before = await box.exec.command("curl -s --max-time 10 https://example.com");
     expect(before.exitCode).toBe(0);
 
     // Switch to deny-all
@@ -117,7 +117,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("box.updateNetworkPolicy", () => {
     await box.updateNetworkPolicy({ mode: "allow-all" });
     expect(box.networkPolicy).toEqual({ mode: "allow-all" });
 
-    const after = await box.exec.command("curl -s --max-time 10 https://mock.httpstatus.io/200");
+    const after = await box.exec.command("curl -s --max-time 10 https://example.com");
     expect(after.exitCode).toBe(0);
   }, 180000);
 
