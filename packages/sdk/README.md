@@ -54,8 +54,7 @@ const box = await Box.create({
   agent: {
     harness: Agent.ClaudeCode,
     model: "anthropic/claude-sonnet-5",
-    apiKey: BoxApiKey.UpstashKey, // Upstash-managed key
-    // apiKey: BoxApiKey.StoredKey,     // use a key stored via the Upstash console
+    apiKey: BoxApiKey.StoredKey, // use the key saved in the Upstash console
     // apiKey: process.env.CLAUDE_KEY!, // or pass a direct API key
   },
   // Optional git identity configured in the container on create

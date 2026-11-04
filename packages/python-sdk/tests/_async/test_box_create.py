@@ -41,7 +41,7 @@ async def test_create_with_labels():
 
 
 @respx.mock
-async def test_create_with_managed_key_and_options():
+async def test_create_with_stored_key_and_options():
     route = respx.post(CREATE_URL).mock(return_value=httpx.Response(200, json=TEST_BOX_DATA))
     box = await AsyncBox.create(
         size="large",
@@ -50,7 +50,7 @@ async def test_create_with_managed_key_and_options():
         agent={
             "harness": Agent.CLAUDE_CODE,
             "model": "anthropic/claude-sonnet-4-5",
-            "api_key": BoxApiKey.UPSTASH_KEY,
+            "api_key": BoxApiKey.STORED_KEY,
         },
         git={"token": "ght", "user_name": "Jane", "user_email": "jane@example.com"},
         env={"NODE_ENV": "production"},
@@ -63,7 +63,7 @@ async def test_create_with_managed_key_and_options():
     assert body["size"] == "large"
     assert body["keep_alive"] is True
     assert body["init_command"] == "npm run dev"
-    assert body["agent_api_key"] == "UPSTASH_KEY"
+    assert body["agent_api_key"] == "STORED_KEY"
     assert body["github_token"] == "ght"
     assert body["git_user_name"] == "Jane"
     assert body["env_vars"] == {"NODE_ENV": "production"}

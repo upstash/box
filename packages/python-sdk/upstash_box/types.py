@@ -309,9 +309,14 @@ class CursorModel(str, Enum):
 
 
 class BoxApiKey(str, Enum):
-    """Managed LLM API key selection."""
+    """LLM API key selection.
 
-    UPSTASH_KEY = "UPSTASH_KEY"
+    ``STORED_KEY`` uses the key saved on your account for the provider.
+    ``UPSTASH_KEY`` is deprecated: Upstash no longer provides model keys, and the
+    server treats it like an omitted key (the account's saved key is used).
+    """
+
+    UPSTASH_KEY = "UPSTASH_KEY"  # deprecated, see class docstring
     STORED_KEY = "STORED_KEY"
 
 
@@ -744,7 +749,7 @@ class BoxData(_Model):
     total_cpu_ns: Optional[int] = None
     total_compute_cost_usd: Optional[float] = None
     total_token_cost_usd: Optional[float] = None
-    use_managed_key: Optional[bool] = None
+    use_managed_key: Optional[bool] = None  # deprecated: managed keys were removed
     last_activity_at: Optional[int] = None
 
 

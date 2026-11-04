@@ -31,13 +31,13 @@ beforeEach(() => {
 });
 
 describe("createWizard", () => {
-  it("happy path: Claude model + Upstash key", async () => {
+  it("happy path: Claude model + stored key", async () => {
     vi.mocked(interactiveSelect)
       .mockResolvedValueOnce("python") // runtime
       .mockResolvedValueOnce("agent") // action: configure agent
       .mockResolvedValueOnce("claude-code") // provider
       .mockResolvedValueOnce("anthropic/claude-sonnet-4-5") // model
-      .mockResolvedValueOnce("upstash") // API key option
+      .mockResolvedValueOnce("stored") // API key option
       .mockResolvedValueOnce("create"); // action: create
 
     const result = await createWizard();
@@ -46,6 +46,7 @@ describe("createWizard", () => {
       runtime: "python",
       agentModel: "anthropic/claude-sonnet-4-5",
       agentProvider: "claude-code",
+      agentApiKey: "stored",
     });
   });
 
@@ -171,7 +172,7 @@ describe("createWizard", () => {
     expect(result).toBeUndefined();
   });
 
-  it("empty custom key → falls back to Upstash-managed (agentApiKey undefined)", async () => {
+  it("empty custom key → omitted, server uses the account key", async () => {
     __answers.push("");
 
     vi.mocked(interactiveSelect)

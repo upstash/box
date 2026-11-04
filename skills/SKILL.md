@@ -27,11 +27,11 @@ const box = await Box.create({
     provider: Agent.ClaudeCode, // Agent.Codex | Agent.OpenCode
     model: ClaudeCode.Sonnet_4_5,
     // apiKey options:
-    //   omit          → server decides which key to use
-    //   BoxApiKey.UpstashKey  → use Upstash-provided LLM key
-    //   BoxApiKey.StoredKey   → use key previously stored via Upstash Console
-    //   "sk-..."      → direct API key string
-    apiKey: BoxApiKey.UpstashKey,
+    //   omit                 → key saved in the Upstash Console, if any
+    //   BoxApiKey.StoredKey  → same, but create fails if no key is saved
+    //   "sk-..."             → direct API key string
+    // Agent runs fail until the box or the account has a key.
+    apiKey: BoxApiKey.StoredKey,
   },
   git: { // all fields optional
     token: process.env.GITHUB_TOKEN, // alternatively link your GitHub account via Upstash Console

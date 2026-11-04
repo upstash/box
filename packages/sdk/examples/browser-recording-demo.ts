@@ -13,7 +13,7 @@ const box = await Box.create({
   agent: {
     harness: Agent.Codex,
     model: OpenAICodex.GPT_5_4,
-    apiKey: BoxApiKey.UpstashKey,
+    apiKey: BoxApiKey.StoredKey,
   },
 });
 

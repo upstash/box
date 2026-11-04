@@ -4,6 +4,12 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Upstash no longer provides model API keys for agents. Agent runs use the key
+  set on the box, or else the key saved on your account; a run with neither
+  fails with ``agent API key is required``. ``BoxApiKey.UPSTASH_KEY`` is
+  deprecated (the server treats it like an omitted key); use
+  ``BoxApiKey.STORED_KEY`` or pass your own key. ``BoxData.use_managed_key`` is
+  deprecated and always false.
 - Neon AI Gateway: document that the Claude Code harness runs the ``CLAUDE_*``
   ``NeonModel`` values (Neon's Anthropic Messages API). The default harness from
   ``infer_default_provider`` for ``neon/claude-*`` stays OpenCode.

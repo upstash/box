@@ -328,7 +328,9 @@ export enum CursorModel {
 
 export enum BoxApiKey {
   /**
-   * Use an LLM API key provided by Upstash
+   * @deprecated Upstash no longer provides model keys. The server now treats this
+   * like an omitted key: agent runs use the key saved on your account for the
+   * provider. Use `BoxApiKey.StoredKey` or pass your own key.
    */
   UpstashKey = "UPSTASH_KEY",
   /**
@@ -359,11 +361,12 @@ type ManagedAgentApiKeyConfig = {
    * API key for the agent model.
    *
    * Options:
-   * - BoxApiKey.UpstashKey: Use an LLM API key provided by Upstash
    * - BoxApiKey.StoredKey: Use an LLM API key previously stored via the UI or API
    * - Direct API key string (e.g. OpenAI key)
    *
-   * When omitted, the server decides which key to use.
+   * When omitted, agent runs use the key saved on your account for the provider.
+   * Agent runs fail until the box or the account has a key; shell, files and git
+   * work without one.
    */
   apiKey?: BoxApiKey | string;
 };
@@ -1015,6 +1018,7 @@ export type BoxData = {
   total_cpu_ns?: number;
   total_compute_cost_usd?: number;
   total_token_cost_usd?: number;
+  /** @deprecated Upstash-managed keys were removed; always false or absent. */
   use_managed_key?: boolean;
   last_activity_at?: number;
   created_at: number;
