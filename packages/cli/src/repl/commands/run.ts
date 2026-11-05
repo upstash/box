@@ -67,13 +67,18 @@ export function parseTodoItems(input: Record<string, unknown>): TodoItem[] {
 /**
  * Run the agent with a prompt, streaming output as events.
  */
-export async function* handleRun(box: Box, prompt: string): AsyncGenerator<BoxREPLEvent> {
+export async function* handleRun(
+  box: Box,
+  prompt: string,
+  onRunCreated?: (run: { cancel(): Promise<void> }) => void,
+): AsyncGenerator<BoxREPLEvent> {
   if (!prompt) {
     yield { type: "log", message: "Usage: run <prompt>" };
     return;
   }
 
   const run = await box.agent.stream({ prompt });
+  onRunCreated?.(run);
 
   for await (const chunk of run) {
     if (chunk.type === "text-delta") {
