@@ -1,5 +1,6 @@
 import { Box } from "@upstash/box";
 import { announceBox, resolveBoxId } from "../core/box-ref.js";
+import { effortOptions, mergeEffort } from "../core/effort.js";
 import { CliError } from "../core/errors.js";
 import { emit, requireToken, timeoutMs, type GlobalFlags } from "../core/io.js";
 
@@ -10,6 +11,7 @@ export type ScheduleFlags = GlobalFlags & {
   timeout?: string;
   webhookUrl?: string;
   prompt?: string;
+  effort?: string;
 };
 
 async function open(flags: ScheduleFlags): Promise<Box> {
@@ -68,12 +70,15 @@ export async function scheduleAgentCommand(prompt: string[], flags: ScheduleFlag
 
   const box = await open(flags);
   const timeout = timeoutMs(flags.timeout);
+  const options =
+    flags.effort === undefined ? undefined : effortOptions(box.modelConfig.harness, flags.effort);
   const schedule = await box.schedule.agent({
     cron: flags.cron,
     prompt: text,
     ...(flags.folder === undefined ? {} : { folder: flags.folder }),
     ...(flags.model === undefined ? {} : { model: flags.model }),
     ...(timeout === undefined ? {} : { timeout }),
+    ...(options === undefined ? {} : { options }),
     ...(flags.webhookUrl === undefined ? {} : { webhookUrl: flags.webhookUrl }),
   });
 
@@ -109,7 +114,9 @@ export async function scheduleGetCommand(id: string, flags: ScheduleFlags): Prom
  * Change a schedule in place.
  *
  * Only the fields named are sent, so an update that changes the cron leaves the
- * command and the webhook alone.
+ * command and the webhook alone. The backend replaces agent options whole, so
+ * --effort is merged into the schedule's current options to keep the rest
+ * (see `mergeEffort`).
  * @param id - the schedule id.
  * @param command - a replacement command, when given after `--`.
  * @param flags - the merged flags.
@@ -129,13 +136,21 @@ export async function scheduleUpdateCommand(
     ...(flags.model === undefined ? {} : { model: flags.model }),
     ...(flags.webhookUrl === undefined ? {} : { webhookUrl: flags.webhookUrl }),
   };
-  if (Object.keys(changes).length === 0) {
+  if (Object.keys(changes).length === 0 && flags.effort === undefined) {
     throw new CliError(
-      "Nothing to update. Pass --cron, --prompt, --folder, --model, --timeout, --webhook-url, or a command after --",
+      "Nothing to update. Pass --cron, --prompt, --folder, --model, --effort, --timeout, --webhook-url, or a command after --",
     );
   }
 
   const box = await open(flags);
+  if (flags.effort !== undefined) {
+    // Validate before the extra request, so a bad level fails without it.
+    effortOptions(box.modelConfig.harness, flags.effort);
+    const current = await box.schedule.get(id);
+    Object.assign(changes, {
+      options: mergeEffort(box.modelConfig.harness, current.agent_options, flags.effort),
+    });
+  }
   const schedule = await box.schedule.update(id, changes);
   emit(schedule, [line(schedule)], flags);
 }

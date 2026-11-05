@@ -30,13 +30,13 @@ describe("box run", () => {
   const out = () => stdout.mock.calls.map((call) => String(call[0])).join("");
   const err = () => stderr.mock.calls.map((call) => String(call[0])).join("");
 
-  function boxStreaming(chunks: unknown[]) {
+  function boxStreaming(chunks: unknown[], harness?: string) {
     const stream = vi.fn().mockResolvedValue({
       async *[Symbol.asyncIterator]() {
         for (const chunk of chunks) yield chunk;
       },
     });
-    getBox.mockResolvedValue({ agent: { stream } });
+    getBox.mockResolvedValue({ agent: { stream }, modelConfig: { harness } });
     return stream;
   }
 
@@ -50,6 +50,41 @@ describe("box run", () => {
     ]);
     await runCommandAction(["do", "a", "thing"], { ...flags });
     expect(out()).toBe("one two\n");
+  });
+
+  it.each([
+    ["claude-code", "max", { effort: "max" }],
+    ["codex", "minimal", { modelReasoningEffort: "minimal" }],
+    ["opencode", "low", { reasoningEffort: "low" }],
+  ])("maps --effort to the %s option", async (harness, effort, options) => {
+    const stream = boxStreaming(
+      [{ type: "finish", output: "ok", sessionId: "s", usage: {} }],
+      harness,
+    );
+    await runCommandAction(["go"], { ...flags, effort });
+    expect(stream).toHaveBeenCalledWith({ prompt: "go", options });
+  });
+
+  it("sends no agent options without --effort", async () => {
+    const stream = boxStreaming([{ type: "finish", output: "ok", sessionId: "s", usage: {} }]);
+    await runCommandAction(["go"], { ...flags });
+    expect(stream).toHaveBeenCalledWith({ prompt: "go" });
+  });
+
+  it("rejects an effort level the harness does not take, before running", async () => {
+    const stream = boxStreaming([], "opencode");
+    await expect(runCommandAction(["go"], { ...flags, effort: "max" })).rejects.toThrow(
+      /low, medium, high/,
+    );
+    expect(stream).not.toHaveBeenCalled();
+  });
+
+  it("rejects --effort on a harness without an effort option", async () => {
+    const stream = boxStreaming([], "cursor");
+    await expect(runCommandAction(["go"], { ...flags, effort: "high" })).rejects.toThrow(
+      /not supported for the cursor harness/,
+    );
+    expect(stream).not.toHaveBeenCalled();
   });
 
   it("keeps the tool log on stderr so stdout stays pipeable", async () => {

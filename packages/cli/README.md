@@ -178,6 +178,7 @@ Run the box's agent on a prompt. The agent's text streams to stdout; its tool ca
 box run "Fix the failing test in src/auth.test.ts"
 box run - < prompt.txt
 box run "Summarise this repo" --quiet
+box run "Review the diff" --effort low
 box run "Reply with just the version" --json
 ```
 
@@ -185,9 +186,12 @@ box run "Reply with just the version" --json
 | --------------------- | ----------------------------------------- |
 | `--timeout <seconds>` | Give up after this long                   |
 | `-q, --quiet`         | Do not log tool calls                     |
+| `--effort <level>`    | Agent effort (see below)                  |
 | `--json`              | One object: `{output, session_id, usage}` |
 
 The box needs an agent, which means it was created with `--agent-model` and `--agent-harness`.
+
+`--effort` takes the levels the box's harness supports: `low`, `medium`, `high`, `max` for Claude Code; `none`, `minimal`, `low`, `medium`, `high`, `xhigh` for Codex; `low`, `medium`, `high` for OpenCode. Cursor and custom harnesses have no effort option. `box schedule agent` and `box schedule update` take the same flag.
 
 ### `box create`
 

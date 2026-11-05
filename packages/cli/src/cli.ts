@@ -448,6 +448,7 @@ program
   .description("Run the box's agent on a prompt")
   .option("--timeout <seconds>", "Give up after this long")
   .option("-q, --quiet", "Do not log tool calls to stderr")
+  .option("--effort <level>", "Agent effort; levels depend on the harness (e.g. low, medium, high)")
   .option("--box <id>", "Box to act on")
   .option("--json", "Print the result as one object instead of streaming")
   .option("--token <token>", "Upstash Box API token")
@@ -652,6 +653,7 @@ withScheduleCommon(
   .option("--cron <expr>", "Cron expression, UTC")
   .option("-C, --folder <dir>", "Working directory inside the box")
   .option("--model <model>", "Model to run the prompt on")
+  .option("--effort <level>", "Agent effort; levels depend on the harness (e.g. low, medium, high)")
   .option("--timeout <seconds>", "Give up after this long")
   .option("--webhook-url <url>", "POST the result here after each run")
   .action(async (parts: string[], opts) =>
@@ -677,6 +679,7 @@ withScheduleCommon(
   .option("--prompt <text>", "New prompt")
   .option("-C, --folder <dir>", "New working directory")
   .option("--model <model>", "New model")
+  .option("--effort <level>", "New agent effort; keeps the schedule's other agent options")
   .option("--timeout <seconds>", "New timeout; 0 clears it")
   .option("--webhook-url <url>", "New webhook URL")
   .action(async (id: string, parts: string[], opts) =>
