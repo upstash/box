@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { WebSocket } from "ws";
-import { Box, EphemeralBox, Agent, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box, EphemeralBox } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 const REQUEST_CATCHER_HOST = "box-hidden-header-test.requestcatcher.com";
 const REQUEST_CATCHER_URL = `https://${REQUEST_CATCHER_HOST}/test`;
@@ -119,7 +119,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
   it("Box.create: creates a box with attachHeaders", async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
       attachHeaders: sourceConfig,
     });
     expect(box.id).toBeTruthy();
@@ -143,7 +143,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
   it("Box.fromSnapshot: restores with modified attachHeaders", async () => {
     boxFromSnap = await Box.fromSnapshot(boxSnapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
       attachHeaders: fromSnapConfig,
     });
     expect(boxFromSnap.id).toBeTruthy();

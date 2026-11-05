@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
   let box: Box;
@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 
