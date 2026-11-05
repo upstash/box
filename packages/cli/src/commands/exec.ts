@@ -44,15 +44,38 @@ export async function execCommand(parts: string[], flags: ExecFlags): Promise<vo
     return;
   }
 
-  const exitCode = await execStream(
-    box,
-    command,
-    (chunk) => {
-      process.stdout.write(chunk);
-    },
-    { cwd: flags.cwd },
-  );
+  let exitCode: number;
+  try {
+    exitCode = await execStream(
+      box,
+      command,
+      (chunk) => {
+        process.stdout.write(chunk);
+      },
+      { cwd: flags.cwd },
+    );
+  } catch (error) {
+    if (!isReadOnlyRefusal(error)) throw error;
+    // Read-only API keys may run commands but not stream them, so the output
+    // arrives once the command has finished instead of as it is produced.
+    const result = await execCollect(box, command, { cwd: flags.cwd });
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    exitCode = result.exit_code;
+  }
   if (exitCode !== 0) process.exitCode = exitCode;
+}
+
+/**
+ * Whether an error is the API refusing a read-only API key.
+ * @param error - what the SDK threw.
+ */
+function isReadOnlyRefusal(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as { statusCode?: number }).statusCode === 403 &&
+    /read-only/i.test(error.message)
+  );
 }
 
 /**

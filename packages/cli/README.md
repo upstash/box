@@ -74,7 +74,8 @@ A paused box resumes by itself on the next command, so `paused` is not an error.
 
 ### `box exec`
 
-Run a shell command inside the box. Output streams as it arrives.
+Run a shell command inside the box. Output streams as it arrives. With a read-only API key,
+which may run commands but not stream them, the output is printed once the command finishes.
 
 ```bash
 box exec -- npm test
