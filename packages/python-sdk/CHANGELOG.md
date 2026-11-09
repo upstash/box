@@ -15,6 +15,8 @@ All notable changes to `upstash-box` (Python) are documented here.
   ``infer_default_provider`` for ``neon/claude-*`` stays OpenCode.
 - Add Claude Sonnet 5.5 and Claude Haiku 5.5 model constants for Claude Code,
   OpenRouter, Vercel AI Gateway, OpenCode/Zen, and Cursor, mirroring `@upstash/box`.
+- Add Claude Fable 5.2 model constants for Claude Code, OpenRouter, Vercel AI
+  Gateway, and OpenCode/Zen, mirroring `@upstash/box`.
 
 ## 0.4.0
 
