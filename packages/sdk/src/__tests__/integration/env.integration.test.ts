@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { Box, EphemeralBox, ClaudeCode, Agent } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box, EphemeralBox } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars", () => {
   let box: Box;
@@ -8,7 +8,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars", () => {
   beforeAll(async () => {
     box = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
       env: {
         MY_SECRET: "super-secret-value",
         APP_MODE: "production",
@@ -73,7 +73,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — Box.fromSnapshot", () => {
   it("creates a source box with env vars and snapshots it", async () => {
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
       env: { SOURCE_VAR: "from-source" },
     });
 
@@ -88,7 +88,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — Box.fromSnapshot", () => {
   it("restores from snapshot with new env vars", async () => {
     restoredBox = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { runner: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
       env: { NEW_VAR: "from-restore" },
     });
 

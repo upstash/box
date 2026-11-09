@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 
 describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
   let sourceBox: Box | undefined;
@@ -30,7 +30,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     // Create source box with an agent
     sourceBox = await Box.create({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
 
     // Write a file with random content using exec
@@ -42,10 +42,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     expect(snap.id).toBeTruthy();
     snapshotId = snap.id;
 
-    // Restore from snapshot with an agent configured
+    // Restore from snapshot. A direct agent key is not stored in the snapshot,
+    // so pass the agent again.
     restoredBox = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
-      // don't pass an agent, is should be restored from the snapshot
+      agent: claudeAgent(),
     });
 
     // Ask the agent to read the file and reply with its content

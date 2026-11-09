@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { Agent, Box, ClaudeCode } from "../../index.js";
-import { UPSTASH_BOX_API_KEY } from "./setup.js";
+import { Agent, Box } from "../../index.js";
+import { UPSTASH_BOX_API_KEY, claudeAgent } from "./setup.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,7 +27,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — base64 JSON", () => {
   beforeAll(async () => {
     box = await Box.create<Agent.ClaudeCode>({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 
@@ -84,7 +84,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (multipart)",
   beforeAll(async () => {
     box = await Box.create<Agent.ClaudeCode>({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 
@@ -135,7 +135,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (txt)", () =>
   beforeAll(async () => {
     box = await Box.create<Agent.ClaudeCode>({
       apiKey: UPSTASH_BOX_API_KEY!,
-      agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Haiku_4_5 },
+      agent: claudeAgent(),
     });
   }, 120000);
 
