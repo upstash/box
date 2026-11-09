@@ -38,6 +38,44 @@ export async function execCollect(
   };
 }
 
+/** One piece of a command's output, or its exit status. */
+export type ExecEvent =
+  | { type: "output"; data: string; stderr?: boolean }
+  | { type: "exit"; exitCode: number };
+
+/**
+ * Run a command, yielding output as it arrives.
+ *
+ * Read-only API keys may run commands but not stream them, so for those the
+ * output arrives once the command has finished instead of as it is produced.
+ * The fallback only happens when the stream is refused up front, so a command
+ * never runs twice.
+ * @param box - the box to run in.
+ * @param command - the shell command.
+ * @param options - working directory inside the box.
+ */
+export async function* execEvents(
+  box: Box,
+  command: string,
+  options?: { cwd?: string | undefined },
+): AsyncGenerator<ExecEvent> {
+  let run;
+  try {
+    run = await box.exec.stream(withCwd(command, options?.cwd));
+  } catch (error) {
+    if (!isReadOnlyRefusal(error)) throw error;
+    const result = await execCollect(box, command, options);
+    if (result.stdout) yield { type: "output", data: result.stdout };
+    if (result.stderr) yield { type: "output", data: result.stderr, stderr: true };
+    yield { type: "exit", exitCode: result.exit_code };
+    return;
+  }
+  for await (const chunk of run) {
+    if (chunk.type === "output") yield { type: "output", data: chunk.data };
+    else if (chunk.type === "exit") yield { type: "exit", exitCode: chunk.exitCode };
+  }
+}
+
 /**
  * Run a command, handing output to a sink as it arrives.
  *
@@ -46,20 +84,21 @@ export async function execCollect(
  * @param box - the box to run in.
  * @param command - the shell command.
  * @param onOutput - receives each chunk as it arrives.
- * @param options - working directory inside the box.
+ * @param options - working directory inside the box, and a sink for stderr
+ *   when it arrives separately (read-only keys); without one it goes to onOutput.
  * @returns the command's exit code.
  */
 export async function execStream(
   box: Box,
   command: string,
   onOutput: (chunk: string) => void,
-  options?: { cwd?: string | undefined },
+  options?: { cwd?: string | undefined; onStderr?: (chunk: string) => void },
 ): Promise<number> {
-  const run = await box.exec.stream(withCwd(command, options?.cwd));
   let exitCode: number | undefined;
-  for await (const chunk of run) {
-    if (chunk.type === "output") onOutput(chunk.data);
-    else if (chunk.type === "exit") exitCode = chunk.exitCode;
+  for await (const event of execEvents(box, command, options)) {
+    if (event.type === "exit") exitCode = event.exitCode;
+    else if (event.stderr && options?.onStderr) options.onStderr(event.data);
+    else onOutput(event.data);
   }
   if (exitCode === undefined) {
     // Defaulting to 0 would let `box exec ... && next` run next on a stream
@@ -67,6 +106,18 @@ export async function execStream(
     throw new CliError("The command's output ended before its exit status arrived");
   }
   return exitCode;
+}
+
+/**
+ * Whether an error is the API refusing a read-only API key.
+ * @param error - what the SDK threw.
+ */
+function isReadOnlyRefusal(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as { statusCode?: number }).statusCode === 403 &&
+    /read-only/i.test(error.message)
+  );
 }
 
 /**

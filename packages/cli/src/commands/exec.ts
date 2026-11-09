@@ -50,7 +50,12 @@ export async function execCommand(parts: string[], flags: ExecFlags): Promise<vo
     (chunk) => {
       process.stdout.write(chunk);
     },
-    { cwd: flags.cwd },
+    {
+      cwd: flags.cwd,
+      onStderr: (chunk) => {
+        process.stderr.write(chunk);
+      },
+    },
   );
   if (exitCode !== 0) process.exitCode = exitCode;
 }

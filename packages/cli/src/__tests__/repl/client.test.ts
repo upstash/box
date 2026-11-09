@@ -74,6 +74,23 @@ describe("BoxREPLClient", () => {
       );
     });
 
+    it("shell mode falls back to collected output for a read-only key", async () => {
+      const refusal = Object.assign(new Error("This API key is read-only"), { statusCode: 403 });
+      const mockBox = {
+        exec: {
+          stream: vi.fn().mockRejectedValue(refusal),
+          command: vi.fn().mockResolvedValue({ stdout: "out\n", stderr: "err\n", exitCode: 1 }),
+        },
+      };
+      const client = new BoxREPLClient(mockBox as any);
+      const events = await collectEvents(client.handleInput("ls"));
+
+      expect(mockBox.exec.command).toHaveBeenCalledWith("ls");
+      expect(events).toContainEqual({ type: "stream", text: "out\n" });
+      expect(events).toContainEqual({ type: "stream", text: "err\n" });
+      expect(events).not.toContainEqual(expect.objectContaining({ type: "error" }));
+    });
+
     // --- Agent mode ---
 
     it("/agent switches to agent mode, bare text calls agent.stream", async () => {

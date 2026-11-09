@@ -13,6 +13,7 @@ import { handlePause } from "./commands/pause.js";
 import { handleDelete } from "./commands/delete.js";
 import { handleConsole } from "./commands/console.js";
 import { handleModel } from "./commands/model.js";
+import { execEvents } from "../core/exec.js";
 import { fuzzyMatch } from "../utils/fuzzy.js";
 import { getNextSuggestion } from "./suggestions.js";
 
@@ -157,10 +158,9 @@ export class BoxREPLClient {
 
   /** Execute a shell command in the box, streaming output in real time. */
   private async *execShellCommand(command: string): AsyncGenerator<BoxREPLEvent> {
-    const run = await this.box.exec.stream(command);
-    for await (const chunk of run) {
-      if (chunk.type === "output") {
-        yield { type: "stream", text: chunk.data };
+    for await (const event of execEvents(this.box, command)) {
+      if (event.type === "output") {
+        yield { type: "stream", text: event.data };
       }
     }
   }

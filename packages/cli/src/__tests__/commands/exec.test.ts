@@ -70,6 +70,25 @@ describe("box exec", () => {
     expect(process.exitCode).toBe(7);
   });
 
+  it("falls back to collected output when a read-only key may not stream", async () => {
+    const refusal = Object.assign(new Error("This API key is read-only"), { statusCode: 403 });
+    const command = vi.fn().mockResolvedValue({ stdout: "out\n", stderr: "err\n", exitCode: 2 });
+    getBox.mockResolvedValue({ exec: { command, stream: vi.fn().mockRejectedValue(refusal) } });
+    await execCommand(["cmd"], { box: "b1" });
+    expect(command).toHaveBeenCalledWith("cmd");
+    expect(written()).toBe("out\n");
+    expect(stderr.mock.calls.map((call) => String(call[0])).join("")).toContain("err\n");
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("does not retry other stream failures", async () => {
+    const denied = Object.assign(new Error("Forbidden"), { statusCode: 403 });
+    const command = vi.fn();
+    getBox.mockResolvedValue({ exec: { command, stream: vi.fn().mockRejectedValue(denied) } });
+    await expect(execCommand(["cmd"], { box: "b1" })).rejects.toThrow("Forbidden");
+    expect(command).not.toHaveBeenCalled();
+  });
+
   it("refuses an empty command and explains the -- convention", async () => {
     await expect(execCommand([], { box: "b1" })).rejects.toThrow(CliError);
     await expect(execCommand([], { box: "b1" })).rejects.toThrow(/box exec -- ls -la/);
