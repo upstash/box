@@ -42,7 +42,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — Box.create", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a box with a custom harness without an agent API key", async () => {
     box = await Box.create({
@@ -100,7 +100,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — configureCustomHarness
         customHarness: { command: "node", args: [HARNESS_PATH] },
       },
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -108,7 +108,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — configureCustomHarness
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("updates the custom harness config on an existing box", async () => {
     await expect(
@@ -148,7 +148,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — agent.run end-to-end",
     });
 
     await box.files.write({ path: "harness.mjs", content: HARNESS_SCRIPT });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -156,7 +156,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("custom harness — agent.run end-to-end",
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("agent.run executes the custom harness and round-trips the prompt", async () => {
     const run = await box.agent.run({ prompt: "hello-from-test" });

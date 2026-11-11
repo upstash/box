@@ -10,7 +10,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: { provider: Agent.ClaudeCode, model: ClaudeCode.Sonnet_4_5 },
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -18,7 +18,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("configureModel", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("starts with the initial model config", () => {
     const config = box.modelConfig;

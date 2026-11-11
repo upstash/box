@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("agent.run: returns result", async () => {
     const run = await box.agent.run({
@@ -80,7 +80,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI GPT-5.4)", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: codexAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -88,7 +88,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent (OpenAI GPT-5.4)", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("agent.run: returns non-empty result", async () => {
     const run = await box.agent.run({

@@ -20,7 +20,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — node runtime", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with node runtime", async () => {
     box = await EphemeralBox.create({
@@ -127,7 +127,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — env vars", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with env vars", async () => {
     box = await EphemeralBox.create({
@@ -170,7 +170,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — python runtime", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with python runtime", async () => {
     box = await EphemeralBox.create({
@@ -214,7 +214,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox — default config", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with no runtime or ttl", async () => {
     box = await EphemeralBox.create({

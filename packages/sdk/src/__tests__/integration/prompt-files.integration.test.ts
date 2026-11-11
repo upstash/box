@@ -29,11 +29,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — base64 JSON", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   beforeEach(async () => {
     await waitUntilIdle(box);
-  }, 90000);
+  });
 
   afterAll(async () => {
     try {
@@ -41,7 +41,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — base64 JSON", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("accepts a base64 image in a run", async () => {
     // 1x1 red PNG
@@ -86,11 +86,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (multipart)",
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   beforeEach(async () => {
     await waitUntilIdle(box);
-  }, 90000);
+  });
 
   afterAll(async () => {
     try {
@@ -98,7 +98,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (multipart)",
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("uploads a local CSV file in a run", async () => {
     const run = await box.agent.run({
@@ -137,11 +137,11 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (txt)", () =>
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   beforeEach(async () => {
     await waitUntilIdle(box);
-  }, 90000);
+  });
 
   afterAll(async () => {
     try {
@@ -149,7 +149,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("prompt files — file paths (txt)", () =>
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("uploads a local TXT file in a run", async () => {
     const run = await box.agent.run({

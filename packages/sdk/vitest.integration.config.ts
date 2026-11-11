@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     include: [resolve(__dirname, "src/**/*.integration.test.ts")],
     testTimeout: 120000,
+    // Hooks create and delete real boxes and snapshots on prod, which can take
+    // well over 30s. Set the limit here instead of per hook.
+    hookTimeout: 180000,
   },
 });

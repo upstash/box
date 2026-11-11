@@ -10,7 +10,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -18,7 +18,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("exec.command: runs a shell command", async () => {
     const run = await box.exec.command("echo hello");

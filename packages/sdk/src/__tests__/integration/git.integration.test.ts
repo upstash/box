@@ -18,7 +18,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("git", () => {
     );
     await box.files.write({ path: "hello.txt", content: "hello" });
     await box.exec.command("cd /workspace/home && git add . && git commit -m 'initial commit'");
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -26,7 +26,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("git", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("git.status: returns status", async () => {
     const status = await box.git.status();

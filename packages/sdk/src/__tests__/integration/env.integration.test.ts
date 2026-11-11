@@ -15,7 +15,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars", () => {
         EMPTY_VAR: "",
       },
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -23,7 +23,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("env vars are available in shell commands", async () => {
     const run = await box.exec.command("echo $MY_SECRET");
@@ -68,7 +68,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — Box.fromSnapshot", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a source box with env vars and snapshots it", async () => {
     sourceBox = await Box.create({
@@ -111,7 +111,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — EphemeralBox.create", () => 
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with env vars", async () => {
     box = await EphemeralBox.create({
@@ -157,7 +157,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("env vars — EphemeralBox.fromSnapshot", 
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a source ephemeral box with env vars and snapshots it", async () => {
     sourceBox = await EphemeralBox.create({

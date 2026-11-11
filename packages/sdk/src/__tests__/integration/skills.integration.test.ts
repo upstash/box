@@ -17,7 +17,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("skills", () => {
       agent: claudeAgent(),
       skills: ["upstash/qstash-js/qstash-js"],
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -25,7 +25,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("skills", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it.skip("agent can use an installed skill", async () => {
     const run = await box.agent.run({

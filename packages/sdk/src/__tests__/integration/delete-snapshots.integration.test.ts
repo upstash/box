@@ -23,7 +23,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.deleteSnapshots (static)", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   const snapshot = async (name: string) => {
     box ??= await EphemeralBox.create({ ...conn, ttl: 300 });

@@ -112,7 +112,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("attachHeaders", () => {
       box?.delete(),
     ];
     await Promise.allSettled(cleanup.filter(Boolean));
-  }, 30_000);
+  });
 
   // ── Box.create ──
 

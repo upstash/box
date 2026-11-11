@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     );
     // Give the server a moment to start
     await new Promise((r) => setTimeout(r, 1000));
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -27,7 +27,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("getPublicURL: creates a public URL", async () => {
     const publicUrl = await box.getPublicURL(3000);
@@ -112,7 +112,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: paused box", () => {
       initCommand: `node -e 'require("http").createServer((_,r)=>r.end("${WAKE_SECRET}")).listen(3000)' &`,
     });
     await new Promise((r) => setTimeout(r, 4000));
-  }, 180000);
+  });
 
   afterAll(async () => {
     try {
@@ -120,7 +120,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("public URLs: paused box", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("a request to the URL resumes the box and serves the app's own response", async () => {
     const created = await box.getPublicURL(3000);

@@ -7,7 +7,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — size", () => {
 
   afterAll(async () => {
     await Promise.allSettled(boxes.map((b) => b.delete()));
-  }, 30000);
+  });
 
   it("creates a small box (default)", async () => {
     const box = await Box.create({ apiKey: UPSTASH_BOX_API_KEY! });

@@ -24,7 +24,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — agent", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a source box with agent, writes a file, snapshots, restores, and agent reads the file", async () => {
     // Create source box with an agent
