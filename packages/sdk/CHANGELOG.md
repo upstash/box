@@ -1,5 +1,19 @@
 # @upstash/box
 
+## 0.8.0
+
+### Minor Changes
+
+- 3e845e1: Upstash no longer provides model API keys for agents. Agent runs use the key set on the box, or else the key saved on your account; a run with neither fails with `agent API key is required`.
+  - `BoxApiKey.UpstashKey` is deprecated. The server treats it like an omitted key. Use `BoxApiKey.StoredKey` or pass your own key.
+  - `use_managed_key` on box data is deprecated and is always false.
+  - CLI: the create wizard drops the "Upstash-managed" option.
+
+### Patch Changes
+
+- f459f66: Add Claude Fable 5.2 model constants: `ClaudeCode.Fable_5_2`, `OpenRouterModel.Claude_Fable_5_2`, `VercelModel.Claude_Fable_5_2`, `OpenCodeModel.Claude_Fable_5_2` and `OpenCodeModel.Zen_Claude_Fable_5_2`, and list them in the CLI model picker.
+- 170dd8b: Include TypeScript source and documentation in the npm package.
+
 ## 0.7.10
 
 ### Patch Changes

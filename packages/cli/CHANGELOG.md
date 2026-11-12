@@ -1,5 +1,24 @@
 # @upstash/box-cli
 
+## 0.4.0
+
+### Minor Changes
+
+- 3e845e1: Upstash no longer provides model API keys for agents. Agent runs use the key set on the box, or else the key saved on your account; a run with neither fails with `agent API key is required`.
+  - `BoxApiKey.UpstashKey` is deprecated. The server treats it like an omitted key. Use `BoxApiKey.StoredKey` or pass your own key.
+  - `use_managed_key` on box data is deprecated and is always false.
+  - CLI: the create wizard drops the "Upstash-managed" option.
+
+### Patch Changes
+
+- f459f66: Add Claude Fable 5.2 model constants: `ClaudeCode.Fable_5_2`, `OpenRouterModel.Claude_Fable_5_2`, `VercelModel.Claude_Fable_5_2`, `OpenCodeModel.Claude_Fable_5_2` and `OpenCodeModel.Zen_Claude_Fable_5_2`, and list them in the CLI model picker.
+- dfdb180: Add `--effort <level>` to `box run`, `box schedule agent` and `box schedule update`. The level maps to the harness option (`effort` for Claude Code, `modelReasoningEffort` for Codex, `reasoningEffort` for OpenCode) and is validated per harness.
+- 0ec2875: `box exec` and the shell in `box connect`, `box create` and `box from-snapshot` work with read-only API keys. They may run commands but not stream them, so the output is printed once the command finishes instead of failing with 403.
+- Updated dependencies [f459f66]
+- Updated dependencies [170dd8b]
+- Updated dependencies [3e845e1]
+  - @upstash/box@0.8.0
+
 ## 0.3.6
 
 ### Patch Changes
