@@ -65,6 +65,31 @@ describe("MODEL_OPTIONS_BY_AGENT", () => {
   });
 
   it.each([
+    [Agent.ClaudeCode, "Anthropic", ClaudeCode.Fable_5_2, "Claude Fable 5.2"],
+    [Agent.ClaudeCode, "OpenRouter", OpenRouterModel.Claude_Fable_5_2, "Claude Fable 5.2 (OR)"],
+    [
+      Agent.ClaudeCode,
+      "Vercel AI Gateway",
+      VercelModel.Claude_Fable_5_2,
+      "Claude Fable 5.2 (Vercel)",
+    ],
+    [Agent.Codex, "OpenRouter", OpenRouterModel.Claude_Fable_5_2, "Claude Fable 5.2 (OR)"],
+    [Agent.OpenCode, "OpenCode — Paid", OpenCodeModel.Zen_Claude_Fable_5_2, "Claude Fable 5.2"],
+    [Agent.OpenCode, "Anthropic", OpenCodeModel.Claude_Fable_5_2, "Claude Fable 5.2"],
+    [Agent.OpenCode, "OpenRouter", OpenRouterModel.Claude_Fable_5_2, "Claude Fable 5.2 (OR)"],
+    [
+      Agent.OpenCode,
+      "Vercel AI Gateway",
+      VercelModel.Claude_Fable_5_2,
+      "Claude Fable 5.2 (Vercel)",
+    ],
+  ])("includes Claude Fable 5.2 for %s via %s", (agent, groupLabel, value, label) => {
+    const group = MODEL_OPTIONS_BY_AGENT[agent].find(({ label }) => label === groupLabel);
+
+    expect(group?.options).toContainEqual({ value, label });
+  });
+
+  it.each([
     [Agent.ClaudeCode, "Anthropic", ClaudeCode.Opus_5, "Claude Opus 5"],
     [Agent.ClaudeCode, "OpenRouter", OpenRouterModel.Claude_Opus_5, "Claude Opus 5 (OR)"],
     [Agent.ClaudeCode, "Vercel AI Gateway", VercelModel.Claude_Opus_5, "Claude Opus 5 (Vercel)"],

@@ -45,6 +45,18 @@ describe("Claude Opus 5.5 model identifiers", () => {
   });
 });
 
+describe("Claude Fable 5.2 model identifiers", () => {
+  it.each([
+    ["Claude Code", ClaudeCode.Fable_5_2, "anthropic/claude-fable-5-2"],
+    ["OpenRouter", OpenRouterModel.Claude_Fable_5_2, "openrouter/anthropic/claude-fable-5.2"],
+    ["Vercel", VercelModel.Claude_Fable_5_2, "vercel/anthropic/claude-fable-5.2"],
+    ["OpenCode Anthropic", OpenCodeModel.Claude_Fable_5_2, "opencode/claude-fable-5-2"],
+    ["OpenCode Zen", OpenCodeModel.Zen_Claude_Fable_5_2, "opencode/claude-fable-5-2"],
+  ])("exposes the %s model", (_provider, model, expected) => {
+    expect(model).toBe(expected);
+  });
+});
+
 describe("GPT-6 Sol and Luna model identifiers", () => {
   it.each([
     ["OpenAI Sol", OpenAICodex.GPT_6_Sol, "openai/gpt-6-sol"],

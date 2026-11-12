@@ -49,6 +49,7 @@ class Agent(str, Enum):
 class ClaudeCode(str, Enum):
     """Claude Code model identifiers."""
 
+    FABLE_5_2 = "anthropic/claude-fable-5-2"
     FABLE_5_1 = "anthropic/claude-fable-5-1"
     FABLE_5 = "anthropic/claude-fable-5"
     OPUS_4_5 = "anthropic/claude-opus-4-5"
@@ -90,6 +91,7 @@ class OpenAICodex(str, Enum):
 class OpenRouterModel(str, Enum):
     """OpenRouter model identifiers — shared across agents that support OpenRouter."""
 
+    CLAUDE_FABLE_5_2 = "openrouter/anthropic/claude-fable-5.2"
     CLAUDE_FABLE_5_1 = "openrouter/anthropic/claude-fable-5.1"
     CLAUDE_FABLE_5 = "openrouter/anthropic/claude-fable-5"
     CLAUDE_OPUS_5_5 = "openrouter/anthropic/claude-opus-5.5"
@@ -118,6 +120,7 @@ class OpenRouterModel(str, Enum):
 class VercelModel(str, Enum):
     """Vercel AI Gateway model identifiers."""
 
+    CLAUDE_FABLE_5_2 = "vercel/anthropic/claude-fable-5.2"
     CLAUDE_FABLE_5_1 = "vercel/anthropic/claude-fable-5.1"
     CLAUDE_FABLE_5 = "vercel/anthropic/claude-fable-5"
     CLAUDE_OPUS_5_5 = "vercel/anthropic/claude-opus-5.5"
@@ -211,6 +214,7 @@ class OpenCodeModel(str, Enum):
     """OpenCode model identifiers — supports models from multiple providers."""
 
     # Anthropic-backed OpenCode models
+    CLAUDE_FABLE_5_2 = "opencode/claude-fable-5-2"
     CLAUDE_FABLE_5_1 = "opencode/claude-fable-5-1"
     CLAUDE_FABLE_5 = "opencode/claude-fable-5"
     CLAUDE_OPUS_5_5 = "opencode/claude-opus-5-5"
@@ -249,6 +253,7 @@ class OpenCodeModel(str, Enum):
     ZEN_BIG_PICKLE = "opencode/big-pickle"
     # Paid models
     ZEN_MINIMAX_M2_7 = "opencode/minimax-m2.7"
+    ZEN_CLAUDE_FABLE_5_2 = "opencode/claude-fable-5-2"
     ZEN_CLAUDE_FABLE_5_1 = "opencode/claude-fable-5-1"
     ZEN_CLAUDE_FABLE_5 = "opencode/claude-fable-5"
     ZEN_CLAUDE_OPUS_5_5 = "opencode/claude-opus-5-5"

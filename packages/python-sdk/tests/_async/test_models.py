@@ -54,6 +54,14 @@ def test_claude_opus_5_5_model_identifier():
     }
 
 
+def test_claude_fable_5_2_model_identifiers():
+    assert ClaudeCode.FABLE_5_2.value == "anthropic/claude-fable-5-2"
+    assert OpenRouterModel.CLAUDE_FABLE_5_2.value == "openrouter/anthropic/claude-fable-5.2"
+    assert VercelModel.CLAUDE_FABLE_5_2.value == "vercel/anthropic/claude-fable-5.2"
+    assert OpenCodeModel.CLAUDE_FABLE_5_2.value == "opencode/claude-fable-5-2"
+    assert OpenCodeModel.ZEN_CLAUDE_FABLE_5_2.value == "opencode/claude-fable-5-2"
+
+
 def test_gpt_6_sol_and_luna_model_identifiers():
     assert OpenAICodex.GPT_6_SOL.value == "openai/gpt-6-sol"
     assert OpenAICodex.GPT_6_LUNA.value == "openai/gpt-6-luna"
