@@ -23,7 +23,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — from regula
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a source box and writes files", async () => {
     // No agent: EphemeralBox.fromSnapshot cannot pass an agent key, and a
@@ -102,7 +102,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)(
       } catch {
         // cleanup best-effort
       }
-    }, 30000);
+    });
 
     it("creates an ephemeral box and writes files", async () => {
       sourceBox = await EphemeralBox.create({

@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("browser", () => {
       agent: claudeAgent(),
       browser: true,
     });
-  }, 180000);
+  });
 
   afterAll(async () => {
     try {
@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("browser", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("opens a tab, reads content, screenshots, and closes it", async () => {
     const tab = await box.browser.tab.create("https://example.com");

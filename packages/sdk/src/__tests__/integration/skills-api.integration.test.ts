@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("skills API", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("skills API", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("add, list, then remove a skill", async () => {
     // List — should not contain the skill

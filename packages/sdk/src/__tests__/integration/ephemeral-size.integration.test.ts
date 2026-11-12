@@ -7,7 +7,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.create — size", () => {
 
   afterAll(async () => {
     await Promise.allSettled(boxes.map((b) => b.delete()));
-  }, 30000);
+  });
 
   it("creates an ephemeral box with default size (small)", async () => {
     const box = await EphemeralBox.create({ apiKey: UPSTASH_BOX_API_KEY!, ttl: 300 });

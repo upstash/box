@@ -10,7 +10,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -18,7 +18,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("schedule", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("schedule.exec: creates and verifies all fields via list", async () => {
     const schedule = await box.schedule.exec({

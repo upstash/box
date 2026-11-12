@@ -16,7 +16,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("files", () => {
     });
     tmpDir = join(tmpdir(), `box-test-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -29,7 +29,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("files", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("files: write then read roundtrip", async () => {
     await box.files.write({ path: "test-file.txt", content: "integration test content" });

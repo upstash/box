@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -19,7 +19,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("lifecycle", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("getStatus: returns idle", async () => {
     const { status } = await box.getStatus();

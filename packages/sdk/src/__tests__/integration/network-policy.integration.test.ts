@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — default networkPolicy", ()
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("defaults to allow-all when networkPolicy is not specified", async () => {
     box = await Box.create({ apiKey: UPSTASH_BOX_API_KEY! });
@@ -29,7 +29,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — networkPolicy", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a box with deny-all network policy", async () => {
     box = await Box.create({
@@ -56,7 +56,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — custom networkPolicy", () 
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates a box with custom network policy allowing a specific domain", async () => {
     box = await Box.create({
@@ -92,7 +92,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("box.updateNetworkPolicy", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("updates from allow-all to deny-all and back, checking field each time", async () => {
     box = await Box.create({
@@ -149,7 +149,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — networkPolicy", () =
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("fromSnapshot with deny-all network policy blocks outbound", async () => {
     sourceBox = await Box.create({ apiKey: UPSTASH_BOX_API_KEY! });
@@ -190,7 +190,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — networkPoli
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("fromSnapshot ephemeral with deny-all network policy blocks outbound", async () => {
     sourceBox = await EphemeralBox.create({
@@ -224,7 +224,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.create — networkPolicy", (
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("creates an ephemeral box with deny-all network policy", async () => {
     box = await EphemeralBox.create({

@@ -12,7 +12,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec.session", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -20,7 +20,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("exec.session", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("streams stdout and stderr separately and reports the exit code", async () => {
     let out = "";

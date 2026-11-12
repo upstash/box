@@ -28,7 +28,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)"
         },
       ],
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -36,7 +36,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (package-based)"
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("agent can use Context7 MCP tool via package", async () => {
     const run = await box.agent.run({
@@ -64,7 +64,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (url-based)", ()
         },
       ],
     });
-  }, 120000);
+  });
 
   afterAll(async () => {
     try {
@@ -72,7 +72,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY || !CONTEXT7_API_KEY)("mcp (url-based)", ()
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("agent can use Context7 MCP tool via URL", async () => {
     const run = await box.agent.run({

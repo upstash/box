@@ -11,7 +11,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.create — name", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("create with name, then get by name returns the same box", async () => {
     const name = `test-box-${Date.now()}`;
@@ -48,7 +48,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("Box.fromSnapshot — name", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("fromSnapshot with name, then get by name returns the same box", async () => {
     sourceBox = await Box.create({ apiKey: UPSTASH_BOX_API_KEY! });
@@ -77,7 +77,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.create — name", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("create ephemeral with name, then get by name returns the same box", async () => {
     const name = `test-ephemeral-${Date.now()}`;
@@ -115,7 +115,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("EphemeralBox.fromSnapshot — name", () =
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   it("fromSnapshot ephemeral with name, then get by name returns the same box", async () => {
     sourceBox = await EphemeralBox.create({

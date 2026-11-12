@@ -35,7 +35,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     const snapshot = await setupBox.snapshot({ name: `cd-test-${Date.now()}` });
     snapshotId = snapshot.id;
     await setupBox.delete();
-  }, 180000);
+  });
 
   afterAll(async () => {
     try {
@@ -43,14 +43,14 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   beforeEach(async () => {
     box = await Box.fromSnapshot(snapshotId, {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120000);
+  });
 
   afterEach(async () => {
     try {
@@ -58,7 +58,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("cd / cwd", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30000);
+  });
 
   // ==================== cwd getter ====================
 

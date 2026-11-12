@@ -39,7 +39,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
       apiKey: UPSTASH_BOX_API_KEY!,
       agent: claudeAgent(),
     });
-  }, 120_000);
+  });
 
   afterAll(async () => {
     try {
@@ -47,7 +47,7 @@ describe.skipIf(!UPSTASH_BOX_API_KEY)("agent.run with webhook", () => {
     } catch {
       // cleanup best-effort
     }
-  }, 30_000);
+  });
 
   it("returns immediately with status running", async () => {
     const run = await box.agent.run({
