@@ -88,6 +88,16 @@ describe("Box.fromSnapshot", () => {
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
   });
 
+  it("checks again well before 2 seconds", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "creating" }))
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    const start = Date.now();
+    await Box.fromSnapshot("snap-1", TEST_CONFIG);
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+
   it("throws on error status", async () => {
     const creating = { ...TEST_BOX_DATA, status: "creating" };
     const errorState = { ...TEST_BOX_DATA, status: "error" };

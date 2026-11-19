@@ -234,6 +234,16 @@ describe("Box.create", () => {
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
   });
 
+  it("checks again well before 2 seconds", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "creating" }))
+      .mockResolvedValueOnce(mockResponse({ ...TEST_BOX_DATA, status: "running" }));
+
+    const start = Date.now();
+    await Box.create(TEST_CONFIG);
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+
   it("throws on error status after polling", async () => {
     const creating = { ...TEST_BOX_DATA, status: "creating" };
     const errorState = { ...TEST_BOX_DATA, status: "error" };
