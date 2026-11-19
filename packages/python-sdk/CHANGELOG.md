@@ -4,6 +4,10 @@ All notable changes to `upstash-box` (Python) are documented here.
 
 ## Unreleased
 
+- Check sooner whether a new box or snapshot is ready. ``create``,
+  ``from_snapshot`` and ``snapshot`` waited a fixed 2 seconds between status
+  checks; the first check now comes after 100 ms and the wait grows to 2
+  seconds.
 - Upstash no longer provides model API keys for agents. Agent runs use the key
   set on the box, or else the key saved on your account; a run with neither
   fails with ``agent API key is required``. ``BoxApiKey.UPSTASH_KEY`` is

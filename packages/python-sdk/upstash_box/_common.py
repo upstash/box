@@ -397,3 +397,16 @@ def multipart_field_data(request_body: Dict[str, Any]) -> Dict[str, str]:
 def mime_for_path(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     return MIME_TYPES.get(ext, "application/octet-stream")
+
+
+_POLL_FIRST_DELAY = 0.1
+_POLL_MAX_DELAY = 2.0
+_POLL_GROWTH = 1.5
+
+
+def poll_delay(attempt: int) -> float:
+    """Seconds to wait before status check number ``attempt`` (0-based).
+
+    Short at first, growing to 2 seconds.
+    """
+    return min(_POLL_MAX_DELAY, _POLL_FIRST_DELAY * _POLL_GROWTH**attempt)
