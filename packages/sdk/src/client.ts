@@ -69,6 +69,7 @@ import {
   Agent,
 } from "./types.js";
 import { telemetryHeaders } from "./telemetry.js";
+import { pollDelay } from "./poll.js";
 
 type BrowserExtractSchema<T> = {
   parse(data: unknown): T;
@@ -1244,12 +1245,12 @@ export class Box<TProvider = unknown> {
     let data = (await response.json()) as BoxData;
 
     // Poll until ready
-    const pollInterval = 2000;
     const maxWait = 300000;
     const start = Date.now();
+    let attempt = 0;
 
     while (data.status === "creating" && Date.now() - start < maxWait) {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt++)));
       const pollResponse = await fetch(`${baseUrl}/v2/box/${data.id}`, { headers });
       if (pollResponse.ok) {
         data = (await pollResponse.json()) as BoxData;
@@ -2824,13 +2825,13 @@ export class Box<TProvider = unknown> {
     });
 
     // Poll until snapshot is ready
-    const pollInterval = 2000;
     const maxWait = 300000;
     const start = Date.now();
     let snapshot = data;
+    let attempt = 0;
 
     while (snapshot.status === "creating" && Date.now() - start < maxWait) {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt++)));
       const snapshots = await this.listSnapshots();
       const found = snapshots.find((s) => s.id === snapshot.id);
       if (found) snapshot = found;
@@ -2923,12 +2924,12 @@ export class Box<TProvider = unknown> {
     let data = (await response.json()) as BoxData;
 
     // Poll until ready
-    const pollInterval = 2000;
     const maxWait = 300000;
     const start = Date.now();
+    let attempt = 0;
 
     while (data.status === "creating" && Date.now() - start < maxWait) {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt++)));
       const pollResponse = await fetch(`${baseUrl}/v2/box/${data.id}`, { headers });
       if (pollResponse.ok) {
         data = (await pollResponse.json()) as BoxData;

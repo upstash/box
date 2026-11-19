@@ -38,6 +38,17 @@ describe("Box snapshot operations", () => {
       expect(snap.status).toBe("ready");
     });
 
+    it("checks again well before 2 seconds", async () => {
+      const { box, fetchMock } = await createTestBox();
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({ ...TEST_SNAPSHOT, status: "creating" }))
+        .mockResolvedValueOnce(mockResponse({ snapshots: [TEST_SNAPSHOT] }));
+
+      const start = Date.now();
+      await box.snapshot({ name: "my-snapshot" });
+      expect(Date.now() - start).toBeLessThan(1000);
+    });
+
     it("throws on error status", async () => {
       const { box, fetchMock } = await createTestBox();
       const creating = { ...TEST_SNAPSHOT, status: "creating" };
