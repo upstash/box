@@ -3,8 +3,8 @@
 ## Versioning policy
 
 The Python SDK versions **independently** on PyPI — it does **not** track the JS
-SDK (`@upstash/box`) version numbers lockstep. The JS SDK is at 0.5.0; this
-package starts fresh at **0.1.0**.
+SDK (`@upstash/box`) version numbers lockstep. The first Python release,
+**0.1.0**, matched JS SDK 0.5.0.
 
 Each release records the JS feature level it reached parity with:
 
@@ -17,6 +17,7 @@ Each release records the JS feature level it reached parity with:
 | 0.2.0              | 0.6.0 (browser API)         |
 | 0.3.0              | 0.7.1 (browser `act` replay, file metadata ops) |
 | 0.4.0              | 0.7.9 (run timeouts and cancel, `git.exec` result, Neon models) |
+| 0.4.1              | 0.8.0 (new models and agent-key policy), plus readiness polling from #277 |
 
 When a JS feature is mirrored, bump the Python patch/minor version and update the
 row above (and `__version__` in `upstash_box/_version.py` + `version` in
@@ -38,8 +39,8 @@ after environment approval.
 ```bash
 # 1. bump version in pyproject.toml + upstash_box/_version.py, update CHANGELOG
 # 2. tag and push:
-git tag python-sdk-v0.1.0
-git push origin python-sdk-v0.1.0
+git tag python-sdk-v0.4.1
+git push origin python-sdk-v0.4.1
 # 3. approve the `pypi` environment in the Actions run
 ```
 

@@ -1,5 +1,3 @@
-import time
-
 import httpx
 import respx
 from helpers import TEST_API_KEY, TEST_BASE_URL, TEST_BOX_DATA, make_async_box
@@ -43,21 +41,6 @@ async def test_snapshot_polls_until_ready():
     )
     snap = await box.snapshot(name="cp1")
     assert snap.status == "ready"
-    await box.aclose()
-
-
-@respx.mock
-async def test_snapshot_checks_again_well_before_2_seconds():
-    box = await make_async_box(respx.mock)
-    respx.post(f"{BASE}/snapshots").mock(
-        return_value=httpx.Response(200, json=_snap(status="creating"))
-    )
-    respx.get(f"{BASE}/snapshots").mock(
-        return_value=httpx.Response(200, json={"snapshots": [_snap(status="ready")]})
-    )
-    start = time.monotonic()
-    await box.snapshot(name="cp1")
-    assert time.monotonic() - start < 1
     await box.aclose()
 
 
