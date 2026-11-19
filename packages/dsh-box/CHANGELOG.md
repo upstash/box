@@ -1,5 +1,12 @@
 # @upstash/dsh-box
 
+## 0.1.11
+
+### Patch Changes
+
+- Updated dependencies [87f2c45]
+  - @upstash/box@0.8.1
+
 ## 0.1.10
 
 ### Patch Changes

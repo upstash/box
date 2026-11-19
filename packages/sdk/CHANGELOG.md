@@ -1,5 +1,11 @@
 # @upstash/box
 
+## 0.8.1
+
+### Patch Changes
+
+- 87f2c45: Check sooner whether a new box or snapshot is ready. `Box.create`, `Box.fromSnapshot` and `box.snapshot` waited a fixed 2 seconds between status checks; the first check now comes after 100 ms and the wait grows to 2 seconds.
+
 ## 0.8.0
 
 ### Minor Changes
