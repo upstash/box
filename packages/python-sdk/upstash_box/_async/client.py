@@ -1651,8 +1651,10 @@ class AsyncBox(Generic[T]):
         data = await self._request("POST", f"/v2/box/{self.id}/snapshots", body={"name": name})
         snapshot = Snapshot.model_validate(data)
         start = time.time()
+        attempt = 0
         while snapshot.status == "creating" and time.time() - start < 300:
-            await asyncio.sleep(2)
+            await asyncio.sleep(common.poll_delay(attempt))
+            attempt += 1
             snapshots = await self.list_snapshots()
             for s in snapshots:
                 if s.id == snapshot.id:
@@ -2082,8 +2084,10 @@ class AsyncBox(Generic[T]):
             data = response.json()
 
             start = time.time()
+            attempt = 0
             while data.get("status") == "creating" and time.time() - start < 300:
-                await asyncio.sleep(2)
+                await asyncio.sleep(common.poll_delay(attempt))
+                attempt += 1
                 poll = await client.get(
                     f"{base_url}/v2/box/{data['id']}",
                     headers=headers,
@@ -2185,8 +2189,10 @@ class AsyncBox(Generic[T]):
             data = response.json()
 
             start = time.time()
+            attempt = 0
             while data.get("status") == "creating" and time.time() - start < 300:
-                await asyncio.sleep(2)
+                await asyncio.sleep(common.poll_delay(attempt))
+                attempt += 1
                 poll = await client.get(
                     f"{base_url}/v2/box/{data['id']}",
                     headers=headers,

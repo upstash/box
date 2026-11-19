@@ -8,6 +8,7 @@ from upstash_box._common import (
     append_agent_config_to_body,
     deserialize_network_policy,
     is_file_paths,
+    poll_delay,
     prepare_run_request,
     resolve_agent_model,
     serialize_mcp_servers,
@@ -151,3 +152,10 @@ def test_to_json_schema_pydantic():
 def test_to_json_schema_raw_dict_passthrough():
     raw = {"type": "object"}
     assert to_json_schema(raw) is raw
+
+
+def test_poll_delay_starts_short_and_grows_to_2_seconds():
+    assert [round(poll_delay(n), 4) for n in range(4)] == [0.1, 0.15, 0.225, 0.3375]
+    assert poll_delay(7) < 2
+    assert poll_delay(8) == 2
+    assert poll_delay(50) == 2

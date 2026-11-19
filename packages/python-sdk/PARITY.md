@@ -105,7 +105,8 @@ statics `create`, `from_snapshot`, `get_by_name`, `delete_boxes`,
 
 ## Behavioral quirks mirrored exactly
 
-- Polling loops (2s/300s) in `create`, `from_snapshot`, `snapshot`.
+- Readiness polling in `create`, `from_snapshot`, `snapshot`: start at 100 ms,
+  grow by 1.5x per attempt, cap at 2 seconds, and stop after 300 seconds.
 - `is_agent_configured`: `bool(data.agent)` on `create`; `bool(data.model)` on `get`/`from_snapshot`.
 - `Run.logs()`: epoch→ISO, **lower-bound-only** time filter.
 - `Run.cancel()`: swallows endpoint errors, always sets `cancelled`, and first

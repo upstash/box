@@ -1634,8 +1634,10 @@ class Box(Generic[T]):
         data = self._request("POST", f"/v2/box/{self.id}/snapshots", body={"name": name})
         snapshot = Snapshot.model_validate(data)
         start = time.time()
+        attempt = 0
         while snapshot.status == "creating" and time.time() - start < 300:
-            time.sleep(2)
+            time.sleep(common.poll_delay(attempt))
+            attempt += 1
             snapshots = self.list_snapshots()
             for s in snapshots:
                 if s.id == snapshot.id:
@@ -2055,8 +2057,10 @@ class Box(Generic[T]):
             data = response.json()
 
             start = time.time()
+            attempt = 0
             while data.get("status") == "creating" and time.time() - start < 300:
-                time.sleep(2)
+                time.sleep(common.poll_delay(attempt))
+                attempt += 1
                 poll = client.get(
                     f"{base_url}/v2/box/{data['id']}",
                     headers=headers,
@@ -2158,8 +2162,10 @@ class Box(Generic[T]):
             data = response.json()
 
             start = time.time()
+            attempt = 0
             while data.get("status") == "creating" and time.time() - start < 300:
-                time.sleep(2)
+                time.sleep(common.poll_delay(attempt))
+                attempt += 1
                 poll = client.get(
                     f"{base_url}/v2/box/{data['id']}",
                     headers=headers,
