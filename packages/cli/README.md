@@ -361,6 +361,8 @@ Boxes can also be reached over SSH, using your Box API key as the password:
 ssh <box-id>@us-east-1.box.upstash.com
 ```
 
+For a shell in the browser, open the box in the [Upstash Console](https://console.upstash.com/box) and go to its **Terminal** tab.
+
 ## Telemetry
 
 The CLI sends anonymous usage telemetry with API requests via the `@upstash/box` SDK it wraps, identifying itself as `@upstash/box-cli@<version>` in the SDK telemetry chain. No user data, prompts, or identifiers are ever collected. To opt out, set `UPSTASH_DISABLE_TELEMETRY` to any value.
