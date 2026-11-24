@@ -126,6 +126,8 @@ ssh <box-id>@us-east-1.box.upstash.com
 
 Use your **Box API key** as the SSH password.
 
+For a shell in the browser, open the box in the [Upstash Console](https://console.upstash.com/box) and go to its **Terminal** tab.
+
 ### Agent
 
 ```python
